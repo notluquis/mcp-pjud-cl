@@ -29,11 +29,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Acá sólo `default-days`: las variantes por semver no se admiten en este
+    # ecosistema, porque las acciones no versionan con semver estricto.
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 3
     commit-message:
       prefix: "chore"
     labels: ["dependencias"]

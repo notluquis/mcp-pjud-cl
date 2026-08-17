@@ -33,7 +33,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `AGENTS.md` con las reglas del proyecto para agentes de IA, más `CLAUDE.md` que lo importa y
   `copilot-instructions.md` que lo referencia. Una sola fuente en vez de tres que se
   desincronizan.
-- `llms.txt` en la raíz del sitio de documentación.
+- Documentación consumible por agentes: cada página se publica también en Markdown
+  (`uso.html.md`, etc.), más `llms.txt` y `llms-full.txt`, vía la extensión `sphinx-llm`.
 - Página de ejemplos con casos resueltos de punta a punta.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la

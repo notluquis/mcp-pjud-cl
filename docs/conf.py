@@ -10,6 +10,9 @@ language = "es"
 
 extensions = [
     "myst_parser",
+    # Genera una versión Markdown de cada página, más llms.txt y llms-full.txt.
+    # Es lo que permite que un agente lea la documentación sin atravesar el HTML.
+    "sphinx_llm.txt",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
@@ -26,9 +29,16 @@ html_theme = "furo"
 html_title = "mcp-pjud"
 html_static_path = []
 
-# llms.txt se copia tal cual a la raíz del sitio. Es el formato que consumen los agentes
-# de IA para orientarse antes de leer la documentación completa.
-html_extra_path = ["llms.txt"]
+# La extensión genera llms.txt, llms-full.txt y un .md por página. Se le deja a ella en
+# vez de mantener un llms.txt a mano: uno escrito a mano se desincroniza del índice a la
+# primera página nueva. Lo que sí se cuida a mano es la descripción, porque es la primera
+# línea que lee un agente y ahí tiene que estar la distinción entre las dos fechas.
+llms_txt_enabled = True
+llms_txt_full_build = True
+llms_txt_description = (
+    "Servidor MCP de solo lectura para la consulta pública de causas del Poder Judicial "
+    "de Chile. fecha_diligencia es la que corre los plazos procesales; fecha_registro no."
+)
 
 html_theme_options = {
     "source_repository": "https://github.com/notluquis/mcp-pjud-cl/",

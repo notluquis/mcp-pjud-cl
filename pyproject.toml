@@ -36,7 +36,12 @@ mcp-pjud = "mcp_pjud.server:main"
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.9", "mutmut>=3.2", "zizmor>=1.29"]
-docs = ["sphinx>=8.1", "myst-parser>=4.0", "furo>=2024.8"]
+docs = [
+    "sphinx>=8.1",
+    "myst-parser>=4.0",
+    "furo>=2024.8",
+    "sphinx-llm>=1.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]

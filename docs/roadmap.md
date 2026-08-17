@@ -10,6 +10,10 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 
 | Qué | Cómo se verificó |
 |---|---|
+| Búsqueda de causas en **laboral** | Una causa real, columnas confirmadas, con fixture propia |
+| Búsqueda de causas en **cobranza** | Ídem, y publica RUC que civil no tiene |
+| El detalle de cobranza existe y sus columnas son otras | `historiaCob`, `diligenciaCob`, `litigantesCob`, `deudaCob`, `liquidacionCob`. Trae `Estado Firma` y no trae `Foja` ni `Georref.` |
+| Una búsqueda del buscador de fallos tarda 47,8 s | Contra 4,3 s de la página del mismo host. Es Solr con facetas sobre más de un millón de documentos |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
 | Búsqueda por RIT en civil | E-468-2026 y C-1156-2026 |
@@ -91,14 +95,27 @@ total. La respuesta correcta es devolver el listado para que el usuario elija cu
 Existe `buscar_jurisprudencia` contra el buscador de Corte Suprema. Lo que falta está en la
 sección de jurisprudencia, más abajo.
 
-### 0.4: cobranza laboral y previsional
+### 0.4: cobranza y laboral — búsqueda hecha, actuaciones pendientes
 
-La primera competencia nueva, y la elegida a propósito: `receptorCobranza.php` existe, o sea
-que también tiene actuaciones de ministro de fe, que es donde está el valor.
+Las dos búsquedas quedaron verificadas con fixtures propias. Lo que falta es lo que da valor:
 
-- Verificar si el formato de fecha doble es el mismo
-- Parser propio si difiere
-- Ampliar `MODULOS` sólo después de verificar, nunca antes
+- **`historiaCob`**: el panel existe y sus columnas son otras. Trae `Estado Firma` y no trae
+  `Foja` ni `Georref.`, así que `COLUMNAS` y la lista blanca de encabezados del parser tienen
+  que moverse a la tabla de competencias junto con el sufijo del panel. Sin eso cobranza no
+  entrega actuaciones de ministro de fe, que es la única razón por la que se eligió primero.
+- **Laboral no tiene receptor.** En todo el sitio sólo existen `receptorCivil` y
+  `receptorCobranza`, así que ahí la pregunta que da sentido al proyecto no tiene respuesta.
+  Queda declarado en la tabla y se rechaza antes de gastar una petición.
+
+Las otras tres competencias se midieron y el diagnóstico está, leído de su propio JavaScript:
+
+| Competencia | Por qué falla | Corrección conocida |
+|---|---|---|
+| `suprema` | El sitio deja `conTipoCausa` **deshabilitado**, y jQuery no serializa campos deshabilitados: no se manda. Mandarlo vacío hace que el servidor lo parsee como número | Omitir el campo |
+| `apelaciones` | Mismo caso | Omitir el campo |
+| `penal` | Tiene un control propio, `radio-groupPenal`, con 1 para buscar por RIT y 2 por RUC | Agregar ese campo |
+
+Ninguna de las tres correcciones está verificada contra el sistema real todavía.
 
 ### 0.5: el resto del detalle de causa
 
@@ -176,6 +193,15 @@ Sólo el primero está verificado. **Cada buscador declara sus propios campos**,
 razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
 Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería
 campos vacíos en vez de un error, que es exactamente el falso negativo que el proyecto evita.
+
+El mecanismo ya no es el obstáculo: `juris.BUSCADORES` es una tabla que mapea nombre del
+modelo a campo Solr, igual que `parser.COMPETENCIAS` para las causas, y `parse_sentencias`
+recibe el buscador. Agregar uno es leer su `parametros_buscador` y llenar una fila.
+
+Y hay una razón de uso para priorizar dos: sobre un conjunto real de 84 citas de cuatro casos,
+**32 son de Cortes de Apelaciones y de juzgados laborales**, o sea el 38 por ciento de lo que
+alguien necesita verificar cae fuera precisamente por estos dos buscadores. Rinden más que
+cualquier competencia nueva de la Oficina Judicial Virtual.
 
 | Buscador | Estado |
 |---|---|

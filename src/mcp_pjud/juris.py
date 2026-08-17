@@ -31,7 +31,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from datetime import date
+from typing import NamedTuple
 
 import httpx
 from pydantic import BaseModel, Field
@@ -45,7 +47,48 @@ BASE = "https://juris.pjud.cl"
 #: buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones), así que exponer los otros sin medirlos devolvería campos vacíos en vez de
 #: un error, que es la falla que este proyecto existe para no cometer.
-BUSCADORES = {"suprema": "Corte_Suprema"}
+
+
+class Buscador(NamedTuple):
+    """Cómo leer las sentencias de un buscador.
+
+    Mismo criterio que `parser.COMPETENCIAS`: los diez buscadores comparten el endpoint, el
+    contrato de la petición y la forma de la respuesta Solr. Lo único que difiere son los
+    nombres de los campos, así que esto es una tabla y no diez parsers.
+
+    `campos` mapea nombre del modelo a campo Solr. Los que no aparecen quedan vacíos, salvo
+    los indispensables para identificar una cita, que se exigen.
+    """
+
+    ruta: str
+    campos: Mapping[str, str]
+
+
+#: Campos que toda sentencia tiene que traer: son los que identifican la cita. Sin ellos se
+#: entregaría una sentencia que no dice a qué sentencia corresponde.
+INDISPENSABLES = ("rol", "fecha_sentencia")
+
+#: Sólo Corte Suprema está verificado contra el sistema real.
+BUSCADORES: Mapping[str, Buscador] = {
+    "suprema": Buscador(
+        "Corte_Suprema",
+        {
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "sala": "gls_sala_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "corte_origen": "gls_corte_s",
+            "rol_corte_apelaciones": "rol_era_ape_s",
+            "redactor": "gls_redactor_s",
+            "ministros": "sent__gls_int_firma_sup_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+        },
+    ),
+}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")
@@ -143,7 +186,7 @@ def _lista(valor: str | None) -> list[str]:
     return [p.strip() for p in (valor or "").split(",") if p.strip()]
 
 
-def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
+def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurisprudencia:
     """Convierte la respuesta del buscador en el modelo. Sin red: se prueba offline.
 
     Levanta `EstructuraInesperada` en vez de devolver una lista vacía, por la misma razón
@@ -196,11 +239,13 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         if int(crudo[i + 1]) > 0
     }
 
+    campos = BUSCADORES[buscador.lower()].campos
+
     # El rol y la fecha son lo que identifica una cita. Si el buscador los renombra, una
     # `Sentencia` con `rol=""` llegaría al usuario como una cita verificada que no dice a qué
     # sentencia corresponde, en una herramienta cuyo propósito es verificar citas.
     for i, d in enumerate(respuesta["docs"], 1):
-        faltantes = [c for c in ("rol_era_sup_s", "fec_sentencia_sup_dt") if not d.get(c)]
+        faltantes = [campos[c] for c in INDISPENSABLES if not d.get(campos[c])]
         if faltantes:
             raise EstructuraInesperada(
                 f"La sentencia {i} de la respuesta no trae {faltantes}, que es lo que la "
@@ -208,21 +253,24 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
                 "una cita que no se puede verificar."
             )
 
+    def leer(d: dict, nombre: str) -> str:
+        return str(d.get(campos.get(nombre, ""), "") or "")
+
     sentencias = [
         Sentencia(
-            rol=d["rol_era_sup_s"],
-            caratulado=d.get("caratulado_s", ""),
-            fecha_sentencia=_fecha(d.get("fec_sentencia_sup_dt")),
-            sala=d.get("gls_sala_sup_s", ""),
-            tipo_recurso=d.get("gls_tip_recurso_sup_s", ""),
-            resultado_recurso=d.get("resultado_recurso_sup_s", ""),
-            corte_origen=d.get("gls_corte_s", ""),
-            rol_corte_apelaciones=d.get("rol_era_ape_s", ""),
-            redactor=d.get("gls_redactor_s", ""),
-            ministros=_lista(d.get("sent__gls_int_firma_sup_s")),
-            condicion_publicacion=d.get("gls_condicion_publicacion_s", ""),
-            anonimizada=bool(d.get("sit_fallo_anonimizado_i", 0)),
-            url=d.get("url_acceso_sentencia", ""),
+            rol=leer(d, "rol"),
+            caratulado=leer(d, "caratulado"),
+            fecha_sentencia=_fecha(leer(d, "fecha_sentencia")),
+            sala=leer(d, "sala"),
+            tipo_recurso=leer(d, "tipo_recurso"),
+            resultado_recurso=leer(d, "resultado_recurso"),
+            corte_origen=leer(d, "corte_origen"),
+            rol_corte_apelaciones=leer(d, "rol_corte_apelaciones"),
+            redactor=leer(d, "redactor"),
+            ministros=_lista(leer(d, "ministros")),
+            condicion_publicacion=leer(d, "condicion_publicacion"),
+            anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
+            url=leer(d, "url"),
         )
         for d in respuesta["docs"]
     ]
@@ -260,7 +308,7 @@ class JurisClient(Transporte):
                 f"{', '.join(sorted(BUSCADORES))}. Los demás declaran otros campos y "
                 "devolverían datos vacíos en vez de un error."
             )
-        html = self._req("GET", f"{BASE}/busqueda?{BUSCADORES[buscador]}").text
+        html = self._req("GET", f"{BASE}/busqueda?{BUSCADORES[buscador].ruta}").text
 
         token = _TOKEN.search(html)
         ident = _ID_BUSCADOR.search(html)
@@ -284,6 +332,7 @@ class JurisClient(Transporte):
         hasta: str = "",
         filas: int = 10,
         orden: str = "recientes",
+        buscador: str = "suprema",
     ) -> ResultadoJurisprudencia:
         """Busca sentencias. Sin ningún criterio devolvería el índice entero, y eso no es
         una búsqueda: es un volcado."""
@@ -312,8 +361,12 @@ class JurisClient(Transporte):
                 "Hay que dar al menos un criterio: rol y año, texto, o un rango de fechas."
             )
 
+        if buscador.lower() not in BUSCADORES:
+            raise ValueError(
+                f"Buscador {buscador!r} no verificado. Disponible: {', '.join(sorted(BUSCADORES))}."
+            )
         if not self._token:
-            self.abrir_sesion()
+            self.abrir_sesion(buscador)
 
         r = self._req(
             "POST",
@@ -329,10 +382,10 @@ class JurisClient(Transporte):
             },
             headers={
                 "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{BASE}/busqueda?{BUSCADORES['suprema']}",
+                "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
         )
-        return parse_sentencias(r.text)
+        return parse_sentencias(r.text, buscador)
 
     def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
         """El buscador responde JSON. Un cuerpo con verificación en vez de resultados es un

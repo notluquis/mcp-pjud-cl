@@ -53,6 +53,19 @@ IDENTIFICADOR_FICTICIO = "ESTUDIO00000000"
 # Los tests no necesitan su contenido: sólo comprueban que la referencia exista.
 JWT = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}")
 
+# Consultas SQL que la plataforma imprime dentro de una celda en vez de renderizar el documento.
+# Medido en el detalle de Cortes de Apelaciones: la columna `Doc.` traía el SELECT completo, con
+# el esquema, la tabla y los parámetros con nombre.
+#
+# Se borran siempre y sin mapeo. No es un dato de este proyecto ni de las partes: son internos
+# del sistema de un tercero, y republicarlos en un repositorio público los deja indexados y
+# permanentes. La misma razón por la que los hallazgos de seguridad de la plataforma no se
+# publican acá: si hay que decirlo, se dice a la CAPJ por divulgación responsable.
+#
+# Los tests no necesitan el contenido de esa celda: comprueban que la columna exista.
+SQL = re.compile(r"SELECT\s+[A-Z_0-9,\s]+FROM\s+\w+\.\w+.*?(?=<|$)", re.I | re.S)
+SQL_FICTICIO = "(consulta interna suprimida)"
+
 
 def anonimizar(texto: str, personas: dict[str, str], ruts: dict[str, str]) -> str:
     for real, ficticio in personas.items():
@@ -61,6 +74,7 @@ def anonimizar(texto: str, personas: dict[str, str], ruts: dict[str, str]) -> st
         texto = texto.replace(real, ficticio)
         texto = texto.replace(real.replace("-", ""), ficticio.replace("-", ""))
     texto = IDENTIFICADORES.sub(IDENTIFICADOR_FICTICIO, texto)
+    texto = SQL.sub(SQL_FICTICIO, texto)
 
     # Cada JWT distinto recibe una referencia ficticia distinta, para que las fixtures sigan
     # distinguiendo un cuaderno de otro.

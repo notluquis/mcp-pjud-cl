@@ -191,6 +191,19 @@ CompetenciaConReceptor = Annotated[
     ),
 ]
 
+#: Las competencias cuya tabla de Historia está medida. Se deriva y no se escribe a mano por
+#: la misma razón que `_CON_RECEPTOR`: ofrecerle al modelo una que el cliente rechaza lo hace
+#: intentarla y atribuir el error a la plataforma.
+_CON_HISTORIA = sorted(n for n in MODULOS if COMPETENCIAS[n].historia is not None)
+CompetenciaConHistoria = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_HISTORIA)}. Son aquellas cuyo panel de historia "
+        "está medido contra una respuesta real. Las demás se rechazan antes de consultar, en "
+        "vez de leerlas con el mapa de otra competencia."
+    ),
+]
+
 Corte = Annotated[
     int | None,
     Field(
@@ -316,6 +329,32 @@ def obtener_actuaciones_receptor(
     """
     with _cliente() as c:
         return c.actuaciones_receptor(tipo, rol, anio, competencia, tribunal, corte)
+
+
+@mcp.tool(
+    title="Historia de la causa",
+    annotations=SOLO_LECTURA,
+)
+def obtener_historia_causa(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: CompetenciaConHistoria = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[Actuacion]:
+    """Todas las actuaciones de la causa, no sólo las del ministro de fe.
+
+    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto.
+
+    Cuatro de las seis competencias no tienen receptor, así que ahí ésta es la única vía
+    para saber qué pasó en la causa y cuándo. Cuidado con las fechas: `fecha_diligencia`
+    viene en nulo salvo en civil y cobranza, porque las demás no publican la fecha doble.
+    Nulo significa que esa competencia no informa la fecha de diligencia, NO que el trámite
+    no se haya practicado, y NO sirve para computar plazos.
+    """
+    with _cliente() as c:
+        return c.historia_causa(tipo, rol, anio, competencia, tribunal, corte)
 
 
 @mcp.tool(

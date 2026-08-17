@@ -224,13 +224,15 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     error y se lo atribuya a la plataforma. La primera versión de este guardia cubría la
     documentación y dejaba el esquema fuera, que es el que el modelo lee primero.
     """
-    # `obtener_actuaciones_receptor` queda fuera y tiene su propio guardia: ofrece sólo las
-    # competencias que además publican las actuaciones en la Historia, que hoy es una sola.
-    # Exigirle las cuatro buscables le haría anunciar tres opciones que siempre fallan.
+    # Dos herramientas quedan fuera y tienen su propio guardia, porque ofrecen menos que las
+    # buscables y eso es correcto: `obtener_actuaciones_receptor` sólo las que publican
+    # actuaciones en la Historia, y `obtener_historia_causa` sólo aquellas cuyo panel está
+    # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
+    sin_todas_las_competencias = {"obtener_actuaciones_receptor", "obtener_historia_causa"}
     descripciones = [
         p.get("description", "")
         for nombre_h, h in expuestas.items()
-        if nombre_h != "obtener_actuaciones_receptor"
+        if nombre_h not in sin_todas_las_competencias
         for nombre, p in (h.input_schema or {}).get("properties", {}).items()
         if nombre == "competencia"
     ]
@@ -952,7 +954,7 @@ def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
     )
 
 
-#: Sufijo del modal de detalle por competencia, tal como lo nombra la plataforma.
+#: El modal de detalle por competencia, tal como lo nombra la plataforma.
 _MODAL_DETALLE = {
     "laboral": "causaLaboral.php",
     "suprema": "causaSuprema.php",
@@ -961,38 +963,37 @@ _MODAL_DETALLE = {
 }
 
 
-def test_el_detalle_medido_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
+def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
     """Las dos afirmaciones ya se separaron una vez, y en el mismo commit.
 
     Al registrar que el detalle de `laboral` estaba medido, la hoja de ruta siguió listando
     `causaLaboral.php` entre las rutas mapeadas y nunca ejecutadas: dos estados incompatibles
     sobre la misma verificación, en la misma página.
 
-    El guardia va en las dos direcciones. Una competencia con el detalle medido no puede
-    aparecer entre las rutas sin ejecutar, y una que no se midió tiene que aparecer: si al
-    medir la siguiente alguien la saca de la lista sin anotarla arriba, la página deja de decir
-    que falta y nadie se entera.
+    El guardia se ata al código y no a una lista escrita a mano: una competencia cuyo panel de
+    historia está declarado en `parser.COMPETENCIAS` fue medida por definición, así que no
+    puede seguir apareciendo como ruta sin ejecutar.
+
+    `penal` es el caso que obliga a separar dos cosas que se parecen: su modal SÍ se ejecutó,
+    y no quedó mapeado porque la respuesta trajo cero filas. Ejecutar no es mapear, y la hoja
+    de ruta tiene que decir por qué.
     """
     texto = _texto(RAIZ / "docs" / "roadmap.md")
-    declarados = re.search(r"\*\*Detalle medido:\*\*\s*(.+)", texto)
-    assert declarados, (
-        "la hoja de ruta ya no declara qué detalles están medidos; este guardia lee esa línea"
-    )
-    medidos = set(re.findall(r"`(\w+)`", declarados.group(1)))
-    assert medidos <= set(_MODAL_DETALLE), f"competencia desconocida en la línea: {medidos}"
-
     sin_ejecutar = texto.split("### Mapeado pero nunca ejecutado", 1)[1].split("###", 1)[0]
+
     for competencia, modal in _MODAL_DETALLE.items():
-        if competencia in medidos:
-            assert modal not in sin_ejecutar, (
-                f"el detalle de {competencia} está declarado medido y {modal} sigue entre las "
-                "rutas sin ejecutar"
-            )
-        else:
-            assert modal in sin_ejecutar, (
-                f"el detalle de {competencia} no está medido y {modal} desapareció de las "
-                "rutas sin ejecutar: la página deja de decir que falta"
-            )
+        if COMPETENCIAS[competencia].historia is None:
+            continue
+        assert modal not in sin_ejecutar, (
+            f"el detalle de {competencia} está mapeado en el código y {modal} sigue entre las "
+            "rutas sin ejecutar"
+        )
+
+    sin_mapear = [c for c in _MODAL_DETALLE if COMPETENCIAS[c].historia is None]
+    for competencia in sin_mapear:
+        assert f"`{competencia}`" in texto, (
+            f"{competencia} no está mapeada y la hoja de ruta no dice nada de ella"
+        )
 
 
 def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_github():

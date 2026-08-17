@@ -1,0 +1,312 @@
+<script>
+$(document).ready(function(){
+//---- TOOLTIPS DEL ROL -----	
+	$(".topToolNom").tooltip({ placement: "bottom" });
+//----------------------------------------------
+});
+</script>
+<!--[if IE]>
+<style>
+    .panel-default {
+         margin-top: 30px;
+    }
+</style>
+<![endif]-->
+	<div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+										<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h4 class="modal-title" style="color:#337ab7;">Detalle Causa Apelaciones</h4>
+			</div>
+		
+			<div class="modal-body">
+			
+				<div class="panel with-nav-tabs">
+				
+					
+					<div class="panel-heading">
+						<ul class="nav nav-tabs" style="display:inline-block">
+							<li class="active"><a data-toggle="tab" href="#recursoApe">Recurso</a></li>
+							<li><a data-toggle="tab" href="#expedienteApe">Expediente Primera Instancia</a></li>
+						</ul>
+					</div>
+					
+					
+					<div class="tab-content">
+						
+						<div class="tab-pane fade in active" id="recursoApe"> <!-- INICIO PANEL -->
+						
+							<div class="panel panel-default">
+								<table class="table table-responsive table-titulos">
+									<tbody>
+										<tr>
+											<td><strong>Libro :</strong> Exhorto - 1504 - 2019</td>
+											<td><strong>Fecha :</strong> 19/11/2019</td>
+											<td colspan="2"><strong>Estado Recurso:</strong> Vigente                       </td>
+										</tr>
+										<tr>
+											<td><strong>Estado Procesal:</strong> Fallada-Terminada</td>
+											<td><strong>Ubicaci&oacute;n:</strong> Corte apelaciones                                 </td>
+											<td colspan="2"><strong>Recurso:</strong> EX03-Exhorto-Civil</td>
+										</tr>
+										<tr>
+											<td colspan="2"><strong>Corte:</strong> C.A. de Concepción            </td>
+										</tr>
+									</tbody>
+								</table>
+										
+								<table class="table table-responsive table-titulos">
+									<tbody>
+										<tr>
+											<td>
+											  <!-- Bloque boton Certificado -->
+						
+												<strong>Certificado de Env&iacute;o:</strong><br>
+												<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+								<!-- Fin Bloque boton Certificado -->
+											</td>
+											
+											<!-- INICIO EBOOK -->
+											<td id="contenedorEbook">
+																							<strong>Ebook:</strong>
+													<form name="form" action="ADIR_871/apelaciones/documentos/newebookapelaciones.php" method="get" target="_blank">
+														<input type='hidden' name='dtaEbook' value='referencia-ficticia-001'>
+														<a href="#" onClick='$(this).closest("form").submit();'>
+<img src="/ADIR_871/apelaciones/modal/icono_PDF.png" width="25px" title="Descargar Ebook">															
+</a>
+																											</form>
+												
+											</td>
+											<!-- FIN EBOOK -->
+											
+											<td>
+											<!--bloque carpeta documento del recurso-->
+																						<strong>Texto:</strong><br>
+													<a data-toggle="modal" href="#modalAnexoRecursoApelaciones" role="img" title="Anexo recurso apelaciones" onClick="anexoRecursoApelaciones('referencia-ficticia-001');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+											<!--fin bloque carpeta documento del recurso   -->	
+											</td>									
+											<td>
+											<!-- Bloque Anexo de la Causa -->
+																						<strong>Anexo:</strong><br>
+													<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+											<!-- Fin Bloque Anexo de la Causa -->	
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+								<div class="panel-heading">
+						<ul class="nav nav-tabs">
+							<li class="active"><a data-toggle="tab" href="#movimientosApe">Movimientos</a></li>
+							<li><a data-toggle="tab" href="#litigantesApe">Litigantes</a></li>
+							<li><a data-toggle="tab" href="#ExhortosApe">Exhortos</a></li>
+							<li><a data-toggle="tab" href="#IncompetenciaApe">Incompetencia</a></li>
+						</ul>
+					</div>
+					
+					<div class="tab-content">
+						
+						<div class="tab-pane fade in active" id="movimientosApe"> <!-- INICIO PANEL -->
+						
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+									
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Folio</th>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>Tr&aacute;mite</th>
+												<th>Descripci&oacute;n</th>
+												<th>Fecha</th>
+												<th>Sala</th>
+												<th>Estado</th>
+												<th>Georeferencia</th>
+											</tr>												
+										</thead>
+										<tbody>
+												<tr>
+													<td>3</td>
+													<td align="center">
+																	<form name="frmDoc" action="ADIR_871/apelaciones/documentos/docCausaApelaciones.php" method="get" target="wrd1" style="display: inline-block;">
+																		<input type='hidden' name='valorDoc' value='referencia-ficticia-002'>
+																		<a href="#" onClick='$(this).closest("form").submit();'>
+																			<img src="/ADIR_871/apelaciones/modal/icono_PDF.png" width="25px" title="Descargar Documento">
+																		</a>
+																																			
+																	</form>
+<div style="display:none;">(consulta interna suprimida)</div><div style="display:none;"></div>				
+													</td>
+													<td align="center"><!-- ANEXO -->
+														
+													</td><!-- FIN ANEXO -->
+													<td>Actuación<input type="hidden" value=37></td>
+													<td>
+														<span title="Nomenclaturas  :
+    1.Actuacion" class="topToolNom">constancia de correo</span>
+													</td>
+													<td>04/12/2019</td>
+													<td>Presidencia</td>
+													<td>Bloqueado</td>
+													<td align="left">
+													</td>
+												</tr>
+												<tr>
+													<td>2</td>
+													<td align="center">
+																	<form name="frmDoc" action="ADIR_871/apelaciones/documentos/docCausaApelaciones.php" method="get" target="wrd2" style="display: inline-block;">
+																		<input type='hidden' name='valorDoc' value='referencia-ficticia-003'>
+																		<a href="#" onClick='$(this).closest("form").submit();'>
+																			<img src="/ADIR_871/apelaciones/modal/icono_PDF.png" width="25px" title="Descargar Documento">
+																		</a>
+																																			
+																	</form>
+<div style="display:none;">(consulta interna suprimida)</div><div style="display:none;"></div>				
+													</td>
+													<td align="center"><!-- ANEXO -->
+														
+													</td><!-- FIN ANEXO -->
+													<td>Sentencia<input type="hidden" value=37></td>
+													<td>
+														<span title="Nomenclaturas  :
+    1.Cúmplase" class="topToolNom">Cúmplase</span>
+													</td>
+													<td>20/11/2019</td>
+													<td>Presidencia</td>
+													<td>Bloqueado</td>
+													<td align="left">
+													</td>
+												</tr>
+												<tr>
+													<td>1</td>
+													<td align="center">
+																	<form name="frmDoc" action="ADIR_871/apelaciones/documentos/docCausaApelaciones.php" method="get" target="wrd3" style="display: inline-block;">
+																		<input type='hidden' name='valorDoc' value='referencia-ficticia-004'>
+																		<a href="#" onClick='$(this).closest("form").submit();'>
+																			<img src="/ADIR_871/apelaciones/modal/icono_PDF.png" width="25px" title="Descargar Documento">
+																		</a>
+																																			
+																	</form>
+<div style="display:none;">(consulta interna suprimida)</div><div style="display:none;"></div>				
+													</td>
+													<td align="center"><!-- ANEXO -->
+														
+													</td><!-- FIN ANEXO -->
+													<td>Escrito<input type="hidden" value=37></td>
+													<td>
+														<span title="Otro" class="topToolNom">*Ingreso Recurso</span>
+													</td>
+													<td>19/11/2019</td>
+													<td>...</td>
+													<td>Resuelto</td>
+													<td align="left">
+													</td>
+												</tr>
+										</tbody>
+									</table>
+
+								</div>
+							</div>
+
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="litigantesApe"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Sujeto</th>
+												<th>Rut</th>
+												<th>Persona</th>
+												<th>Nombre o Raz&oacute;n Social</th>
+											</tr>												
+										</thead>
+										<tbody>
+												<tr>
+													<td>Recurrido</td>
+													<td>88888888-8</td>
+													<td>Natural                       </td>
+													<td>PERSONA FICTICIA 09</td>
+												</tr>											
+												
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+						<div class="tab-pane fade" id="ExhortosApe"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th></th>
+												<th>Exhorto</th>												
+											</tr>												
+										</thead>
+										<tbody>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+						<div class="tab-pane fade" id="IncompetenciaApe"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th></th>
+												<th>Incompetencia</th>												
+											</tr>												
+										</thead>
+										<tbody>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+					</div>
+						</div> <!-- FIN PANEL -->
+						
+						<div class="tab-pane fade" id="expedienteApe"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							Recuerde que las causas reservadas no se muestran en la consulta unificada, y según el tipo de reserva, podrá acceder a ellas ingresando con su usuario y contraseña a la opción “Mis Causas” de la Oficina Judicial Virtual.
+							</div>
+						</div>
+                
+					</div>
+					
+					
+				
+					
+				</div>
+                
+
+			</div>
+			
+        
+			<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+									
+			</div>
+			
+		</div>
+	</div>

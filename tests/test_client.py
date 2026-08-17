@@ -999,3 +999,68 @@ def test_solo_las_competencias_medidas_declaran_campos_de_mas():
         "penal": ["radio-groupPenal"],
         "suprema": ["conTipoBus"],
     }, f"cambió qué competencias exigen campos propios: {con_extras}"
+
+
+def test_la_historia_se_rechaza_donde_el_panel_no_esta_medido():
+    """Penal es buscable y su panel de historia no está mapeado.
+
+    Se pidió su detalle y `historiaPen` vino con encabezados y CERO filas, igual que sus otros
+    tres paneles, así que declarar sus columnas sería escribir un mapa que nada comprobó. Se
+    rechaza antes de gastar una petición, en vez de leerlo con el mapa de otra competencia.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="No está verificado"):
+        c.historia_causa("1", 528, 2017, competencia="penal", tribunal=1082)
+
+
+def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch):
+    """`actuaciones_receptor` e `historia_causa` sólo difieren en qué filas se quedan.
+
+    Comparten el recorrido a propósito: duplicarlo para cambiar el filtro es la forma más
+    segura de que uno de los dos se olvide del cuaderno de apremio, que es exactamente el
+    falso negativo que originó este proyecto.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    listado = _pagina(range(1, 2), total=1, ultima=True)
+
+    def cliente() -> tuple[PjudClient, list[str]]:
+        pedidos: list[str] = []
+        paginas = [listado, principal, principal, apremio]
+
+        def transporte(peticion: httpx.Request) -> httpx.Response:
+            pedidos.append(str(peticion.url))
+            return httpx.Response(200, text=paginas[min(len(pedidos) - 1, len(paginas) - 1)])
+
+        c = PjudClient("test@example.cl")
+        c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+        c._adir, c._token = "ADIR_1", "0" * 32
+        return c, pedidos
+
+    c, pedidos_receptor = cliente()
+    del_receptor = c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    c, pedidos_historia = cliente()
+    de_historia = c.historia_causa("C", 1156, 2026, tribunal=162)
+
+    assert pedidos_receptor == pedidos_historia, (
+        "las dos lecturas tienen que hacer exactamente las mismas peticiones"
+    )
+    assert de_historia, "la historia completa no puede venir vacía"
+    assert len(de_historia) > len(del_receptor), (
+        "la historia completa tiene que traer más filas que el filtro de receptor"
+    )
+
+    # Comparar las dos lecturas entre sí NO alcanza, y hubo que verlo: dejando de recorrer los
+    # cuadernos las dos siguen coincidiendo y el test seguía verde. Lo que discrimina es contar
+    # los cuadernos que llegaron, porque el segundo sólo existe si se pidió aparte.
+    cuadernos = {a.cuaderno for a in de_historia}
+    assert len(cuadernos) == 2, (
+        f"la causa tiene dos cuadernos y llegaron {sorted(cuadernos)}: no se recorrieron. "
+        "El de apremio es donde viven el requerimiento de pago y el embargo"
+    )
+    assert cuadernos == {a.cuaderno for a in del_receptor}
+    assert len(pedidos_historia) == 4, (
+        f"se esperaban cuatro peticiones (búsqueda, detalle y un cuaderno cada uno) y "
+        f"salieron {len(pedidos_historia)}"
+    )

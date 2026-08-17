@@ -283,12 +283,16 @@ def test_leer_la_historia_de_una_competencia_sin_panel_verificado_se_levanta():
     """El guardia existía y era inalcanzable: `actuaciones_receptor` no reenviaba la
     competencia, así que el parser siempre miraba `historiaCiv`.
 
-    Se usa `laboral`, que no tiene historia mapeada. Antes se usaba `cobranza` y dejó de
-    servir cuando cobranza pasó a tenerla: un test cuyo caso de prueba desaparece porque el
-    código mejoró es un test que hay que reapuntar, no borrar.
+    Se usa `penal`, la única que sigue sin historia mapeada. Ya se reapuntó dos veces, de
+    `cobranza` a `laboral` y ahora acá, cada vez que la anterior pasó a estar medida: un test
+    cuyo caso de prueba desaparece porque el código mejoró se reapunta, no se borra.
+
+    Y penal no está sin mapear por descuido. Se pidió su detalle y `historiaPen` vino con
+    encabezados y CERO filas, igual que sus otros tres paneles. Declarar sus columnas sin una
+    sola fila real sería escribir un mapa que nada comprobó.
     """
     with pytest.raises(EstructuraInesperada, match="No está verificado"):
-        actuaciones_receptor("<html></html>", "", "laboral")
+        actuaciones_receptor("<html></html>", "", "penal")
 
 
 def test_las_columnas_de_cada_competencia_son_las_que_declara_el_sitio():
@@ -381,9 +385,30 @@ def test_no_se_puede_declarar_el_panel_de_historia_sin_sus_columnas():
     # Y la de civil declara las tres.
     civil = COMPETENCIAS["civil"].historia
     assert civil is not None
-    assert civil.panel == "Civ"
+    assert civil.panel == "historiaCiv"
     assert "georref" in civil.columnas
     assert "georref." in civil.encabezados
+
+
+def test_el_panel_declarado_es_el_identificador_completo_y_no_un_sufijo():
+    """El código anteponía `historia` al sufijo declarado, y eso no generaliza.
+
+    Los paneles reales son `historiaCiv`, `historiaCob`, `movimientosSup`, `movimientosApe` y
+    `movimientoLab`: dos familias de nombre distintas, y una de ellas en singular mientras las
+    otras van en plural. Con el esquema de prefijo, mapear suprema habría buscado
+    `historiamovimientosSup` y no habría encontrado nada, que es la falla silenciosa de
+    siempre: un panel que no está devuelve vacío, y vacío se lee como que no hubo actuaciones.
+    """
+    for nombre, spec in COMPETENCIAS.items():
+        if spec.historia is None:
+            continue
+        assert not spec.historia.panel.startswith("historiahistoria"), (
+            f"{nombre} declara un panel con el prefijo duplicado: volvió el esquema de sufijo"
+        )
+        assert spec.historia.panel[0].islower(), (
+            f"{nombre} declara {spec.historia.panel!r}, que parece un sufijo y no un "
+            "identificador completo"
+        )
 
 
 def test_la_georreferencia_se_lee_de_la_columna_que_declara_la_competencia():
@@ -507,3 +532,89 @@ def test_leer_apelaciones_con_el_mapa_de_suprema_no_revienta_y_miente():
 
     with pytest.raises(EstructuraInesperada, match="celdas"):
         parse_resultados(SUPREMA, "apelaciones")
+
+
+# -- las historias de suprema, apelaciones y laboral ----------------------------
+#
+# Las tres se midieron el 17 de agosto de 2026 pidiendo el detalle de una causa real. Sin estas
+# fixtures, "el panel se llama así y sus columnas son éstas" es una afirmación que CI no puede
+# desmentir, y las tres tablas salieron de UNA respuesta cada una.
+
+DETALLE_SUPREMA = (FIXTURES / "detalle_suprema.html").read_text(encoding="utf-8")
+DETALLE_APELACIONES = (FIXTURES / "detalle_apelaciones.html").read_text(encoding="utf-8")
+DETALLE_LABORAL = (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8")
+
+
+def test_la_historia_de_suprema_trae_la_sala_que_resolvio():
+    """Suprema publica la sala, y es parte de cómo se cita un fallo.
+
+    Recortarla para que la fila calzara con la forma de civil habría entregado la actuación sin
+    el dato que permite identificarla. Tampoco trae `Etapa` ni `Georref.`, así que este caso
+    ejercita las dos columnas que el mapeo tuvo que dejar de dar por sentadas.
+    """
+    actuaciones = parse_historia(DETALLE_SUPREMA, "", "suprema")
+    assert len(actuaciones) == 8
+    sentencia = next(a for a in actuaciones if a.tramite == "Sentencia")
+    assert sentencia.sala == "Tercera, CONSTITUCIONAL"
+    assert sentencia.desc_tramite == "CONFIRMA SENTENCIA APELADA"
+    assert sentencia.correlativo
+    assert sentencia.estado == "Bloqueado"
+    assert sentencia.etapa == "", "suprema no publica etapa, y vacío no es un valor inventado"
+    assert sentencia.georreferenciado is False, (
+        "suprema no publica la columna: falso significa que no hay dato, no que no esté "
+        "georreferenciada"
+    )
+
+
+def test_la_historia_de_apelaciones_nombra_sus_columnas_distinto():
+    """Llama `Descripción` a lo que civil llama `Desc. Trámite` y `Fecha` a `Fec. Trámite`.
+
+    Y su georreferencia se escribe `Georeferencia`, sin punto y con otra ortografía. Compartir
+    la lista blanca de encabezados de civil habría hecho fallar la lectura de una respuesta
+    perfectamente válida.
+    """
+    actuaciones = parse_historia(DETALLE_APELACIONES, "", "apelaciones")
+    assert len(actuaciones) == 3
+    assert [a.folio for a in actuaciones] == ["3", "2", "1"]
+    assert actuaciones[0].sala == "Presidencia"
+    assert actuaciones[0].fecha_registro is not None
+
+
+def test_la_historia_de_laboral_pone_estado_donde_civil_pone_foja():
+    actuaciones = parse_historia(DETALLE_LABORAL, "", "laboral")
+    assert len(actuaciones) == 26
+    assert actuaciones[0].estado == "Firmado"
+    assert actuaciones[0].foja is None, "laboral no publica foja"
+    assert actuaciones[0].etapa
+
+
+def test_ninguna_de_las_tres_publica_actuaciones_de_receptor():
+    """Es la razón por la que las tres declaran `receptor=False`, y conviene tenerlo medido.
+
+    En las tres respuestas la palabra receptor no aparece ni una vez, y ninguna fila trae la
+    fecha doble que corre los plazos. Si mañana alguna empieza a publicarlas, esto se cae y hay
+    que revisar la tabla en vez de seguir devolviendo una lista vacía.
+    """
+    for competencia, detalle in (
+        ("suprema", DETALLE_SUPREMA),
+        ("apelaciones", DETALLE_APELACIONES),
+        ("laboral", DETALLE_LABORAL),
+    ):
+        assert "receptor" not in detalle.lower(), f"{competencia} ahora menciona al receptor"
+        actuaciones = parse_historia(detalle, "", competencia)
+        assert not [a for a in actuaciones if a.es_actuacion_receptor]
+        assert not [a for a in actuaciones if a.fecha_diligencia], (
+            f"{competencia} ahora publica fecha de diligencia: hay que revisar la tabla"
+        )
+
+
+def test_leer_suprema_con_el_mapa_de_apelaciones_no_pasa_en_silencio():
+    """Los dos paneles se llaman distinto, así que el mapa ajeno no encuentra dónde leer.
+
+    Es el modo de falla que importa: buscar un panel que no está devuelve vacío, y vacío se lee
+    como que la causa no tiene actuaciones.
+    """
+    with pytest.raises(EstructuraInesperada, match="movimientosApe"):
+        parse_historia(DETALLE_SUPREMA, "", "apelaciones")
+    with pytest.raises(EstructuraInesperada, match="movimientosSup"):
+        parse_historia(DETALLE_APELACIONES, "", "suprema")

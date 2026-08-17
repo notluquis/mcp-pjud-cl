@@ -1,0 +1,512 @@
+<script>
+$(document).ready(function(){
+//---- TOOLTIPS DEL ROL -----	
+	$(".topToolNom").tooltip({ placement: "bottom" });
+//----------------------------------------------
+});
+</script>
+
+<!--[if IE]>
+<style>
+    .panel-default {
+         margin-top: 30px;
+    }
+</style>
+<![endif]-->
+	<div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h4 class="modal-title" style="color:#337ab7;">Detalle Causa Suprema</h4>
+			</div>
+		
+			<div class="modal-body">
+			
+				<div class="panel with-nav-tabs">
+				
+					<div class="panel-heading">
+						<ul class="nav nav-tabs" style="display:inline-block">
+							<li class="active"><a data-toggle="tab" href="#corteSuprema">Corte Suprema</a></li>
+							<li><a data-toggle="tab" href="#corteApelaciones">Expediente Corte Apelaciones</a></li>
+							<li><a data-toggle="tab" href="#primeraInstancia">Expediente Primera Instancia</a></li>
+						</ul>
+					</div>			
+				
+				
+					<div class="tab-content">
+				
+				
+						<div class="tab-pane fade in active" id="corteSuprema"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								<table class="table table-responsive table-titulos">
+									<tbody>
+										<tr>
+												<td><strong>Libro :</strong> Civil / 135500 - 2020</td>
+												<td><strong>Fecha :</strong> 12/11/2020</td>
+												<td colspan="2"><strong>Caratulado:</strong> PERSONA FICTICIA 01/PERSONA FICTICIA 04</td>
+										</tr>
+										<tr>
+												<td><strong>Estado Procesal:</strong> Fallada</td>
+												<td><strong>Ubicaci&oacute;n:</strong> Fallado y devuelto</td>
+												<td colspan="2"><strong>Tipo:</strong> (Civil) Apelación Protección</td>
+										</tr>
+									</tbody>
+								</table>
+										
+								<table class="table table-responsive table-titulos">
+									<tbody>
+										<tr>
+											<td>
+												<strong>Texto Recurso:</strong></br>
+												<a data-toggle="modal" href="#modalTextoSuprema" role="img" title="Texto Recurso" onClick="textoSuprema('referencia-ficticia-001');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+											</td>
+											<td>
+												<strong>Tomo:</strong></br>
+												<a data-toggle="modal" href="#modalTomoSuprema" role="img" title="Tomo" onClick="tomoSuprema('referencia-ficticia-002');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+											</td>
+											<td>
+												<strong>Documentos:</strong></br>
+												<a data-toggle="modal" href="#modalDocumentosSuprema" role="img" title="Documentos" onClick="documentosSuprema('referencia-ficticia-002');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+											</td>
+											<td>
+											  <!-- Bloque boton Certificado -->
+						
+												<strong>Certificado de Env&iacute;o:</strong></br>
+												<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+								<!-- Fin Bloque boton Certificado -->
+											</td>
+											
+											<!-- INICIO EBOOK -->
+											<td id="contenedorEbook">
+																							<strong>Ebook:</strong>
+													<form name="form" action="ADIR_871/suprema/documentos/newebooksuprema.php" method="get" target="_blank">
+														<input type='hidden' name='dtaEbook' value='referencia-ficticia-003'>
+                            <a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Ebook">
+                              <i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+                            </a>
+													</form>
+												
+											</td>
+											<!-- FIN EBOOK -->
+											
+										</tr>
+									</tbody>
+								</table>
+							</div>
+								<div class="panel-heading">
+						<ul class="nav nav-tabs" style="display:inline-block">
+							<li class="active"><a data-toggle="tab" href="#movimientosSup">Movimientos</a></li>
+							<li><a data-toggle="tab" href="#litigantesSup">Litigantes</a></li>
+							<li><a data-toggle="tab" href="#agregadosSup">Agregados</a></li>
+							<li><a data-toggle="tab" href="#observacionSup">Observaci&oacute;n</a></li>
+						</ul>
+					</div>
+					
+					<div class="tab-content">
+						
+						<div class="tab-pane fade in active" id="movimientosSup"> <!-- INICIO PANEL -->
+						
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+									
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Folio</th>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>A&ntilde;o</th>
+												<th>Fecha Tr&aacute;mite</th>
+												<th>Tr&aacute;mite</th>
+												<th>Des. Tr&aacute;mite</th>
+                        <th>Correlativo</th>
+												<th>Salas</th>
+												<th>Estado</th>
+											</tr>												
+										</thead>
+										<tbody>
+												<tr>
+													<td>11</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf1">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-004'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2021</td>
+													<td>11/02/2021</td>
+													<td>Otro Tramite</td>
+													<td><span title="Nomenclaturas  :
+    1.OFICIO (OFICIO DEVOLUCIÓN)" class="topToolNom">OFICIO (OFICIO DEVOLUCIÓN)[13437-2021]</span></td>
+                          <td>80795-2021</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Bloqueado</td>
+												</tr>
+												<tr>
+													<td>10</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf2">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-005'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2021</td>
+													<td>03/02/2021</td>
+													<td>Sentencia</td>
+													<td><span title="Nomenclaturas  :
+    1.CONFIRMA SENTENCIA APELADA" class="topToolNom">CONFIRMA SENTENCIA APELADA</span></td>
+                          <td>68126-2021</td>
+													<td>Tercera, CONSTITUCIONAL</td>
+													<td>Bloqueado</td>
+												</tr>
+												<tr>
+													<td>9</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf3">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-006'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2020</td>
+													<td>15/12/2020</td>
+													<td>Resolución</td>
+													<td><span title="Nomenclaturas  :
+    1.TÉNGASE PRESENTE" class="topToolNom">TÉNGASE PRESENTE COMPARECENCIA Y ALEGATOS</span></td>
+                          <td>979311-2020</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Bloqueado</td>
+												</tr>
+												<tr>
+													<td>8</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf4">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-007'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2020</td>
+													<td>29/11/2020</td>
+													<td>Escrito</td>
+													<td><span title="Abogado Recurrido" class="topToolNom">Se hace parte</span></td>
+                          <td>187570-2020</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Proveído</td>
+												</tr>
+												<tr>
+													<td>7</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf5">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-008'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2020</td>
+													<td>24/11/2020</td>
+													<td>Resolución</td>
+													<td><span title="Nomenclaturas  :
+    1.POR ACOMPAÑADOS" class="topToolNom">POR ACOMPAÑADOS</span></td>
+                          <td>937107-2020</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Bloqueado</td>
+												</tr>
+												<tr>
+													<td>5</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf6">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-009'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+														<a data-toggle="modal" href="#modalEscritoSuprema" role="img" title="Escrito" onClick="escritoSuprema('referencia-ficticia-010');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+													
+													</td>													
+													<td>2020</td>
+													<td>17/11/2020</td>
+													<td>Escrito</td>
+													<td><span title="Recurrente" class="topToolNom">Acompaña documentos</span></td>
+                          <td>184125-2020</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Proveído</td>
+												</tr>
+												<tr>
+													<td>4</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf7">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-011'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2020</td>
+													<td>17/11/2020</td>
+													<td>Resolución</td>
+													<td><span title="Nomenclaturas  :
+    1.DÉSE CUENTA" class="topToolNom">DÉSE CUENTA</span></td>
+                          <td>918092-2020</td>
+													<td>Cuenta (Secretaria)</td>
+													<td>Bloqueado</td>
+												</tr>
+												<tr>
+													<td>2</td>
+													<td align="center">
+															<form name="frmPdf" action="ADIR_871/suprema/documentos/docCausaSuprema.php" method="get" target="pdf8">
+															
+															  <div>
+																<input type='hidden' id='valorFile' name='valorFile' value='referencia-ficticia-012'>
+                                									<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento"><i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i></a>
+															  </div>
+															</form>
+													</td>													
+													<td align="center">
+													
+													</td>													
+													<td>2020</td>
+													<td>12/11/2020</td>
+													<td>Otro Tramite</td>
+													<td><span title="Nomenclaturas  :
+    1.CERTIFICACIÓN (EN EL MISMO EXPEDIENTE)" class="topToolNom">CERTIFICADO DE INGRESO</span></td>
+                          <td>906117-2020</td>
+													<td>Unidad Ingreso</td>
+													<td>Bloqueado</td>
+												</tr>
+										 
+										</tbody>
+									</table>
+
+								</div>
+							</div>
+
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="litigantesSup"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Sujeto</th>
+												<th>Rut</th>
+												<th>Persona</th>
+												<th>Nombre o Raz&oacute;n Social</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>			
+												<td>RECURRIDO</td>				
+												<td>4444444-4</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 05</td>				
+												
+											</tr>
+											<tr>			
+												<td>RECURRIDO</td>				
+												<td>99999999-9</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 06</td>				
+												
+											</tr>
+											<tr>			
+												<td>RECURRIDO</td>				
+												<td>1111111-1</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 08</td>				
+												
+											</tr>
+											<tr>			
+												<td>RECURRIDO</td>				
+												<td>2222222-2</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 07</td>				
+												
+											</tr>
+											<tr>			
+												<td>RECURRIDO</td>				
+												<td>22222222-2</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 02</td>				
+												
+											</tr>
+											<tr>			
+												<td>ABG. RECURRIDO</td>				
+												<td>44444444-4</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 10</td>				
+												
+											</tr>
+											<tr>			
+												<td>RECURRENTE</td>				
+												<td>33333333-3</td>
+												<td>Natural                       </td>
+												<td>PERSONA FICTICIA 03</td>				
+												
+											</tr>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+						<div class="tab-pane fade" id="agregadosSup"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Doc.</th>
+												<th>Folio</th>
+												<th>A&ntilde;o</th>
+												<th>Rit Causa</th>
+												<th>Tribunal</th>
+												<th>Materia</th>
+												<th>Caratulado</th>
+											</tr>												
+										</thead>
+										<tbody>
+										</tbody>
+									</table>
+												
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+						
+						
+						<div class="tab-pane fade" id="observacionSup"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								<div class="container-fluid" style="background-color:#F9F9F9; padding:15px;">
+								
+									<div class="row">
+										<div class="col-sm-12">
+										<strong>Tomo Principal:</strong><br>
+										 Nº: 0001    -     Foja Inicial   : 0    -     Foja Final  : 0										</div>
+									</div>
+									<br>
+									<div class="row">
+										<div class="col-sm-12">
+											<strong>Naturaleza del Recurso:</strong><br>
+											 NATURALEZA: Sin Naturaleza asignada<br>SALA      : Tercera, CONSTITUCIONAL<br>MATERIA   : Sin Materia Asignada										</div>
+									</div>
+									<br>
+									<div class="row">
+										<div class="col-sm-6">
+											<strong>Tr&aacute;mites: </strong>6										</div>
+										<div class="col-sm-6">
+											<strong>Escritos: </strong>2										</div>
+									</div>
+									<br>
+									<div class="row">
+										<div class="col-md-10">
+											<strong>Abogado Suspendido: </strong><br>
+																					</div>
+									</div>
+									<br>
+									<div class="row">
+										<div class="col-sm-6">
+											<strong>Tabla: </strong>--										</div>
+										<div class="col-sm-6">
+											<strong>N&uacute;mero de Oficio: </strong>0-0										</div>
+									</div>
+									<div class="row">
+										<div class="col-sm-6">
+											<strong>Relator: </strong>Relator De Protecciones										</div>
+										<div class="col-sm-6">
+											<strong>Distribuci&oacute;n seg&uacute;n Materia: </strong>Personas Naturales										</div>
+									</div>
+
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+					</div>
+					
+						</div> <!-- FIN PANEL -->
+					
+										
+						<div class="tab-pane fade" id="corteApelaciones"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								<center><div id="capelaMsj" style="display:none;" class="alert alert-danger" role="alert"><strong>No Existen Registros.</strong></div></center>
+								<table class="table table-responsive table-titulos">
+									<tbody>
+										<tr>
+											<td><strong>Corte: </strong> C.A. DE CONCEPCIÓN            </td>
+											<td><strong>Libro: </strong> Protección</td>
+										</tr>
+										<tr>
+											<td><strong>Rol Ing: </strong> 14988 - 2020																							<a data-toggle="modal" role="img" title="Detalle Causa" href="#modalDetalleApelaciones" onClick="detalleCausaApelaciones('referencia-ficticia-013');"><i class="fa fa-search fa-lg" aria-hidden="true" style="cursor:pointer; color:#337ab7"></i></a>
+											</td>
+										
+											<td><strong>Recurso: </strong> (Civil) Apelación Protección</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div> <!-- FIN PANEL -->
+					
+						<div class="tab-pane fade" id="primeraInstancia"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								<center><div id="primInstaMsj" style="display:none;" class="alert alert-danger" role="alert" title=""><strong>Expediente reservado</strong></div></center>
+															</div>
+						</div> <!-- FIN PANEL -->
+					
+					
+					</div>
+
+					
+				
+				</div>
+				
+			</div>
+			
+        
+			<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+						</div>
+			
+		</div>
+	</div>

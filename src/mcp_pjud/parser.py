@@ -40,7 +40,13 @@ class Historia(NamedTuple):
     protección accidental. Con esto no se puede declarar el panel sin declarar sus columnas.
     """
 
-    #: Sufijo del identificador del panel: `Civ` da `historiaCiv`.
+    #: Identificador COMPLETO del panel, no un sufijo.
+    #:
+    #: Antes se guardaba el sufijo y el código anteponía `historia`, lo que funcionaba mientras
+    #: las dos competencias mapeadas se llamaran así. No se generaliza: suprema usa
+    #: `movimientosSup`, apelaciones `movimientosApe` y laboral `movimientoLab`, en singular
+    #: mientras las otras dos van en plural. Un esquema de prefijo habría buscado paneles
+    #: inexistentes, y buscar un panel que no está devuelve vacío.
     panel: str
     #: Orden de las celdas en cada fila.
     columnas: tuple[str, ...]
@@ -56,7 +62,7 @@ class Historia(NamedTuple):
 #: parsea ninguna fecha y `fecha_diligencia` queda en `None`. Un plazo que sí corrió se
 #: informaría como no informado.
 HISTORIA_COBRANZA = Historia(
-    panel="Cob",
+    panel="historiaCob",
     columnas=(
         "folio",
         "doc",
@@ -73,7 +79,7 @@ HISTORIA_COBRANZA = Historia(
 
 #: La de civil, medida sobre respuestas reales.
 HISTORIA_CIVIL = Historia(
-    panel="Civ",
+    panel="historiaCiv",
     columnas=(
         "folio",
         "doc",
@@ -86,6 +92,69 @@ HISTORIA_CIVIL = Historia(
         "georref",
     ),
     encabezados=("folio", "desc. trámite", "fec. trámite", "georref."),
+)
+
+#: La de suprema. Medida sobre `135500-2020`.
+#:
+#: No trae `Georref.` ni `Etapa`, y agrega tres que ninguna otra publica: el año del trámite,
+#: un correlativo interno y la sala que lo resolvió. La sala importa para citar un fallo, así
+#: que se conserva en vez de recortarla para que calce con la forma de civil.
+HISTORIA_SUPREMA = Historia(
+    panel="movimientosSup",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "anio",
+        "fec_tramite",
+        "tramite",
+        "desc_tramite",
+        "correlativo",
+        "sala",
+        "estado",
+    ),
+    encabezados=("folio", "fecha trámite", "des. trámite", "salas"),
+)
+
+#: La de las Cortes de Apelaciones. Medida sobre `Exhorto-1504-2019`.
+#:
+#: Nombra distinto dos columnas que existen en civil: `Descripción` en vez de `Desc. Trámite` y
+#: `Fecha` en vez de `Fec. Trámite`. Y su georreferencia se escribe `Georeferencia`, sin punto y
+#: con otra ortografía, así que la lista blanca de encabezados no puede compartirse.
+HISTORIA_APELACIONES = Historia(
+    panel="movimientosApe",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "tramite",
+        "desc_tramite",
+        "fec_tramite",
+        "sala",
+        "estado",
+        "georref",
+    ),
+    encabezados=("folio", "descripción", "fecha", "georeferencia"),
+)
+
+#: La de laboral. Medida sobre `O-364-2020`.
+#:
+#: Es la más parecida a civil: la misma forma con `Estado` donde civil pone `Foja`. Ojo con el
+#: nombre del panel, que va en singular mientras suprema y apelaciones lo llevan en plural.
+HISTORIA_LABORAL = Historia(
+    panel="movimientoLab",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "etapa",
+        "tramite",
+        "desc_tramite",
+        "fec_tramite",
+        "estado",
+        "georref",
+    ),
+    encabezados=("folio", "desc. trámite", "fecha trámite", "georref."),
 )
 
 #: Columnas de la tabla de Historia en civil. Se conserva el nombre porque hay tests y
@@ -159,6 +228,22 @@ class Actuacion(BaseModel):
         description="Estado de firma del trámite. La publica cobranza en lugar de la foja; "
         "civil no la trae.",
     )
+    estado: str | None = Field(
+        default=None,
+        description="Estado del trámite. La publican laboral, suprema y apelaciones.",
+    )
+    sala: str | None = Field(
+        default=None,
+        description="Sala que resolvió el trámite. Sólo en suprema y en Cortes de "
+        "Apelaciones, donde forma parte de cómo se cita el fallo.",
+    )
+    correlativo: str | None = Field(
+        default=None, description="Correlativo interno del trámite. Sólo en suprema."
+    )
+    anio_tramite: str | None = Field(
+        default=None,
+        description="Año que suprema publica en columna aparte, además de la fecha.",
+    )
     georreferenciado: bool = Field(
         description="Si la actuación tiene registro georreferenciado (art. 9 inc. 3 "
         "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
@@ -209,7 +294,7 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    panel = f"historia{spec.historia.panel}"
+    panel = spec.historia.panel
 
     doc = html.fromstring(html_detalle)
     # Los comentarios traen copias del texto de las celdas; sin esto se duplican.
@@ -287,7 +372,10 @@ def _fila_a_actuacion(
 
     return Actuacion(
         folio=txt["folio"],
-        etapa=txt["etapa"],
+        # `etapa` y `georref` no existen en todas: suprema no publica ninguna de las dos.
+        # Antes se leían con corchetes, o sea mapear una competencia sin ellas reventaba con un
+        # KeyError en vez de decir qué faltaba.
+        etapa=txt.get("etapa", ""),
         tramite=txt["tramite"],
         desc_tramite=txt["desc_tramite"],
         fecha_diligencia=diligencia,
@@ -297,8 +385,18 @@ def _fila_a_actuacion(
         cuaderno=cuaderno,
         foja=txt.get("foja"),
         estado_firma=txt.get("estado_firma"),
-        # La celda trae un enlace a geoReferencia() cuando hay registro; si no, va vacía.
-        georreferenciado=bool(celdas[columnas.index("georref")].xpath(".//a")),
+        estado=txt.get("estado"),
+        sala=txt.get("sala"),
+        correlativo=txt.get("correlativo"),
+        anio_tramite=txt.get("anio"),
+        # La celda trae un enlace a geoReferencia() cuando hay registro; si no, va vacía. En
+        # suprema la columna no existe, y ahí `False` significa que la competencia no publica
+        # el dato, no que la actuación no esté georreferenciada.
+        georreferenciado=(
+            bool(celdas[columnas.index("georref")].xpath(".//a"))
+            if "georref" in columnas
+            else False
+        ),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
     )
 
@@ -442,7 +540,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "tribunal": 6,
         },
         campos_rit={"conTipoBus": "0"},
-        historia=None,
+        historia=HISTORIA_SUPREMA,
         receptor=False,
         receptor_en_historia=False,
         acota_por=None,
@@ -458,7 +556,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "ubicacion": 7,
         },
         campos_rit={"conTipoBusApe": "0"},
-        historia=None,
+        historia=HISTORIA_APELACIONES,
         receptor=False,
         receptor_en_historia=False,
         acota_por="corte",
@@ -476,7 +574,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
         campos_rit={},
-        historia=None,
+        historia=HISTORIA_LABORAL,
         receptor=False,
         receptor_en_historia=False,
         acota_por="tribunal",

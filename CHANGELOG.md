@@ -16,6 +16,37 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- **Herramienta `obtener_historia_causa`**: todas las actuaciones de la causa, no sólo las del
+  ministro de fe, recorriendo todos los cuadernos. Existe porque cuatro de las seis
+  competencias no tienen receptor, así que ahí la pregunta que origina este proyecto no tiene
+  respuesta y lo único disponible era la búsqueda.
+
+  Cuidado con las fechas, y la herramienta lo dice: `fecha_diligencia` viene en nulo salvo en
+  civil y cobranza. Nulo significa que esa competencia no informa la fecha de diligencia, no
+  que el trámite no se haya practicado, y no sirve para computar plazos.
+
+- **El detalle de `suprema`, `apelaciones` y `laboral`**, medido sobre una causa real de cada
+  una y con fixture propia. Sus paneles son `movimientosSup`, `movimientosApe` y
+  `movimientoLab`: dos familias de nombre distintas, y una en singular mientras las otras van
+  en plural. El identificador del panel pasa a guardarse completo en vez de como sufijo, porque
+  el esquema anterior anteponía `historia` y no generaliza.
+
+  El modelo gana cuatro campos que sólo algunas competencias publican: `estado`, `sala`,
+  `correlativo` y `anio_tramite`. La sala se conserva en vez de recortarla para que la fila
+  calzara con la forma de civil: es parte de cómo se cita un fallo.
+
+- **`penal` NO queda mapeada**, y se pidió su detalle igual. `historiaPen` vino con encabezados
+  y cero filas, lo mismo que sus otros tres paneles: declarar sus columnas sería escribir un
+  mapa que nada comprobó.
+
+- El anonimizador borra las **consultas SQL** que la plataforma imprime dentro de una celda. El
+  detalle de Cortes de Apelaciones trae un `SELECT` con el esquema, la tabla y los parámetros
+  del sistema del Poder Judicial. No es un dato de este proyecto ni de las partes: son internos
+  de un tercero y republicarlos acá los dejaría indexados y permanentes.
+
+
 ## [0.2.1] - 2026-08-17
 
 Corrige un defecto de la 0.2.0 y crea la rama `stable`, que la documentación ya recomienda

@@ -1,0 +1,1244 @@
+<script>
+$(document).ready(function(){
+//---- TOOLTIPS DEL ROL -----	
+	$(".topToolNom").tooltip({ placement: "bottom" });
+//----------------------------------------------
+});
+</script>
+
+<!--[if IE]>
+<style>
+    .panel-default {
+         margin-top: 30px;
+    }
+</style>
+<![endif]-->
+
+    <div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+			                <button type="button" class="close" data-dismiss="modal">&times;</button>
+			                <h4 class="modal-title" style="color:#337ab7;">Detalle Causa Laboral</h4>
+            </div>
+        
+            <div class="modal-body">
+            
+                <div class="panel with-nav-tabs">
+                
+                    <div class="panel panel-default">
+                        <table class="table table-responsive table-titulos">
+                            <tbody>
+                                <tr>
+                                    <td><strong>RIT :</strong> O-9999-2020 </td>
+                                    <td>CRUZ/EMPRESA FICTICIA DOS   </td>
+                                    <td><strong>F. Ing.:</strong> 25/11/2020</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>RUC :</strong>20- 4-11111111-1</td>
+                                    <td><strong>Proc.:</strong> Ordinario</td>
+                                    <td><strong>Forma Inicio:</strong> Demanda                       </td>
+                                </tr>
+                                <tr>
+                                    <td ><strong style="color:black;">Est. Adm.: </strong>Sin archivar                  </td>
+                                    <td><strong>Etapa:</strong> Terminada                               </td>
+                                    <td><strong>Estado Proc.:</strong> Cumplimiento                  </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3"><strong>Tribunal:</strong> Juzgado de Letras del Trabajo de Calama</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                                
+                        <table class="table table-responsive table-titulos">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Texto Demanda                       :</strong><br>
+                                        <a data-toggle="modal" href="#modalTextoDemandaLaboral" role="img" title="Texto demanda" onClick="textoDemandaLaboral('referencia-ficticia-001');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+                                    </td>
+                                    <td>
+                                        <strong>Tr&aacute;mites:</strong>
+                                        </br>
+                                        <i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+									</td>
+                                    <!-- Bloque boton ebook -->
+                                    <td id="idEbook">
+                                        <strong>Ebook:</strong>
+                                        <form name="form" action="ADIR_871/laboral/documentos/newebooklaboral.php" method="get" target="_blank">
+                                            <input type='hidden' name='dtaEbook' value='referencia-ficticia-002'>
+                                            <a href="#"   onClick='$(this).closest("form").submit();' role="img" title="Descargar Ebook">
+											<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+                                        </form>
+                                    </td>
+                                    <!-- Fin Bloque boton ebook -->
+                                      
+                                      <!-- Bloque boton Certificado -->
+                                    <td>
+                                        <strong>Certificado de Env&iacute;o:</strong>
+                                        <form name="certCivil" action="ADIR_871/laboral/documentos/docCertificadoDemanda.php" method="get" target="cert">
+                                            <input type='hidden' name='dtaCert' value='referencia-ficticia-003'>
+											<a href="#"  onClick='$(this).closest("form").submit();' role="img" title="Descargar Certificado">
+                                            <i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+                                        </form>
+                                    </td>
+                              <!-- Fin Bloque boton Certificado -->
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                                    
+                                    
+                    <div class="panel panel-default">
+                        <table class="table table-responsive table-titulos">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Listado de Archivos de Audios de Audiencia</strong>&nbsp;&nbsp;
+                                                                    <a role="img" title="Listado audio" onClick="listadoAudioLaboral('referencia-ficticia-004');" data-toggle="modal" href="#modalListadoAudioLaboral"><i class="fas fa-volume-up fa-2x" aria-hidden="true" style="cursor:pointer; color:#6087FB"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="panel-heading">
+                        <ul class="nav nav-tabs" style="display:inline-block">
+                            <li class="active"><a data-toggle="tab" href="#movimientoLab">Movimientos</a></li>
+                            <li><a data-toggle="tab" href="#litigantesLab">Litigantes</a></li>
+                            <li><a data-toggle="tab" href="#notificacionesLab">Notificaciones</a></li>
+                            <li><a data-toggle="tab" href="#diligenciasLab">Diligencias</a></li>
+                            <li><a data-toggle="tab" href="#liquidacionLab">Liquidaci&oacute;n</a></li>
+                            <li><a data-toggle="tab" href="#materiasLab">Materias</a></li>
+                            <li><a data-toggle="tab" href="#EscPendLab">Escritos Pendientes</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tab-content">
+                        
+                        <div class="tab-pane fade in active" id="movimientoLab"> <!-- INICIO PANEL -->
+                        
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+                                    
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Folio</th>
+                                                <th>Doc.</th>
+                                                <th>Anexos</th>
+                                                <th>Etapa</th>
+                                                <th>Tr&aacute;mite</th>
+                                                <th>Desc. Tr&aacute;mite</th>
+                                                <th>Fecha Tr&aacute;mite</th>
+                                                <th>Estado</th>
+												<th>Georref.</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+												<td>37</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref1">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-005'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Cúmplase</span>
+												</td>
+                                                <td>23/08/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>36</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc2" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-006'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Recep. de la Corte (fallo)" class="topToolNom">DOCUMENTO CORTE</span>
+												</td>
+                                                <td>20/08/2021</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>35</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref3">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-007'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Cúmplase</span>
+												</td>
+                                                <td>10/08/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>34</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc4" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-008'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Actuación del Tribunal" class="topToolNom">Fallo I. Corte Apelaciones</span>
+												</td>
+                                                <td>09/08/2021</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>32</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref5">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-009'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Certificación" class="topToolNom">RESUMEN I. CORTE APELACIONES</span>
+												</td>
+                                                <td>20/07/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>31</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref6">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-010'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Recursos" class="topToolNom">Recurso de apelación</span>
+												</td>
+                                                <td>12/07/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>30</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc7" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-011'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																												 <form name="certLaboral" action="ADIR_871/laboral/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-012'>
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+															</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Recurso de apelación" class="topToolNom">Recurso de apelación</span>
+												</td>
+                                                <td>09/07/2021</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>29</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref8">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-013'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.No ha lugar" class="topToolNom">No ha lugar rec. nulidad</span>
+												</td>
+                                                <td>05/07/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>20</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc9" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-014'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																												 <form name="certLaboral" action="ADIR_871/laboral/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-015'>
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+															</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+                      
+                                                    <a data-toggle="modal" href="#modalAnexoEscritoLaboral" role="img" title="Anexo escrito" onClick="anexoEscritoLaboral('referencia-ficticia-016');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Nulidad de lo Obrado" class="topToolNom">Nulidad de lo obrado</span>
+												</td>
+                                                <td>02/07/2021</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>19</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref10">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-017'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Envío a cobranza</span>
+												</td>
+                                                <td>18/05/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>18</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref11">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-018'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Constancia" class="topToolNom">Constancia adm contable</span>
+												</td>
+                                                <td>18/05/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>17</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref12">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-019'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Terminada                               </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Verificar dineros</span>
+												</td>
+                                                <td>14/05/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>16</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref13">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-020'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Impugnación                             </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Certificación Sentencia Ejecutoriada" class="topToolNom">Certificación sentencia ejecut</span>
+												</td>
+                                                <td>07/05/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>15</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref14">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-021'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia de Juicio                     </td>
+                                                <td>Audiencia</td>
+                                                <td>
+													<label title="Nomenclaturas  :
+    1.Dictación y notificación de sentencia" class="label label-info topToolNom" style="cursor:pointer; font-size:13px;" data-toggle="modal" href="#modalDocuAudienciaLaboral" title="Detalle Documento audiencia" onClick="detalleDocAudienciaLaboral('referencia-ficticia-022');">Audiencia de Juicio</label>
+												</td>
+                                                <td>23/04/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>14</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref15">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-023'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia de Juicio                     </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Constancia" class="topToolNom">Constancia Link videoconferenc</span>
+												</td>
+                                                <td>22/04/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>13</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref16">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-024'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Audiencia</td>
+                                                <td>
+													<label title="Nomenclaturas  :
+    1.Citación Audiencia de Juicio" class="label label-info topToolNom" style="cursor:pointer; font-size:13px;" data-toggle="modal" href="#modalDocuAudienciaLaboral" title="Detalle Documento audiencia" onClick="detalleDocAudienciaLaboral('referencia-ficticia-025');">Audiencia Preparatoria</label>
+												</td>
+                                                <td>30/01/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>10</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc17" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-026'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																												 <form name="certLaboral" action="ADIR_871/laboral/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-027'>
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+															</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+                      
+                                                    <a data-toggle="modal" href="#modalAnexoEscritoLaboral" role="img" title="Anexo escrito" onClick="anexoEscritoLaboral('referencia-ficticia-028');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Acompaña documentos" class="topToolNom">Acompaña documentos</span>
+												</td>
+                                                <td>28/01/2021</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>9</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref18">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-029'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Actuación</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Constancia" class="topToolNom">Constancia Link videoconferenc</span>
+												</td>
+                                                <td>28/01/2021</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>8</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref19">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-030'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Recep exhorto diligenciado</span>
+												</td>
+                                                <td>23/12/2020</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>7</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc20" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-031'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Devuelve Exhorto" class="topToolNom">Devolución de Exhorto</span>
+												</td>
+                                                <td>23/12/2020</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>6</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref21">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-032'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente
+    2.Exhórtese" class="topToolNom">Tgse pte señala domicilio</span>
+												</td>
+                                                <td>11/12/2020</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>5</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc22" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-033'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																												 <form name="certLaboral" action="ADIR_871/laboral/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-034'>
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+															</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Señala domicilio" class="topToolNom">Señala domicilio</span>
+												</td>
+                                                <td>10/12/2020</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>4</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref23">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-035'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Téngase presente" class="topToolNom">Recep exhorto S/diligenciar</span>
+												</td>
+                                                <td>03/12/2020</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>3</td>
+                                                <td align="left"> <!-- DOC -->
+																<form name="frmRefEsc" action="ADIR_871/laboral/documentos/docReformadoEscritoLaboral.php" method="get" target="docEsc24" style="display: inline-block;">
+																	<input type='hidden' name='valorRefEsc' value='referencia-ficticia-036'>
+																	<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Documento principal del escrito" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;, display: inline-block;" ></i>
+																	</a>
+																</form>
+																										</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Audiencia Preparatoria                  </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Devuelve Exhorto" class="topToolNom">Devolución de Exhorto</span>
+												</td>
+                                                <td>03/12/2020</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>2</td>
+                                                <td align="left"> <!-- DOC -->
+															<form name="frmRef" action="ADIR_871/laboral/documentos/docReformadoLaboral.php" method="get" target="ref25">
+																<input type='hidden' name='valorRef' value='referencia-ficticia-037'>
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+																</a>
+															</form>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Ingreso                                 </td>
+                                                <td>Resolución</td>
+                                                <td>
+													
+													<span title="Nomenclaturas  :
+    1.Exhórtese
+    2.Da curso a la demanda y cita audiencia preparatoria
+    3.Autoriza poder" class="topToolNom">Da curso y cita aud. preparato</span>
+												</td>
+                                                <td>26/11/2020</td>
+                                                <td>Firmado                       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                            <tr>
+												<td>1</td>
+                                                <td align="left"> <!-- DOC -->
+															<a data-toggle="modal" href="#modalTextoDemandaLaboral" role="img" title="Texto demanda" onClick="textoDemandaLaboral('referencia-ficticia-001');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+												</td> <!-- DOC -->
+												<td align="center"> <!-- ANEXO -->
+  
+                                                </td> <!-- ANEXO -->
+                                                <td>Ingreso                                 </td>
+                                                <td>Escrito</td>
+                                                <td>
+													
+													<span title="Tipo Escrito: Ingreso demanda" class="topToolNom">Ingreso Causa</span>
+												</td>
+                                                <td>25/11/2020</td>
+                                                <td>Resuelto       </td>
+												<td align="center">
+												</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+
+
+                        <div class="tab-pane fade" id="litigantesLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Est.</th>
+                                                <th width="130px">Abog. Defensor</th>
+                                                <th>Sujeto</th>
+                                                <th>Rut</th>
+                                                <th>Persona</th>
+                                                <th>Nombre o Raz&oacute;n Social</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td align="center">
+                                                    <i class="fa fa-check-square-o fa-lg" aria-hidden="true" style="color: #2AB343;"></i>
+                                                </td>
+                                                <td>
+No                                                </td>
+                                                <td>DTE.  </td>
+                                                <td>77777777-7</td>
+                                                <td>NATURAL                       </td>
+                                                <td>PERSONA FICTICIA 13 </td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center">
+                                                    <i class="fa fa-check-square-o fa-lg" aria-hidden="true" style="color: #2AB343;"></i>
+                                                </td>
+                                                <td>
+No                                                </td>
+                                                <td>DDO.  </td>
+                                                <td>3333333-3</td>
+                                                <td>JURIDICA                      </td>
+                                                <td>EMPRESA FICTICIA UNO   </td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center">
+                                                    <i class="fa fa-check-square-o fa-lg" aria-hidden="true" style="color: #2AB343;"></i>
+                                                </td>
+                                                <td>
+No                                                </td>
+                                                <td>AB.DTE</td>
+                                                <td>55555555-5</td>
+                                                <td>NATURAL                       </td>
+                                                <td>RONALD PEDRO OSSANDON OSSANDON (Poder Amplio)</td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center">
+                                                    <i class="fa fa-check-square-o fa-lg" aria-hidden="true" style="color: #2AB343;"></i>
+                                                </td>
+                                                <td>
+No                                                </td>
+                                                <td>AB.DDO</td>
+                                                <td>66666666-6</td>
+                                                <td>NATURAL                       </td>
+                                                <td>PERSONA FICTICIA 11 </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+
+                        
+                        <div class="tab-pane fade" id="notificacionesLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                                
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Estado Notif.</th>
+                                                <th>Fecha Tr&aacute;mite</th>
+                                                <th>Tipo Parte</th>
+                                                <th>Nombre</th>
+                                                <th>Tr&aacute;mite</th>
+                                                <th>Obs. Fallida</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Pendiente      </td>
+                                                <td>26/11/2020</td>
+                                                <td>DDO.           </td>
+                                                <td>EMPRESA FICTICIA DOS  </td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>26/11/2020</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>03/12/2020</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pendiente      </td>
+                                                <td>11/12/2020</td>
+                                                <td>DDO.           </td>
+                                                <td>EMPRESA FICTICIA DOS  </td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>11/12/2020</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>23/12/2020</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>14/05/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>18/05/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>05/07/2021</td>
+                                                <td>AB.DDO.        </td>
+                                                <td>PERSONA FICTICIA 11</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>05/07/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>12/07/2021</td>
+                                                <td>AB.DDO.        </td>
+                                                <td>PERSONA FICTICIA 11</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>12/07/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>10/08/2021</td>
+                                                <td>AB.DDO.        </td>
+                                                <td>PERSONA FICTICIA 11</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>10/08/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>23/08/2021</td>
+                                                <td>AB.DDO.        </td>
+                                                <td>PERSONA FICTICIA 11</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Realizada      </td>
+                                                <td>23/08/2021</td>
+                                                <td>AB.DTE.        </td>
+                                                <td>PERSONA FICTICIA 12</td>
+                                                <td>resolución                    </td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                                
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+                        
+                        
+                        <div class="tab-pane fade" id="diligenciasLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Doc. Ida</th>
+                                                <th>Doc. Vta.</th>
+                                                <th>Estado Diligencia</th>
+                                                <th>RIT</th>
+                                                <th>RUC</th>
+                                                <th>Tipo Diligencia</th>
+                                                <th>Referencia</th>
+                                                <th>Fecha Tr&aacute;mite</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->                       
+                        
+                        
+                        <div class="tab-pane fade" id="liquidacionLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th width="100px">Liquidaci&oacute;n</th>
+                                                <th>Rut</th>
+                                                <th>Nombre</th>
+                                                <th>Monto L&iacute;quido</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->                       
+                        
+                        
+                        <div class="tab-pane fade" id="materiasLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>C&oacute;digo</th>
+                                                <th>Glosa de Materia</th>
+                                                <th>Estado</th>
+                                                <th>Fecha T&eacute;rmino</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>L021</td>
+                                                <td>Costas                                                      </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L032</td>
+                                                <td>Despido injustificado                                       </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L033</td>
+                                                <td>Feriado legal                                               </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L044</td>
+                                                <td>Indemnización por años de servicios                         </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L045</td>
+                                                <td>Indemnización sustitutiva de aviso previo                   </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L052</td>
+                                                <td>Prestaciones                                                </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L054</td>
+                                                <td>Reajustes e intereses                                       </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L056</td>
+                                                <td>Recargos                                                    </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                            <tr>
+                                                <td>L059</td>
+                                                <td>Remuneraciones                                              </td>
+                                                <td>Sentencia </td>
+                                                <td>23/04/2021</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+						
+						<div class="tab-pane fade" id="EscPendLab"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Doc.</th>
+                                                <th>Anexo</th>
+                                                <th>Fecha Ing.</th>
+                                                <th>Referencia</th>
+                                                <th>Solicitante</th>
+                                                <th>Tipo Ingreso</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+
+                    </div>
+                </div>
+                
+
+				<div class="panel panel-default">
+				
+					<div class="panel-heading">
+						 <h4 class="modal-title" style="color:#FFF;">Remisiones en la Corte</h4>
+					</div>
+					<div class="table-responsive">
+
+						<table class="table table-bordered table-striped table-hover">
+							<thead>
+								<tr>
+									<th>Rol Corte</th>
+									<th>Descripci&oacute;n del Tr&aacute;mite</th>
+									<th>Fecha Tr&aacute;mite</th>
+								</tr>                                               
+							</thead>
+							<tbody>
+								<tr>
+									<td align="center" width="90px">
+											<a href="#" role="img" title="Detalle causa apelaciones" onClick="detalleCausaApelaciones('referencia-ficticia-038');">
+											<i class="fa fa-play-circle fa-lg" style="cursor:pointer; color:#337ab7" ></i>
+											</a>
+									</td>
+									<td>Concede Recurso de apelación incidente</td>
+									<td>12/07/2021</td>
+								</tr>								
+								<script>
+									$('.msjLupa').click(function(){
+	
+										swal({
+								            title: "",
+								            text: 'El recurso no se encuentra disponible',
+								            type: "warning",
+								            confirmButtonText: "Aceptar",
+								        }, function () {
+											$('body').removeClass('modal-open');
+											$('.modal-backdrop').remove();
+										});
+		
+									});
+								</script>								
+							</tbody>
+						</table>
+							
+					</div>
+				</div>					
+			
+            </div>
+            
+        
+            <div class="modal-footer">
+			                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+			            </div>
+            
+        </div>
+    </div>
+

@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: >-
+  mcp-pjud: servidor MCP de solo lectura para la consulta pública
+  de causas del Poder Judicial de Chile
+message: Si usas este software en un trabajo académico, cítalo así.
+type: software
+authors:
+  - family-names: Pulgar Escobar
+    given-names: Lucas
+    country: CL
+repository-code: https://github.com/notluquis/mcp-pjud
+url: https://mcp-pjud.readthedocs.io
+abstract: >-
+  Servidor Model Context Protocol de solo lectura que expone la consulta
+  pública de causas del Poder Judicial de Chile. Su aporte específico es
+  exponer las actuaciones del ministro de fe con la fecha real de
+  diligencia, distinguida de la fecha de registro en el sistema. Esa
+  distinción determina el cómputo de los plazos procesales y no aparece
+  en el ebook que entrega la Oficina Judicial Virtual. Proyecto
+  independiente, sin relación con el Poder Judicial de Chile.
+keywords:
+  - model context protocol
+  - poder judicial de chile
+  - plazos procesales
+  - notificación
+  - receptor judicial
+  - legaltech
+license: LicenseRef-PolyForm-Strict-1.0.0
+license-url: https://polyformproject.org/licenses/strict/1.0.0
+version: 0.1.0
+date-released: '2026-08-16'

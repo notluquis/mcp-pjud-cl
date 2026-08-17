@@ -1,0 +1,8 @@
+* @notluquis
+
+# Cambios con efecto juridico o de cumplimiento: revision obligatoria del mantenedor.
+/LICENSE.md            @notluquis
+/ACCEPTABLE_USE.md     @notluquis
+/SECURITY.md           @notluquis
+/src/mcp_pjud/client.py @notluquis
+/docs/cumplimiento.md  @notluquis

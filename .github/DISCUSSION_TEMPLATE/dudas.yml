@@ -1,0 +1,41 @@
+title: "[duda] "
+labels: ["duda"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Preguntas de instalación, configuración o interpretación de resultados.
+
+        Antes de preguntar, revisa la [documentación](https://mcp-pjud.readthedocs.io):
+        tiene una guía para abogados y otra para el área de informática.
+
+        **Si encontraste un dato incorrecto, eso no va acá**: abre un issue con la plantilla
+        "Dato incorrecto", que tiene prioridad alta.
+
+  - type: dropdown
+    id: tema
+    attributes:
+      label: Sobre qué
+      options:
+        - Instalación y configuración
+        - Cómo conectarlo a Claude Desktop u otro cliente
+        - Qué significa un campo del resultado
+        - Licencia y permisos
+        - Cumplimiento, datos personales, Ley 21.719
+        - Otra cosa
+    validations:
+      required: true
+
+  - type: textarea
+    id: pregunta
+    attributes:
+      label: Tu pregunta
+    validations:
+      required: true
+
+  - type: textarea
+    id: intentado
+    attributes:
+      label: Qué probaste
+      description: Si hay un error, pégalo completo.
+      render: text

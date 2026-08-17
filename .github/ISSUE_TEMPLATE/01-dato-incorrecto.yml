@@ -1,0 +1,72 @@
+name: Dato incorrecto
+description: La herramienta devolvió algo que no calza con el expediente. Máxima prioridad.
+title: "[dato] "
+labels: ["dato-incorrecto", "prioridad-alta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este es el reporte más importante del proyecto. Un dato mal leído acá puede costar
+        un plazo.
+
+        **Antes de seguir:** si tienes un plazo corriendo, no esperes la respuesta a este
+        issue. Verifica en la Oficina Judicial Virtual directamente.
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Qué salió mal
+      options:
+        - La fecha de diligencia no coincide con el expediente
+        - Faltan actuaciones que sí están en la web
+        - Aparecen actuaciones que no corresponden a la causa
+        - La georreferencia dice false y en la web sí aparece
+        - El cuaderno está mal identificado
+        - Otra cosa
+    validations:
+      required: true
+
+  - type: input
+    id: rol
+    attributes:
+      label: Rol de la causa
+      description: Sólo si es una causa pública y no reservada.
+      placeholder: C-1156-2026
+    validations:
+      required: true
+
+  - type: input
+    id: tribunal
+    attributes:
+      label: Tribunal
+      placeholder: 2º Juzgado Civil de Concepción
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué dice la Oficina Judicial Virtual
+      description: Copia el texto tal cual aparece en la pestaña correspondiente.
+      placeholder: |
+        Folio 9 | Actuación Receptor | NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:27/03/2026 17:40 | 31/03/2026 (27/03/2026)
+    validations:
+      required: true
+
+  - type: textarea
+    id: obtenido
+    attributes:
+      label: Qué devolvió la herramienta
+      render: json
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmaciones
+    attributes:
+      label: Confirmaciones
+      options:
+        - label: La causa es pública, no reservada.
+          required: true
+        - label: No incluí datos de terceros más allá de lo necesario para reproducir esto.
+          required: true

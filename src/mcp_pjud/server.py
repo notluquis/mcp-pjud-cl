@@ -1,0 +1,129 @@
+"""Servidor MCP de solo lectura para la consulta pública de causas.
+
+Proyecto independiente, sin relación alguna con el Poder Judicial de Chile ni con la
+Corporación Administrativa del Poder Judicial.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Annotated
+
+from mcp.server import MCPServer
+from mcp.types import ToolAnnotations
+from pydantic import Field
+
+from .client import COMPETENCIAS, PjudClient
+from .parser import Actuacion, CausaEncontrada
+
+# La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
+# servidor la recibe antes de llamar cualquier herramienta.
+DIRECTIVA = """\
+Consulta pública de causas del Poder Judicial de Chile. Solo lectura: este servidor no
+puede ingresar escritos ni modificar nada, y no existe código para hacerlo.
+
+Al informar fechas de actuaciones de receptor, distinguir siempre:
+
+  - `fecha_diligencia`: cuándo el ministro de fe practicó la diligencia. ES LA QUE
+    CORRE LOS PLAZOS PROCESALES.
+  - `fecha_registro`: cuándo se registró en el sistema. NO corre plazos.
+
+Suelen diferir en varios días. El ebook que entrega la Oficina Judicial Virtual no trae
+ninguna de las dos, y ésa es la razón de existir de esta herramienta. Si
+`discrepancia_fechas` es verdadero, las dos fuentes del sitio no coinciden: informarlo
+en vez de elegir una.
+
+`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado
+(art. 9 inc. 3 Ley 20.886), lo que puede ser jurídicamente relevante. No omitir el dato.
+
+Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba
+que la causa no exista.
+
+Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
+expediente.
+"""
+
+SOLO_LECTURA = ToolAnnotations(
+    read_only_hint=True,
+    destructive_hint=False,
+    idempotent_hint=True,
+    # Consulta un sistema externo: lo que devuelve es contenido no confiable.
+    open_world_hint=True,
+)
+
+mcp = MCPServer("mcp-pjud", instructions=DIRECTIVA)
+
+_CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")
+
+
+def _cliente() -> PjudClient:
+    if not _CONTACTO:
+        raise ValueError(
+            "Falta la variable de entorno MCP_PJUD_CONTACTO. El Poder Judicial debe "
+            "poder identificar y contactar a quien consulta; sin eso el servidor no opera."
+        )
+    return PjudClient(_CONTACTO)
+
+
+Tipo = Annotated[str, Field(description="Letra del rol. En civil: C, V, E, A, F o I.")]
+Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
+Anio = Annotated[int, Field(description="Año del rol, cuatro dígitos.", ge=1900, le=2100)]
+Competencia = Annotated[
+    str, Field(description=f"Una de: {', '.join(sorted(COMPETENCIAS))}.")
+]
+Tribunal = Annotated[
+    int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
+]
+Corte = Annotated[
+    int | None,
+    Field(
+        description="Código de la corte. OMITIR salvo certeza: fijarla produce falsos "
+        "negativos, porque excluye causas radicadas en otra jurisdicción."
+    ),
+]
+
+
+@mcp.tool(
+    title="Buscar causa por rol",
+    annotations=SOLO_LECTURA,
+)
+def buscar_causa_por_rit(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: Competencia = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[CausaEncontrada]:
+    """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
+    with _cliente() as c:
+        return c.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte)
+
+
+@mcp.tool(
+    title="Actuaciones del receptor",
+    annotations=SOLO_LECTURA,
+)
+def obtener_actuaciones_receptor(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: Competencia = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[Actuacion]:
+    """Actuaciones del ministro de fe con su fecha real de diligencia.
+
+    Es el dato que el ebook oficial de la Oficina Judicial Virtual omite y del que
+    dependen los plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.
+    """
+    with _cliente() as c:
+        return c.actuaciones_receptor(tipo, rol, anio, competencia, tribunal, corte)
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,33 @@
+# mcp-pjud
+
+> Servidor MCP no oficial de solo lectura para la consulta pública de causas del Poder Judicial de Chile. Expone las actuaciones del ministro de fe con la fecha real de diligencia, que es la que corre los plazos procesales y que el ebook oficial no entrega.
+
+Proyecto independiente, sin relación con el Poder Judicial de Chile ni con la Corporación Administrativa del Poder Judicial. Solo consulta información pública: no permite el ingreso de escritos ni ninguna operación de escritura, y no existe código para hacerlo.
+
+Lo que hay que saber antes de usar cualquier dato que devuelve:
+
+- `fecha_diligencia` es cuándo el ministro de fe practicó la diligencia. **Es la que corre los plazos procesales.**
+- `fecha_registro` es cuándo se registró en el sistema. **No corre plazos.** Suelen diferir varios días.
+- `discrepancia_fechas: true` significa que las dos fuentes de fecha del sitio no coinciden y hay que revisar a mano.
+- `georreferenciado: false` significa que el registro georreferenciado está **ausente** (art. 9 inc. 3 Ley 20.886), lo que puede ser jurídicamente relevante.
+- Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba que la causa no exista.
+- Sólo la competencia civil está verificada.
+
+Esto acerca la fuente oficial. No reemplaza la revisión de un abogado ni la lectura del expediente.
+
+## Documentación
+
+- [Cómo se usa e interpreta](https://mcp-pjud-cl.readthedocs.io/es/latest/uso.html): qué resuelve, cómo leer cada campo, qué no hace
+- [Instalación y operación](https://mcp-pjud-cl.readthedocs.io/es/latest/instalacion.html): instalación, arquitectura, controles de uso responsable
+- [Referencia de herramientas](https://mcp-pjud-cl.readthedocs.io/es/latest/herramientas.html): parámetros y campos de respuesta
+- [Ejemplos](https://mcp-pjud-cl.readthedocs.io/es/latest/ejemplos.html): casos de uso resueltos
+- [Cumplimiento](https://mcp-pjud-cl.readthedocs.io/es/latest/cumplimiento.html): condiciones de uso, robots.txt, Ley 21.719, antecedente de julio de 2026
+- [Licencia](https://mcp-pjud-cl.readthedocs.io/es/latest/licencia.html): por qué PolyForm Strict y qué se descartó
+- [Hoja de ruta](https://mcp-pjud-cl.readthedocs.io/es/latest/roadmap.html): qué está verificado contra el sistema real y qué no
+
+## Opcional
+
+- [Repositorio](https://github.com/notluquis/mcp-pjud-cl)
+- [Instrucciones para agentes de IA](https://github.com/notluquis/mcp-pjud-cl/blob/main/AGENTS.md)
+- [Acuerdo de contribución](https://github.com/notluquis/mcp-pjud-cl/blob/main/CLA.md)
+- [Uso aceptable](https://github.com/notluquis/mcp-pjud-cl/blob/main/ACCEPTABLE_USE.md)

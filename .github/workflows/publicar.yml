@@ -1,0 +1,56 @@
+name: publicar
+
+# Se dispara al empujar una etiqueta v*. Crea la versión en GitHub con notas generadas
+# automáticamente y adjunta el inventario de dependencias.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Caché desactivada a propósito, y de forma explícita porque el valor por defecto
+      # la activa en runners de GitHub. En un flujo que publica artefactos, una caché
+      # envenenada puede terminar dentro de lo publicado.
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: false
+
+      # No se publica una versión que no pasa sus propias pruebas.
+      - run: uv sync --all-groups
+      - run: uv run pytest -q
+
+      - run: uv build
+
+      # El inventario sale de la API de GitHub, que ya lo genera desde el grafo de
+      # dependencias. Evita agregar una acción de terceros para algo que ya existe.
+      - name: Inventario de dependencias
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" > sbom.spdx.json
+
+      # `gh release` viene en el runner. Una acción de terceros para esto sería
+      # superficie de cadena de suministro sin ganancia.
+      - name: Crear la versión
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/* sbom.spdx.json

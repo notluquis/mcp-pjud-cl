@@ -26,6 +26,10 @@ html_theme = "furo"
 html_title = "mcp-pjud"
 html_static_path = []
 
+# llms.txt se copia tal cual a la raíz del sitio. Es el formato que consumen los agentes
+# de IA para orientarse antes de leer la documentación completa.
+html_extra_path = ["llms.txt"]
+
 html_theme_options = {
     "source_repository": "https://github.com/notluquis/mcp-pjud-cl/",
     "source_branch": "main",

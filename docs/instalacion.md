@@ -1,4 +1,4 @@
-# Guía para el área de informática
+# Instalación y operación
 
 ## Qué es
 

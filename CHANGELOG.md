@@ -25,6 +25,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   runner con harden-runner. Esto último deja verificable la promesa de que CI nunca consulta al
   Poder Judicial.
 - Testing de mutación con mutmut, mensual y a pedido.
+- CodeQL, OpenSSF Scorecard y revisión de dependencias en pull requests.
+- Período de enfriamiento en Dependabot: una versión recién publicada ya no llega como pull
+  request el mismo día, que es la ventana que aprovechan los ataques de cadena de suministro.
+- Publicación automática al empujar una etiqueta `v*`, con notas generadas e inventario de
+  dependencias adjunto.
+- `AGENTS.md` con las reglas del proyecto para agentes de IA, más `CLAUDE.md` que lo importa y
+  `copilot-instructions.md` que lo referencia. Una sola fuente en vez de tres que se
+  desincronizan.
+- `llms.txt` en la raíz del sitio de documentación.
+- Página de ejemplos con casos resueltos de punta a punta.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
   hora inválida. La suite queda en 43 tests.
@@ -36,6 +46,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   etiquetas de versión mayor.
 - `permissions: {}` por defecto en los workflows, con permisos por job.
 - `persist-credentials: false` en los checkout, que no hacen push.
+
+### Cambiado
+
+- Las guías dejan de nombrarse por cargo ("para abogados", "para el área de informática") y
+  pasan a nombrarse por tarea: uso e interpretación, e instalación y operación.
+- Los archivos de comunidad se mueven a `.github/`. En la raíz quedan los operativos: los que
+  alguien tiene que poder encontrar sin pasar por el sitio de documentación.
 
 ### Corregido
 

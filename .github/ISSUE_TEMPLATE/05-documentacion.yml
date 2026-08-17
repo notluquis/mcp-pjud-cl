@@ -28,7 +28,7 @@ body:
       label: A qué público afecta
       options:
         - Abogados
-        - Área de informática
+        - Equipo técnico
         - Ambos
     validations:
       required: true

@@ -1,7 +1,6 @@
-# Guía para abogados
+# Cómo se usa e interpreta
 
-Esta página no tiene código. Si quieres instalarlo, pásale
-{doc}`la otra guía <para-informatica>` a quien administre tus sistemas.
+Esta página no tiene código. Si quieres instalarlo, pásale la {doc}`guía de instalación <instalacion>` a quien administre tus sistemas.
 
 ## Qué problema resuelve
 

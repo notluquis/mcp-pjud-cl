@@ -83,11 +83,11 @@ versión.
 
 ## Documentación
 
-[mcp-pjud-cl.readthedocs.io](https://mcp-pjud-cl.readthedocs.io), con dos entradas separadas:
+[mcp-pjud-cl.readthedocs.io](https://mcp-pjud-cl.readthedocs.io), organizada por tarea:
 
-- **[Para abogados](https://mcp-pjud-cl.readthedocs.io/es/latest/para-abogados.html)**: qué
+- **[Cómo se usa](https://mcp-pjud-cl.readthedocs.io/es/latest/uso.html)**: qué
   resuelve, cómo leer los resultados, qué no hace. Sin código.
-- **[Para informática](https://mcp-pjud-cl.readthedocs.io/es/latest/para-informatica.html)**:
+- **[Instalación y operación](https://mcp-pjud-cl.readthedocs.io/es/latest/instalacion.html)**:
   instalación, arquitectura, controles de uso responsable.
 
 Además: [referencia de herramientas](https://mcp-pjud-cl.readthedocs.io/es/latest/herramientas.html),

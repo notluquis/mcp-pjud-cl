@@ -16,7 +16,7 @@ body:
       label: Desde dónde escribes
       options:
         - Abogado o abogada
-        - Área de informática de un estudio
+        - Equipo técnico de un estudio
         - Institución pública
         - Universidad
         - Curiosidad técnica

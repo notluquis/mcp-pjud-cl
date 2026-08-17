@@ -16,8 +16,8 @@ ni garantía de respuesta. Dicho eso, hay un orden que funciona mejor:
 
 ## Antes de escribir
 
-Lee la [documentación](https://mcp-pjud-cl.readthedocs.io). Hay dos entradas separadas: una para
-abogados y otra para quien administra los sistemas del estudio.
+Lee la [documentación](https://mcp-pjud-cl.readthedocs.io). Está organizada por tarea: una guía de uso e interpretación, y otra de instalación y
+operación.
 
 ## Lo que este proyecto no hace
 

@@ -1,0 +1,27 @@
+# Categoriza las notas que GitHub genera solo al publicar una versión.
+# El CHANGELOG.md se mantiene a mano igual, y a propósito: estas notas dicen QUÉ cambió,
+# el changelog dice POR QUÉ importa. En un proyecto que toca plazos procesales, el porqué
+# es lo que alguien necesita leer antes de actualizar.
+changelog:
+  exclude:
+    labels:
+      - sin-notas
+  categories:
+    - title: Cambios que rompen compatibilidad
+      labels: ["incompatible"]
+    - title: Correcciones de datos
+      labels: ["dato-incorrecto"]
+    - title: La plataforma cambió
+      labels: ["ojv-cambio"]
+    - title: Competencias nuevas
+      labels: ["competencia"]
+    - title: Novedades
+      labels: ["mejora", "feature"]
+    - title: Correcciones
+      labels: ["bug", "fix"]
+    - title: Documentación
+      labels: ["documentación"]
+    - title: Dependencias
+      labels: ["dependencias"]
+    - title: Otros
+      labels: ["*"]

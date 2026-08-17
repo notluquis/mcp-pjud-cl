@@ -48,11 +48,11 @@ ninguna del apremio.
 
 ## Por dónde empezar
 
-{doc}`Soy abogado o abogada <para-abogados>`
+{doc}`Cómo se usa e interpreta <uso>`
 : Qué resuelve, cómo leer los resultados, qué **no** hace, y qué necesitas pedirle a tu
   informático. Sin código.
 
-{doc}`Administro los sistemas <para-informatica>`
+{doc}`Instalación y operación <instalacion>`
 : Instalación, configuración del cliente MCP, arquitectura, y los controles de uso
   responsable que no se deben tocar.
 
@@ -60,8 +60,8 @@ ninguna del apremio.
 :maxdepth: 2
 :caption: Guías
 
-para-abogados
-para-informatica
+uso
+instalacion
 ```
 
 ```{toctree}
@@ -69,6 +69,7 @@ para-informatica
 :caption: Referencia
 
 herramientas
+ejemplos
 cumplimiento
 licencia
 financiamiento

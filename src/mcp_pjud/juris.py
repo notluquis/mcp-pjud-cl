@@ -124,9 +124,16 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto": "texto_sentencia",
             "texto_anonimizado": "texto_sentencia_anon",
         },
-        # Sin medir: los cuatro intentos de verificarlo murieron por timeout. Se asume que no
-        # es por consulta, que es la opción conservadora: mejor no informar ocultas que
-        # informar una cifra que puede ser el corpus.
+        # El buscador quedó verificado el 17 de agosto de 2026: el rol 1504-2019 devolvió tres
+        # sentencias en 115,6 s. Los cuatro intentos anteriores se habían dado por muertos por
+        # timeout, y el timeout era nuestro.
+        #
+        # Lo que sigue SIN medir es esta bandera, y conviene ser preciso: que el buscador
+        # responda no dice si el número de coincidencias es de la consulta o del corpus. Para
+        # saberlo hay que comparar el `numFound` de un rol que existe contra uno imposible, que
+        # es como se descubrió que en `laborales` era el corpus. Mientras no se mida, queda en
+        # falso, que es la opción conservadora: `ocultas` viaja en nulo en vez de traer una
+        # cifra que podría ser el tamaño del índice.
         coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(

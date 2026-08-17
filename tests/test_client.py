@@ -1,6 +1,7 @@
 """Tests del cliente. Sin red: los controles se prueban con dobles."""
 
 import re
+import urllib.parse
 from pathlib import Path
 
 import httpx
@@ -226,21 +227,25 @@ def test_competencia_que_no_existe_se_rechaza():
         c._modulo("familia")
 
 
-def test_competencia_que_existe_pero_no_se_verifico_se_rechaza():
+def test_competencia_que_existe_pero_no_se_verifico_se_rechaza(monkeypatch):
     """Saber leer una competencia y haberla probado son cosas distintas.
 
     `parser.COMPETENCIAS` sabe leer las seis; `MODULOS` dice cuáles se midieron. Exponer la
     primera lista como si fuera la segunda es adivinar, y una consulta mal armada devuelve
     vacío, que se lee como que la causa no existe.
+
+    Al verificarse suprema y apelaciones las seis quedaron en `MODULOS`, así que no hay
+    ninguna competencia real que ejercite este camino y el guardia quedó inalcanzable. Antes
+    esto se resolvía reapuntando el test a la siguiente competencia sin verificar, y se acabó
+    la fila. Se saca una de `MODULOS` a propósito: un guardia que no puede fallar imprime
+    exactamente lo mismo que uno que pasa, y la próxima vez que alguien agregue una
+    competencia sin medirla no habría nada que lo detuviera.
     """
+    monkeypatch.setattr("mcp_pjud.client.MODULOS", MODULOS - {"cobranza"})
     c = PjudClient("test@example.cl")
-    # Se usa una que exista en la plataforma y siga sin verificar. `penal` servía y dejó de
-    # servir al verificarla: un caso de prueba que desaparece porque el código mejoró se
-    # reapunta, no se borra.
-    sin_verificar = sorted(set(COMPETENCIAS) - set(MODULOS))
-    assert sin_verificar, "si ya están todas verificadas, este test hay que retirarlo"
+    assert "cobranza" in COMPETENCIAS, "el parser tiene que seguir sabiendo leerla"
     with pytest.raises(ValueError, match="no verificada"):
-        c._modulo(sin_verificar[0])
+        c._modulo("cobranza")
 
 
 def test_toda_peticion_queda_en_bitacora(monkeypatch):
@@ -434,16 +439,24 @@ NAV_INTERMEDIA = (FIXTURES / "nav_pagina_intermedia.html").read_text(encoding="u
 NAV_ULTIMA = (FIXTURES / "nav_ultima_pagina.html").read_text(encoding="utf-8")
 
 
-def _fila(n: int) -> str:
+def _fila(n: int, celdas: int = 5) -> str:
+    """Una fila del listado. `celdas` la ensancha para las competencias con más columnas.
+
+    Suprema declara columnas hasta la 6 y apelaciones hasta la 7, así que la fila de cinco
+    celdas de civil las hace levantar `EstructuraInesperada`, que es exactamente lo que el
+    parser debe hacer. Se rellena con celdas vacías en vez de escribir una fila por
+    competencia: lo que estos tests miden no es el contenido de las columnas de más.
+    """
+    relleno = "<td></td>" * max(0, celdas - 5)
     return (
         f"<tr><td align='center'><a onClick=\"detalleCausaCivil('ref-{n:03d}')\">"
         f"</a></td><td nowrap>C-{9000 + n}-2026</td><td>01/03/2026</td>"
         f"<td>PARTE FICTICIA/CONTRAPARTE FICTICIA</td>"
-        f"<td nowrap>2º Juzgado Civil de Concepción</td></tr>"
+        f"<td nowrap>2º Juzgado Civil de Concepción</td>{relleno}</tr>"
     )
 
 
-def _pagina(filas: range, total: int, ultima: bool, token: str = "") -> str:
+def _pagina(filas: range, total: int, ultima: bool, token: str = "", celdas: int = 5) -> str:
     """Una página sintética con el bloque de navegación real que corresponda.
 
     `token` distingue el identificador de "siguiente" entre páginas. Sin eso, dos páginas
@@ -457,7 +470,7 @@ def _pagina(filas: range, total: int, ultima: bool, token: str = "") -> str:
     nav = re.sub(r"<div[^>]*>\s*Total de registros:.*?</div>", "", nav, flags=re.S)
     if token:
         nav = re.sub(r"paginaFecSig\('[^']+'", f"paginaFecSig('{token}'", nav)
-    cuerpo = "".join(_fila(n) for n in filas)
+    cuerpo = "".join(_fila(n, celdas) for n in filas)
     return (
         f"{cuerpo}<tr><td colspan='5'><div>Total de registros: <b>{total}</b></div>{nav}</td></tr>"
     )
@@ -665,6 +678,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
         historia=None,
         receptor=True,
         receptor_en_historia=True,
+        acota_por="tribunal",
     )
     monkeypatch.setitem(REALES, "inventada", inventada)
     monkeypatch.setattr("mcp_pjud.client.MODULOS", {*MODULOS, "inventada"})
@@ -752,3 +766,106 @@ def test_pedir_actuaciones_de_cobranza_dice_que_estan_en_otro_panel():
     c = _sin_red()
     with pytest.raises(ValueError, match="NO están en la tabla"):
         c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
+
+
+# -- lo que la plataforma exige por competencia --------------------------------
+#
+# Suprema y apelaciones se verificaron el 17 de agosto de 2026, y lo que las bloqueaba era un
+# campo que las otras cuatro competencias toleran ausente. Los guardias de abajo existen
+# porque ese hueco no se veía desde ningún test: la búsqueda de rol andaba en las cuatro
+# competencias que estaban expuestas, así que el campo faltante no rompía nada.
+
+
+def _capturando(respuesta: str = "") -> tuple[PjudClient, list[dict[str, str]]]:
+    """Cliente que registra el formulario de cada petición en vez de salir a la red."""
+    enviados: list[dict[str, str]] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        cuerpo = peticion.content.decode("utf-8")
+        enviados.append(dict(urllib.parse.parse_qsl(cuerpo, keep_blank_values=True)))
+        return httpx.Response(200, text=respuesta)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+    return c, enviados
+
+
+def test_la_busqueda_por_rol_manda_el_radio_rit(monkeypatch):
+    """Sin `radio-group`, suprema y apelaciones responden HTTP 200 con el cuerpo VACÍO.
+
+    Su PHP se ramifica en ese campo para saber si se busca por RIT o por RUC, y si falta
+    revienta sin aviso. Las otras cuatro competencias lo toleran ausente, y por eso el hueco
+    sobrevivió: no rompía nada de lo que estaba expuesto. Costó dos diagnósticos equivocados
+    (que faltaba el código de libro en `conTipoCausa`, y que sobraban los campos que el sitio
+    deshabilita) antes de bisectarlo.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True))
+    c.buscar_por_rit("C", 1156, 2026)
+    assert enviados, "no se envió ninguna petición"
+    assert enviados[0].get("radio-group") == "1", (
+        "falta el radio RIT/RUC: suprema y apelaciones devolverían un cuerpo vacío, que se "
+        "lee como que la causa no existe"
+    )
+
+
+def test_suprema_no_exige_ni_tribunal_ni_corte(monkeypatch):
+    """Medido: las tres búsquedas de suprema andan sin corte ni tribunal.
+
+    El sitio deshabilita los dos selectores para esa competencia. Exigirlos sería rechazar por
+    cuenta propia consultas que la plataforma acepta, y eso no gasta una petición ni deja
+    rastro: se ve igual que "no hay causas".
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = _pagina(range(1, 2), total=1, ultima=True, celdas=8)
+    for consultar in (
+        lambda c: c.buscar_por_nombre(
+            apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia="suprema"
+        ),
+        lambda c: c.buscar_por_fecha("03/08/2026", "05/08/2026", competencia="suprema"),
+        lambda c: c.buscar_por_rut_juridica(97004000, "5", competencia="suprema"),
+    ):
+        c, enviados = _capturando(listado)
+        consultar(c)
+        assert enviados, "el cliente rechazó por su cuenta una consulta que la plataforma acepta"
+
+
+def test_apelaciones_exige_corte_y_no_tribunal():
+    """La plataforma responde "Por favor seleccione una Corte para la búsqueda" en las tres.
+
+    Se midió el mismo aviso en nombre, en RUT y en fecha, así que el requisito es de la
+    competencia y no de la búsqueda: por eso lo resuelve una sola función con la tabla.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="exige corte"):
+        c.buscar_por_nombre(
+            apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia="apelaciones"
+        )
+    with pytest.raises(ValueError, match="exige corte"):
+        c.buscar_por_fecha("03/08/2026", "05/08/2026", competencia="apelaciones")
+    with pytest.raises(ValueError, match="exige corte"):
+        c.buscar_por_rut_juridica(97004000, "5", competencia="apelaciones")
+
+
+def test_las_de_primera_instancia_siguen_exigiendo_tribunal():
+    """Lo que cambió es que el requisito depende de la competencia, no que se haya soltado."""
+    c = _sin_red()
+    for competencia in ("civil", "laboral", "cobranza", "penal"):
+        with pytest.raises(ValueError, match="exige tribunal"):
+            c.buscar_por_nombre(
+                apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia=competencia
+            )
+
+
+def test_toda_competencia_declara_con_que_acotar():
+    """Un valor inventado en `acota_por` haría que `_acotacion` no exija nada y pase de largo.
+
+    La función compara contra dos literales; cualquier otra cosa cae en el silencio, que es la
+    forma de falla que este proyecto no acepta. El guardia es sobre la tabla, no sobre el
+    llamador, porque el llamador nunca vería el problema.
+    """
+    for nombre, spec in COMPETENCIAS.items():
+        assert spec.acota_por in {"tribunal", "corte", None}, (
+            f"{nombre} declara acotarse por {spec.acota_por!r}, que `_acotacion` ignora en silencio"
+        )

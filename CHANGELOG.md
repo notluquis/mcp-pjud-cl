@@ -18,6 +18,33 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Búsqueda de causas en **Corte Suprema** y **Cortes de Apelaciones**, con sus cuatro
+  búsquedas cada una. Lo que las bloqueaba no era ningún parámetro exótico: faltaba
+  `radio-group`, el radio RIT/RUC del formulario, en el que su PHP se ramifica para saber por
+  cuál de los dos se busca. Sin el campo responde HTTP 200 con el cuerpo **vacío**, sin aviso.
+  Las otras cuatro competencias lo toleran ausente, así que el hueco no rompía nada de lo que
+  estaba expuesto.
+
+  Verificar la búsqueda no verifica el detalle: las dos siguen con `historia=None`, así que
+  pedirles actuaciones se rechaza en vez de adivinar el panel.
+
+- Buscador de fallos de **Cortes de Apelaciones**, verificado. Los cuatro intentos anteriores
+  se habían dado por muertos por timeout; la consulta responde en 115,6 s.
+
+### Corregido
+
+- Con qué hay que acotar las búsquedas por nombre, por RUT y por fecha ahora depende de la
+  competencia, y sale de una tabla: `tribunal` en las cuatro de primera instancia, `corte` en
+  apelaciones, nada en suprema. Antes el cliente exigía tribunal siempre, y con eso habría
+  rechazado por su cuenta consultas que la plataforma acepta. Rechazar de más es más difícil
+  de notar que rechazar de menos: no gasta una petición, no deja rastro y se ve igual que "no
+  hay causas".
+
+- `ESPERA_MAXIMA` sube de 90 a 240 segundos. Tres citas de Corte Suprema fallaban en todas las
+  corridas, y esa consistencia se leyó como "esas consultas no terminan". Respondían en 81,2 s,
+  102,0 s y 38,7 s: el tope mataba una sola, y con ella se dieron por perdidas las tres. La
+  cifra de 47,8 s que justificaba los 90 era una sola muestra, no un techo.
+
 - Búsqueda de causas en **penal**, verificada. Su tipo de causa va como código numérico y no
   como letra ni como palabra: con `conTipoCausa="1"` aparece la causa, y con `"Ordinaria"`,
   `"O"` o vacío el listado vuelve vacío. Exige además `radio-groupPenal` y el código de

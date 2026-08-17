@@ -28,6 +28,7 @@ from mcp_pjud.client import (
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
+    SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
     SEGUNDOS_PAGINA_MEDIDOS,
 )
 from mcp_pjud.juris import (
@@ -557,6 +558,25 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
     assert not a_medias, (
         f"Páginas que citan una de las dos latencias sin la otra: {a_medias}. "
         f"Las vigentes son {busqueda} s la búsqueda y {pagina} s la página del mismo host."
+    )
+
+    # La cifra típica sola es la que hizo daño: se tomó por techo y el timeout quedó en 90 s,
+    # con lo que tres consultas que respondían en 81, 102 y 39 segundos se dieron por
+    # imposibles. Donde se cite la típica tiene que estar el peor caso al lado, porque es el
+    # que justifica cuánto esperar antes de dar una consulta por perdida.
+    peor = coma(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)
+    # El changelog queda fuera a propósito: registra lo que era cierto en cada versión, así que
+    # una entrada vieja que cita los 47,8 s no está desactualizada, está fechada. Actualizarla
+    # para que pase este guardia sería falsear el registro.
+    sin_el_peor = [
+        str(p.relative_to(RAIZ))
+        for p in citan
+        if peor not in _texto(p) and p.name != "CHANGELOG.md"
+    ]
+    assert not sin_el_peor, (
+        f"Páginas que citan la latencia típica sin el peor caso medido: {sin_el_peor}. "
+        f"Sola, la de {busqueda} s invita a repetir el error de tomar una muestra por techo; "
+        f"el peor medido es {peor} s."
     )
 
 

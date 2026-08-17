@@ -32,3 +32,6 @@ tests/fixtures/mapeo.local.json
 # Directorio de trabajo de mutmut.
 mutants/
 .mutmut-cache
+
+# Esquemas generados desde el servidor al construir la documentación.
+docs/_generado/

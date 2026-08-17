@@ -36,6 +36,21 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Reglas `S` (seguridad) y `DTZ` (fechas sin zona horaria) en el linter. La segunda importa
   acá: las fechas deciden plazos procesales.
 
+- El esquema de cada herramienta se genera desde el servidor al construir la documentación,
+  así que la referencia publicada es literalmente lo que un cliente MCP recibe por el
+  protocolo. No se escribe a mano y no puede quedar vieja.
+
+- Pestañas por cliente en la guía de instalación: Claude Code, Claude Desktop, Cursor, VS Code
+  y Codex. Cada uno quiere un formato distinto y hay una trampa real: VS Code usa la clave
+  `servers` y el resto `mcpServers`, así que copiar el bloque equivocado no funciona. Los dos
+  formatos que faltaban se verificaron contra la documentación de cada herramienta.
+
+- Un test impide publicar RUT de personas naturales en la documentación. El guardia anterior
+  sólo miraba las fixtures, y la documentación es igual de pública: un RUT ahí es un
+  identificador vivo, y quien lo copie saca las causas de esa persona. Los RUT de empresas sí
+  se permiten, declarados uno por uno, porque la Ley 21.719 protege a las personas naturales y
+  un ejemplo que corre de verdad vale más que uno inventado.
+
 - Paginación en las cuatro búsquedas. La plataforma pagina por identificador opaco y no por
   número, con 100 resultados por página. Hay un tope de 10 páginas que levanta excepción en
   vez de devolver la lista recortada, porque un listado truncado en silencio se leería como

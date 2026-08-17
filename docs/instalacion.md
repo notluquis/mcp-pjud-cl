@@ -28,14 +28,19 @@ User-Agent: mcp-pjud/0.1 (+contacto: informatica@estudio.cl)
 Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No hay
 forma de omitirlo.
 
-### Claude Code
+### Según tu cliente
 
+::::{tab-set}
+
+:::{tab-item} Claude Code
 ```bash
 claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
   -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
 ```
+:::
 
-### Claude Desktop, Codex, Cursor, VS Code
+:::{tab-item} Claude Desktop
+En `claude_desktop_config.json`:
 
 ```json
 {
@@ -48,6 +53,58 @@ claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
   }
 }
 ```
+:::
+
+:::{tab-item} Cursor
+En `~/.cursor/mcp.json`, o por el botón de un clic del README:
+
+```json
+{
+  "mcpServers": {
+    "pjud": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
+    }
+  }
+}
+```
+:::
+
+:::{tab-item} VS Code
+En `.vscode/mcp.json`. **Ojo con la diferencia**: acá la clave es `servers`, no `mcpServers`
+como en el resto. Pegar el bloque de Claude Desktop no funciona.
+
+```json
+{
+  "servers": {
+    "pjud": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
+    }
+  }
+}
+```
+:::
+
+:::{tab-item} Codex
+```bash
+codex mcp add pjud --env MCP_PJUD_CONTACTO=informatica@estudio.cl \
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
+```
+
+O a mano, en `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.pjud]
+command = "uvx"
+args = ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"]
+env = { MCP_PJUD_CONTACTO = "informatica@estudio.cl" }
+```
+:::
+
+::::
 
 El [README](https://github.com/notluquis/mcp-pjud-cl) trae además botones de instalación
 de un clic para Cursor y VS Code. Dejan el correo como marcador y hay que editarlo.

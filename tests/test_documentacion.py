@@ -213,3 +213,39 @@ def test_el_ejecutable_que_documentan_las_guias_es_el_que_declara_el_paquete():
         assert exacto.search(_texto(pagina)), (
             f"{pagina.name} no menciona '{ejecutable}', que es el ejecutable que instala"
         )
+
+
+# -- datos personales en la documentación ----------------------------------------
+
+
+#: RUT de personas jurídicas que sí pueden aparecer: la Ley 21.719 protege datos de personas
+#: naturales, y una empresa no lo es. Se usan a propósito en los ejemplos, porque un ejemplo
+#: que corre de verdad vale más que uno inventado.
+RUT_DE_EMPRESAS = {
+    "97004000-5",  # Banco de Chile, que ya aparece como litigante en las fixtures
+}
+
+
+def test_la_documentacion_no_publica_rut_de_personas_naturales():
+    """`tests/test_fixtures.py` sólo revisa las fixtures. La documentación es igual de
+    pública, y un RUT ahí es un identificador vivo: quien lo copie saca las causas de esa
+    persona, que es el uso que `ACCEPTABLE_USE.md` rechaza.
+
+    Ser figura pública no lo cambia. La excepción de esa ley alcanza a los datos del
+    ejercicio de funciones públicas, no a la cédula de identidad.
+    """
+    patron = re.compile(r"\b(\d{7,8})-([\dkK])\b")
+    #: Los ficticios son dígitos repetidos, igual que en las fixtures.
+    ficticio = re.compile(r"^(\d)\1{6,7}$")
+
+    encontrados = [
+        f"{p.relative_to(RAIZ)}: {cuerpo}-{dv}"
+        for p in PROSA
+        for cuerpo, dv in patron.findall(_texto(p))
+        if not ficticio.match(cuerpo) and f"{cuerpo}-{dv}" not in RUT_DE_EMPRESAS
+    ]
+    assert not encontrados, (
+        f"RUT que no son ni ficticios ni de empresa en la documentación: {encontrados}. "
+        "Para personas naturales se usa un RUT sintético; para empresas, uno real "
+        "declarado en RUT_DE_EMPRESAS."
+    )

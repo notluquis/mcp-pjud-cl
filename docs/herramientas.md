@@ -46,6 +46,9 @@ Civil de Santiago que sí existía.
 Devuelve una lista de causas con `rol`, `fecha_ingreso`, `caratulado`, `tribunal` y una
 `referencia` opaca que caduca a los 30 minutos.
 
+```{include} _generado/buscar_causa_por_rit.md
+```
+
 ## `buscar_causa_por_nombre`
 
 Busca causas por nombre de litigante.
@@ -69,6 +72,9 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
 
+```{include} _generado/buscar_causa_por_nombre.md
+```
+
 ## `buscar_causa_por_rut_juridica`
 
 Busca causas de una persona jurídica por su RUT. Es la **única vía para empresas**, que no
@@ -85,6 +91,9 @@ Exige el dígito verificador y el tribunal.
 | `tribunal` | int | Obligatorio acá |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
+
+```{include} _generado/buscar_causa_por_rut_juridica.md
+```
 
 ## `obtener_actuaciones_receptor`
 
@@ -131,6 +140,9 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
   "georreferenciado": true,
   "tiene_documento": true
 }
+```
+
+```{include} _generado/obtener_actuaciones_receptor.md
 ```
 
 ## `buscar_jurisprudencia`
@@ -187,6 +199,9 @@ quien lo necesite entra.
 
 Sólo el buscador de **Corte Suprema** está verificado. Cada uno de los otros nueve declara sus
 propios campos, así que exponerlos sin medirlos devolvería campos vacíos en vez de un error.
+
+```{include} _generado/buscar_jurisprudencia.md
+```
 
 ## Errores
 

@@ -99,21 +99,38 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 - Parser propio si difiere
 - Ampliar `MODULOS` sólo después de verificar, nunca antes
 
-### 0.5: exhortos y documentos
+### 0.5: el resto del detalle de causa
 
-- `detalleExhortos.php`: seguimiento de exhorto de origen a destino
+La brecha más barata de cerrar: son pestañas de la misma respuesta que el cliente ya pide, así
+que no cuestan peticiones nuevas. `webscrapthings` las cubre desde 2025 y un abogado las espera.
+
+- `#Litigantes`: quiénes son parte y con qué calidad
+- `#Escritos`: los presentados, y cuáles siguen por resolver
+- `#Exhorto` y `detalleExhortos.php`: seguimiento de origen a destino
 - `causaOrigenCivil.php`
+
+### 0.6: Programación de Sala
+
+El "¿cuándo me ven?", que hoy no se cubre y las dos herramientas comerciales sí. Los campos
+están mapeados leyendo `automatizador-legal`: `progComp`, `progCorte`, `progRolCausa`,
+`progEraCausa`, `progTipoCausa`, botón `btnProgConsulta`, tabla `dtaTableDetalleProgSala`.
+
+Ninguno verificado contra el sistema real todavía, así que vale la misma regla de siempre: se
+mide antes de exponerlo.
+
+### 0.7: documentos
+
 - Descarga de documentos por folio vía `docuN.php`
 
 **Decisión pendiente y no trivial:** descargar un PDF significa traer datos de terceros a
 disco. Eso cambia el perfil de retención y entra de lleno en la Ley 21.719. Probablemente
 requiera consentimiento explícito por llamada, y ruta de destino elegida por el usuario.
 
-### 0.6: laboral y apelaciones
+### 0.8: laboral y apelaciones
 
 Las dos competencias que siguen en volumen de uso real.
 
-### 0.7: competencias restantes
+### 0.9: competencias restantes
 
 Laboral, apelaciones, suprema, penal y familia. Ninguna sondeada. Antes de cada una hay que
 confirmar lo mismo que se confirmó en cobranza: el identificador del panel de historia, el
@@ -313,6 +330,10 @@ No es pesimismo, es planificación:
 Revisado el 17 de agosto de 2026. Se anota para no re-descubrirlo, y porque si algo de esto
 cubre tu caso mejor, conviene que lo uses en vez de esto.
 
+Este proyecto no es el primero que consulta al Poder Judicial de Chile por programa, y decirlo
+importa: parte de lo que hay cubre bastante más superficie. Lo que sigue es lo medido, no una
+comparación de folleto.
+
 ### Servidores MCP jurídicos
 
 | Proyecto | Jurisdicción |
@@ -328,24 +349,107 @@ referencia de hacia dónde puede ir esto.
 
 ### Herramientas chilenas que tocan lo mismo
 
-| Proyecto | Qué hace | Diferencia |
-|---|---|---|
-| [CausAlerta](https://causalerta.cl/) | SaaS de seguimiento con alertas diarias y calendario de plazos. Desde 6.500 pesos al mes | De pago y cerrado. Su sitio no documenta de dónde saca los datos ni si distingue las dos fechas: **no se puede afirmar que no lo haga** |
-| [API de Boostr](https://boostr.cl/poder-judicial) | API REST de consulta de causas | Su demo busca por RUT y persona. No documenta actuaciones de receptor |
-| [`automatizador-legal`](https://github.com/ghurtadoarevalo/automatizador-legal) | Programación de sala con FastAPI y Playwright, "extraer audiencias masivamente" | Sin licencia. Es audiencias, no actuaciones |
-| [`webscrapthings`](https://github.com/pepelisto/webscrapthings) | Bots de ParalegApp que vigilan actualizaciones de causas | Sin licencia, sin mantención desde 2025 |
-| [LemonTech](https://blog.lemontech.com/) y el resto del gremio | Gestión legal completa | Otro producto: esto es una pieza, no una suite |
+Revisadas a fondo el 17 de agosto de 2026: las dos de código abierto leyendo su código, las
+dos comerciales leyendo lo que documentan. Se anota con detalle porque marcan el piso: lo que
+ellas ya hacen no es una idea para el roadmap, es lo mínimo.
 
-Lo que ninguna de las públicas documenta es la distinción entre fecha de registro y fecha de
-diligencia del ministro de fe, que es lo único que este proyecto reclama como propio. Dicho
-con precisión: **que no lo documenten no prueba que no lo hagan**, y las de pago no publican
-su esquema. La afirmación defendible es que no hay una fuente pública donde verificarlo.
+#### CausAlerta
+
+Es el competidor real, y cubre mucho más superficie que esto. SaaS de gestión completa, con
+seguimiento diario y resumen por correo.
+
+| | |
+|---|---|
+| Precio | Gratis hasta 3 causas; 6.500, 10.400 y 31.200 pesos más IVA al mes |
+| Competencias | Civil, cobranza, laboral, familia, libre competencia, constitucional, apelaciones y suprema |
+| Qué sigue | "Historia, escritos por resolver, **movimientos de receptor** y estado procesal" |
+| Además | Banco de jurisprudencia, programación semanal de salas en Cortes de Apelaciones, calendario de plazos y audiencias, importación masiva desde la Oficina Judicial Virtual o Excel, documentos y plantillas, cobros por cliente, registro de horas, equipos |
+
+Conviene subrayar la tercera fila: **sí dice cubrir los movimientos de receptor**. Lo que no
+dice, y no se puede saber desde afuera, es si separa la fecha de diligencia de la de registro
+o si presenta una sola. Afirmar que no lo hace sería inventar.
+
+#### API de Boostr
+
+Otro producto, no un competidor directo: resuelve "¿esta persona tiene causas en alguna parte
+del país?", no "¿qué pasó en esta causa?".
+
+| | |
+|---|---|
+| Precio | 2.000 pesos **por consulta**, mínimo 10.000 (cinco consultas) |
+| Modelo | Asincrónico con `operation_id` y notificación por URL, porque barre todos los tribunales |
+| Busca por | RUT en civil, nombre completo en penal |
+| Cubre | Penal, civil y apelaciones. Excluye familia y causas reservadas |
+| Advertencia propia | "No nos hacemos responsable de la información entregada, todo proviene directamente desde el Poder Judicial" |
+
+Su documentación no describe los campos de cada causa, así que no hay evidencia de que llegue
+al detalle ni a las actuaciones.
+
+#### `automatizador-legal`
+
+Ataca un dato que este proyecto no cubre: la **Programación de Sala**, o sea cuándo se ve una
+causa. Sin licencia, o sea sin derecho de uso.
+
+Su arquitectura es el contraejemplo de la nuestra, y su README lo dice sin rodeos: Playwright
+corre dentro de Docker pero controla un Brave real en el Mac por CDP, "para evitar bloqueos"
+y para que una persona pueda resolver el captcha a mano. Entrada por Excel en Google Drive,
+salida por correo, orquestado con n8n.
+
+Los campos del formulario quedan mapeados de paso: `progComp`, `progCorte`, `progRolCausa`,
+`progEraCausa`, `progTipoCausa`, botón `btnProgConsulta`, tabla `dtaTableDetalleProgSala`.
+
+#### `webscrapthings`
+
+Los bots de ParalegApp. Selenium con la API de la versión 3 (ya retirada), persistencia en
+Django, sin licencia y sin mantención desde 2025. Un directorio `botsClave` indica que opera
+con Clave Única, o sea del lado autenticado.
+
+Es el que más pestañas cubre, y ahí está lo aprovechable:
+
+| Pestaña | Este proyecto |
+|---|---|
+| `#Historia` | sí |
+| Selector de cuadernos | sí |
+| `#Litigantes` | **no** |
+| `#Notificaciones` | **no** |
+| `#Escritos` | **no** |
+| `#Exhorto` | **no** |
+| `#Diligencias` en laboral, con descarga de PDF | **no** |
+
+Y un dato que acota la comparación: la palabra "receptor" no aparece ni una vez en sus 400 KB
+de scrapers. Cubre más pestañas, pero no la que a este proyecto le da sentido.
 
 Una comprobación que se intentó y **no** sirvió: buscar en el código de GitHub los nombres de
 los endpoints de la plataforma. La consulta de control (`oficinajudicialvirtual.pjud.cl`)
-devolvió cero, o sea el buscador no indexa bien cadenas con puntos, así que los ceros de las
-demás consultas no significan nada. Queda anotado para que nadie lo repita creyendo que mide
-algo.
+devolvió cero, o sea el buscador no indexa bien cadenas con puntos, y los ceros de las demás
+consultas no significaban nada. Queda anotado para que nadie lo repita creyendo que mide algo.
+
+### Qué se toma de cada una
+
+Lo honesto primero: **en superficie estamos muy atrás.** Una competencia contra ocho, sin
+seguimiento, sin alertas, sin documentos, sin calendario. Eso no se disimula, se anota.
+
+Lo que sí se puede sostener, y hay que sostenerlo con evidencia y no con adjetivos:
+
+| Dónde ser mejores | Por qué es sostenible |
+|---|---|
+| Las dos fechas como campos distintos y tipados | Nadie documenta esa separación. La salida es un esquema, no una pantalla: quien la consume no puede confundirlas |
+| Declarar lo que falta | `ocultas` en jurisprudencia y `ResultadosTruncados` en listados. Ninguna otra declara completitud, y la plataforma dejó de hacerlo |
+| Fallar ruidoso | Un servicio de alertas diarias que deja de parsear manda un resumen vacío que se lee como "no pasó nada". Acá eso levanta excepción |
+| Ser auditable | Código a la vista, bitácora de cada petición, y el intervalo verificado por CI. Un SaaS cerrado no permite comprobar ninguna de las tres |
+| No guardar nada de terceros | Sin cuenta, sin base de datos, sin retención bajo la Ley 21.719 |
+| Hablar MCP | Ninguna de las cuatro lo hace. La herramienta llega adentro del asistente que el abogado ya usa, no a otra pestaña más |
+
+Y lo que hay que copiar sin orgullo, en este orden, porque marca el piso de lo que un abogado
+espera:
+
+1. **Litigantes, escritos y exhortos** del detalle de causa. `webscrapthings` los cubre desde
+   2025 y son una pestaña más de la misma respuesta que ya se pide.
+2. **Programación de Sala**, el "¿cuándo me ven?". Los campos ya están mapeados arriba.
+3. **Más competencias.** Ocho contra una es la brecha más grande, y cobranza sigue siendo la
+   primera por tener actuaciones de ministro de fe.
+4. **Detección de cambios**, que ya está más abajo sin versión asignada. Es lo que vende
+   CausAlerta y lo que exige resolver antes la pregunta de retención de datos.
 
 ### El contexto gremial
 

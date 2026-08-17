@@ -17,6 +17,7 @@ divergencia salga en CI y no en el uso.
 
 import asyncio
 import re
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -231,26 +232,47 @@ RUT_DE_EMPRESAS = {
 _RUT_EN_PROSA = re.compile(r"\b(\d{1,3}(?:\.\d{3}){1,2}|\d{7,8})-([\dkK])\b")
 
 
-def test_la_documentacion_no_publica_rut_de_personas_naturales():
-    """`tests/test_fixtures.py` sólo revisa las fixtures. La documentación es igual de
-    pública, y un RUT ahí es un identificador vivo: quien lo copie saca las causas de esa
-    persona, que es el uso que `ACCEPTABLE_USE.md` rechaza.
+def _versionados() -> list[Path]:
+    """Todo lo que el repositorio publica, según git.
 
-    Ser figura pública no lo cambia. La excepción de esa ley alcanza a los datos del
+    Se le pregunta a git en vez de recorrer el disco: así no se revisan artefactos de
+    construcción ni el entorno virtual, y sobre todo no se pasa por alto un archivo nuevo
+    sólo porque su extensión no estaba en una lista escrita a mano.
+    """
+    salida = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=RAIZ, capture_output=True, text=True, check=True
+    ).stdout
+    return [RAIZ / n for n in salida.split("\0") if n]
+
+
+def test_el_repositorio_no_publica_rut_de_personas_naturales():
+    """`tests/test_fixtures.py` sólo revisa las fixtures. Todo lo demás es igual de público,
+    y un RUT ahí es un identificador vivo: quien lo copie saca las causas de esa persona, que
+    es el uso que `ACCEPTABLE_USE.md` rechaza.
+
+    Ser figura pública no lo cambia. La excepción de la Ley 21.719 alcanza a los datos del
     ejercicio de funciones públicas, no a la cédula de identidad.
+
+    La primera versión de este guardia sólo recorría las páginas de documentación, y por ese
+    hueco entró un RUT real a un archivo de test, escrito mientras se redactaba el guardia
+    mismo. Ahora mira todo lo que git publica.
     """
     #: Los ficticios son dígitos repetidos, igual que en las fixtures.
     ficticio = re.compile(r"^(\d)\1{6,7}$")
 
     encontrados = []
-    for p in PROSA:
-        for cuerpo, dv in _RUT_EN_PROSA.findall(_texto(p)):
+    for p in _versionados():
+        try:
+            texto = _texto(p)
+        except UnicodeDecodeError:
+            continue  # binarios: no llevan RUT en texto plano
+        for cuerpo, dv in _RUT_EN_PROSA.findall(texto):
             plano = cuerpo.replace(".", "")
             if ficticio.match(plano) or f"{plano}-{dv}" in RUT_DE_EMPRESAS:
                 continue
             encontrados.append(f"{p.relative_to(RAIZ)}: {cuerpo}-{dv}")
     assert not encontrados, (
-        f"RUT que no son ni ficticios ni de empresa en la documentación: {encontrados}. "
+        f"RUT que no son ni ficticios ni de empresa: {encontrados}. "
         "Para personas naturales se usa un RUT sintético; para empresas, uno real "
         "declarado en RUT_DE_EMPRESAS."
     )
@@ -258,7 +280,11 @@ def test_la_documentacion_no_publica_rut_de_personas_naturales():
 
 @pytest.mark.parametrize(
     "escrito",
-    ["16163631-2", "16.163.631-2", "9.876.543-K"],
+    # Cuerpos de dígitos repetidos, que es la convención de ficticio del proyecto. La primera
+    # versión de este test usaba un RUT con dígito verificador válido tomado del ejemplo
+    # público de un tercero: era el dato de una persona natural, quedaba versionado, y este
+    # mismo guardia no lo veía porque sólo recorre la documentación.
+    ["11111111-1", "11.111.111-1", "2.222.222-K"],
 )
 def test_el_guardia_de_rut_reconoce_las_dos_formas_de_escribirlo(escrito):
     """Un RUT casi siempre se escribe con puntos, y ésa es la forma que aparecería en la
@@ -266,3 +292,34 @@ def test_el_guardia_de_rut_reconoce_las_dos_formas_de_escribirlo(escrito):
     exactamente lo que venía a impedir."""
     cuerpo, dv = _RUT_EN_PROSA.findall(escrito)[0]
     assert cuerpo.replace(".", "") + "-" + dv == escrito.replace(".", "")
+
+
+# -- citas legales ----------------------------------------------------------------
+
+
+def test_toda_ley_citada_esta_en_la_tabla_de_normas():
+    """La suite no consulta la red por diseño, así que una cita legal no se puede verificar
+    en CI. Lo que sí se puede exigir es que exista una sola entrada con su enlace y su fecha,
+    y que nadie cite una ley que no pasó por ahí.
+
+    Sin esto, un número de ley equivocado se propaga por once archivos sin que nada lo note, y
+    una cita jurídica errada en un proyecto que decide plazos es del mismo orden de error que
+    un dato mal parseado.
+    """
+    ley = re.compile(r"Ley\s+(?:N°\s*)?(\d{1,2}\.\d{3})")
+    tabla = _texto(RAIZ / "docs" / "cumplimiento.md").split("## El antecedente")[0]
+    conocidas = set(ley.findall(tabla))
+    assert conocidas, "La tabla de normas de cumplimiento.md quedó vacía"
+
+    huerfanas = sorted(
+        {
+            f"{p.relative_to(RAIZ)}: Ley {n}"
+            for p in PROSA
+            for n in ley.findall(_texto(p))
+            if n not in conocidas
+        }
+    )
+    assert not huerfanas, (
+        f"Leyes citadas que no están en la tabla de docs/cumplimiento.md: {huerfanas}. "
+        "Se agrega ahí, con enlace a la Biblioteca del Congreso Nacional y fecha de revisión."
+    )

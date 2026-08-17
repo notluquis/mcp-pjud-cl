@@ -108,4 +108,6 @@ tests_dir = ["tests/"]
 # S101 es `assert`, que en pytest es la forma de escribir un test. S106 marca literales que
 # parecen contraseñas: acá son tokens de mentira para los dobles, y las fixtures ya se
 # revisan aparte en `test_fixtures.py`.
-"tests/*" = ["S101", "S106"]
+# S607 marca invocar un ejecutable por nombre y no por ruta absoluta. Acá se llama a `git`,
+# que viene del PATH igual que en CI, y fijar una ruta absoluta lo haría menos portable.
+"tests/*" = ["S101", "S106", "S607"]

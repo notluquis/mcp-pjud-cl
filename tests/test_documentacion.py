@@ -16,9 +16,12 @@ divergencia salga en CI y no en el uso.
 """
 
 import asyncio
+import base64
+import contextlib
 import re
 import subprocess
 import tomllib
+import urllib.parse
 from pathlib import Path
 
 import pytest
@@ -1012,6 +1015,14 @@ def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_git
     )
     assert "--notes-file" in flujo, "la publicación tiene que pasar las notas armadas"
     assert "CHANGELOG.md" in flujo, "las notas salen del CHANGELOG, que es la fuente única"
+    # Cada entrada generada viene como "* título by @autor in <enlace>". Traducir sólo los dos
+    # encabezados dejaba en inglés la mayor parte del texto, que es justo lo que se quería
+    # evitar: una página de publicación mezclando idiomas.
+    for trozo in ("por @", "en /g"):
+        assert trozo in flujo, (
+            "el flujo no traduce las atribuciones `by @autor in`, que son la mayor parte de "
+            "las notas generadas"
+        )
 
 
 def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
@@ -1028,6 +1039,16 @@ def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
     """
     for archivo in ("README.md", "docs/instalacion.md"):
         texto = _texto(RAIZ / archivo)
+        # Los botones de un clic esconden su configuración: el de VS Code va en porcentajes y
+        # el de Cursor en base64. Mirar sólo el texto plano dejaba el guardia verde mientras un
+        # botón seguía instalando la rama principal, que es lo que este cambio existe para
+        # evitar. Se decodifica todo antes de buscar.
+        for codificada in re.findall(r"config=([A-Za-z0-9+/=%]+)", texto):
+            crudo = urllib.parse.unquote(codificada)
+            texto += " " + crudo
+            with contextlib.suppress(Exception):
+                texto += " " + base64.b64decode(crudo + "===").decode("utf-8")
+
         ejemplos = re.findall(
             r"git\+https://github\.com/notluquis/mcp-pjud-cl([^\s\"',)\]]*)", texto
         )
@@ -1035,7 +1056,8 @@ def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
         sin_referencia = [e for e in ejemplos if not e.startswith("@")]
         assert not sin_referencia, (
             f"{archivo} muestra una instalación sin referencia, que toma la rama principal y "
-            "hace correr cambios sin publicar"
+            "hace correr cambios sin publicar. Ojo con los botones de un clic: esconden su "
+            "configuración codificada"
         )
 
     flujo = _texto(RAIZ / ".github" / "workflows" / "publicar.yml")

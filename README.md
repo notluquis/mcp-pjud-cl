@@ -96,7 +96,7 @@ claude mcp add pjud -e MCP_PJUD_CONTACTO=tu@correo.cl \
 
 **Cursor y VS Code**
 
-[![Instalar en Cursor](https://img.shields.io/badge/Cursor-instalar-000?logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=pjud&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL25vdGx1cXVpcy9tY3AtcGp1ZC1jbCIsIm1jcC1wanVkIl0sImVudiI6eyJNQ1BfUEpVRF9DT05UQUNUTyI6InR1QGNvcnJlby5jbCJ9fQ%3D%3D)
+[![Instalar en Cursor](https://img.shields.io/badge/Cursor-instalar-000?logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=pjud&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL25vdGx1cXVpcy9tY3AtcGp1ZC1jbEBzdGFibGUiLCJtY3AtcGp1ZCJdLCJlbnYiOnsiTUNQX1BKVURfQ09OVEFDVE8iOiJ0dUBjb3JyZW8uY2wifX0%3D)
 [![Instalar en VS Code](https://img.shields.io/badge/VS_Code-instalar-0098FF?logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=pjud&config=%7B%22name%22%3A%22pjud%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22git%2Bhttps%3A//github.com/notluquis/mcp-pjud-cl%40stable%22%2C%22mcp-pjud%22%5D%2C%22env%22%3A%7B%22MCP_PJUD_CONTACTO%22%3A%22tu%40correo.cl%22%7D%7D)
 
 Los botones dejan el correo como marcador. Edítalo en la configuración del editor, o el

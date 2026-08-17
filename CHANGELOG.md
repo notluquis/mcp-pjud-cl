@@ -54,7 +54,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   de GitHub que imprime "What's Changed" y "by X in Y", sobre un proyecto cuyo idioma es el
   español de Chile. Ahora se arman desde el tramo del CHANGELOG que corresponde a la etiqueta,
   y la lista categorizada que GitHub genera se conserva debajo, con sus dos encabezados
-  traducidos. La publicación falla si el CHANGELOG no trae la sección de esa versión, en vez de
+  traducidos, incluidas las atribuciones `by @autor in` de cada entrada, que son la mayor parte
+  del texto. La publicación falla si el CHANGELOG no trae la sección de esa versión, en vez de
   publicar una release con el cuerpo vacío.
 
 - **La búsqueda por rol no funcionaba en `suprema`, `apelaciones` ni `penal`**, que la 0.2.0

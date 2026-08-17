@@ -94,8 +94,12 @@ jobs:
           {
             echo
             echo "## Qué cambió"
-            sed -e "/^## What's Changed$/d" \
-                -e "s/^\*\*Full Changelog\*\*/**Comparación completa**/" generadas.md
+            # Tres reemplazos, no dos: cada entrada generada viene como
+            # "* título by @autor in <enlace>", así que traducir sólo los encabezados dejaba
+            # el `by` y el `in` de cada línea en inglés, que es la mayor parte del texto.
+            sed -e "/^## What's Changed\$/d" \
+                -e "s/^\\*\\*Full Changelog\\*\\*/**Comparación completa**/" \
+                -e "s/ by @\\([^ ]*\\) in / por @\\1 en /g" generadas.md
           } >> notas.md
 
       # `gh release` viene en el runner. Una acción de terceros para esto sería

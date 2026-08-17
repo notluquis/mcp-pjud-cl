@@ -9,7 +9,7 @@ ni garantía de respuesta. Dicho eso, hay un orden que funciona mejor:
 |---|---|
 | No entiendo qué significa un campo del resultado | [Discusión → Dudas de uso](https://github.com/notluquis/mcp-pjud-cl/discussions) |
 | Quiero usarlo en mi estudio y la licencia no me lo permite | [Issue → Solicitud de permiso](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose) |
-| Devolvió algo que no calza con el expediente | [Issue → Dato incorrecto](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose) — es lo más urgente que se puede reportar |
+| Devolvió algo que no calza con el expediente | [Issue → Dato incorrecto](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose). Es lo más urgente que se puede reportar |
 | Dejó de funcionar de un día para otro | [Issue → La OJV cambió](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose) |
 | No logro instalarlo | [Discusión → Instalación](https://github.com/notluquis/mcp-pjud-cl/discussions) |
 | Encontré una vulnerabilidad | [SECURITY.md](SECURITY.md), nunca un issue público |

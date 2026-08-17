@@ -1,0 +1,50 @@
+name: mutación
+
+# Testing de mutación: introduce cambios pequeños en el código y comprueba si algún
+# test se cae. Un mutante que sobrevive señala una línea que ninguna prueba vigila.
+#
+# No corre en cada pull request porque toma minutos y no debe bloquear. Corre por
+# calendario y a pedido. Su resultado se lee, no se convierte en un umbral automático:
+# hay mutantes equivalentes que no representan hueco real.
+
+on:
+  schedule:
+    - cron: "0 6 1 * *" # primer día de cada mes
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      - run: uv sync --all-groups
+
+      - name: Ejecutar mutación
+        run: uv run mutmut run || true
+
+      - name: Mutantes que sobrevivieron
+        run: |
+          echo "## Mutantes sobrevivientes" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          uv run mutmut results >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

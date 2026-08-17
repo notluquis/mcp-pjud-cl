@@ -72,7 +72,7 @@ Las tres, no dos de tres:
 
 ## Hoja de ruta
 
-### 0.2 — Paginación y varias causas
+### 0.2: paginación y varias causas
 
 El caso "busco por nombre y salen doce causas" hoy no funciona. Se procesa la primera.
 
@@ -86,7 +86,7 @@ El caso "busco por nombre y salen doce causas" hoy no funciona. Se procesa la pr
 **Riesgo conocido:** doce causas × 5 peticiones × 5 segundos = cinco minutos. Puede que la
 respuesta correcta sea devolver el listado y que el usuario elija, en vez de encadenar todo.
 
-### 0.3 — Cobranza laboral y previsional
+### 0.3: cobranza laboral y previsional
 
 La primera competencia nueva, y la elegida a propósito: `receptorCobranza.php` existe, o sea
 que también tiene actuaciones de ministro de fe, que es donde está el valor.
@@ -96,7 +96,7 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 - Parser propio si difiere
 - Ampliar `MODULOS` sólo después de verificar, nunca antes
 
-### 0.4 — Exhortos y documentos
+### 0.4: exhortos y documentos
 
 - `detalleExhortos.php`: seguimiento de exhorto de origen a destino
 - `causaOrigenCivil.php`
@@ -106,7 +106,7 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 disco. Eso cambia el perfil de retención y entra de lleno en la Ley 21.719. Probablemente
 requiera consentimiento explícito por llamada, y ruta de destino elegida por el usuario.
 
-### 0.5 — Laboral y apelaciones
+### 0.5: laboral y apelaciones
 
 Las dos competencias que siguen en volumen de uso real.
 

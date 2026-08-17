@@ -53,7 +53,7 @@ Personales, con potestad para investigar de oficio, sancionar y publicar un regi
 sanciones. Las multas llegan a 20.000 UTM, o 4% de los ingresos anuales en caso de
 reincidencia.
 
-Los datos que devuelve esta herramienta —nombres, RUT, roles, actuaciones— son **datos
+Los datos que devuelve esta herramienta (nombres, RUT, roles, actuaciones) son **datos
 personales de terceros**, aunque provengan de una fuente pública. Que sean públicos no los
 saca del ámbito de la ley.
 

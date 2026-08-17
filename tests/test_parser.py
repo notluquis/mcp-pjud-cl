@@ -208,3 +208,42 @@ def test_el_modelo_serializa_fechas_en_iso():
     volcado = a.model_dump(mode="json")
     assert volcado["fecha_diligencia"] == "2026-06-09"
     assert volcado["hora_diligencia"] == "08:05:00"
+
+
+# --- huecos detectados por testing de mutación ---------------------------------
+
+
+def test_la_descripcion_sola_da_la_fecha_cuando_no_hay_parentesis():
+    """Espejo de test_el_parentesis_por_si_solo_da_la_fecha_de_diligencia.
+
+    Toda fila del fixture real trae las dos fuentes, así que ninguna ejercitaba el
+    respaldo: cuando 'Fec. Trámite' viene sin paréntesis, la fecha debe salir del
+    'Diligencia:' de la descripción. Un mutante que anulaba ese respaldo sobrevivía.
+    """
+    doc = _historia(_fila("EMBARGO (Exitosa) Diligencia:31/03/2026 10:34", "01/04/2026"))
+    a = actuaciones_receptor(doc)[0]
+    assert a.fecha_diligencia == date(2026, 3, 31)
+    assert a.fecha_registro == date(2026, 4, 1)
+    assert a.hora_diligencia == time(10, 34)
+    assert not a.discrepancia_fechas
+
+
+def test_detecta_si_el_folio_trae_documento():
+    con_doc = '<form action="docuN.php"><input name="dtaDoc" value="x"></form>'
+    fila = (
+        f"<tr><td>1</td><td>{con_doc}</td><td></td><td>Exhorto</td>"
+        f"<td>Actuación Receptor</td><td>X</td><td>22/06/2026</td><td>0</td><td></td></tr>"
+    )
+    assert actuaciones_receptor(_historia(fila))[0].tiene_documento is True
+
+
+def test_sin_documento_se_reporta_como_false():
+    a = actuaciones_receptor(_historia(_fila("X", "22/06/2026")))[0]
+    assert a.tiene_documento is False
+
+
+def test_hora_imposible_no_revienta_la_fila():
+    """25:99 no es una hora. La fila igual debe entregar su fecha."""
+    a = actuaciones_receptor(_historia(_fila("X Diligencia:31/03/2026 25:99", "01/04/2026")))[0]
+    assert a.fecha_diligencia == date(2026, 3, 31)
+    assert a.hora_diligencia is None

@@ -5,42 +5,89 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Lunes 12:00 UTC. No prueba contra el Poder Judicial: sólo detecta que una
-    # dependencia nueva rompa el parser sobre las fixtures guardadas.
+    # Lunes 12:00 UTC. No consulta al Poder Judicial: sólo detecta que una dependencia
+    # nueva rompa el parser sobre las fixtures guardadas.
     - cron: "0 12 * * 1"
 
-permissions:
-  contents: read
+# Sin permisos por defecto. Cada job pide sólo lo que necesita.
+permissions: {}
+
+# Un push nuevo cancela la corrida anterior de la misma rama.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      # Registra todo el tráfico saliente del runner. Para este proyecto no es sólo
+      # higiene: la promesa es que CI nunca consulta al Poder Judicial, y esto lo deja
+      # auditable en vez de pedir que se confíe en la palabra.
+      #
+      # Siguiente paso, una vez que una corrida muestre los destinos reales: pasar a
+      # egress-policy: block con la lista explícita. Se parte en audit porque block con
+      # una lista adivinada rompe CI sin aportar nada.
+      - name: Auditar tráfico saliente
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # El job no hace push. Sin esto, el token queda escrito en .git/config y
+          # cualquier paso posterior podría usarlo.
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
 
       - run: uv sync --all-groups
 
-      # Los tests corren contra HTML real guardado en tests/fixtures/.
-      # Ninguno consulta al Poder Judicial: CI nunca genera tráfico a la plataforma.
+      # Los tests corren contra HTML real guardado en tests/fixtures/. Ninguno consulta
+      # al Poder Judicial: CI nunca genera tráfico a la plataforma.
       - name: Tests
         run: uv run pytest -v
 
       - name: Lint
         run: uv run ruff check .
 
+      - name: Documentación
+        run: uv run sphinx-build -b html docs docs/_build/html
+
+  workflows:
+    name: Analizar los propios workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Busca inyección de plantillas, acciones sin fijar, disparadores peligrosos y
+      # permisos excesivos en los workflows de este mismo repositorio.
+      - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+
   sin-escritura:
     name: Verificar que no exista código de escritura
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # La garantía central del proyecto es que no puede escribir en los sistemas del
-      # Poder Judicial. Esto lo verifica mecánicamente en cada PR, en vez de confiar en
-      # que alguien lo revise.
+      # Poder Judicial. Esto lo verifica en cada cambio, en vez de confiar en la revisión.
       - name: Buscar endpoints de ingreso de escritos
         run: |
           if grep -rniE 'ingresoCausas|ingresoEscrito|subirEscrito|presentarEscrito' \
@@ -58,8 +105,8 @@ jobs:
           }
           echo "Intervalo mínimo intacto."
 
-      # La anonimización de las fixtures la cubre tests/test_fixtures.py, que corre en el job
-      # de arriba. Se hizo en Python y no en grep a propósito: la primera versión usaba una
-      # retro-referencia que el grep local no soporta, el comando erraba, y la salida vacía
-      # se leía como "sin hallazgos". Un guardia que no puede fallar imprime lo mismo que uno
-      # que protege.
+      # La anonimización de las fixtures la cubre tests/test_fixtures.py, en el job de
+      # arriba. Se hizo en Python y no en grep a propósito: la primera versión usaba una
+      # retro-referencia que el grep local no soporta, el comando erraba, y la salida
+      # vacía se leía como "sin hallazgos". Un guardia que no puede fallar imprime lo
+      # mismo que uno que protege.

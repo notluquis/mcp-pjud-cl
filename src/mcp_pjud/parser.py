@@ -34,7 +34,7 @@ COLUMNAS = [
 _FECHA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 # "22/06/2026 (18/06/2026)" -> registro y, entre paréntesis, diligencia.
 _FEC_TRAMITE = re.compile(r"(\d{2}/\d{2}/\d{4})(?:\s*\(\s*(\d{2}/\d{2}/\d{4})\s*\))?")
-# "...Diligencia:18/06/2026 09:00" — la hora es opcional.
+# "...Diligencia:18/06/2026 09:00": la hora es opcional.
 _DILIGENCIA = re.compile(r"Diligencia:\s*(\d{2}/\d{2}/\d{4})(?:\s+(\d{1,2}):(\d{2}))?", re.I)
 
 

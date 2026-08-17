@@ -1,6 +1,6 @@
 """Cliente HTTP de la consulta pública de causas.
 
-Solo lectura. No existe —ni desactivado— código que ingrese, modifique o elimine
+Solo lectura. No existe código, ni siquiera desactivado, que ingrese, modifique o elimine
 información en los sistemas del Poder Judicial.
 
 Sobre el ritmo de las consultas: las condiciones de uso de la Oficina Judicial Virtual

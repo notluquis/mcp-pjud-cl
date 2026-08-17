@@ -12,13 +12,30 @@ Esta herramienta **solo consulta información pública**. No permite el ingreso 
 demandas ni ninguna otra operación de escritura. No existe código para hacerlo, ni siquiera
 desactivado.
 
-## El problema, en una tabla
+## Qué resuelve
 
-El ebook que descarga la Oficina Judicial Virtual **omite las actuaciones del receptor**. Esas
-actuaciones traen la fecha en que el ministro de fe practicó realmente la diligencia —la que
-corre los plazos— y suele diferir de la fecha en que el trámite se registró en el sistema.
+Consulta cualquier causa civil pública y devuelve sus **actuaciones del ministro de fe con la
+fecha real de diligencia**, que es la que corre los plazos procesales.
 
-Caso real, C-1156-2026 del 2º Juzgado Civil de Concepción:
+Ese dato no viene en el ebook que entrega la Oficina Judicial Virtual, y en la interfaz web
+aparece en un formato que se presta a confusión:
+
+```
+Fec. Trámite:  31/03/2026 (27/03/2026)
+                registro    diligencia  ← ésta corre los plazos
+```
+
+Las dos fechas comparten una celda y sólo la del paréntesis corre plazos. Acá salen como campos
+separados y nombrados, en ISO 8601, para que nadie tenga que inferirlas.
+
+A eso se suman dos cosas que a mano se pasan por alto: **se recorren todos los cuadernos** (la
+interfaz muestra uno a la vez, y en una causa ejecutiva el de apremio contiene el requerimiento
+de pago y el embargo), y **se marcan las contradicciones** cuando las dos fuentes de fecha del
+sitio no coinciden.
+
+### Ejemplo con una causa real
+
+C-1156-2026 del 2º Juzgado Civil de Concepción, seis actuaciones en dos cuadernos:
 
 | Cuaderno | Folio | Trámite | Diligencia | Registro | Días |
 |---|---|---|---|---|---|
@@ -26,15 +43,8 @@ Caso real, C-1156-2026 del 2º Juzgado Civil de Concepción:
 | Apremio | 2 | Requerimiento de Pago (Ficto) | **30/03/2026 10:31** | 31/03/2026 | 1 |
 | Apremio | 3 | EMBARGO (Exitosa) | **31/03/2026 10:34** | 01/04/2026 | 1 |
 
-En la web esas fechas aparecen así, y hay que saber leerlas:
-
-```
-Fec. Trámite:  31/03/2026 (27/03/2026)
-                registro    diligencia  ← ésta corre los plazos
-```
-
-Esta herramienta las entrega como campos separados y nombrados, para que nadie tenga que
-inferirlas de un paréntesis.
+Leer sólo el cuaderno que la web abre por defecto habría devuelto las tres del principal y
+ninguna del apremio.
 
 ## Por dónde empezar
 

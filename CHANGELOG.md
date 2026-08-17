@@ -16,9 +16,33 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-Nada todavía.
+### Agregado
 
-## [0.1.0] — 2026-08-16
+- Acuerdo de contribución ([CLA.md](CLA.md)) redactado contra la Ley 17.336: los pull requests
+  quedan abiertos sin exigir cesión de derechos ni renuncia a derechos morales.
+- Financiamiento, con la aclaración de que donar no otorga licencia comercial.
+- Análisis estático de los propios workflows con zizmor, y auditoría del tráfico saliente del
+  runner con harden-runner. Esto último deja verificable la promesa de que CI nunca consulta al
+  Poder Judicial.
+- Testing de mutación con mutmut, mensual y a pedido.
+- Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
+  sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
+  hora inválida.
+
+### Cambiado
+
+- Todas las acciones de CI fijadas por SHA de commit en vez de etiqueta. Una etiqueta se puede
+  mover; un SHA no. En `setup-uv` además dejó de ser opcional: desde su v8 no publican
+  etiquetas de versión mayor.
+- `permissions: {}` por defecto en los workflows, con permisos por job.
+- `persist-credentials: false` en los checkout, que no hacen push.
+
+### Corregido
+
+- El piso de `mcp` decía `>=1.12`, pero el código usa `MCPServer`, que existe desde la 2.0. Con
+  una 1.x el servidor no arrancaba.
+
+## [0.1.0] - 2026-08-16
 
 Primera versión. Cubre lo mínimo que justifica el proyecto: exponer las actuaciones del
 receptor con la fecha de diligencia correcta.

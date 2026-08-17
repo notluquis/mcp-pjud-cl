@@ -9,8 +9,8 @@ Cuando descargas el ebook de una causa desde la Oficina Judicial Virtual, **no v
 actuaciones del receptor**. En un caso real, el folio 12 de un cuaderno de apremio aparecía
 en el ebook como una sola línea que decía "validación", sin fecha de diligencia.
 
-La fecha real de esa diligencia —la que determina si un plazo de cuatro u ocho días se cumple
-o se pierde— sólo está visible en la interfaz web, y sólo si sabes dónde mirar.
+La fecha real de esa diligencia, la que determina si un plazo de cuatro u ocho días se cumple
+o se pierde, sólo está visible en la interfaz web, y sólo si sabes dónde mirar.
 
 Esta herramienta va a buscar esa información y te la entrega con las fechas separadas y
 etiquetadas.
@@ -41,7 +41,7 @@ campos aparte. No hay que interpretar ningún paréntesis.
 
 :::{note}
 Las fechas se entregan en formato **ISO 8601** (`2026-03-27`, año-mes-día) y no en formato
-chileno. Es deliberado: `06/09/2026` es ambiguo —¿6 de septiembre o 9 de junio?— y acá
+chileno. Es deliberado: `06/09/2026` es ambiguo (¿6 de septiembre o 9 de junio?) y acá
 confundirse cuesta un plazo.
 :::
 

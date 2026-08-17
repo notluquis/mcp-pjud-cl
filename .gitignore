@@ -28,3 +28,7 @@ capturas/
 
 # El mapeo de anonimizacion nunca se versiona: publicarlo desharia la anonimizacion.
 tests/fixtures/mapeo.local.json
+
+# Directorio de trabajo de mutmut.
+mutants/
+.mutmut-cache

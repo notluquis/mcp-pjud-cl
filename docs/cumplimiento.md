@@ -88,7 +88,7 @@ Multas de hasta **20.000 UTM**, o **4% de los ingresos anuales** en caso de rein
 
 ### Por qué te afecta
 
-Los datos que devuelve esta herramienta —nombres, RUT, roles, actuaciones— son **datos
+Los datos que devuelve esta herramienta (nombres, RUT, roles, actuaciones) son **datos
 personales de terceros**. Que provengan de una fuente pública no los saca del ámbito de la ley.
 
 **El software no persiste nada**: consulta y devuelve. Esa decisión es de diseño y es la razón

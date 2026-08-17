@@ -1,6 +1,6 @@
 # Acuerdo de contribución
 
-**Versión 1.0 — 16 de agosto de 2026**
+**Versión 1.0, 16 de agosto de 2026**
 
 Este acuerdo permite que contribuyas al proyecto sin renunciar a la propiedad de tu trabajo, y
 permite al proyecto usar tu contribución sin quedar atado a un solo licenciamiento.
@@ -17,8 +17,8 @@ Intelectual. Las decisiones de estructura y su fundamento están en la sección
 
 **Titular**: Lucas Pulgar Escobar, titular de los derechos de autor sobre el Proyecto.
 
-**Contribución**: cualquier obra original que envíes al Proyecto — código, documentación,
-fixtures, configuración— por pull request o cualquier otro medio.
+**Contribución**: cualquier obra original que envíes al Proyecto (código, documentación,
+fixtures, configuración) por pull request o cualquier otro medio.
 
 **Tú**: la persona natural o jurídica que envía una Contribución.
 
@@ -172,8 +172,8 @@ eso significaría abrir la puerta a que cualquiera distribuya su propia versión
 exactamente lo que el Proyecto no quiere.
 
 La salida es que el Titular otorgue un permiso adicional, acotado a preparar contribuciones.
-La licencia queda intacta y auditable —es PolyForm Strict sin una coma cambiada, lo que
-importa si el área legal de tu organización necesita revisarla— y el permiso vive en un
+La licencia queda intacta y auditable (es PolyForm Strict sin una coma cambiada, lo que
+importa si el área legal de tu organización necesita revisarla) y el permiso vive en un
 documento aparte.
 
 ### Lo que este diseño NO resuelve

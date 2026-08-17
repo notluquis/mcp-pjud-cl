@@ -18,11 +18,32 @@ existe código para hacerlo, ni siquiera desactivado.
 
 ## Qué resuelve
 
-El ebook que descarga la Oficina Judicial Virtual **omite las actuaciones del receptor**. Esas
-actuaciones traen la fecha en que el ministro de fe practicó realmente la diligencia —la que
-corre los plazos procesales— y suele diferir de la fecha en que el trámite se registró.
+Consulta cualquier causa civil pública y devuelve sus **actuaciones del ministro de fe con la
+fecha real de diligencia**, que es la que corre los plazos procesales.
 
-Caso real, C-1156-2026 del 2º Juzgado Civil de Concepción:
+Ese dato no viene en el ebook que entrega la Oficina Judicial Virtual, y en la interfaz web
+aparece en un formato que se presta a confusión:
+
+```
+Fec. Trámite:  31/03/2026 (27/03/2026)
+                registro    diligencia
+```
+
+Las dos fechas van juntas en una celda y sólo la del paréntesis corre plazos. Acá salen como
+campos separados y en ISO 8601, más una marca cuando las dos fuentes del sitio se contradicen.
+
+Tres cosas que hace y que a mano se pasan por alto:
+
+| Qué | Por qué importa |
+|---|---|
+| Separa las dos fechas | `fecha_diligencia` y `fecha_registro` como campos distintos, en vez de un texto con paréntesis que hay que interpretar |
+| Recorre todos los cuadernos | La interfaz muestra uno a la vez. En una causa ejecutiva, el cuaderno de apremio es el que contiene el requerimiento de pago y el embargo |
+| Marca las contradicciones | Si el paréntesis y el `Diligencia:` de la descripción no coinciden, lo informa en vez de elegir una |
+
+<details>
+<summary>Ejemplo con una causa real</summary>
+
+C-1156-2026 del 2º Juzgado Civil de Concepción, seis actuaciones repartidas en dos cuadernos:
 
 | Cuaderno | Folio | Trámite | Diligencia | Registro |
 |---|---|---|---|---|
@@ -30,12 +51,10 @@ Caso real, C-1156-2026 del 2º Juzgado Civil de Concepción:
 | Apremio | 2 | Requerimiento de Pago (Ficto) | **30/03/2026 10:31** | 31/03/2026 |
 | Apremio | 3 | EMBARGO (Exitosa) | **31/03/2026 10:34** | 01/04/2026 |
 
-En la web eso aparece como `31/03/2026 (27/03/2026)` y hay que saber que la del paréntesis es
-la que cuenta. Acá vienen como campos separados y en ISO 8601.
+Leer sólo el cuaderno que la web abre por defecto habría devuelto las tres del principal y
+ninguna del apremio.
 
-**Se recorren todos los cuadernos.** La interfaz muestra uno a la vez, así que leer el que
-viene por defecto omitía el requerimiento de pago y el embargo: justo las diligencias que
-corren plazos en un juicio ejecutivo.
+</details>
 
 ## Licencia: léela antes de usarlo
 
@@ -66,9 +85,9 @@ versión.
 
 [mcp-pjud-cl.readthedocs.io](https://mcp-pjud-cl.readthedocs.io), con dos entradas separadas:
 
-- **[Para abogados](https://mcp-pjud-cl.readthedocs.io/es/latest/para-abogados.html)** — qué
+- **[Para abogados](https://mcp-pjud-cl.readthedocs.io/es/latest/para-abogados.html)**: qué
   resuelve, cómo leer los resultados, qué no hace. Sin código.
-- **[Para informática](https://mcp-pjud-cl.readthedocs.io/es/latest/para-informatica.html)** —
+- **[Para informática](https://mcp-pjud-cl.readthedocs.io/es/latest/para-informatica.html)**:
   instalación, arquitectura, controles de uso responsable.
 
 Además: [referencia de herramientas](https://mcp-pjud-cl.readthedocs.io/es/latest/herramientas.html),
@@ -112,8 +131,8 @@ En `claude_desktop_config.json`:
 ## Uso responsable
 
 - **Una consulta cada 5 segundos como mínimo.** No es configurable hacia abajo. Es la cláusula
-  CUARTA de las condiciones de uso de la Oficina Judicial Virtual —que prohíbe sobrecargar el
-  portal— implementada en código.
+  CUARTA de las condiciones de uso de la Oficina Judicial Virtual, que prohíbe sobrecargar el
+  portal, implementada en código.
 - **Detención total ante 403, 429 o captcha.** Sin reintento, sin rotación de IP, sin evasión.
 - **Sin persistencia.** Se consulta y se devuelve.
 - **Bitácora de peticiones** en memoria, para acreditar uso razonable.

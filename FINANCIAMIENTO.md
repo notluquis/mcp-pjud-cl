@@ -43,7 +43,7 @@ operación: cero.**
 
 Así que una donación no cubre costos, financia tiempo. En orden de lo que más falta:
 
-1. **Verificar competencias nuevas.** Cada competencia —cobranza, laboral, apelaciones— exige
+1. **Verificar competencias nuevas.** Cada competencia (cobranza, laboral, apelaciones) exige
    capturar causas reales, entender su estructura, escribir un parser y verificar contra
    expedientes. Es donde está el trabajo pendiente.
 2. **Responder cuando la plataforma cambie.** Va a pasar, y cuando pase alguien tiene que

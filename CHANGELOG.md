@@ -77,6 +77,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Las fixtures traían 87 JWT de la plataforma. Caducan a los 30 minutos y no sirven de
+  credencial, pero su carga va cifrada y probablemente codifica identificadores de la misma
+  causa cuyos nombres y RUT ya se habían anonimizado, así que dejarlos era incoherente.
+  Reemplazados por referencias ficticias, con un test que impide reintroducirlos.
 - La nota sobre el pin de `github/codeql-action` atribuía mal la causa. `codeql-bundle-v2.26.3`
   sí apunta a ese SHA, pero ese commit **es** de la acción, de época v4; el tag `v2.26.3` de la
   acción apunta a otro. El defecto era un comentario de versión que no correspondía al SHA.

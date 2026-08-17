@@ -16,6 +16,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 _RUT = re.compile(r"\b(\d{7,8})-([\dkK])\b")
 _IDENTIFICADOR_ABOGADO = re.compile(r"\b[A-ZÁÉÍÓÚÑ]{4,}\d{7,8}\b")
+_JWT = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}")
 
 #: Los RUT ficticios son dígitos repetidos: 11111111-1, 22222222-2, etc.
 _FICTICIO = re.compile(r"^(\d)\1{6,7}$")
@@ -111,5 +112,24 @@ def test_los_nombres_de_las_fixtures_son_los_ficticios():
                 inesperados.setdefault(archivo.name, set()).add(nombre)
     assert not inesperados, (
         f"Nombres que no son ficticios en las fixtures: {inesperados}. "
+        "Corre: uv run python tests/fixtures/anonimizar.py"
+    )
+
+
+def test_sin_jwt_de_la_plataforma():
+    """Las respuestas traen JWT como referencia opaca de causa, cuaderno o documento.
+
+    Caducan a los 30 minutos, así que no sirven de credencial, pero su carga va cifrada y
+    probablemente codifica identificadores de la misma causa cuyos nombres y RUT ya se
+    anonimizaron. Además los detectores de secretos los marcan en cada revisión, lo que
+    entrena a ignorar alertas.
+    """
+    encontrados = {}
+    for archivo in _archivos():
+        hallados = _JWT.findall(archivo.read_text(encoding="utf-8"))
+        if hallados:
+            encontrados[archivo.name] = len(hallados)
+    assert not encontrados, (
+        f"JWT de la plataforma en fixtures: {encontrados}. "
         "Corre: uv run python tests/fixtures/anonimizar.py"
     )

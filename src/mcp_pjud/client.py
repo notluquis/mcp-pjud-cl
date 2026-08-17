@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 import threading
 import time
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version_instalada
 
 import httpx
 
@@ -31,6 +33,20 @@ from .parser import (
     siguiente_pagina,
     total_declarado,
 )
+
+#: La versión que se identifica ante el Poder Judicial, leída del paquete instalado.
+#:
+#: Estaba escrita a mano en el User-Agent y se quedó en `0.1` mientras el paquete iba en otra:
+#: cada petición se identificaba como una versión que no era. No es cosmético. La regla 2 de
+#: este proyecto exige un agente identificable, y ese header es la única forma que tiene la
+#: institución de saber qué software la está consultando y a quién reclamarle.
+#:
+#: Cuando el paquete no está instalado (un árbol de fuentes suelto) se dice `desconocida` en
+#: vez de inventar un número: un agente honesto vale más que uno preciso y falso.
+try:
+    VERSION = _version_instalada("mcp-pjud")
+except PackageNotFoundError:  # pragma: no cover - sólo fuera de una instalación
+    VERSION = "desconocida"
 
 BASE = "https://oficinajudicialvirtual.pjud.cl"
 PORTADA = "https://www.pjud.cl/"
@@ -202,7 +218,7 @@ class Transporte:
         self.intervalo = intervalo
         self._http = httpx.Client(
             headers={
-                "User-Agent": f"mcp-pjud/0.1 (+contacto: {contacto})",
+                "User-Agent": f"mcp-pjud/{VERSION} (+contacto: {contacto})",
                 "Accept-Language": "es-CL,es;q=0.9",
             },
             follow_redirects=True,

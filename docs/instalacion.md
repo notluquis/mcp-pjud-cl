@@ -22,7 +22,7 @@ MCP_PJUD_CONTACTO="informatica@estudio.cl"
 Sin ella el servidor **no arranca**. Ese correo viaja en el `User-Agent` de cada petición:
 
 ```
-User-Agent: mcp-pjud/0.1 (+contacto: informatica@estudio.cl)
+User-Agent: mcp-pjud/0.2.0 (+contacto: informatica@estudio.cl)
 ```
 
 Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No hay
@@ -117,7 +117,7 @@ El transporte es stdio. No abre puertos ni escucha en la red.
 razonable en un entorno de trabajo:
 
 ```
-"args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.1.0", "mcp-pjud"]
+"args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.2.0", "mcp-pjud"]
 ```
 
 ### Desde un clon, para desarrollar

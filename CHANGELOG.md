@@ -21,6 +21,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 Primera versión publicada. La `0.1.0` de abajo quedó documentada pero nunca llegó a tener
 etiqueta, así que su enlace apuntaba a una publicación que no existía: ahora apunta al commit.
 
+Preparándola aparecieron cuatro copias de la versión escritas a mano, todas atrasadas. La que
+importa es el **User-Agent**: cada petición se identificaba ante el Poder Judicial como
+`mcp-pjud/0.1`. La regla 2 de este proyecto exige un agente identificable, y esa cadena es lo
+único que tiene la institución para saber qué software la consulta. Ahora sale del paquete
+instalado. Las otras tres (la instalación fijada del README y de la guía, que apuntaban a una
+etiqueta inexistente, y `CITATION.cff`) siguen escritas a mano, con un guardia que las ata.
+
 ### Agregado
 
 - Búsqueda de causas en **Corte Suprema** y **Cortes de Apelaciones**, con sus cuatro

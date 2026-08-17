@@ -117,7 +117,7 @@ servidor falla con un mensaje que te lo recuerda.
 ```
 
 El transporte es stdio: no abre puertos ni escucha en la red. Para fijar una versión, agrega
-`@v0.1.0` al final de la URL de git.
+`@v0.2.0` al final de la URL de git.
 
 ## Herramientas
 

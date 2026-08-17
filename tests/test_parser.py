@@ -12,6 +12,7 @@ import pytest
 
 from mcp_pjud.parser import (
     COMPETENCIAS,
+    Competencia,
     EstructuraInesperada,
     actuaciones_receptor,
     parse_cuadernos,
@@ -353,3 +354,27 @@ def test_leer_un_listado_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():
     # Y al revés no alcanza: laboral tiene menos celdas de las que cobranza declara.
     with pytest.raises(EstructuraInesperada, match="celdas"):
         parse_resultados(LABORAL, "cobranza")
+
+
+def test_no_se_puede_declarar_el_panel_de_historia_sin_sus_columnas():
+    """Las tres cosas viajan juntas en `Historia` a propósito.
+
+    Antes el sufijo del panel estaba en la tabla y las columnas seguían clavadas a civil, así
+    que poner `panel="Cob"` habría corrido las filas de cobranza por el mapa de nueve columnas
+    de civil: `Estado Firma` en `foja`, la georreferencia leída de otra celda. Lo único que lo
+    impedía era que civil exige el encabezado `georref.`, que cobranza no trae, o sea una
+    protección accidental. Ahora es imposible por construcción.
+    """
+    # Se comprueba sobre la forma del tipo y no llamándolo mal: `ty` caza la llamada inválida
+    # antes de que se ejecute, así que un test que la escriba rompe el chequeo de tipos.
+    assert "panel" not in Competencia._fields, (
+        "volvió a existir un campo `panel` suelto, que se puede declarar sin las columnas"
+    )
+    assert "historia" in Competencia._fields
+
+    # Y la de civil declara las tres.
+    civil = COMPETENCIAS["civil"].historia
+    assert civil is not None
+    assert civil.panel == "Civ"
+    assert "georref" in civil.columnas
+    assert "georref." in civil.encabezados

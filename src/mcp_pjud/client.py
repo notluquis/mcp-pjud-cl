@@ -615,7 +615,7 @@ class PjudClient(Transporte):
                 "no tiene respuesta ahí, y devolver una lista vacía se leería como que no "
                 "hubo actuaciones."
             )
-        if spec.panel is None:
+        if spec.historia is None:
             raise ValueError(
                 f"No está verificado cómo se lee la historia de {competencia!r}. Se rechaza "
                 "antes de consultar en vez de leerla con el mapa de otra competencia, que "

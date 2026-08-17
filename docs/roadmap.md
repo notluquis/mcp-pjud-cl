@@ -49,10 +49,10 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
 rechaza en vez de adivinar sus parámetros:
 
-- El **detalle** de `suprema`, `apelaciones`, `laboral` y `penal`: `causaSuprema.php`,
-  `causaApelaciones.php`, `causaLaboral.php`, `causaPenal.php`. Sus búsquedas sí están
-  verificadas, que no es lo mismo: por eso las cuatro declaran `historia=None` y pedirles
-  actuaciones se rechaza
+- El **detalle** de `suprema`, `apelaciones` y `penal`: `causaSuprema.php`,
+  `causaApelaciones.php`, `causaPenal.php`. Sus búsquedas sí están verificadas, que no es lo
+  mismo: por eso declaran `historia=None` y pedirles actuaciones se rechaza. El de `laboral`
+  ya se midió y está en 0.8
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
@@ -118,10 +118,17 @@ sitio deshabilita (`conTipoCausa`, `conCorte`, `conTribunal`), y que faltaba un 
 en `conTipoCausa`. **Las dos cosas eran falsas.** El combo de libros existe
 (`json/cmbTipos.php`) y devuelve cero bytes para suprema, y la búsqueda anda igual con o sin
 los campos deshabilitados. Faltaba `radio-group`, el radio RIT/RUC del formulario, en el que su
-PHP se ramifica para saber por cuál de los dos se busca. Las otras cuatro competencias lo
-toleran ausente.
+PHP se ramifica para saber por cuál de los dos se busca.
 
 Se encontró bisectando desde el juego de campos que fallaba, no leyendo más JavaScript.
+
+**Y el arreglo salió incompleto, que es la parte que conviene no olvidar.** `radio-group`
+desbloqueó a suprema y apelaciones, pero `penal` tiene su propio radio (`radio-groupPenal`) y
+siguió rota; las tres se declararon verificadas y se publicaron así en la 0.2.0. La causa es
+una sola: se midieron con peticiones armadas a mano y los tests usan dobles, así que nada
+ejercitó `buscar_por_rit` contra la plataforma. Verificar la petición no es verificar el
+cliente. Los campos propios de cada competencia salen ahora de la tabla, con un test que
+compara el formulario enviado contra lo que ella declara.
 
 **Lo que sigue pendiente es lo que da valor**, y es más chico de lo que parecía:
 
@@ -191,6 +198,32 @@ requiera consentimiento explícito por llamada, y ruta de destino elegida por el
 
 ### 0.8: el detalle de las competencias ya buscables
 
+De las cuatro, `laboral` ya está medida y el resultado acota el trabajo:
+
+| Qué | Medido |
+|---|---|
+| Panel de historia | `movimientoLab`, no `historiaLab` |
+| Columnas | Como civil, pero con `Estado` donde civil pone `Foja` |
+| Fechas dobles | **ninguna** en las 26 filas |
+| La palabra "receptor" | **cero veces** en toda la respuesta |
+| Paneles propios | `litigantesLab`, `notificacionesLab`, `diligenciasLab` (vacío), `liquidacionLab`, `materiasLab`, `EscPendLab` |
+
+O sea laboral confirma lo que la tabla ya declaraba: no tiene ministro de fe. Mapear su
+historia no se hace todavía, porque el único consumidor de `historia` es
+`actuaciones_receptor`, que exige `receptor=True`: una entrada de tabla que nada lee es una
+rama sin test por construcción.
+
+**Detalle medido:** `laboral`.
+
+Faltan `suprema`, `apelaciones` y `penal`. Ojo con el payload: el sitio manda `tokenCaptcha`
+para las cuatro y `token` sólo para civil y cobranza, aunque en laboral se midió que las dos
+formas devuelven lo mismo.
+
+La línea de arriba no es decorativa: `tests/test_documentacion.py` la lee para exigir que una
+competencia con el detalle medido NO siga apareciendo entre las rutas sin ejecutar, y que las
+que faltan sí aparezcan. Las dos afirmaciones ya se habían separado una vez.
+
+
 Verificar la búsqueda no verifica el detalle, y hoy son cosas separadas a propósito:
 `suprema`, `apelaciones`, `laboral` y `penal` declaran `historia=None`, así que pedirles
 actuaciones se rechaza en vez de adivinar el panel.
@@ -200,8 +233,7 @@ identificador del panel de historia, el orden y el nombre de sus columnas, y si 
 actuaciones de ministro de fe. Lo último manda: sin receptor, el detalle de esa competencia no
 responde la pregunta del proyecto por más que sus rutas estén mapeadas.
 
-Rutas mapeadas y sin ejecutar: `causaSuprema.php`, `causaApelaciones.php`, `causaLaboral.php`,
-`causaPenal.php`.
+Rutas mapeadas y sin ejecutar: `causaSuprema.php`, `causaApelaciones.php`, `causaPenal.php`.
 
 ### 0.9: familia
 

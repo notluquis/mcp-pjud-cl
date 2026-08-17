@@ -16,6 +16,62 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- **Rama `stable`, que apunta siempre a la última versión publicada.** La instalación que la
+  documentación mostraba no fijaba nada, y `uvx --from git+...` sin referencia toma la rama
+  principal: quien la seguía corría cambios sin publicar sin forma de notarlo, porque nada en
+  la salida distingue una versión publicada de la rama principal. En una herramienta que se usa
+  para computar plazos eso es exactamente al revés de lo que conviene.
+
+  El flujo de publicación la avanza a cada etiqueta, y sólo después de crear la versión sin
+  errores: si una publicación falla, `stable` se queda donde estaba y quien instale sigue en la
+  anterior, que es la que funciona. Se mueve sin `force`, porque avanzarla es siempre un avance
+  y retroceder a la gente en silencio sería peor que fallar.
+
+### Corregido
+
+- **Seis datos que se escribían a mano en dos lugares y podían separarse sin que nada avisara.**
+  Cada uno queda con su guardia, y los seis se vieron en rojo:
+
+  | Dato | Estaba | Ahora |
+  |---|---|---|
+  | Versión de Python | En `pyproject.toml` y en dos guías | Las guías se comparan contra `requires-python` |
+  | `MCP_PJUD_CONTACTO` | En el código y en tres páginas | El nombre sale del código que lo lee |
+  | Licencia | En `pyproject.toml` y en `CITATION.cff` | Se comparan |
+  | Revisión del protocolo MCP | Escrita a mano | Se compara contra `LATEST_PROTOCOL_VERSION` del SDK |
+  | Cuántos buscadores están verificados | Contados a mano en la referencia | Se comparan contra `BUSCADORES` |
+  | Descripción del servidor MCP | Sin declarar | Sale de la metadata del paquete |
+
+
+- **El servidor MCP se presentaba sin versión.** La especificación exige desde la revisión
+  2026-07-28 implementar `server/discover`, donde viaja `serverInfo` con nombre y versión, y la
+  nuestra iba en su valor por defecto: vacía. Es el mismo descuido que el User-Agent tenía con
+  el Poder Judicial, y ahora sale de la misma fuente única. Se declaran además el título y la
+  dirección de la documentación, que la misma respuesta publica.
+
+- **Las notas de la publicación salían en inglés.** `--generate-notes` usa una plantilla fija
+  de GitHub que imprime "What's Changed" y "by X in Y", sobre un proyecto cuyo idioma es el
+  español de Chile. Ahora se arman desde el tramo del CHANGELOG que corresponde a la etiqueta,
+  y la lista categorizada que GitHub genera se conserva debajo, con sus dos encabezados
+  traducidos, incluidas las atribuciones `by @autor in` de cada entrada, que son la mayor parte
+  del texto. La publicación falla si el CHANGELOG no trae la sección de esa versión, en vez de
+  publicar una release con el cuerpo vacío.
+
+- **La búsqueda por rol no funcionaba en `suprema`, `apelaciones` ni `penal`**, que la 0.2.0
+  anuncia como verificadas. Suprema y apelaciones respondían "Por favor ingrese sólo números
+  para el Tipo de Búsqueda" y penal devolvía un cuerpo sin listado ni aviso: al formulario le
+  faltaba el campo propio de cada una (`conTipoBus`, `conTipoBusApe` y `radio-groupPenal`).
+
+  Quien haya fijado `@v0.2.0` tiene esas tres competencias rotas en la búsqueda por rol. Las
+  otras tres búsquedas (nombre, RUT y fecha) sí funcionan en las seis.
+
+  Cómo pasó, porque el modo de falla importa más que el campo: se midieron con peticiones
+  armadas a mano y los tests usan dobles, así que **nada ejercitó `buscar_por_rit` contra la
+  plataforma**. Verificar la petición no es verificar el cliente. Los campos ahora salen de la
+  tabla de competencias y hay un test que compara el formulario enviado contra lo que ella
+  declara.
+
 ## [0.2.0] - 2026-08-17
 
 Primera versión publicada. La `0.1.0` de abajo quedó documentada pero nunca llegó a tener

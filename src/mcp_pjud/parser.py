@@ -402,6 +402,18 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Campos que la búsqueda POR ROL exige de más en esta competencia, con su valor.
+    #:
+    #: Existen porque el formulario del sitio es uno solo para las seis y cada competencia
+    #: activa controles propios: suprema elige entre cuatro tipos de búsqueda (`conTipoBus`),
+    #: apelaciones tiene el suyo (`conTipoBusApe`) y penal separa RIT de RUC con un radio
+    #: aparte (`radio-groupPenal`). Sin ellos la plataforma responde "Por favor ingrese sólo
+    #: números para el Tipo de Búsqueda", o devuelve un cuerpo que no trae listado ni aviso.
+    #:
+    #: Están acá y no en tres ramas dentro del método porque el modo de falla que importa es
+    #: que una competencia quede sin su campo y nadie lo note: la tabla se lee de un vistazo y
+    #: hay un test que compara el formulario que se manda contra lo que ella declara.
+    campos_rit: Mapping[str, str]
     #: Con qué hay que acotar las búsquedas por nombre, por RUT y por fecha: `"tribunal"`,
     #: `"corte"` o `None` si la competencia no exige ninguna de las dos.
     #:
@@ -429,6 +441,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
+        campos_rit={"conTipoBus": "0"},
         historia=None,
         receptor=False,
         receptor_en_historia=False,
@@ -444,6 +457,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
+        campos_rit={"conTipoBusApe": "0"},
         historia=None,
         receptor=False,
         receptor_en_historia=False,
@@ -452,6 +466,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        campos_rit={},
         historia=HISTORIA_CIVIL,
         receptor=True,
         receptor_en_historia=True,
@@ -460,6 +475,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        campos_rit={},
         historia=None,
         receptor=False,
         receptor_en_historia=False,
@@ -468,6 +484,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        campos_rit={"radio-groupPenal": "1"},
         historia=None,
         receptor=False,
         receptor_en_historia=False,
@@ -476,6 +493,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        campos_rit={},
         historia=HISTORIA_COBRANZA,
         receptor=True,
         receptor_en_historia=False,

@@ -23,6 +23,16 @@ entre las dos fechas llega antes que cualquier resultado:
 > Suelen diferir en varios días. [...] Las causas reservadas no aparecen en la consulta
 > pública: un resultado vacío no prueba que la causa no exista.
 
+:::{note} Qué revisión del protocolo habla este servidor
+La que trae el SDK de MCP instalado, que hoy es **2026-07-28**. Desde esa revisión el protocolo
+es sin estado y los servidores deben implementar `server/discover`, donde éste publica su
+nombre, su versión y estas herramientas.
+
+El número no está escrito a mano: `tests/test_documentacion.py` lo compara contra
+`LATEST_PROTOCOL_VERSION` del SDK, así que actualizar la dependencia y no esta página deja la
+suite en rojo.
+:::
+
 ## `buscar_causa_por_rit`
 
 Busca causas por rol en la consulta pública.

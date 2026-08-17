@@ -16,9 +16,12 @@ divergencia salga en CI y no en el uso.
 """
 
 import asyncio
+import base64
+import contextlib
 import re
 import subprocess
 import tomllib
+import urllib.parse
 from pathlib import Path
 
 import pytest
@@ -908,6 +911,22 @@ def test_todo_lo_que_declara_una_version_dice_la_misma():
             f"fijada apuntaría a una etiqueta que no existe. Debe decir {etiqueta}"
         )
 
+    # Lo que el servidor publica en `server/discover`, que la especificación de MCP exige
+    # desde la revisión 2026-07-28. Estaba en su valor por defecto, o sea vacío: el servidor se
+    # presentaba ante los clientes sin decir qué versión era.
+    from mcp_pjud.server import mcp
+
+    assert mcp.version == version, (
+        f"el servidor MCP se presenta como versión {mcp.version!r} y el paquete es {version!r}"
+    )
+
+    # La descripción que el servidor publica sale de la misma metadata del paquete, así que
+    # no puede quedar como una segunda copia del texto.
+    proyecto = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]
+    assert mcp.description == proyecto["description"], (
+        "el servidor MCP publica una descripción distinta de la que declara el paquete"
+    )
+
     citation = _texto(RAIZ / "CITATION.cff")
     assert f"version: {version}" in citation, (
         f"CITATION.cff atribuye una versión distinta de {version}"
@@ -931,3 +950,218 @@ def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
         f"`pyproject.toml` dice {version} y la última anotada en el registro es "
         f"{publicadas[0]}. Las versiones se anotan al publicarlas, no después."
     )
+
+
+#: Sufijo del modal de detalle por competencia, tal como lo nombra la plataforma.
+_MODAL_DETALLE = {
+    "laboral": "causaLaboral.php",
+    "suprema": "causaSuprema.php",
+    "apelaciones": "causaApelaciones.php",
+    "penal": "causaPenal.php",
+}
+
+
+def test_el_detalle_medido_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
+    """Las dos afirmaciones ya se separaron una vez, y en el mismo commit.
+
+    Al registrar que el detalle de `laboral` estaba medido, la hoja de ruta siguió listando
+    `causaLaboral.php` entre las rutas mapeadas y nunca ejecutadas: dos estados incompatibles
+    sobre la misma verificación, en la misma página.
+
+    El guardia va en las dos direcciones. Una competencia con el detalle medido no puede
+    aparecer entre las rutas sin ejecutar, y una que no se midió tiene que aparecer: si al
+    medir la siguiente alguien la saca de la lista sin anotarla arriba, la página deja de decir
+    que falta y nadie se entera.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    declarados = re.search(r"\*\*Detalle medido:\*\*\s*(.+)", texto)
+    assert declarados, (
+        "la hoja de ruta ya no declara qué detalles están medidos; este guardia lee esa línea"
+    )
+    medidos = set(re.findall(r"`(\w+)`", declarados.group(1)))
+    assert medidos <= set(_MODAL_DETALLE), f"competencia desconocida en la línea: {medidos}"
+
+    sin_ejecutar = texto.split("### Mapeado pero nunca ejecutado", 1)[1].split("###", 1)[0]
+    for competencia, modal in _MODAL_DETALLE.items():
+        if competencia in medidos:
+            assert modal not in sin_ejecutar, (
+                f"el detalle de {competencia} está declarado medido y {modal} sigue entre las "
+                "rutas sin ejecutar"
+            )
+        else:
+            assert modal in sin_ejecutar, (
+                f"el detalle de {competencia} no está medido y {modal} desapareció de las "
+                "rutas sin ejecutar: la página deja de decir que falta"
+            )
+
+
+def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_github():
+    """`--generate-notes` imprime "What's Changed" y "by X in Y", en inglés y sin opción.
+
+    Es la plantilla fija de GitHub, y en un proyecto cuyo idioma es el español de Chile deja la
+    página más visible de la publicación en otro idioma que todo lo demás. Las notas se arman
+    desde el tramo del CHANGELOG que corresponde a la etiqueta.
+
+    El guardia mira las dos cosas: que no se vuelva a la plantilla, y que se siga pasando el
+    archivo. Poner sólo lo primero dejaría pasar una release con el cuerpo vacío.
+    """
+    flujo = _texto(RAIZ / ".github" / "workflows" / "publicar.yml")
+    # Se miran las líneas de comando y no el archivo entero: el comentario que explica por qué
+    # se dejó de usar la plantilla nombra la bandera, y hacía fallar al guardia contra el texto
+    # que documenta la decisión.
+    ordenes = "\n".join(linea for linea in flujo.splitlines() if not linea.lstrip().startswith("#"))
+    assert "--generate-notes" not in ordenes, (
+        "el flujo de publicación volvió a la plantilla de GitHub, que es fija y viene en inglés"
+    )
+    assert "--notes-file" in flujo, "la publicación tiene que pasar las notas armadas"
+    assert "CHANGELOG.md" in flujo, "las notas salen del CHANGELOG, que es la fuente única"
+    # Cada entrada generada viene como "* título by @autor in <enlace>". Traducir sólo los dos
+    # encabezados dejaba en inglés la mayor parte del texto, que es justo lo que se quería
+    # evitar: una página de publicación mezclando idiomas.
+    for trozo in ("por @", "en /g"):
+        assert trozo in flujo, (
+            "el flujo no traduce las atribuciones `by @autor in`, que son la mayor parte de "
+            "las notas generadas"
+        )
+
+
+def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
+    """Sin referencia, `uvx --from git+...` toma la rama principal.
+
+    O sea la instalación que la documentación mostraba hacía correr cambios sin publicar, y
+    quien la seguía no tenía forma de saberlo: no hay nada en la salida que distinga una
+    versión publicada de la rama principal. En una herramienta que se usa para computar plazos,
+    eso es exactamente al revés de lo que conviene.
+
+    `stable` la mueve el flujo de publicación, y sólo después de que la versión se creó bien.
+    Este guardia mira las dos mitades: que los ejemplos la usen y que el flujo la mueva. Con
+    sólo la primera, la documentación recomendaría instalar una rama que nadie actualiza.
+    """
+    for archivo in ("README.md", "docs/instalacion.md"):
+        texto = _texto(RAIZ / archivo)
+        # Los botones de un clic esconden su configuración: el de VS Code va en porcentajes y
+        # el de Cursor en base64. Mirar sólo el texto plano dejaba el guardia verde mientras un
+        # botón seguía instalando la rama principal, que es lo que este cambio existe para
+        # evitar. Se decodifica todo antes de buscar.
+        for codificada in re.findall(r"config=([A-Za-z0-9+/=%]+)", texto):
+            crudo = urllib.parse.unquote(codificada)
+            texto += " " + crudo
+            with contextlib.suppress(Exception):
+                texto += " " + base64.b64decode(crudo + "===").decode("utf-8")
+
+        ejemplos = re.findall(
+            r"git\+https://github\.com/notluquis/mcp-pjud-cl([^\s\"',)\]]*)", texto
+        )
+        assert ejemplos, f"{archivo} ya no muestra cómo instalar"
+        sin_referencia = [e for e in ejemplos if not e.startswith("@")]
+        assert not sin_referencia, (
+            f"{archivo} muestra una instalación sin referencia, que toma la rama principal y "
+            "hace correr cambios sin publicar. Ojo con los botones de un clic: esconden su "
+            "configuración codificada"
+        )
+
+    flujo = _texto(RAIZ / ".github" / "workflows" / "publicar.yml")
+    assert "refs/heads/stable" in flujo, (
+        "la documentación recomienda instalar `stable` y el flujo de publicación no la mueve: "
+        "quedaría clavada en la versión con que se creó"
+    )
+
+
+def test_la_version_de_python_que_piden_las_guias_es_la_que_exige_el_paquete():
+    """Subir el piso de Python sin tocar las guías deja a alguien instalando y fallando.
+
+    `uv` respeta `requires-python`, así que el error llega, pero llega como un problema de
+    resolución de dependencias en vez de "esta guía te pidió una versión que no sirve".
+    """
+    exigida = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["requires-python"]
+    numero = re.search(r"(\d+\.\d+)", exigida)
+    assert numero, f"no se pudo leer la versión de `requires-python`: {exigida!r}"
+
+    for archivo in ("README.md", "docs/instalacion.md"):
+        texto = _texto(RAIZ / archivo)
+        if "Python" not in texto:
+            continue
+        assert f"Python {numero.group(1)}" in texto, (
+            f"{archivo} no pide Python {numero.group(1)}, que es lo que el paquete exige"
+        )
+
+
+def test_la_variable_de_entorno_documentada_es_la_que_el_servidor_lee():
+    """Si se renombra, el servidor no arranca y la guía sigue diciendo el nombre viejo.
+
+    Y el modo de falla es de los que confunden: el error dice que falta la variable, la persona
+    la tiene puesta con el nombre que leyó, y no hay nada que la haga sospechar de la guía.
+    """
+    servidor = _texto(RAIZ / "src" / "mcp_pjud" / "server.py")
+    nombre = re.search(r'os\.environ\.get\(\s*"([A-Z_]+)"', servidor)
+    assert nombre, "el servidor ya no lee su contacto de una variable de entorno"
+
+    paginas = [RAIZ / "README.md", RAIZ / "docs" / "instalacion.md"]
+    for pagina in paginas:
+        assert nombre.group(1) in _texto(pagina), (
+            f"{pagina.name} no nombra {nombre.group(1)}, que es la variable que el servidor lee"
+        )
+
+
+def test_la_licencia_dice_lo_mismo_en_todas_partes():
+    """Tres archivos declaran la licencia y ninguno leía a los otros.
+
+    En un proyecto cuya licencia prohíbe distribuir y modificar, que dos archivos declaren
+    cosas distintas no es un detalle de metadatos: es la parte que alguien lee antes de decidir
+    qué puede hacer con esto.
+    """
+    declarada = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["license"]
+    assert f"license: {declarada}" in _texto(RAIZ / "CITATION.cff"), (
+        f"CITATION.cff no declara {declarada!r}, que es la licencia del paquete"
+    )
+
+
+def test_la_revision_del_protocolo_que_se_nombra_es_la_del_sdk():
+    """La revisión del protocolo se nombra en el código y en la referencia, y va a cambiar.
+
+    El SDK la expone, así que escribirla a mano es aceptar que quede vieja: subir la
+    dependencia dejaría al proyecto diciendo que habla una revisión que ya no es, en la página
+    que alguien lee para saber si su cliente es compatible.
+    """
+    from mcp.types import LATEST_PROTOCOL_VERSION
+
+    servidor = _texto(RAIZ / "src" / "mcp_pjud" / "server.py")
+    assert LATEST_PROTOCOL_VERSION in servidor, (
+        f"el servidor nombra otra revisión del protocolo; el SDK trae {LATEST_PROTOCOL_VERSION}"
+    )
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    assert LATEST_PROTOCOL_VERSION in referencia, (
+        f"la referencia nombra otra revisión; el SDK trae {LATEST_PROTOCOL_VERSION}"
+    )
+
+
+def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
+    """Registrar un buscador nuevo y no tocar la prosa deja la página contando de menos.
+
+    Y en esta herramienta contar de menos importa: quien lee "tres de diez" decide si le sirve
+    o si tiene que buscar la sentencia por otro lado.
+    """
+    from mcp_pjud.juris import BUSCADORES
+
+    numeros = {
+        1: "uno",
+        2: "dos",
+        3: "tres",
+        4: "cuatro",
+        5: "cinco",
+        6: "seis",
+        7: "siete",
+        8: "ocho",
+        9: "nueve",
+        10: "diez",
+    }
+    esperado = numeros[len(BUSCADORES)]
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    dicho = re.search(r"Están verificados (\w+) de los \w+ buscadores", referencia)
+    assert dicho, "la referencia ya no dice cuántos buscadores están verificados"
+    assert dicho.group(1) == esperado, (
+        f"la referencia dice {dicho.group(1)} buscadores verificados y el código registra "
+        f"{len(BUSCADORES)}"
+    )
+    for nombre in BUSCADORES:
+        assert f"**{nombre}**" in referencia, f"la referencia no nombra el buscador {nombre!r}"

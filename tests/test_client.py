@@ -1,5 +1,6 @@
 """Tests del cliente. Sin red: los controles se prueban con dobles."""
 
+import contextlib
 import re
 import urllib.parse
 from pathlib import Path
@@ -675,6 +676,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
     inventada = Competencia(
         99,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        campos_rit={},
         historia=None,
         receptor=True,
         receptor_en_historia=True,
@@ -951,3 +953,49 @@ def test_un_listado_completo_no_pide_otra_pagina(competencia, filas, monkeypatch
     assert len(enviados) == 1, (
         f"el listado de {competencia} venía completo y se pidieron {len(enviados)} páginas"
     )
+
+
+def test_la_busqueda_por_rol_manda_lo_que_su_competencia_declara(monkeypatch):
+    """Tres de las seis competencias exigen un campo propio en la búsqueda por rol, y las tres
+    estuvieron rotas por no mandarlo.
+
+    Suprema y apelaciones respondían "Por favor ingrese sólo números para el Tipo de Búsqueda",
+    y penal devolvía un cuerpo sin listado ni aviso. Se habían declarado verificadas midiendo
+    con peticiones armadas a mano, y los tests usaban dobles: nunca hubo nada que ejercitara
+    `buscar_por_rit` de verdad. Se publicaron rotas en la 0.2.0.
+
+    Lo que este guardia puede probar y lo que no, dicho explícito: comprueba que el cliente
+    mande lo que la tabla declara, no que la plataforma lo acepte. Lo segundo no se puede probar
+    sin red, y la suite no consulta al Poder Judicial. La tabla es el registro de lo medido; el
+    test impide que el código y ese registro se separen.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    for competencia, spec in COMPETENCIAS.items():
+        if competencia not in MODULOS:
+            continue
+        c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+        # La fila sintética no calza con todas las competencias, y da lo mismo: lo que se
+        # mide es el formulario que salió, no lo que se pudo leer de vuelta.
+        with contextlib.suppress(EstructuraInesperada):
+            c.buscar_por_rit("C", 1156, 2026, competencia=competencia, paginas=None)
+        (formulario,) = enviados
+        for campo, valor in spec.campos_rit.items():
+            assert formulario.get(campo) == valor, (
+                f"{competencia} declara {campo}={valor!r} y la búsqueda por rol mandó "
+                f"{formulario.get(campo)!r}"
+            )
+
+
+def test_solo_las_competencias_medidas_declaran_campos_de_mas():
+    """Un campo de más inventado se manda igual y la plataforma no siempre avisa.
+
+    Las tres que los llevan están medidas una por una: `conTipoBus` en suprema,
+    `conTipoBusApe` en apelaciones y `radio-groupPenal` en penal. Las otras tres se midieron
+    andando sin ninguno, así que declarar uno ahí sería agregar un campo que nadie comprobó.
+    """
+    con_extras = {n: sorted(c.campos_rit) for n, c in COMPETENCIAS.items() if c.campos_rit}
+    assert con_extras == {
+        "apelaciones": ["conTipoBusApe"],
+        "penal": ["radio-groupPenal"],
+        "suprema": ["conTipoBus"],
+    }, f"cambió qué competencias exigen campos propios: {con_extras}"

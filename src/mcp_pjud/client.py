@@ -15,6 +15,7 @@ import re
 import threading
 import time
 from importlib.metadata import PackageNotFoundError
+from importlib.metadata import metadata as _metadata_instalada
 from importlib.metadata import version as _version_instalada
 
 import httpx
@@ -45,8 +46,13 @@ from .parser import (
 #: vez de inventar un número: un agente honesto vale más que uno preciso y falso.
 try:
     VERSION = _version_instalada("mcp-pjud")
+    #: La misma descripción que declara el paquete. El servidor MCP la publica en
+    #: `server/discover`, y escribirla a mano ahí sería una segunda copia del mismo texto que
+    #: alguien tendría que acordarse de cambiar en los dos lados.
+    DESCRIPCION = _metadata_instalada("mcp-pjud")["Summary"]
 except PackageNotFoundError:  # pragma: no cover - sólo fuera de una instalación
     VERSION = "desconocida"
+    DESCRIPCION = ""
 
 BASE = "https://oficinajudicialvirtual.pjud.cl"
 PORTADA = "https://www.pjud.cl/"
@@ -561,6 +567,9 @@ class PjudClient(Transporte):
             # usa acá. Ojo con `buscar_por_nombre`: manda un `radio-group` con "N", que es OTRO
             # formulario y otro dominio de valores, no una inconsistencia.
             "radio-group": "1",
+            # Lo que esta competencia exige de más. Sale de la tabla y no de una rama acá:
+            # tres de las seis lo necesitan y las tres estuvieron rotas por no tenerlo.
+            **COMPETENCIAS[modulo].campos_rit,
         }
         if paginas is None:
             return self._primera_pagina(ruta, campos, competencia)

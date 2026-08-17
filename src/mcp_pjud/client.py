@@ -12,6 +12,7 @@ entre peticiones es la implementación de esa cláusula, no una cortesía: no se
 from __future__ import annotations
 
 import re
+import threading
 import time
 
 import httpx
@@ -38,6 +39,13 @@ PORTADA = "https://www.pjud.cl/"
 ENTRADA = f"{BASE}/includes/sesion-consultaunificada.php"
 
 INTERVALO_MINIMO = 5.0
+
+#: El semáforo es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en
+#: cada llamada de herramienta, así que un contador por instancia se reinicia solo y deja
+#: pasar la primera petición de cada llamada sin esperar: dos herramientas seguidas
+#: golpean el portal sin intervalo. La cláusula CUARTA habla del portal, no del objeto.
+_ULTIMA = 0.0
+_TURNO = threading.Lock()
 
 COMPETENCIAS = {
     "suprema": 1,
@@ -103,7 +111,6 @@ class PjudClient:
             follow_redirects=True,
             timeout=30.0,
         )
-        self._ultima = 0.0
         self._adir: str | None = None
         self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
@@ -120,14 +127,22 @@ class PjudClient:
     # -- transporte -------------------------------------------------------------
 
     def _esperar(self) -> None:
-        pendiente = self.intervalo - (time.monotonic() - self._ultima)
+        pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
         if pendiente > 0:
             time.sleep(pendiente)
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
-        self._esperar()
-        r = self._http.request(metodo, url, **kw)
-        self._ultima = time.monotonic()
+        global _ULTIMA
+        # El turno se toma para toda la petición, no sólo para la espera: dos llamadas
+        # concurrentes leerían la misma marca y saldrían juntas. Y la marca se estampa en
+        # `finally` porque un timeout que no estampara dejaría al siguiente salir sin
+        # esperar, justo cuando el portal está peor.
+        with _TURNO:
+            self._esperar()
+            try:
+                r = self._http.request(metodo, url, **kw)
+            finally:
+                _ULTIMA = time.monotonic()
         self.bitacora.append((time.time(), url, r.status_code))
 
         if r.status_code in (403, 429):

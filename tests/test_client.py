@@ -34,8 +34,9 @@ def test_espera_entre_peticiones(monkeypatch):
     monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: reloj[0])
     monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
 
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", reloj[0] - 1.0)  # pasó 1 s
+
     c = PjudClient("test@example.cl")
-    c._ultima = reloj[0] - 1.0  # pasó 1 s desde la última consulta
     c._esperar()
 
     assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)]
@@ -44,10 +45,29 @@ def test_espera_entre_peticiones(monkeypatch):
 def test_no_espera_si_ya_paso_el_intervalo(monkeypatch):
     monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: pytest.fail("no debía dormir"))
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - (INTERVALO_MINIMO + 1))
 
     c = PjudClient("test@example.cl")
-    c._ultima = 100.0 - (INTERVALO_MINIMO + 1)
     c._esperar()
+
+
+def test_un_cliente_nuevo_no_reinicia_el_semaforo(monkeypatch):
+    """`server.py` abre un cliente por llamada de herramienta.
+
+    Con un contador por instancia, cada herramienta empezaba con la marca en cero y su
+    primera petición salía sin esperar: dos herramientas seguidas golpeaban el portal sin
+    intervalo. El semáforo es del proceso.
+    """
+    dormido = []
+    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - 1.0)  # otro cliente acaba de consultar
+
+    PjudClient("test@example.cl")._esperar()  # cliente recién creado
+
+    assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)], (
+        "un cliente nuevo debe respetar la última petición del proceso, no partir de cero"
+    )
 
 
 # -- detención total: sin reintento, sin evasión --------------------------------

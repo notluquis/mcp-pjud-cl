@@ -456,3 +456,18 @@ def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
     c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
     listados = [u for u in peticiones if "consultaRit" in u]
     assert len(listados) == 1, "el listado debe pedirse una sola vez"
+
+
+def test_una_busqueda_sin_coincidencias_devuelve_vacio_y_no_levanta(monkeypatch):
+    """La respuesta de "sin resultados" viene sin navegación y sin total declarado.
+
+    Exigirle esos datos convertía una búsqueda legítima sin coincidencias en un error de
+    estructura: el error contrario al falso negativo, pero igual de equivocado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    vacia = (
+        "<tr><td colspan='8'>No se han encontrado resultados con los datos ingresados. "
+        "Recuerde que las causas reservadas no se muestran en la consulta unificada.</td></tr>"
+    )
+    c = _cliente_con([vacia])
+    assert c.buscar_por_rit("C", 999999, 1990) == []

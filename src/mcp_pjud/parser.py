@@ -283,6 +283,18 @@ def revisar_aviso(html_respuesta: str) -> None:
 #: no un número: la plataforma pagina por token y no por índice.
 _SIGUIENTE = re.compile(r"pagina\w*Sig\('([^']+)'")
 
+#: Texto exacto con que la plataforma informa que no hubo coincidencias. Esa respuesta viene
+#: sin bloque de navegación y sin total declarado, así que hay que reconocerla antes de
+#: exigir esos datos: si no, una búsqueda legítima sin resultados se leería como un cambio de
+#: estructura, que es el error contrario pero igual de equivocado.
+SIN_RESULTADOS = "No se han encontrado resultados"
+
+
+def es_sin_resultados(html_busqueda: str) -> bool:
+    """Si la plataforma respondió con su mensaje conocido de búsqueda sin coincidencias."""
+    return SIN_RESULTADOS in html_busqueda
+
+
 def siguiente_pagina(html_busqueda: str) -> str | None:
     """Identificador de la página siguiente, o None si es la última."""
     m = _SIGUIENTE.search(html_busqueda)
@@ -337,7 +349,7 @@ def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
             )
         )
 
-    if not causas and "No se han encontrado resultados" not in html_busqueda:
+    if not causas and not es_sin_resultados(html_busqueda):
         raise EstructuraInesperada(
             "El listado no trae filas ni el mensaje de 'sin resultados'. "
             "La estructura de la búsqueda cambió."

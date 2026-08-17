@@ -22,6 +22,7 @@ from .parser import (
     EstructuraInesperada,
     actuaciones_receptor,
     es_aviso_de_captcha,
+    es_sin_resultados,
     leer_aviso,
     parse_cuadernos,
     parse_resultados,
@@ -181,6 +182,13 @@ class PjudClient:
 
         for numero in range(1, paginas + 1):
             html_ = self._ajax(ruta, data if token is None else {**data, "pagina": token})
+
+            if es_sin_resultados(html_):
+                # Esa respuesta viene sin navegación y sin total, así que hay que
+                # reconocerla antes de exigir esos datos. Una búsqueda legítima sin
+                # coincidencias no es un cambio de estructura.
+                return acumuladas
+
             acumuladas.extend(parse_resultados(html_))
 
             if numero == 1:

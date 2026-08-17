@@ -101,6 +101,54 @@ def buscar_causa_por_rit(
 
 
 @mcp.tool(
+    title="Buscar causa por nombre",
+    annotations=SOLO_LECTURA,
+)
+def buscar_causa_por_nombre(
+    apellido_paterno: Annotated[str, Field(description="Apellido paterno del litigante.")] = "",
+    apellido_materno: Annotated[str, Field(description="Apellido materno del litigante.")] = "",
+    nombre: Annotated[str, Field(description="Nombres del litigante.")] = "",
+    anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
+    competencia: Competencia = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[CausaEncontrada]:
+    """Busca causas por nombre de litigante.
+
+    Exige al menos DOS de los tres campos de nombre. El año no cuenta para ese mínimo.
+    Exige además indicar el tribunal: la plataforma no permite buscar por nombre en todos
+    los tribunales a la vez.
+    """
+    with _cliente() as c:
+        return c.buscar_por_nombre(
+            nombre, apellido_paterno, apellido_materno, anio, competencia, tribunal, corte
+        )
+
+
+@mcp.tool(
+    title="Buscar causa por RUT de empresa",
+    annotations=SOLO_LECTURA,
+)
+def buscar_causa_por_rut_juridica(
+    rut: Annotated[int, Field(description="RUT sin dígito verificador ni puntos.", ge=1)],
+    digito_verificador: Annotated[str, Field(description="Dígito verificador: 0-9 o K.")],
+    anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
+    competencia: Competencia = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[CausaEncontrada]:
+    """Busca causas de una persona jurídica por su RUT.
+
+    Es la única vía para empresas: no tienen Clave Única, así que no aparecen en
+    "Mis Causas". Exige indicar el tribunal.
+    """
+    with _cliente() as c:
+        return c.buscar_por_rut_juridica(
+            rut, digito_verificador, anio, competencia, tribunal, corte
+        )
+
+
+@mcp.tool(
     title="Actuaciones del receptor",
     annotations=SOLO_LECTURA,
 )

@@ -182,6 +182,11 @@ class PjudClient:
         negativos, porque omite causas radicadas en otras jurisdicciones.
         """
         modulo = self._modulo(competencia)
+        # Medido contra el sistema real: rol y año son los únicos obligatorios. El tipo,
+        # la corte y el tribunal son opcionales, y omitir el tribunal AMPLÍA los
+        # resultados: la misma consulta devolvió dos causas sin él y una con él.
+        if not rol or not anio:
+            raise ValueError("La búsqueda por rol exige número de rol y año.")
         html_ = self._ajax(
             f"{modulo}/consultaRit{modulo.capitalize()}.php",
             {
@@ -192,6 +197,123 @@ class PjudClient:
                 "conCorte": str(corte or 0),
                 "conTribunal": str(tribunal or 0),
                 "conCaratulado": "",
+            },
+        )
+        return parse_resultados(html_)
+
+    # -- búsquedas ---------------------------------------------------------------
+    #
+    # Las reglas de obligatoriedad de abajo se mapearon contra el sistema real, probando
+    # cada combinación de campos. La plataforma no responde con un código de error cuando
+    # faltan campos: devuelve HTTP 200 con un aviso dentro de un <script>. Validar acá
+    # evita gastar una petición y evita que ese aviso llegue disfrazado de resultado.
+
+    def buscar_por_nombre(
+        self,
+        nombre: str = "",
+        apellido_paterno: str = "",
+        apellido_materno: str = "",
+        anio: int | None = None,
+        competencia: str = "civil",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[CausaEncontrada]:
+        """Busca causas por nombre de litigante.
+
+        La plataforma exige al menos dos de los tres campos de nombre. El año NO cuenta
+        para ese mínimo: se comprobó que "apellido paterno + año" es rechazado mientras
+        que "paterno + materno" es aceptado.
+
+        El tribunal es obligatorio acá, a diferencia de la búsqueda por rol. Es una
+        limitación del sitio, no de este cliente: no se puede buscar a alguien sin saber
+        en qué tribunal está su causa.
+        """
+        modulo = self._modulo(competencia)
+        if sum(1 for x in (nombre, apellido_paterno, apellido_materno) if x.strip()) < 2:
+            raise ValueError(
+                "La búsqueda por nombre exige al menos dos de estos tres campos: nombre, "
+                "apellido paterno, apellido materno. El año no cuenta para ese mínimo."
+            )
+        if tribunal is None:
+            raise ValueError(
+                "La búsqueda por nombre exige tribunal. La plataforma no permite buscar "
+                "por nombre en todos los tribunales a la vez."
+            )
+        html_ = self._ajax(
+            f"{modulo}/consultaNombre{modulo.capitalize()}.php",
+            {
+                "radio-group": "N",
+                "nomNombre": nombre,
+                "nomApePaterno": apellido_paterno,
+                "nomApeMaterno": apellido_materno,
+                "nomEra": str(anio) if anio else "",
+                "nomNombreJur": "",
+                "nomEraJur": "",
+                "nomCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "nomTribunal": str(tribunal),
+                "corteNom": str(corte or 0),
+            },
+        )
+        return parse_resultados(html_)
+
+    def buscar_por_rut_juridica(
+        self,
+        rut: int,
+        digito_verificador: str,
+        anio: int | None = None,
+        competencia: str = "civil",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[CausaEncontrada]:
+        """Busca causas de una persona jurídica por su RUT.
+
+        Es la única vía para personas jurídicas, que no tienen Clave Única y por lo tanto
+        no aparecen en "Mis Causas".
+        """
+        modulo = self._modulo(competencia)
+        if not str(digito_verificador).strip():
+            raise ValueError("Falta el dígito verificador del RUT.")
+        if tribunal is None:
+            raise ValueError("La búsqueda por RUT de persona jurídica exige tribunal.")
+        html_ = self._ajax(
+            f"{modulo}/consultaJuridica{modulo.capitalize()}.php",
+            {
+                "rutJur": str(rut),
+                "dvJur": str(digito_verificador).upper(),
+                "eraJur": str(anio) if anio else "",
+                "jurCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "jurTribunal": str(tribunal),
+                "corteJur": str(corte or 0),
+            },
+        )
+        return parse_resultados(html_)
+
+    def buscar_por_fecha(
+        self,
+        desde: str,
+        hasta: str,
+        competencia: str = "civil",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[CausaEncontrada]:
+        """Busca causas ingresadas en un rango de fechas, en formato DD/MM/AAAA.
+
+        Un solo día en un solo tribunal puede devolver decenas de causas, así que conviene
+        acotar el rango.
+        """
+        modulo = self._modulo(competencia)
+        if not desde.strip() or not hasta.strip():
+            raise ValueError("La búsqueda por fecha exige fecha inicial y fecha final.")
+        if tribunal is None:
+            raise ValueError("La búsqueda por fecha exige tribunal.")
+        html_ = self._ajax(
+            f"{modulo}/consultaFecha{modulo.capitalize()}.php",
+            {
+                "fecDesde": desde,
+                "fecHasta": hasta,
+                "fecCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "fecTribunal": str(tribunal),
+                "corteFec": str(corte or 0),
             },
         )
         return parse_resultados(html_)

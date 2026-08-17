@@ -18,6 +18,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Herramientas `buscar_causa_por_nombre` y `buscar_causa_por_rut_juridica`. La segunda es la
+  única vía para empresas, que no tienen Clave Única y por lo tanto no aparecen en
+  "Mis Causas".
+- Validación de campos antes de consultar, mapeada probando cada combinación contra el
+  sistema real. La plataforma no responde con código de error cuando faltan campos: devuelve
+  HTTP 200 con un aviso dentro de un `<script>`. Ahora eso se detecta y se levanta
+  `PlataformaRechaza` en vez de llegar al usuario disfrazado de resultado.
+
 - Acuerdo de contribución ([CLA.md](CLA.md)) redactado contra la Ley 17.336: los pull requests
   quedan abiertos sin exigir cesión de derechos ni renuncia a derechos morales.
 - Financiamiento, con la aclaración de que donar no otorga licencia comercial.

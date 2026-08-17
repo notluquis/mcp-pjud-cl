@@ -28,6 +28,7 @@ from mcp_pjud.client import (
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
+    SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
     SEGUNDOS_PAGINA_MEDIDOS,
 )
 from mcp_pjud.juris import (
@@ -236,6 +237,65 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
             assert otra not in d, f"el esquema le ofrece {otra!r} al modelo y el cliente lo rechaza"
         for verificada in MODULOS:
             assert verificada in d, f"el esquema no le ofrece {verificada!r}, que sí funciona"
+
+
+def test_ninguna_herramienta_exige_un_campo_que_su_competencia_no_usa(expuestas):
+    """El esquema es el contrato: si declara `tribunal` obligatorio, el modelo NO puede llamar
+    la herramienta sin inventarlo.
+
+    Pasó exactamente eso: al verificar suprema y apelaciones se actualizó la validación del
+    cliente y no el esquema, y `buscar_causa_por_fecha` quedó exigiendo un tribunal que esas
+    dos competencias no usan. La herramienta se anunciaba para seis competencias y sólo se
+    podía llamar para cuatro, sin que ningún test se enterara: los guardias miraban la
+    documentación y la lista de competencias, no cuáles parámetros eran obligatorios.
+
+    Que alguna competencia no lo exija basta para que no pueda ser obligatorio en el esquema:
+    quién lo exige se dice en la descripción, no en la firma.
+    """
+    sin_acotar = {n for n in MODULOS if COMPETENCIAS[n].acota_por != "tribunal"}
+    assert sin_acotar, "si todas exigieran tribunal, este guardia habría que retirarlo"
+
+    culpables = {}
+    for nombre_h, h in expuestas.items():
+        obligatorios = set((h.input_schema or {}).get("required", []))
+        for campo in ("tribunal", "corte"):
+            if campo in obligatorios:
+                culpables.setdefault(nombre_h, set()).add(campo)
+    assert not culpables, (
+        f"Herramientas que declaran obligatorio un campo que no todas las competencias usan: "
+        f"{culpables}. Con {sorted(sin_acotar)} expuestas, el modelo no puede llamarlas."
+    )
+
+
+def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
+    """Y no puede decirlo a mano: se deriva de `parser.COMPETENCIAS`.
+
+    Sin esto, quitar `tribunal` de la firma dejaría al modelo sin saber cuándo hace falta, y
+    la llamada fallaría en el cliente con un error que el modelo atribuye a la plataforma.
+    """
+    from mcp_pjud.server import ACOTACION, DIRECTIVA
+
+    for nombre in MODULOS:
+        assert nombre in ACOTACION, f"la regla de acotación no nombra a {nombre!r}"
+    assert ACOTACION in DIRECTIVA, (
+        "la regla tiene que viajar en la directiva del servidor: es lo que el modelo lee "
+        "antes de llamar cualquier herramienta"
+    )
+
+    for nombre_h, h in expuestas.items():
+        propiedades = (h.input_schema or {}).get("properties", {})
+        for campo, exigen in (
+            ("tribunal", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal"]),
+            ("corte", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "corte"]),
+        ):
+            if campo not in propiedades:
+                continue
+            descripcion = propiedades[campo].get("description", "")
+            for competencia in exigen:
+                assert competencia in descripcion, (
+                    f"{nombre_h}: la descripción de {campo!r} no nombra a {competencia!r}, "
+                    f"que es una de las que lo exigen"
+                )
 
 
 def _secciones_de_herramientas() -> dict[str, str]:
@@ -559,6 +619,25 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
         f"Las vigentes son {busqueda} s la búsqueda y {pagina} s la página del mismo host."
     )
 
+    # La cifra típica sola es la que hizo daño: se tomó por techo y el timeout quedó en 90 s,
+    # con lo que tres consultas que respondían en 81, 102 y 39 segundos se dieron por
+    # imposibles. Donde se cite la típica tiene que estar el peor caso al lado, porque es el
+    # que justifica cuánto esperar antes de dar una consulta por perdida.
+    peor = coma(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)
+    # El changelog queda fuera a propósito: registra lo que era cierto en cada versión, así que
+    # una entrada vieja que cita los 47,8 s no está desactualizada, está fechada. Actualizarla
+    # para que pase este guardia sería falsear el registro.
+    sin_el_peor = [
+        str(p.relative_to(RAIZ))
+        for p in citan
+        if peor not in _texto(p) and p.name != "CHANGELOG.md"
+    ]
+    assert not sin_el_peor, (
+        f"Páginas que citan la latencia típica sin el peor caso medido: {sin_el_peor}. "
+        f"Sola, la de {busqueda} s invita a repetir el error de tomar una muestra por techo; "
+        f"el peor medido es {peor} s."
+    )
+
 
 # -- lo que el cliente sabe hacer contra lo que el servidor expone -----------------
 
@@ -655,3 +734,55 @@ def test_la_referencia_dice_cuales_competencias_entregan_actuaciones(expuestas):
             assert otra in seccion, (
                 f"{otra!r} expone actuaciones que este servidor no lee, y la referencia lo calla"
             )
+
+
+def test_la_hoja_de_ruta_no_declara_sin_ejecutar_lo_que_ya_se_verifico():
+    """La misma página decía que las cuatro búsquedas de suprema y apelaciones se verificaron
+    en vivo y, treinta líneas más abajo, que nada de esas competencias se había ejecutado.
+
+    Una hoja de ruta que se contradice sobre el estado de verificación es peor que no tenerla:
+    su único trabajo es distinguir lo medido de lo supuesto. La sección se quedó atrás porque
+    nada la ataba a `MODULOS`, que es donde ese estado vive de verdad.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    marca = "### Mapeado pero nunca ejecutado"
+    assert marca in texto, "cambió el título de la sección; hay que reapuntar este guardia"
+
+    seccion = texto.split(marca, 1)[1].split("###", 1)[0]
+    # El detalle de varias competencias sí sigue sin ejecutarse, y nombrarlas ahí es correcto.
+    # Lo que no puede aparecer es la afirmación de que sus BÚSQUEDAS no se probaron.
+    verificadas = ", ".join(sorted(MODULOS))
+    for busqueda in ("consultaNombre", "consultaJuridica", "consultaFecha", "consultaRit"):
+        declarada = f"{busqueda}*.php`, `" in seccion or f"- `{busqueda}" in seccion
+        assert not declarada, (
+            f"la hoja de ruta declara {busqueda} sin ejecutar, y está verificada en {verificadas}"
+        )
+
+
+def test_la_hoja_de_ruta_no_publica_el_diagnostico_que_resulto_falso():
+    """La hoja de ruta llegó a publicar una tabla de "por qué falla cada competencia" con dos
+    causas que la medición desmintió.
+
+    Decía que suprema y apelaciones fallaban porque sobraban los campos que el sitio
+    deshabilita, y que la corrección era omitirlos. Las dos cosas son falsas: la búsqueda anda
+    igual con o sin esos campos, y lo que faltaba era `radio-group`. Una hipótesis equivocada
+    publicada como diagnóstico es peor que no publicar nada, porque el próximo lector la sigue
+    en vez de medir.
+
+    El guardia es sobre la explicación, no sobre el estado: si mañana alguna de las dos vuelve
+    a fallar, hay que escribir por qué falla de verdad, y esa explicación tiene que nombrar el
+    campo medido.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    for frase in (
+        "El sitio deja `conTipoCausa` **deshabilitado**",
+        "jQuery no serializa campos deshabilitados",
+    ):
+        assert frase not in texto, (
+            f"la hoja de ruta publica {frase!r} como causa, y la medición la desmintió: la "
+            "búsqueda anda con y sin esos campos"
+        )
+    assert "radio-group" in texto, (
+        "la hoja de ruta tiene que nombrar el campo que de verdad bloqueaba a suprema y "
+        "apelaciones, o el diagnóstico se pierde"
+    )

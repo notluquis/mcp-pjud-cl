@@ -32,7 +32,7 @@ Busca causas por rol en la consulta pública.
 | `tipo` | str | Letra del rol. En civil: `C`, `V`, `E`, `A`, `F` o `I` |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
 | `tribunal` | int, opcional | Código del tribunal. Omitir para buscar en todos |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Cuántas páginas recorrer como máximo. Al excederlo levanta excepción en vez de recortar |
@@ -49,6 +49,20 @@ Devuelve una lista de causas con `rol`, `fecha_ingreso`, `caratulado`, `tribunal
 ```{include} _generado/buscar_causa_por_rit.md
 ```
 
+:::{note} Con qué hay que acotar la búsqueda
+Las tres búsquedas de abajo (nombre, RUT y fecha) exigen acotar, y **con qué depende de la
+competencia**. Está medido una por una contra el sistema real:
+
+| Competencia | Exige |
+|---|---|
+| `civil`, `laboral`, `cobranza`, `penal` | `tribunal` |
+| `apelaciones` | `corte` |
+| `suprema` | nada |
+
+En apelaciones la plataforma responde *"Por favor seleccione una Corte para la búsqueda"* y no
+entrega resultados. En suprema las tres andan sin corte ni tribunal.
+:::
+
 ## `buscar_causa_por_nombre`
 
 Busca causas por nombre de litigante.
@@ -58,8 +72,9 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 - Exige **al menos dos de los tres campos de nombre** (nombre, apellido paterno, apellido
   materno). El **año no cuenta** para ese mínimo: `paterno + año` es rechazado, `paterno +
   materno` es aceptado.
-- Exige **indicar el tribunal**. No se puede buscar por nombre en todos los tribunales a la
-  vez, y eso limita su utilidad: hay que saber dónde está la causa.
+- Exige **acotar la búsqueda** según la competencia (ver el cuadro de arriba). Donde el
+  tribunal es obligatorio eso limita la utilidad de la herramienta: hay que saber dónde está
+  la causa antes de poder buscarla.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
@@ -67,9 +82,9 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 | `apellido_materno` | str | Apellido materno |
 | `nombre` | str | Nombres |
 | `anio` | int, opcional | Año de ingreso. **No cuenta** para el mínimo de dos campos |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
-| `tribunal` | int | Obligatorio acá |
-| `corte` | int, opcional | **Omitir salvo certeza** |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
+| `tribunal` | int | Obligatorio salvo en `suprema` y `apelaciones` |
+| `corte` | int | Obligatorio en `apelaciones`. En el resto, **omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
 
 ```{include} _generado/buscar_causa_por_nombre.md
@@ -80,16 +95,16 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 Busca causas de una persona jurídica por su RUT. Es la **única vía para empresas**, que no
 tienen Clave Única y por lo tanto no aparecen en "Mis Causas".
 
-Exige el dígito verificador y el tribunal.
+Exige el dígito verificador, y acotar según la competencia (ver el cuadro de arriba).
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
 | `rut` | int | RUT sin dígito verificador ni puntos |
 | `digito_verificador` | str | Dígito verificador: 0-9 o K |
 | `anio` | int, opcional | Año de ingreso |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
-| `tribunal` | int | Obligatorio acá |
-| `corte` | int, opcional | **Omitir salvo certeza** |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
+| `tribunal` | int | Obligatorio salvo en `suprema` y `apelaciones` |
+| `corte` | int | Obligatorio en `apelaciones`. En el resto, **omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
 
 ```{include} _generado/buscar_causa_por_rut_juridica.md
@@ -103,9 +118,9 @@ Causas ingresadas en un rango de fechas.
 |---|---|---|
 | `desde` | str | Fecha inicial, DD/MM/AAAA |
 | `hasta` | str | Fecha final, DD/MM/AAAA |
-| `tribunal` | int | Obligatorio: la plataforma lo exige |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
-| `corte` | int, opcional | **Omitir salvo certeza** |
+| `tribunal` | int | Obligatorio salvo en `suprema` y `apelaciones` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
+| `corte` | int | Obligatorio en `apelaciones`. En el resto, **omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
 
 Es la cuarta búsqueda que la plataforma ofrece y responde una pregunta que las otras tres no:

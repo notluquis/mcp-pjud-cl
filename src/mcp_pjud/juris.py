@@ -124,9 +124,18 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto": "texto_sentencia",
             "texto_anonimizado": "texto_sentencia_anon",
         },
-        # Sin medir: los cuatro intentos de verificarlo murieron por timeout. Se asume que no
-        # es por consulta, que es la opción conservadora: mejor no informar ocultas que
-        # informar una cifra que puede ser el corpus.
+        # El buscador quedó verificado el 17 de agosto de 2026: el rol 1504-2019 devolvió tres
+        # sentencias en 115,6 s. Los cuatro intentos anteriores se habían dado por muertos por
+        # timeout, y el timeout era nuestro.
+        #
+        # Y la bandera quedó medida el mismo día, comparando un rol que existe contra uno
+        # imposible: `numFound_sf` dio 5.290.009 en los dos casos. Es el corpus, así que el
+        # falso que ya estaba puesto por prudencia resultó ser el correcto.
+        #
+        # El campo que decide esto es `condition_pub_sf.numFound_sf` y NO `response.numFound`.
+        # El segundo son las visibles, y ésas siguen a la consulta en los tres buscadores,
+        # incluido `laborales`: medirlo daría 18 contra 0 y haría concluir "es por consulta"
+        # justo donde no lo es.
         coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(

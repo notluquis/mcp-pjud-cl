@@ -18,6 +18,50 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Búsqueda de causas en **Corte Suprema** y **Cortes de Apelaciones**, con sus cuatro
+  búsquedas cada una. Lo que las bloqueaba no era ningún parámetro exótico: faltaba
+  `radio-group`, el radio RIT/RUC del formulario, en el que su PHP se ramifica para saber por
+  cuál de los dos se busca. Sin el campo responde HTTP 200 con el cuerpo **vacío**, sin aviso.
+  Las otras cuatro competencias lo toleran ausente, así que el hueco no rompía nada de lo que
+  estaba expuesto.
+
+  Verificar la búsqueda no verifica el detalle: las dos siguen con `historia=None`, así que
+  pedirles actuaciones se rechaza en vez de adivinar el panel.
+
+- Buscador de fallos de **Cortes de Apelaciones**, verificado. Los cuatro intentos anteriores
+  se habían dado por muertos por timeout; la consulta responde, y tardó 115,6 s una vez y
+  177,0 s otra.
+
+### Corregido
+
+- El esquema MCP quedaba prometiendo lo viejo. `buscar_causa_por_fecha` declaraba `tribunal`
+  como parámetro **obligatorio**, así que en suprema y apelaciones la herramienta se anunciaba
+  para seis competencias y sólo se podía llamar para cuatro: no había forma de hacer la llamada
+  documentada sin inventar un tribunal. Las descripciones de nombre y RUT decían lo mismo. Ahora
+  el texto se deriva de `parser.COMPETENCIAS`, viaja en la directiva del servidor, y hay un
+  guardia que impide declarar obligatorio un campo que alguna competencia expuesta no usa.
+
+- Una búsqueda **completa** en suprema o apelaciones pedía una página de más y terminaba en
+  error. Sus listados ofrecen "siguiente" aunque estén completos, medido sobre sus dos
+  respuestas reales (1 de 1 y 3 de 3, las dos con enlace), y `_paginado` sólo cortaba cuando el
+  enlace desaparecía. Civil no lo hace, y por eso la condición alcanzaba hasta ahora. Ahora
+  manda el total declarado.
+
+- La hoja de ruta se contradecía sobre lo que está verificado: decía que las cuatro búsquedas
+  se probaron en vivo y, más abajo, que ninguna de esas rutas se había ejecutado nunca.
+
+- Con qué hay que acotar las búsquedas por nombre, por RUT y por fecha ahora depende de la
+  competencia, y sale de una tabla: `tribunal` en las cuatro de primera instancia, `corte` en
+  apelaciones, nada en suprema. Antes el cliente exigía tribunal siempre, y con eso habría
+  rechazado por su cuenta consultas que la plataforma acepta. Rechazar de más es más difícil
+  de notar que rechazar de menos: no gasta una petición, no deja rastro y se ve igual que "no
+  hay causas".
+
+- `ESPERA_MAXIMA` sube de 90 a 240 segundos. Tres citas de Corte Suprema fallaban en todas las
+  corridas, y esa consistencia se leyó como "esas consultas no terminan". Respondían en 81,2 s,
+  102,0 s y 38,7 s: el tope mataba una sola, y con ella se dieron por perdidas las tres. La
+  cifra de 47,8 s que justificaba los 90 era una sola muestra, no un techo.
+
 - Búsqueda de causas en **penal**, verificada. Su tipo de causa va como código numérico y no
   como letra ni como palabra: con `conTipoCausa="1"` aparece la causa, y con `"Ordinaria"`,
   `"O"` o vacío el listado vuelve vacío. Exige además `radio-groupPenal` y el código de

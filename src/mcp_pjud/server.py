@@ -14,8 +14,8 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .client import (
-    COMPETENCIAS,
     INTERVALO_MINIMO,
+    MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
     PjudClient,
@@ -107,7 +107,13 @@ def _cliente() -> PjudClient:
 Tipo = Annotated[str, Field(description="Letra del rol. En civil: C, V, E, A, F o I.")]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
 Anio = Annotated[int, Field(description="Año del rol, cuatro dígitos.", ge=1900, le=2100)]
-Competencia = Annotated[str, Field(description=f"Una de: {', '.join(sorted(COMPETENCIAS))}.")]
+#: Lo que el modelo ve. Son las verificadas y no las que existen: anunciar una que el
+#: cliente rechaza hace que el modelo la intente, reciba un error y se lo atribuya a la
+#: plataforma.
+Competencia = Annotated[
+    str,
+    Field(description=f"Una de: {', '.join(sorted(MODULOS))}."),
+]
 Tribunal = Annotated[
     int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
 ]

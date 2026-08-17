@@ -32,6 +32,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
+from mcp_pjud.parser import COMPETENCIAS
 from mcp_pjud.server import mcp
 
 RAIZ = Path(__file__).parents[1]
@@ -185,13 +186,52 @@ def test_los_topes_declarados_coinciden_con_el_codigo():
 # -- lo que la documentación promete que está verificado -------------------------
 
 
-def test_la_documentacion_no_anuncia_competencias_que_el_codigo_rechaza():
-    """`MODULOS` es la lista de lo verificado. Anunciar una competencia que el cliente
-    rechaza haría que alguien planifique con una función que no existe."""
-    assert set(MODULOS) == {"civil"}, (
-        "Se amplió MODULOS: hay que actualizar la referencia y el roadmap antes de anunciarlo"
+def test_la_referencia_nombra_exactamente_las_competencias_verificadas():
+    """`MODULOS` es la lista de lo verificado, y la referencia tiene que decir esa lista.
+
+    Se compara contra el código en vez de contra un literal, porque un literal obliga a
+    acordarse de dos lugares y de eso se olvida cualquiera. Anunciar una competencia que el
+    cliente rechaza haría que alguien planifique con una función que no existe; callar una
+    que sí funciona es más barato pero igual de falso.
+    """
+    seccion = next(
+        (c for n, c in _secciones_de_herramientas().items() if n == "buscar_causa_por_rit"), ""
     )
-    assert "Sólo `civil` está verificada" in HERRAMIENTAS
+    for verificada in MODULOS:
+        assert f"`{verificada}`" in seccion, (
+            f"La competencia {verificada!r} está verificada y la referencia no la nombra"
+        )
+    for otra in set(COMPETENCIAS) - set(MODULOS):
+        assert f"`{otra}`" not in seccion, (
+            f"La referencia nombra {otra!r} como disponible y el cliente la rechaza"
+        )
+
+
+def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
+    """La página no es lo único que el modelo lee: el esquema del protocolo también.
+
+    Anunciarle ahí una competencia que el cliente rechaza hace que la intente, reciba un
+    error y se lo atribuya a la plataforma. La primera versión de este guardia cubría la
+    documentación y dejaba el esquema fuera, que es el que el modelo lee primero.
+    """
+    descripciones = [
+        p.get("description", "")
+        for h in expuestas.values()
+        for nombre, p in (h.input_schema or {}).get("properties", {}).items()
+        if nombre == "competencia"
+    ]
+    assert descripciones, "ninguna herramienta declara el parámetro `competencia`"
+    for d in descripciones:
+        for otra in set(COMPETENCIAS) - set(MODULOS):
+            assert otra not in d, f"el esquema le ofrece {otra!r} al modelo y el cliente lo rechaza"
+        for verificada in MODULOS:
+            assert verificada in d, f"el esquema no le ofrece {verificada!r}, que sí funciona"
+
+
+def _secciones_de_herramientas() -> dict[str, str]:
+    nombres = re.findall(r"^## `([a-z0-9_]+)`", HERRAMIENTAS, re.M)
+    cuerpos = re.split(r"^## `[a-z0-9_]+`", HERRAMIENTAS, flags=re.M)[1:]
+    return dict(zip(nombres, cuerpos, strict=True))
 
 
 def test_la_documentacion_no_anuncia_buscadores_que_el_codigo_rechaza():

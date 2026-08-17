@@ -232,9 +232,12 @@ la Ley 21.719. Ver {doc}`cumplimiento`.
 ### Cuánto demora
 
 Una consulta de actuaciones son 4 o 5 peticiones, y la ráfaga está dimensionada justo para
-esa cadena: la primera consulta sale casi de inmediato. La segunda seguida ya espera. Con el
-intervalo de 5 segundos y sin ráfaga disponible, entre 20 y
-30 segundos por causa. **No es optimizable**: el cuello es el semáforo, y es deliberado.
+esa cadena: **la primera consulta sale casi de inmediato**, unos 5 segundos. La segunda
+seguida ya espera, y sin ráfaga disponible son entre 20 y 30 segundos por causa.
+
+El régimen sostenido **no es optimizable**: el cuello es el control de ritmo y es deliberado.
+Lo que la ráfaga cambió no es ese régimen sino la latencia de responder una pregunta suelta;
+sobre una tanda larga el tiempo total es prácticamente el mismo.
 
 Esto descarta de entrada cualquier uso masivo. Si necesitas revisar 200 causas, son unas dos
 horas de reloj, y correr instancias en paralelo para acelerarlo va contra la cláusula CUARTA.

@@ -219,10 +219,22 @@ def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):
         c.abrir_sesion()
 
 
-def test_competencia_no_verificada_se_rechaza():
+def test_competencia_que_no_existe_se_rechaza():
     c = PjudClient("test@example.cl")
-    with pytest.raises(ValueError, match="no implementada"):
+    with pytest.raises(ValueError, match="no existe"):
         c._modulo("familia")
+
+
+def test_competencia_que_existe_pero_no_se_verifico_se_rechaza():
+    """Saber leer una competencia y haberla probado son cosas distintas.
+
+    `parser.COMPETENCIAS` sabe leer las seis; `MODULOS` dice cuáles se midieron. Exponer la
+    primera lista como si fuera la segunda es adivinar, y una consulta mal armada devuelve
+    vacío, que se lee como que la causa no existe.
+    """
+    c = PjudClient("test@example.cl")
+    with pytest.raises(ValueError, match="no verificada"):
+        c._modulo("penal")
 
 
 def test_toda_peticion_queda_en_bitacora(monkeypatch):
@@ -614,3 +626,68 @@ def test_una_busqueda_sin_coincidencias_devuelve_vacio_y_no_levanta(monkeypatch)
     )
     c = _cliente_con([vacia])
     assert c.buscar_por_rit("C", 999999, 1990) == []
+
+
+# -- competencias: buscable no es lo mismo que legible --------------------------
+
+
+def test_pedir_actuaciones_de_una_competencia_sin_receptor_no_gasta_peticiones():
+    """En todo el sitio sólo existen `receptorCivil` y `receptorCobranza`.
+
+    Laboral es buscable y no tiene ministro de fe, así que la pregunta no tiene respuesta
+    ahí. Sin este rechazo se gastaban dos peticiones y diez segundos contra la plataforma
+    para terminar culpándola de un cambio de estructura que nunca hubo.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="no expone actuaciones"):
+        c.actuaciones_receptor("O", 1583, 2018, competencia="laboral")
+
+
+def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticiones():
+    """Cobranza sí tiene receptor y su panel `historiaCob` existe, pero sus columnas son
+    otras: trae `Estado Firma` y no trae `Foja` ni `Georref.`. Leerla con el mapa de civil
+    daría filas mal alineadas."""
+    c = _sin_red()
+    with pytest.raises(ValueError, match="No está verificado"):
+        c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
+
+
+def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
+    """El reloj de recarga arranca cuando la petición termina, no cuando empieza.
+
+    Si contara desde antes, una petición que estuvo un minuto colgada devolvería el balde
+    lleno, o sea el portal recibiría una ráfaga justo cuando peor está. Es la razón por la que
+    `_req` estampa la marca en `finally` y no antes de salir a la red.
+
+    Se mide en la petición SIGUIENTE y no en las fichas de esta: la recarga se calcula al
+    entrar a `_esperar`, así que mirar el balde justo después de `_req` no distingue una
+    implementación de la otra. La primera versión de este test hacía eso y pasaba con la marca
+    puesta antes o después.
+    """
+    ahora = [1000.0]
+    dormido = []
+    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: ahora[0])
+
+    def dormir(s):
+        dormido.append(s)
+        ahora[0] += s
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormir)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", 1.0)  # justo una, sin ráfaga de sobra
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
+
+    def transporte(req):
+        ahora[0] += 60.0  # la plataforma tardó un minuto en responder
+        return httpx.Response(200, text="ok")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/a")
+    assert dormido == [], "con una ficha en el balde la primera no debía esperar"
+
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/b")
+    assert dormido == [pytest.approx(INTERVALO_MINIMO)], (
+        "la segunda tiene que esperar el intervalo completo: el minuto que la primera estuvo "
+        f"colgada no se convierte en fichas. Esperas observadas: {dormido}"
+    )

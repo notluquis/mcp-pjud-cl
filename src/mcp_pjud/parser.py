@@ -18,7 +18,9 @@ para evitar: el ebook oficial no trae ninguna de las dos.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import date, time
+from typing import NamedTuple
 
 from lxml import etree, html
 from pydantic import BaseModel, Field
@@ -122,22 +124,33 @@ def _celdas(fila) -> list:
     return fila.xpath("./td")
 
 
-def parse_historia(html_detalle: str, cuaderno: str = "") -> list[Actuacion]:
+def parse_historia(
+    html_detalle: str, cuaderno: str = "", competencia: str = "civil"
+) -> list[Actuacion]:
     """Extrae todas las filas de la pestaña Historia del detalle de causa."""
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.panel is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se llama el panel de historia en {competencia}. "
+            "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
+            "'no hubo actuaciones'."
+        )
+    panel = f"historia{spec.panel}"
+
     doc = html.fromstring(html_detalle)
     # Los comentarios traen copias del texto de las celdas; sin esto se duplican.
     etree.strip_elements(doc, etree.Comment, with_tail=False)
 
-    panes = doc.xpath('//*[@id="historiaCiv"]')
+    panes = doc.xpath(f'//*[@id="{panel}"]')
     if not panes:
         raise EstructuraInesperada(
-            "No existe el panel 'historiaCiv' en el detalle de causa. "
+            f"No existe el panel {panel!r} en el detalle de causa. "
             "La estructura de la Oficina Judicial Virtual cambió."
         )
 
     tablas = panes[0].xpath(".//table")
     if not tablas:
-        raise EstructuraInesperada("El panel 'historiaCiv' no contiene ninguna tabla.")
+        raise EstructuraInesperada(f"El panel {panel!r} no contiene ninguna tabla.")
 
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
     for esperado in ("folio", "desc. trámite", "fec. trámite", "georref."):
@@ -213,9 +226,13 @@ def _fila_a_actuacion(celdas: list, cuaderno: str = "") -> Actuacion:
     )
 
 
-def actuaciones_receptor(html_detalle: str, cuaderno: str = "") -> list[Actuacion]:
+def actuaciones_receptor(
+    html_detalle: str, cuaderno: str = "", competencia: str = "civil"
+) -> list[Actuacion]:
     """Sólo las actuaciones del ministro de fe: lo que el ebook oficial omite."""
-    return [a for a in parse_historia(html_detalle, cuaderno) if a.es_actuacion_receptor]
+    return [
+        a for a in parse_historia(html_detalle, cuaderno, competencia) if a.es_actuacion_receptor
+    ]
 
 
 class Cuaderno(BaseModel):
@@ -242,16 +259,119 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
 
 
 class CausaEncontrada(BaseModel):
-    """Una fila del listado de resultados de búsqueda."""
+    """Una fila del listado de resultados de búsqueda.
+
+    Los campos opcionales existen porque las competencias no publican las mismas columnas:
+    la civil no trae estado ni RUC, la penal trae los dos, y la de apelaciones trae la
+    ubicación física del expediente. Se declaran como opcionales en vez de inventar un valor,
+    porque vacío y ausente no son lo mismo.
+    """
 
     rol: str
     fecha_ingreso: str
     caratulado: str
-    tribunal: str
+    tribunal: str = Field(
+        description="Tribunal o corte donde está radicada. En apelaciones y suprema es la corte."
+    )
     referencia: str = Field(
         description="Identificador opaco para pedir el detalle. Caduca a los 30 minutos; "
         "no se construye ni se guarda, se usa en el acto."
     )
+    competencia: str = Field(description="Competencia en la que se encontró.")
+    ruc: str | None = Field(default=None, description="Sólo en penal y cobranza.")
+    estado: str | None = Field(
+        default=None,
+        description="Lo que la competencia publica en su columna de estado, textual. No es "
+        "el mismo dato en todas: cobranza publica 'Estado Procesal' y laboral, penal, "
+        "apelaciones y suprema publican 'Estado Causa'. Civil no publica ninguno. Se entrega "
+        "sin normalizar para no aplanar dos cosas distintas en una.",
+    )
+    tipo_recurso: str | None = Field(default=None, description="Sólo en suprema.")
+    ubicacion: str | None = Field(default=None, description="Sólo en apelaciones.")
+
+
+class Competencia(NamedTuple):
+    """Cómo leer los resultados de una competencia.
+
+    Las seis comparten formulario, nombres de campo y ruta regular: lo único que difiere es
+    qué columnas trae el listado y en qué orden. Por eso esto es una tabla de datos y no seis
+    parsers: duplicar el recorrido de filas para cambiar dos índices es la forma más segura
+    de que uno de los seis se quede atrás cuando la plataforma cambie.
+
+    `columnas` mapea nombre de campo a posición dentro de la fila. La celda 0 es el control
+    que abre el detalle, así que los datos empiezan en 1. Los índices salen de los encabezados
+    que el propio sitio arma por competencia en `consultaUnificada.php`.
+    """
+
+    codigo: int
+    columnas: Mapping[str, int]
+    #: Sufijo de los paneles del detalle: `historiaCiv`, `historiaCob`. `None` mientras no se
+    #: haya visto una respuesta real, y en ese caso el detalle se rechaza en vez de adivinar.
+    panel: str | None
+    #: Si la competencia expone actuaciones de ministro de fe. Sólo existen `receptorCivil` y
+    #: `receptorCobranza` en todo el sitio, así que en las demás la pregunta que da sentido a
+    #: este proyecto no tiene respuesta y conviene decirlo en vez de devolver una lista vacía.
+    receptor: bool
+
+
+#: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
+COMPETENCIAS: Mapping[str, Competencia] = {
+    "suprema": Competencia(
+        1,
+        {
+            "rol": 1,
+            "tipo_recurso": 2,
+            "caratulado": 3,
+            "fecha_ingreso": 4,
+            "estado": 5,
+            "tribunal": 6,
+        },
+        panel=None,
+        receptor=False,
+    ),
+    "apelaciones": Competencia(
+        2,
+        {
+            "rol": 1,
+            "tribunal": 2,
+            "caratulado": 3,
+            "fecha_ingreso": 4,
+            "estado": 5,
+            "ubicacion": 7,
+        },
+        panel=None,
+        receptor=False,
+    ),
+    "civil": Competencia(
+        3,
+        {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        panel="Civ",
+        receptor=True,
+    ),
+    "laboral": Competencia(
+        4,
+        {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        panel=None,
+        receptor=False,
+    ),
+    "penal": Competencia(
+        5,
+        {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        panel=None,
+        receptor=False,
+    ),
+    "cobranza": Competencia(
+        6,
+        {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        # `historiaCob` existe, verificado pidiendo un detalle real, y junto a él vienen
+        # `diligenciaCob`, `litigantesCob`, `notificacionCob`, `deudaCob` y `liquidacionCob`.
+        # Aun así queda en None: su tabla de historia trae `Estado Firma` y NO trae `Foja` ni
+        # `Georref.`, o sea las columnas son otras. Leerla con el mapa de civil fallaría, y
+        # ese fallo es el correcto hasta tener el orden real de sus encabezados.
+        panel=None,
+        receptor=True,
+    ),
+}
 
 
 #: Palabras que, dentro de un aviso de la plataforma, significan que se interpuso una
@@ -323,12 +443,16 @@ def total_declarado(html_busqueda: str) -> int | None:
     return int(m.group(1).replace(".", "").replace(",", ""))
 
 
-def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
+def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[CausaEncontrada]:
     """Extrae las filas del listado de una búsqueda de causas.
 
     Cada fila trae un identificador opaco en el onClick; sin él no se puede pedir el
     detalle, porque la Oficina Judicial Virtual no direcciona el detalle por rol.
+
+    El recorrido es uno solo para las seis competencias, y lo que cambia entre ellas son los
+    índices de `COMPETENCIAS`.
     """
+    spec = COMPETENCIAS[competencia.lower()]
     revisar_aviso(html_busqueda)
     doc = html.fromstring(f"<table>{html_busqueda}</table>")
     etree.strip_elements(doc, etree.Comment, with_tail=False)
@@ -339,16 +463,29 @@ def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
         if not enlaces:
             continue
         ref = re.search(r"detalleCausa\w*\('([^']+)'\)", str(enlaces[0]))
+        if not ref:
+            # La fila tiene el enlace que abre el detalle pero su argumento no se deja leer.
+            # Saltarla en silencio pierde una causa dentro de un listado que igual devuelve
+            # las demás, y ése es peor que devolver nada: la lista parece completa.
+            raise EstructuraInesperada(
+                f"Una fila del listado de {competencia} trae un control de detalle que no se "
+                f"puede leer: {str(enlaces[0])[:120]!r}. La plataforma cambió cómo lo emite."
+            )
         celdas = [" ".join(td.text_content().split()) for td in fila.xpath("./td")]
-        if not ref or len(celdas) < 5:
-            continue
+        # Se exige que estén TODAS las columnas que la competencia declara. Aceptar una fila
+        # corta rellenando con vacío haría que un cambio de estructura pasara por causa sin
+        # tribunal, que es un dato faltante disfrazado de dato.
+        if len(celdas) <= max(spec.columnas.values()):
+            raise EstructuraInesperada(
+                f"Una fila del listado de {competencia} trae {len(celdas)} celdas y la "
+                f"competencia declara columnas hasta la {max(spec.columnas.values())}. "
+                "La estructura de la búsqueda cambió."
+            )
         causas.append(
             CausaEncontrada(
-                rol=celdas[1],
-                fecha_ingreso=celdas[2],
-                caratulado=celdas[3],
-                tribunal=celdas[4],
                 referencia=ref.group(1),
+                competencia=competencia.lower(),
+                **{campo: celdas[i] for campo, i in spec.columnas.items()},
             )
         )
 

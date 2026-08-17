@@ -24,6 +24,10 @@ rechaza valores menores y hay un job de CI que verifica que la constante no camb
 evasión, sin impersonación de fingerprint TLS. Si el sistema bloquea, la respuesta correcta es
 parar y avisar.
 
+Total significa del proceso, no del host que rechazó. Se evaluó acotarla por host cuando entró
+el buscador de fallos y se descartó al medir: los dos responden con la cookie `TS<hex>` de F5
+BIG-IP, o sea comparten cortafuegos y el 403 llega antes de la aplicación.
+
 **4. Fallo ruidoso, nunca lista vacía.** Si el parser no encuentra lo que espera, levanta
 `EstructuraInesperada`. Una lista vacía se lee como "no hubo actuaciones", y así se pierden
 plazos. Este es el error que el proyecto entero existe para evitar.

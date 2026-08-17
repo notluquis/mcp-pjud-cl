@@ -148,3 +148,23 @@ def test_sesion_sin_token_derivable_se_levanta(monkeypatch):
     )
     with pytest.raises(EstructuraInesperada, match="token de sesión"):
         c.abrir_sesion()
+
+
+def test_sin_numFound_se_levanta_en_vez_de_contar_cero():
+    """Con un valor por defecto, que el campo desaparezca produce `visibles = 0` junto a una
+    lista de sentencias que sí llegó, y `ocultas` pasa a ser una resta contra cero: una cifra
+    inventada con apariencia de medida."""
+    d = json.loads(AMPLIA)
+    del d["response"]["numFound"]
+    with pytest.raises(EstructuraInesperada, match="numFound"):
+        parse_sentencias(json.dumps(d))
+
+
+@pytest.mark.parametrize("campo", ["rol_era_sup_s", "fec_sentencia_sup_dt"])
+def test_una_sentencia_sin_lo_que_la_identifica_se_levanta(campo):
+    """Una `Sentencia` con `rol=""` llegaría como cita verificada sin decir a qué sentencia
+    corresponde, en una herramienta cuyo propósito es verificar citas."""
+    d = json.loads(CITA)
+    del d["response"]["docs"][0][campo]
+    with pytest.raises(EstructuraInesperada, match=campo):
+        parse_sentencias(json.dumps(d))

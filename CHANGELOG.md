@@ -119,9 +119,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   segundos y consultaba igual cuando la primera ya había recibido el 403. Era reintentar por
   la puerta de al lado.
 
-- La detención ahora es por host. Antes era global, y con la llegada del buscador de fallos un
-  bloqueo en jurisprudencia habría dejado sin consulta de causas al mismo proceso: una
-  búsqueda de referencia habría costado un plazo que nadie pudo revisar.
+- La detención sigue siendo del proceso entero, y ahora está medido por qué. Se evaluó
+  llevarla por host, para que un bloqueo consultando jurisprudencia no dejara sin consulta de
+  causas a quien tiene un plazo corriendo. Se descartó al mirar quién bloquea: los dos hosts
+  responden con la cookie `TS<hex>` de F5 BIG-IP, o sea están detrás del mismo cortafuegos y
+  el 403 llega antes de la aplicación. Seguir consultando el otro es lo que convierte un
+  bloqueo temporal en una IP baneada.
 
 - Un `assert` acotaba un tipo en código de producción. Bajo `python -O` los `assert`
   desaparecen, y ése protegía justo el caso en que se consultarían rutas sin prefijo, que

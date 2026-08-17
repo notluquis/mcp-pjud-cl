@@ -119,16 +119,20 @@ def test_el_bloqueo_detiene_tambien_al_resto_del_proceso(codigo, monkeypatch):
     assert len(llamadas) == 1, "tras el bloqueo no debe salir ninguna petición más"
 
 
-def test_un_bloqueo_en_un_host_no_deja_sin_consulta_al_otro(monkeypatch):
-    """La detención es del host que bloqueó, no del proceso entero.
+def test_un_bloqueo_en_un_host_detiene_tambien_al_otro(monkeypatch):
+    """La detención es del proceso, no del host que bloqueó.
 
-    Si una búsqueda de jurisprudencia se topa con un bloqueo y eso dejara sin consulta de
-    causas al mismo proceso, una consulta de referencia terminaría costando un plazo que
-    nadie pudo revisar. El semáforo sí es común: el ritmo se le debe a la institución.
+    Se evaluó llevarla por host, para que un bloqueo consultando jurisprudencia no dejara sin
+    consulta de causas a quien tiene un plazo corriendo. Se descartó al medir quién bloquea:
+    los dos hosts responden con la cookie `TS<hex>` de F5 BIG-IP, o sea están detrás del mismo
+    cortafuegos y el 403 llega antes de la aplicación. Seguir consultando el otro después de
+    un rechazo es lo que convierte un bloqueo temporal en una IP baneada.
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
 
     def transporte(req):
+        salieron.append(str(req.url))
         return httpx.Response(403 if "juris" in str(req.url) else 200, text="ok")
 
     c = PjudClient("test@example.cl")
@@ -137,8 +141,10 @@ def test_un_bloqueo_en_un_host_no_deja_sin_consulta_al_otro(monkeypatch):
     with pytest.raises(PjudBloqueado):
         c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
 
-    r = c._req("GET", "https://oficinajudicialvirtual.pjud.cl/consultaUnificada.php")
-    assert r.status_code == 200, "el bloqueo de juris no debe detener la consulta de causas"
+    with pytest.raises(PjudBloqueado, match="mismo cortafuegos"):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/consultaUnificada.php")
+
+    assert len(salieron) == 1, "tras el bloqueo no debe salir ninguna petición, ni a otro host"
 
 
 def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):

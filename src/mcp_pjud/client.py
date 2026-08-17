@@ -47,15 +47,18 @@ INTERVALO_MINIMO = 5.0
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
-#: Motivo del bloqueo por host, si alguno ya nos rechazó. También es del proceso y a
-#: propósito no se limpia: la detención total significa que no se vuelve a consultar ese
-#: host hasta que una persona revise si la IP quedó restringida y reinicie el servidor.
+#: Motivo del bloqueo, si el Poder Judicial ya nos rechazó. Es del proceso y a propósito no
+#: se limpia: la detención total significa que no se vuelve a consultar hasta que una persona
+#: revise si la IP quedó restringida y reinicie el servidor.
 #:
-#: Va por host y no global porque los dos sistemas sirven a fines distintos: si una
-#: consulta de jurisprudencia se topa con un bloqueo, dejar sin consulta de causas al
-#: mismo proceso convierte una búsqueda de referencia en un plazo que nadie pudo revisar.
-#: El semáforo sí es común, porque el ritmo se le debe a la institución, no al host.
-_BLOQUEADO: dict[str, str] = {}
+#: Se evaluó llevarlo por host, con el argumento de que un bloqueo consultando jurisprudencia
+#: no debería dejar sin consulta de causas a quien tiene un plazo corriendo. Se descartó al
+#: medir quién bloquea: los dos hosts responden con la cookie `TS<hex>` de F5 BIG-IP, o sea
+#: están detrás del mismo cortafuegos, y el 403 llega antes de la aplicación. Seguir
+#: consultando el otro host después de un rechazo es exactamente lo que convierte un bloqueo
+#: temporal en una IP baneada, que es el riesgo que la regla de detención total existe para
+#: evitar. Ante la duda, la respuesta correcta es parar y avisar.
+_BLOQUEADO: str | None = None
 
 COMPETENCIAS = {
     "suprema": 1,
@@ -150,15 +153,14 @@ class Transporte:
             time.sleep(pendiente)
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
-        global _ULTIMA
-        anfitrion = httpx.URL(url).host
+        global _ULTIMA, _BLOQUEADO
         # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
         # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
         # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
         # cuando la primera ya recibió el bloqueo. Eso es reintentar por el lado.
         with _TURNO:
-            if anfitrion in _BLOQUEADO:
-                raise PjudBloqueado(_BLOQUEADO[anfitrion])
+            if _BLOQUEADO:
+                raise PjudBloqueado(_BLOQUEADO)
 
             self._esperar()
             try:
@@ -170,24 +172,25 @@ class Transporte:
             self.bitacora.append((time.time(), url, r.status_code))
 
             if r.status_code in (403, 429):
-                _BLOQUEADO[anfitrion] = (
-                    f"El Poder Judicial respondió {r.status_code} a {url}. "
-                    "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
-                    "bloqueada antes de volver a consultar."
+                _BLOQUEADO = (
+                    f"El Poder Judicial respondió {r.status_code} a {url}. Detención total "
+                    "del proceso, incluidas las consultas al otro sistema: los dos están "
+                    "detrás del mismo cortafuegos. No se reintenta ni se evade. Revisar si "
+                    "la IP quedó bloqueada, y reiniciar el servidor sólo después de eso."
                 )
-                raise PjudBloqueado(_BLOQUEADO[anfitrion])
+                raise PjudBloqueado(_BLOQUEADO)
 
             # Un bloqueo puede llegar como aviso dentro de una respuesta 200, no como un
             # código de error. Sin esto quedaría clasificado como "corrige los parámetros"
             # y el usuario reintentaría, que es justo lo que la detención total prohíbe.
             aviso = self._bloqueo_encubierto(r)
             if aviso:
-                _BLOQUEADO[anfitrion] = (
+                _BLOQUEADO = (
                     f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
                     "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
                     "acceso quedó restringido."
                 )
-                raise PjudBloqueado(_BLOQUEADO[anfitrion])
+                raise PjudBloqueado(_BLOQUEADO)
 
         r.raise_for_status()
         return r

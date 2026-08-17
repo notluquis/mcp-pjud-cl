@@ -165,7 +165,15 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
 
     respuesta = datos["response"]
     condicion = datos.get("condition_pub_sf") or {}
-    visibles = int(respuesta.get("numFound", 0))
+    # Con un valor por defecto, que el campo desaparezca produce `visibles = 0` junto a una
+    # lista de sentencias que sí llegó, y `ocultas` pasa a ser una resta contra cero: una
+    # cifra inventada con apariencia de medida. Preferible enterarse.
+    if "numFound" not in respuesta:
+        raise EstructuraInesperada(
+            "La respuesta no trae 'response.numFound'. Sin él no se sabe cuántas "
+            "coincidencias son visibles, y la cuenta de ocultas saldría del aire."
+        )
+    visibles = int(respuesta["numFound"])
     # Su propio JS llama a esto `cantidad_global` y calcula la diferencia contra numFound
     # para avisar de las ocultas. Si el campo desaparece no se puede saber cuánto falta, y
     # devolver la lista igual sería afirmar completitud sin fundamento.
@@ -188,9 +196,21 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         if int(crudo[i + 1]) > 0
     }
 
+    # El rol y la fecha son lo que identifica una cita. Si el buscador los renombra, una
+    # `Sentencia` con `rol=""` llegaría al usuario como una cita verificada que no dice a qué
+    # sentencia corresponde, en una herramienta cuyo propósito es verificar citas.
+    for i, d in enumerate(respuesta["docs"], 1):
+        faltantes = [c for c in ("rol_era_sup_s", "fec_sentencia_sup_dt") if not d.get(c)]
+        if faltantes:
+            raise EstructuraInesperada(
+                f"La sentencia {i} de la respuesta no trae {faltantes}, que es lo que la "
+                "identifica. El buscador cambió sus campos: devolverla igual sería entregar "
+                "una cita que no se puede verificar."
+            )
+
     sentencias = [
         Sentencia(
-            rol=d.get("rol_era_sup_s", ""),
+            rol=d["rol_era_sup_s"],
             caratulado=d.get("caratulado_s", ""),
             fecha_sentencia=_fecha(d.get("fec_sentencia_sup_dt")),
             sala=d.get("gls_sala_sup_s", ""),

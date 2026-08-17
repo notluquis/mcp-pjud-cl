@@ -49,7 +49,7 @@ claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
 }
 ```
 
-El [README](https://github.com/notluquis/mcp-pjud-cl#uso) trae además botones de instalación
+El [README](https://github.com/notluquis/mcp-pjud-cl) trae además botones de instalación
 de un clic para Cursor y VS Code. Dejan el correo como marcador y hay que editarlo.
 
 El transporte es stdio. No abre puertos ni escucha en la red.
@@ -74,7 +74,7 @@ uv sync --all-groups
 ### Verificar
 
 ```bash
-uv run pytest        # 50 tests, sin red
+uv run pytest        # sin red
 uv run ruff check .
 ```
 

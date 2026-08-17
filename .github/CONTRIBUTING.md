@@ -70,7 +70,7 @@ desarrollo esto detectó que un test central seguía verde con el bug puesto, po
 camino del código tapaba la regresión.
 
 ```bash
-uv run pytest              # 50 tests, sin red
+uv run pytest              # sin red
 uv run ruff check .
 ```
 

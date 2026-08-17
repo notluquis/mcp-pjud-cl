@@ -48,6 +48,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Documentación consumible por agentes: cada página se publica también en Markdown
   (`uso.html.md`, etc.), más `llms.txt` y `llms-full.txt`, vía la extensión `sphinx-llm`.
 - Página de ejemplos con casos resueltos de punta a punta.
+- Badges de CodeQL, OpenSSF Scorecard y source-available en el README.
+- `GEMINI.md`, para la única herramienta además de Claude Code que todavía no lee `AGENTS.md`.
 - Instalación sin clonar, con `uvx --from git+...`. Verificado levantando el servidor y
   listando sus herramientas por stdio. Habilita el comando de una línea para Claude Code y
   los botones de un clic para Cursor y VS Code.
@@ -110,7 +112,7 @@ receptor con la fecha de diligencia correcta.
 - Detención total ante 403 y 429, sin reintento.
 - Fallo ruidoso ante estructura desconocida: excepción, nunca lista vacía.
 - Bitácora de peticiones en memoria.
-- 39 tests contra HTML real, sin red.  <!-- 43 en No publicado -->
+- 39 tests contra HTML real, sin red.
 
 ### Decisiones que conviene conocer
 

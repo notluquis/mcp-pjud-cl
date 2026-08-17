@@ -490,10 +490,12 @@ Tres advertencias que sólo se ven mirando la respuesta:
 - **`piezasExhortoCiv` trae los encabezados con errata**: dice `Támite` y `Fec. Támite`, sin la
   erre. Un parser que busque `Trámite` no encuentra nada y devuelve vacío. Hay que calzar con
   el texto que la plataforma emite, no con el correcto.
-- **`notificacionesCiv` tiene su propia `Fecha Trámite`**, y es territorio de plazos igual que
-  la historia. Antes de exponerla hay que verificar si trae el mismo formato de fecha doble.
-  Con `Est. Notif.` y `Obs. Fallida` responde "¿la notificación resultó?", que es la pregunta
-  anterior a "¿cuándo corre el plazo?".
+- **`notificacionesCiv` tiene su propia `Fecha Trámite`.** Dicho con precisión: eso es lo que
+  dice el encabezado, y de ahí no se sigue que se comporte como la de la historia. **No hay
+  ninguna fila real observada**, así que si trae o no el formato de fecha doble está sin medir.
+  Por el nombre de sus columnas (`Est. Notif.`, `Obs. Fallida`) parece responder "¿la
+  notificación resultó?", que sería la pregunta anterior a "¿cuándo corre el plazo?", pero eso
+  es una inferencia sobre nombres y hay que verificarla antes de construir encima.
 - **`litigantesCiv` trae RUT de personas naturales.** Es el panel con más carga de datos
   personales de todo el detalle, y su fixture tendrá que anonimizarse como el resto.
 
@@ -578,21 +580,26 @@ camino.
 
 Y por qué **no** basta con enchufar un calendario:
 
-- El cómputo depende de la regla procesal, no sólo del almanaque. En materia civil el sábado
-  no se cuenta igual que el domingo, los plazos de días y los de meses corren distinto, y hay
-  reglas propias de la ampliación por notificación fuera del territorio.
+- El cómputo depende de la regla procesal aplicable, no sólo del almanaque, y esa regla varía
+  según la materia y según el tipo de plazo. Decir cuál rige en cada caso es calificación
+  jurídica, no aritmética.
 - Equivocarse acá es peor que no responder. Entregar "el plazo vence el 12" con un día de
   error produce exactamente la pérdida que el proyecto existe para evitar, y con la confianza
   añadida de venir con forma de respuesta.
+
+Esto último no es prudencia retórica: este documento describe software, y una afirmación sobre
+cómo se cuenta un plazo la va a leer un abogado como la posición del proyecto. Acá no se
+sostiene ninguna, a propósito.
 
 De modo que la dirección probable no es "calcular el plazo" sino **entregar los insumos con la
 misma honestidad que el resto**: la fecha de diligencia, los días inhábiles del período, y la
 cuenta en días corridos y en hábiles, dejando la calificación jurídica a quien firma. La
 decisión queda abierta y es de las que conviene discutir antes de escribir código.
 
-Fuente del calendario: está por decidir. Boostr lo ofrece pero es un tercero de pago; los
-feriados chilenos son ley (la Ley 2.977 y las que la modifican), o sea el dato es público y
-cabe en el paquete sin depender de nadie.
+Fuente del calendario: está por decidir. Boostr lo ofrece pero es un tercero de pago. Los
+feriados chilenos están fijados por ley, con la [Ley 2.977](https://www.bcn.cl/leychile) de
+1915 como norma base y las posteriores que la modifican, o sea el dato es público y cabe en el
+paquete sin depender de nadie.
 
 #### Del mismo catálogo: qué más sirve y qué se rechaza
 

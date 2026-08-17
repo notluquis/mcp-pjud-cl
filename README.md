@@ -91,13 +91,13 @@ viaja en el `User-Agent` para que el Poder Judicial pueda identificar a quien co
 
 ```bash
 claude mcp add pjud -e MCP_PJUD_CONTACTO=tu@correo.cl \
-  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl@stable mcp-pjud
 ```
 
 **Cursor y VS Code**
 
 [![Instalar en Cursor](https://img.shields.io/badge/Cursor-instalar-000?logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=pjud&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL25vdGx1cXVpcy9tY3AtcGp1ZC1jbCIsIm1jcC1wanVkIl0sImVudiI6eyJNQ1BfUEpVRF9DT05UQUNUTyI6InR1QGNvcnJlby5jbCJ9fQ%3D%3D)
-[![Instalar en VS Code](https://img.shields.io/badge/VS_Code-instalar-0098FF?logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=pjud&config=%7B%22name%22%3A%22pjud%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22git%2Bhttps%3A//github.com/notluquis/mcp-pjud-cl%22%2C%22mcp-pjud%22%5D%2C%22env%22%3A%7B%22MCP_PJUD_CONTACTO%22%3A%22tu%40correo.cl%22%7D%7D)
+[![Instalar en VS Code](https://img.shields.io/badge/VS_Code-instalar-0098FF?logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=pjud&config=%7B%22name%22%3A%22pjud%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22git%2Bhttps%3A//github.com/notluquis/mcp-pjud-cl%40stable%22%2C%22mcp-pjud%22%5D%2C%22env%22%3A%7B%22MCP_PJUD_CONTACTO%22%3A%22tu%40correo.cl%22%7D%7D)
 
 Los botones dejan el correo como marcador. Edítalo en la configuración del editor, o el
 servidor falla con un mensaje que te lo recuerda.
@@ -109,15 +109,19 @@ servidor falla con un mensaje que te lo recuerda.
   "mcpServers": {
     "pjud": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "tu@correo.cl" }
     }
   }
 }
 ```
 
-El transporte es stdio: no abre puertos ni escucha en la red. Para fijar una versión, agrega
-`@v0.2.0` al final de la URL de git.
+El transporte es stdio: no abre puertos ni escucha en la red.
+
+`@stable` apunta siempre a la última versión publicada, así que se actualiza sola al instalar.
+Si prefieres quedarte en una versión concreta, cambia esa referencia por la etiqueta, por
+ejemplo `@v0.2.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
+publicar: no es lo recomendado.
 
 ## Herramientas
 

@@ -35,7 +35,7 @@ forma de omitirlo.
 :::{tab-item} Claude Code
 ```bash
 claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
-  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl@stable mcp-pjud
 ```
 :::
 
@@ -47,7 +47,7 @@ En `claude_desktop_config.json`:
   "mcpServers": {
     "pjud": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
     }
   }
@@ -63,7 +63,7 @@ En `~/.cursor/mcp.json`, o por el botón de un clic del README:
   "mcpServers": {
     "pjud": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
     }
   }
@@ -80,7 +80,7 @@ como en el resto. Pegar el bloque de Claude Desktop no funciona.
   "servers": {
     "pjud": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
     }
   }
@@ -91,7 +91,7 @@ como en el resto. Pegar el bloque de Claude Desktop no funciona.
 :::{tab-item} Codex
 ```bash
 codex mcp add pjud --env MCP_PJUD_CONTACTO=informatica@estudio.cl \
-  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl@stable mcp-pjud
 ```
 
 O a mano, en `~/.codex/config.toml`:
@@ -99,7 +99,7 @@ O a mano, en `~/.codex/config.toml`:
 ```toml
 [mcp_servers.pjud]
 command = "uvx"
-args = ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"]
+args = ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"]
 env = { MCP_PJUD_CONTACTO = "informatica@estudio.cl" }
 ```
 :::
@@ -111,10 +111,21 @@ de un clic para Cursor y VS Code. Dejan el correo como marcador y hay que editar
 
 El transporte es stdio. No abre puertos ni escucha en la red.
 
-### Fijar una versión
+### Qué versión se instala
 
-`uvx --from git+...` toma la rama principal. Para fijar una versión concreta, que es lo
-razonable en un entorno de trabajo:
+Lo que va después de `@` en la URL de git decide qué código corre, y las tres opciones tienen
+consecuencias distintas:
+
+| Referencia | Qué corre | Cuándo conviene |
+|---|---|---|
+| `@stable` | La última versión **publicada**. Se actualiza sola al instalar | Es lo que la documentación recomienda y lo que traen los ejemplos |
+| `@v0.2.0` | Esa versión y ninguna otra | Cuando el entorno exige que nada cambie sin revisión |
+| sin `@` | La rama principal, con cambios **sin publicar** | Para desarrollar sobre el proyecto, no para trabajar con causas |
+
+`stable` se mueve sola: el flujo de publicación la avanza a cada etiqueta, y sólo después de
+que la versión se creó sin errores. Si una publicación falla, `stable` se queda donde estaba.
+
+Para fijar una versión concreta:
 
 ```
 "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.2.0", "mcp-pjud"]

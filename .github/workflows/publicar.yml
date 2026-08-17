@@ -108,3 +108,23 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes-file notas.md \
             dist/* sbom.spdx.json
+
+      # `stable` es lo que la documentación recomienda instalar: apunta siempre a la última
+      # versión publicada. Sin ella, la instalación por defecto seguía la rama principal, o sea
+      # la gente corría código sin publicar y sin saberlo.
+      #
+      # Va DESPUÉS de crear la versión a propósito: si la publicación falla, `stable` no se
+      # mueve y quien instale sigue en la anterior, que es la que funciona.
+      #
+      # Se mueve por la API y no con `git push` porque el checkout no conserva credenciales. Y
+      # sin `force`: mover `stable` es siempre un avance, así que si alguna vez no lo fuera,
+      # esto tiene que fallar ruidoso en vez de retroceder a la gente en silencio.
+      - name: Mover `stable` a esta versión
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/stable" \
+              -f sha="$GITHUB_SHA" \
+            || gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/stable" -f sha="$GITHUB_SHA"

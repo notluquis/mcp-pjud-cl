@@ -16,6 +16,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- **Rama `stable`, que apunta siempre a la última versión publicada.** La instalación que la
+  documentación mostraba no fijaba nada, y `uvx --from git+...` sin referencia toma la rama
+  principal: quien la seguía corría cambios sin publicar sin forma de notarlo, porque nada en
+  la salida distingue una versión publicada de la rama principal. En una herramienta que se usa
+  para computar plazos eso es exactamente al revés de lo que conviene.
+
+  El flujo de publicación la avanza a cada etiqueta, y sólo después de crear la versión sin
+  errores: si una publicación falla, `stable` se queda donde estaba y quien instale sigue en la
+  anterior, que es la que funciona. Se mueve sin `force`, porque avanzarla es siempre un avance
+  y retroceder a la gente en silencio sería peor que fallar.
+
 ### Corregido
 
 - **El servidor MCP se presentaba sin versión.** La especificación exige desde la revisión

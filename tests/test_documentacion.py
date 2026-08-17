@@ -1005,3 +1005,34 @@ def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_git
     )
     assert "--notes-file" in flujo, "la publicación tiene que pasar las notas armadas"
     assert "CHANGELOG.md" in flujo, "las notas salen del CHANGELOG, que es la fuente única"
+
+
+def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
+    """Sin referencia, `uvx --from git+...` toma la rama principal.
+
+    O sea la instalación que la documentación mostraba hacía correr cambios sin publicar, y
+    quien la seguía no tenía forma de saberlo: no hay nada en la salida que distinga una
+    versión publicada de la rama principal. En una herramienta que se usa para computar plazos,
+    eso es exactamente al revés de lo que conviene.
+
+    `stable` la mueve el flujo de publicación, y sólo después de que la versión se creó bien.
+    Este guardia mira las dos mitades: que los ejemplos la usen y que el flujo la mueva. Con
+    sólo la primera, la documentación recomendaría instalar una rama que nadie actualiza.
+    """
+    for archivo in ("README.md", "docs/instalacion.md"):
+        texto = _texto(RAIZ / archivo)
+        ejemplos = re.findall(
+            r"git\+https://github\.com/notluquis/mcp-pjud-cl([^\s\"',)\]]*)", texto
+        )
+        assert ejemplos, f"{archivo} ya no muestra cómo instalar"
+        sin_referencia = [e for e in ejemplos if not e.startswith("@")]
+        assert not sin_referencia, (
+            f"{archivo} muestra una instalación sin referencia, que toma la rama principal y "
+            "hace correr cambios sin publicar"
+        )
+
+    flujo = _texto(RAIZ / ".github" / "workflows" / "publicar.yml")
+    assert "refs/heads/stable" in flujo, (
+        "la documentación recomienda instalar `stable` y el flujo de publicación no la mueve: "
+        "quedaría clavada en la versión con que se creó"
+    )

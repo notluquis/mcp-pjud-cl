@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Documentación
+docs/_build/
+
+# Entorno
+.env
+.DS_Store
+
+# Nunca versionar respuestas con datos de terceros que no sean fixtures revisadas.
+# Las fixtures de tests/fixtures/ sí van al repositorio: son causas públicas y se
+# revisaron una por una. Cualquier otra captura queda fuera.
+*.har
+capturas/
+
+# El mapeo de anonimizacion nunca se versiona: publicarlo desharia la anonimizacion.
+tests/fixtures/mapeo.local.json

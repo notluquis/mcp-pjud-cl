@@ -1,0 +1,38 @@
+title: "[uso] "
+labels: ["uso-en-estudios"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Espacio para quienes usan esto en el día a día. Cómo lo integraron, qué les sirvió,
+        qué les faltó.
+
+        **No se discuten causas particulares ni personas.** Si necesitas ilustrar algo con
+        una causa concreta, usa el mínimo dato necesario, y sólo de causas públicas.
+
+  - type: dropdown
+    id: rol
+    attributes:
+      label: Desde dónde escribes
+      options:
+        - Abogado o abogada
+        - Área de informática de un estudio
+        - Institución pública
+        - Universidad
+        - Curiosidad técnica
+    validations:
+      required: true
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Qué quieres compartir o preguntar
+    validations:
+      required: true
+
+  - type: textarea
+    id: falta
+    attributes:
+      label: Qué te falta hoy
+      description: >-
+        Lo que no puedes hacer y necesitarías. Esto es lo que más influye en la hoja de ruta.

@@ -1,0 +1,51 @@
+name: Documentación
+description: Algo está mal explicado, falta, o una cita jurídica es incorrecta.
+title: "[docs] "
+labels: ["documentación"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Si citamos mal una norma o un plazo, es un error tan grave como un bug: alguien
+        podría apoyarse en eso.
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Qué tipo de problema
+      options:
+        - Una cita jurídica está mal (norma, artículo, plazo, fecha de vigencia)
+        - Algo está explicado de forma confusa
+        - Falta documentar algo
+        - Un ejemplo no funciona
+        - Error de tipeo o redacción
+    validations:
+      required: true
+
+  - type: dropdown
+    id: publico
+    attributes:
+      label: A qué público afecta
+      options:
+        - Abogados
+        - Área de informática
+        - Ambos
+    validations:
+      required: true
+
+  - type: input
+    id: donde
+    attributes:
+      label: Dónde
+      description: URL de la página o ruta del archivo.
+      placeholder: https://mcp-pjud-cl.readthedocs.io/es/latest/cumplimiento.html
+    validations:
+      required: true
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué dice hoy y qué debería decir
+      description: Si es una cita jurídica incorrecta, incluye la referencia correcta.
+    validations:
+      required: true

@@ -1,0 +1,82 @@
+name: Solicitud de permiso de uso
+description: Quiero usarlo en el ejercicio profesional, modificarlo o distribuirlo.
+title: "[permiso] "
+labels: ["permiso-licencia"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        La [licencia](https://github.com/notluquis/mcp-pjud-cl/blob/main/LICENSE.md)
+        (PolyForm Strict 1.0.0) permite **ejecutar** el software para propósitos no
+        comerciales, y nada más.
+
+        Necesitas permiso para:
+
+        - **Usarlo en el ejercicio profesional remunerado.** Si eres abogado y facturas a
+          tus clientes, esto te incluye, aunque uses la herramienta sólo para tus propias
+          causas.
+        - Modificarlo o adaptarlo, incluido el área de informática de un estudio.
+        - Distribuirlo o instalarlo para terceros.
+
+        **Los permisos se otorgan caso a caso y sin costo.** La licencia restrictiva existe
+        para saber quién usa esto y para qué, no para cobrar. Responder este formulario suele
+        tomar dos minutos.
+
+  - type: dropdown
+    id: quien
+    attributes:
+      label: Quién solicita
+      options:
+        - Abogado o abogada, ejercicio individual
+        - Estudio jurídico
+        - Área de informática de un estudio jurídico
+        - Corporación de Asistencia Judicial, clínica jurídica o similar
+        - Institución del Estado
+        - Universidad o investigación
+        - Otro
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: que
+    attributes:
+      label: Qué permisos necesitas
+      options:
+        - label: Usarlo en el ejercicio profesional remunerado
+        - label: Modificarlo o adaptarlo
+        - label: Instalarlo o administrarlo para terceros dentro de mi organización
+        - label: Distribuirlo fuera de mi organización
+
+  - type: textarea
+    id: proposito
+    attributes:
+      label: Para qué lo vas a usar
+      description: Un párrafo basta. Qué problema resuelves y con qué volumen aproximado.
+      placeholder: >-
+        Estudio de cobranza, unas 200 causas civiles activas. Necesito revisar fechas de
+        diligencia sin abrir cada expediente a mano.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: compromisos
+    attributes:
+      label: Compromisos
+      description: >-
+        Estos no son trámite. Son las condiciones que hacen que este proyecto pueda existir
+        sin que a alguien le bloqueen la IP en medio de un litigio.
+      options:
+        - label: No bajaré el intervalo mínimo de 5 segundos entre consultas.
+          required: true
+        - label: No correré varias instancias en paralelo contra la plataforma.
+          required: true
+        - label: Si el sistema me bloquea, me detengo y aviso. No evado ni roto IP.
+          required: true
+        - label: >-
+            Leí ACCEPTABLE_USE.md, incluida la parte sobre la Ley 21.719 y mis obligaciones
+            si decido almacenar resultados.
+          required: true
+        - label: >-
+            Entiendo que esto no reemplaza la revisión del expediente ni el criterio
+            profesional.
+          required: true

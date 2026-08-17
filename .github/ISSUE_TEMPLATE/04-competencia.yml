@@ -1,0 +1,57 @@
+name: Cubrir otra competencia
+description: Necesito laboral, cobranza, penal, familia, apelaciones o suprema.
+title: "[competencia] "
+labels: ["competencia", "mejora"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Hoy **sólo civil está verificada**. Las demás competencias existen en la plataforma
+        y sus rutas están mapeadas, pero el cliente las rechaza en vez de adivinar sus
+        parámetros: devolver datos mal parseados sería peor que no devolver nada.
+
+        Cada competencia usa un sistema distinto por debajo y necesita su propio parser y
+        sus propias fixtures.
+
+  - type: dropdown
+    id: competencia
+    attributes:
+      label: Cuál necesitas
+      options:
+        - Cobranza laboral y previsional
+        - Laboral
+        - Corte de Apelaciones
+        - Corte Suprema
+        - Penal
+        - Familia
+    validations:
+      required: true
+
+  - type: textarea
+    id: caso
+    attributes:
+      label: Una causa pública de esa competencia para usar como fixture
+      description: >-
+        Rol y tribunal de una causa **no reservada** que sirva de referencia. Idealmente una
+        que tenga actuaciones de receptor, para poder verificar la parte que importa.
+      placeholder: C-208-2019, Juzgado de Cobranza Laboral y Previsional de Concepción
+    validations:
+      required: true
+
+  - type: dropdown
+    id: receptor
+    attributes:
+      label: ¿Esa competencia muestra actuaciones de receptor?
+      options:
+        - "Sí, con el mismo formato de fecha doble"
+        - "Sí, pero el formato se ve distinto"
+        - "No trae actuaciones de receptor"
+        - "No sé"
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivo
+    attributes:
+      label: Por qué la necesitas
+      description: Ayuda a priorizar.

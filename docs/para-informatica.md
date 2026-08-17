@@ -1,0 +1,189 @@
+# Guía para el área de informática
+
+## Qué es
+
+Un servidor [Model Context Protocol](https://modelcontextprotocol.io) en Python que expone la
+consulta pública de causas del Poder Judicial de Chile como herramientas invocables por un
+cliente MCP.
+
+Solo lectura. Cuatro dependencias. Sin base de datos, sin navegador, sin credenciales.
+
+## Instalación
+
+```bash
+git clone https://github.com/notluquis/mcp-pjud-cl
+cd mcp-pjud
+uv sync
+```
+
+Requiere Python 3.13 o superior y [uv](https://docs.astral.sh/uv/).
+
+### Variable obligatoria
+
+```bash
+export MCP_PJUD_CONTACTO="informatica@estudio.cl"
+```
+
+Sin ella el servidor **no opera**. Ese correo viaja en el `User-Agent` de cada petición:
+
+```
+User-Agent: mcp-pjud/0.1 (+contacto: informatica@estudio.cl)
+```
+
+Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No es
+configurable para omitirse.
+
+### Conectarlo a Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "pjud": {
+      "command": "uv",
+      "args": ["--directory", "/ruta/a/mcp-pjud", "run", "mcp-pjud"],
+      "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
+    }
+  }
+}
+```
+
+El transporte es stdio. No abre puertos ni escucha en la red.
+
+### Verificar
+
+```bash
+uv run pytest        # 39 tests, sin red
+uv run ruff check .
+```
+
+Los tests corren contra HTML real guardado en `tests/fixtures/`. **Ninguno consulta al Poder
+Judicial**, así que se pueden correr en CI sin generar tráfico a la plataforma.
+
+## Arquitectura
+
+Tres módulos, unas 508 líneas de código.
+
+```
+src/mcp_pjud/
+  server.py    Herramientas MCP, anotaciones, directiva operativa
+  client.py    Cadena HTTP, control de ritmo, detención
+  parser.py    Extracción de las tablas. Sin red: se prueba offline
+```
+
+### La cadena de peticiones
+
+```
+GET  includes/sesion-consultaunificada.php   →  sesión pública (sin Clave Única)
+GET  consultaUnificada.php                   →  se derivan prefijo de rutas y token
+POST {prefijo}/civil/consultaRitCivil.php    →  listado + referencia opaca de la causa
+POST {prefijo}/civil/modal/causaCivil.php    →  detalle + lista de cuadernos
+     ... una vez por cada cuaderno ...
+```
+
+La plataforma **no direcciona el detalle por rol**: cada fila del listado trae una referencia
+opaca que caduca a los 30 minutos. Por eso `obtener_actuaciones_receptor` encadena
+internamente en vez de ser una llamada suelta.
+
+El prefijo de rutas y el token de los modales **se derivan en caliente** del HTML de
+`consultaUnificada.php`. Se verificó que el token rota en cada sesión; hardcodearlo habría
+roto todas las rutas a la vez y sin aviso.
+
+### Por qué no hay navegador
+
+Se midió antes de decidir:
+
+| Cliente | User-Agent | Resultado |
+|---|---|---|
+| curl | `curl/8.x` | **403 Forbidden** |
+| curl | `python-requests/2.32 bot` | 200 |
+| curl | `mcp-pjud/0.1 (+contacto)` | 200 |
+
+Mismo binario, mismo handshake TLS, misma huella JA3. Lo único que cambió fue un header: el
+filtro actúa sobre el **string del User-Agent**, no sobre la huella TLS.
+
+Consecuencias: Playwright es innecesario, e impersonar un fingerprint TLS (`curl_cffi`,
+`Impit`) no aporta nada, porque no hay nada en la capa TLS que sortear. HTTP plano con user
+agent identificable pasa, que además es lo que exige la política de uso responsable del
+proyecto. El camino que cumple es el mismo que funciona.
+
+## Controles que no se deben tocar
+
+Están en `client.py` y existen por razones jurídicas y operacionales, no de rendimiento.
+
+### Intervalo mínimo de 5 segundos
+
+```python
+INTERVALO_MINIMO = 5.0
+```
+
+Es la implementación de la **cláusula CUARTA** de las condiciones de uso de la Oficina
+Judicial Virtual, que prohíbe "dañar, inutilizar, **sobrecargar**, deteriorar el Portal o
+impedir su normal utilización".
+
+El constructor **rechaza** cualquier valor menor. Hay un test que lo verifica, y un job de CI
+que falla si la constante cambia.
+
+### Detención total ante bloqueo
+
+Ante 403 o 429 se levanta `PjudBloqueado` y se detiene. **Sin reintento, sin rotación de IP,
+sin evasión.**
+
+El riesgo que esto protege es concreto: si la IP del estudio queda bloqueada, se pierde el
+acceso a la consulta de las causas propias mientras corren plazos en litigios activos. Eso
+pesa más que cualquier dato que se quisiera obtener.
+
+### Fallo ruidoso
+
+Si el parser no encuentra la tabla o las columnas esperadas, levanta `EstructuraInesperada`.
+**Nunca devuelve una lista vacía.**
+
+Una lista vacía se lee como "no hubo actuaciones". Un falso negativo acá significa dar por no
+corrido un plazo que sí corrió.
+
+### Sin persistencia
+
+Se consulta y se devuelve. No hay base de datos ni caché en disco. La `bitacora` del cliente
+guarda timestamp, URL y código de estado en memoria, y se pierde al terminar el proceso.
+
+Si tu organización decide almacenar resultados, pasa a ser responsable del tratamiento bajo
+la Ley 21.719. Ver {doc}`cumplimiento`.
+
+## Operación
+
+### Cuánto demora
+
+Una consulta de actuaciones son 4 o 5 peticiones. Con el intervalo de 5 segundos, entre 20 y
+30 segundos por causa. **No es optimizable**: el cuello es el semáforo, y es deliberado.
+
+Esto descarta de entrada cualquier uso masivo. Si necesitas revisar 200 causas, son unas dos
+horas de reloj, y correr instancias en paralelo para acelerarlo va contra la cláusula CUARTA.
+
+### Qué monitorear
+
+- `PjudBloqueado` → revisar si la IP quedó bloqueada **antes** de reintentar nada.
+- `EstructuraInesperada` → la plataforma cambió. Reportar con la plantilla correspondiente.
+- `discrepancia_fechas: true` en la salida → dato que necesita revisión humana.
+
+### Qué NO hacer
+
+- Correr varias instancias en paralelo contra la plataforma.
+- Bajar el intervalo, ni siquiera "para una prueba rápida".
+- Reintentar automáticamente después de un 403.
+- Barrer rangos de roles.
+- Exponer el servidor a la red: está diseñado para stdio local.
+
+## Licencia y permisos
+
+[PolyForm Strict 1.0.0](https://polyformproject.org/licenses/strict/1.0.0). Permite
+**ejecutar** el software con fines no comerciales.
+
+**Necesitas permiso escrito para:**
+
+- Usarlo en un estudio que factura a sus clientes
+- Modificarlo o adaptarlo, incluido cualquier parche interno
+- Instalarlo para terceros fuera de tu organización
+
+Se pide [abriendo un issue](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose), se
+otorga caso a caso y sin costo. Si tu departamento legal necesita revisar el texto, PolyForm
+es una familia de licencias estándar redactada por abogados de licenciamiento, no un texto a
+medida.

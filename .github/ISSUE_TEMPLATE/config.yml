@@ -1,0 +1,19 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Duda de uso o de instalación
+    url: https://github.com/notluquis/mcp-pjud-cl/discussions
+    about: Las preguntas van a Discusiones, no a Issues.
+
+  - name: Vulnerabilidad de seguridad
+    url: https://github.com/notluquis/mcp-pjud-cl/security/advisories/new
+    about: Nunca en un issue público. Reporte privado por acá.
+
+  - name: Debilidad en la plataforma del Poder Judicial
+    url: https://www.pjud.cl/transparencia/solicitud-de-informacion
+    about: >-
+      No se reporta acá ni se publica. Va por divulgación responsable directa a
+      la Corporación Administrativa del Poder Judicial.
+
+  - name: Documentación
+    url: https://mcp-pjud-cl.readthedocs.io
+    about: Guía para abogados y para el área de informática.

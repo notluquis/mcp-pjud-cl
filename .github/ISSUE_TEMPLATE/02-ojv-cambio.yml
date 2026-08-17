@@ -1,0 +1,64 @@
+name: La Oficina Judicial Virtual cambió
+description: Dejó de funcionar de un día para otro, o aparece un error de estructura inesperada.
+title: "[ojv] "
+labels: ["ojv-cambio", "prioridad-alta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        La plataforma cambia sin aviso. Cuando eso pasa, el software **falla ruidosamente**
+        a propósito: levanta una excepción en vez de devolver una lista vacía, porque un
+        resultado vacío se lee como "no hubo actuaciones" y así se pierden plazos.
+
+        Si ves `EstructuraInesperada` o `PjudBloqueado`, estás en el lugar correcto.
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Mensaje de error completo
+      description: Pega el traceback entero.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: momento
+    attributes:
+      label: En qué paso falla
+      options:
+        - Al abrir sesión (no se pudo derivar el prefijo o el token)
+        - Al buscar la causa
+        - Al abrir el detalle
+        - Al leer la tabla de actuaciones
+        - No sé
+    validations:
+      required: true
+
+  - type: dropdown
+    id: manual
+    attributes:
+      label: ¿La consulta funciona a mano en el navegador?
+      description: Entra a la consulta pública de causas y busca la misma causa.
+      options:
+        - "Sí, en el navegador funciona normal"
+        - "No, en el navegador también falla"
+        - "En el navegador aparece un captcha"
+        - "No lo probé"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de mcp-pjud
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Algo más que hayas notado
+      description: >-
+        Si viste que la web agregó una pestaña, cambió nombres de columnas, o pide algo que
+        antes no pedía, cuéntalo acá. Ese detalle suele ser la clave.

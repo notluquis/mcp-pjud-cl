@@ -1,0 +1,65 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Lunes 12:00 UTC. No prueba contra el Poder Judicial: sólo detecta que una
+    # dependencia nueva rompa el parser sobre las fixtures guardadas.
+    - cron: "0 12 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --all-groups
+
+      # Los tests corren contra HTML real guardado en tests/fixtures/.
+      # Ninguno consulta al Poder Judicial: CI nunca genera tráfico a la plataforma.
+      - name: Tests
+        run: uv run pytest -v
+
+      - name: Lint
+        run: uv run ruff check .
+
+  sin-escritura:
+    name: Verificar que no exista código de escritura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # La garantía central del proyecto es que no puede escribir en los sistemas del
+      # Poder Judicial. Esto lo verifica mecánicamente en cada PR, en vez de confiar en
+      # que alguien lo revise.
+      - name: Buscar endpoints de ingreso de escritos
+        run: |
+          if grep -rniE 'ingresoCausas|ingresoEscrito|subirEscrito|presentarEscrito' \
+               --include='*.py' src/ tests/; then
+            echo "::error::Se encontró una referencia a endpoints de escritura del PJUD."
+            exit 1
+          fi
+          echo "Sin referencias a endpoints de escritura."
+
+      - name: Verificar que el intervalo mínimo no bajó
+        run: |
+          grep -q 'INTERVALO_MINIMO = 5.0' src/mcp_pjud/client.py || {
+            echo "::error::El intervalo mínimo entre peticiones cambió. Es la cláusula CUARTA."
+            exit 1
+          }
+          echo "Intervalo mínimo intacto."
+
+      # La anonimización de las fixtures la cubre tests/test_fixtures.py, que corre en el job
+      # de arriba. Se hizo en Python y no en grep a propósito: la primera versión usaba una
+      # retro-referencia que el grep local no soporta, el comando erraba, y la salida vacía
+      # se leía como "sin hallazgos". Un guardia que no puede fallar imprime lo mismo que uno
+      # que protege.

@@ -1,0 +1,147 @@
+# Guía para abogados
+
+Esta página no tiene código. Si quieres instalarlo, pásale
+{doc}`la otra guía <para-informatica>` a quien administre tus sistemas.
+
+## Qué problema resuelve
+
+Cuando descargas el ebook de una causa desde la Oficina Judicial Virtual, **no vienen las
+actuaciones del receptor**. En un caso real, el folio 12 de un cuaderno de apremio aparecía
+en el ebook como una sola línea que decía "validación", sin fecha de diligencia.
+
+La fecha real de esa diligencia —la que determina si un plazo de cuatro u ocho días se cumple
+o se pierde— sólo está visible en la interfaz web, y sólo si sabes dónde mirar.
+
+Esta herramienta va a buscar esa información y te la entrega con las fechas separadas y
+etiquetadas.
+
+## Las dos fechas, y por qué se confunden
+
+En la web, la columna `Fec. Trámite` de una actuación de receptor se ve así:
+
+```
+31/03/2026 (27/03/2026)
+```
+
+Son **dos fechas distintas**:
+
+| Fecha | Qué es | ¿Corre plazos? |
+|---|---|---|
+| `31/03/2026`, la primera | Cuándo el tribunal registró el trámite en el sistema | **No** |
+| `27/03/2026`, la del paréntesis | Cuándo el receptor practicó realmente la diligencia | **Sí** |
+
+Y la descripción del trámite trae la misma fecha, con hora:
+
+```
+NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:27/03/2026 17:40
+```
+
+La herramienta te devuelve `fecha_diligencia: 2026-03-27` y `fecha_registro: 2026-03-31` como
+campos aparte. No hay que interpretar ningún paréntesis.
+
+:::{note}
+Las fechas se entregan en formato **ISO 8601** (`2026-03-27`, año-mes-día) y no en formato
+chileno. Es deliberado: `06/09/2026` es ambiguo —¿6 de septiembre o 9 de junio?— y acá
+confundirse cuesta un plazo.
+:::
+
+## Los cuadernos: lo que casi se nos pasa
+
+La interfaz web muestra la historia de **un cuaderno a la vez**. Si tu causa tiene cuaderno de
+apremio, hay un desplegable que la mayoría no nota.
+
+Durante el desarrollo, la herramienta leía sólo el cuaderno que venía por defecto. En
+C-1156-2026 eso significaba devolver 3 actuaciones de 6, y **las 3 que faltaban eran el
+requerimiento de pago, el embargo y la inscripción**: justo las que corren plazos en un juicio
+ejecutivo.
+
+Ya está corregido: **se recorren todos los cuadernos**, y cada actuación te dice a cuál
+pertenece. Se menciona acá porque es el tipo de omisión que se ve completa y no lo está.
+
+## Qué te devuelve
+
+Por cada actuación del ministro de fe:
+
+`fecha_diligencia`
+: Cuándo se practicó realmente. **Es la que corre los plazos.**
+
+`hora_diligencia`
+: La hora, cuando la descripción la trae.
+
+`fecha_registro`
+: Cuándo se registró en el sistema. No corre plazos.
+
+`discrepancia_fechas`
+: Si sale `true`, las dos fuentes de fecha de la propia plataforma **no coinciden**. La
+herramienta no elige por ti: te avisa para que lo revises a mano.
+
+`cuaderno`
+: A qué cuaderno pertenece. Ej: `2 - Apremio Ejecutivo Obligación de Dar`.
+
+`desc_tramite`
+: El texto literal, sin normalizar. Ej: `NOTIFICACIÓN DE DEMANDA (Búsqueda negativa)`.
+
+`georreferenciado`
+: Si la actuación tiene registro georreferenciado. **Cuando dice `false`, significa que ese
+registro no está**, y su ausencia puede ser jurídicamente relevante (art. 9 inc. 3 de la
+Ley 20.886). Por eso el campo se muestra siempre, incluso vacío: omitirlo sería esconder un
+dato que quizá quieras alegar.
+
+`tiene_documento`
+: Si el folio tiene documento descargable en la plataforma.
+
+## Diligencias que vas a ver
+
+Las observadas en causas civiles:
+
+- `NOTIFICACIÓN DE DEMANDA (Búsqueda negativa)`
+- `NOTIFICACIÓN DE DEMANDA (Exitosa)`
+- `CERTIFICACIÓN BÚSQUEDAS (Búsqueda positiva)`
+- `Requerimiento de Pago (Ficto)`
+- `EMBARGO (Exitosa)`
+- `Inscripción / Alzamiento registro (Certificación)`
+
+## Qué NO hace
+
+Decirlo con todas sus letras evita malentendidos caros:
+
+**No ingresa escritos.** Ni ahora ni nunca. Es solo lectura por diseño, y no existe el código
+para escribir. Esto importa por el antecedente de julio de 2026, cuando un ingreso
+automatizado masivo hizo colapsar la Oficina Judicial Virtual: la distinción entre **leer** e
+**ingresar** es toda la diferencia entre esta herramienta y aquello.
+
+**No entra a "Mis Causas".** Eso requiere Clave Única. Acá sólo se consulta lo público. Como
+efecto lateral útil, sirve para personas jurídicas, que no tienen Clave Única.
+
+**No ve causas reservadas.** Y ojo: un resultado vacío **no prueba** que la causa no exista.
+Puede estar reservada.
+
+**Sólo cubre causas civiles.** Laboral, cobranza, penal, familia y cortes todavía no.
+
+**No reemplaza tu criterio.** Acerca la fuente oficial. Antes de computar un plazo a partir de
+esto, verifica el expediente.
+
+## Cuándo desconfiar del resultado
+
+- **`discrepancia_fechas: true`** → las dos fuentes del sitio se contradicen. Revisa a mano.
+- **Un error en vez de un resultado** → si la plataforma cambia su estructura, la herramienta
+  **falla ruidosamente** en lugar de devolver una lista vacía. Es a propósito: una lista vacía
+  se lee como "no hubo actuaciones", y así se pierden plazos. Si ves un error, repórtalo.
+- **La causa aparece sin actuaciones** → puede ser correcto, o puede ser que la causa esté en
+  una competencia no cubierta.
+
+## Lo que necesitas saber de la licencia
+
+El software se entrega bajo [PolyForm Strict 1.0.0](https://polyformproject.org/licenses/strict/1.0.0),
+que permite **ejecutarlo con fines no comerciales**.
+
+**El ejercicio profesional remunerado no está cubierto.** Si facturas a tus clientes,
+necesitas permiso escrito, aunque uses la herramienta sólo para tus propias causas.
+
+Se pide [abriendo un issue](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose) con la
+plantilla "Solicitud de permiso de uso". Se otorga caso a caso y **sin costo**: la licencia
+restrictiva existe para saber quién usa esto y para qué, no para cobrar.
+
+Si vas a **guardar** los resultados, lee la parte de {doc}`cumplimiento` sobre la Ley 21.719,
+que entra en vigencia el 1 de diciembre de 2026. Al almacenar datos de terceros pasas a ser
+responsable del tratamiento.

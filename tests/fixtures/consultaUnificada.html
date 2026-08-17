@@ -1,0 +1,5270 @@
+
+
+<!-- ------------- ESTILOS CONTENIDO --------------- -->        
+<link href="cssN/styleContent.css" rel="stylesheet" type="text/css" media="screen"/>
+<link href="cssN/returnToTop.css" rel="stylesheet" type="text/css" media="screen"/>
+<!--------------------------------------------------->
+<style>
+   th {
+   background-color: #337ab7;
+   color: white;
+   }
+   input[readonly].classname{
+   background-color: #fff;
+   background-image: none;
+   border: 1px solid #ccc;
+   }
+   .introjs-helperNumberLayer{
+   background: linear-gradient(to bottom, #265CFF 0%, #0040FF 100%);
+   }
+   .jq-toast-single{
+   width: 700px;
+   }
+   @keyframes click-wave {
+   0% {
+   height: 40px;
+   width: 40px;
+   opacity: 0.35;
+   position: relative;
+   }
+   100% {
+   height: 200px;
+   width: 200px;
+   margin-left: -80px;
+   margin-top: -80px;
+   opacity: 0;
+   }
+   }
+   label {
+   cursor: pointer;
+   }
+   .option-input {
+   -webkit-appearance: none;
+   -moz-appearance: none;
+   -ms-appearance: none;
+   -o-appearance: none;
+   appearance: none;
+   position: relative;
+   top: 5px;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   height: 20px;
+   width: 20px;
+   transition: all 0.15s ease-out 0s;
+   background: #cbd1d8;
+   border: none;
+   color: #fff;
+   cursor: pointer;
+   display: inline-block;
+   margin-right: 0.5rem;
+   outline: none;
+   position: relative;
+   z-index: 1000;
+   }
+   .option-input:hover {
+   background: #9faab7;
+   }
+   .option-input:checked {
+   background: #bdbe36;
+   }
+   .option-input:checked::before {
+   height: 15px;
+   width: 20px;
+   position: absolute;
+   content: '✔';
+   display: inline-block;
+   font-size: 26.66667px;
+   text-align: center;
+   line-height: 15px;
+   }
+   .option-input:checked::after {
+   -webkit-animation: click-wave 0.65s;
+   -moz-animation: click-wave 0.65s;
+   animation: click-wave 0.65s;
+   background: #e9b731;
+   content: '';
+   display: block;
+   position: relative;
+   z-index: 100;
+   }
+   .option-input.radio {
+   border-radius: 50%;
+   }
+   .option-input.radio::after {
+   border-radius: 50%;
+   }
+</style>
+<!-- ----------- reCAPTCHAv3 ----------------- -->
+<script>
+   var recaptchacallbackritv3 = function() {
+       grecaptcha.ready(function() {
+           grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_rit'})
+                 .then(function(token) {
+                     document.getElementById('g-recaptcha-response-rit').value = token;
+           });
+       });
+   };
+   
+   recaptchacallbackritv3();
+   
+   var recaptchacallbacknombrev3 = function() {
+       grecaptcha.ready(function() {
+           grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_nombre'})
+                 .then(function(token) {
+                     document.getElementById('g-recaptcha-response-nombre').value = token;
+           });
+       });
+   };
+   
+   recaptchacallbacknombrev3();
+   
+   var recaptchacallbackfechav3 = function() {
+       grecaptcha.ready(function() {
+           grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_fecha'})
+                 .then(function(token) {
+                     document.getElementById('g-recaptcha-response-fecha').value = token;
+           });
+       });
+   };
+   
+   recaptchacallbackfechav3();
+   
+   var recaptchacallbackjurv3 = function() {
+       grecaptcha.ready(function() {
+           grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_jur'})
+                 .then(function(token) {
+                     document.getElementById('g-recaptcha-response-jur').value = token;
+           });
+       });
+   };
+   
+   recaptchacallbackjurv3();
+   
+   function llamarCaptchaTodos()
+   {
+       recaptchacallbackritv3();
+       recaptchacallbacknombrev3();
+       recaptchacallbackfechav3();
+       recaptchacallbackjurv3();
+   }
+   
+   setInterval(function(){ llamarCaptchaTodos(); }, 60000);
+   
+</script>
+<!-- ----------- reCAPTCHAv3 ----------------- -->
+</head>
+<body>
+  <div style="text-align:right;margin-top:10px">
+      <!--<i class="fa fa-info-circle fa-lg" style="color:#113f67;" aria-hidden="true" onclick=""></i>-->
+   </div>
+   <div class="container-4">
+   <div class="card shadow mb-4">
+      <div class="cajaContentIzq card border-left-success shadow h-100 py-2" >
+         <section class="row">
+         <div class="panel-body2">
+            <div role="tabpanel">
+               <ul id="nuevocolapsador" class="nav nav-tabs" role="tablist" style="margin-top:-15px">
+                  <li class="active"><a data-toggle="tab" href="#busRit">B&uacute;squeda por RIT</a></li>
+                  <li><a data-toggle="tab" href="#BusNombre">B&uacute;squeda por Nombre</a></li>
+                  <li><a data-toggle="tab" href="#BusFecha">B&uacute;squeda por Fecha</a></li>
+                  <li><a data-toggle="tab" href="#BusJuridica">B&uacute;squeda por Rut Persona Jur&iacute;dica</a></li>
+                  <div >
+                     <div style="text-align:right;">
+                        &nbsp;&nbsp;<label style="cursor: pointer;color:#337ab7" onclick="descargaPdf()">Condiciones de uso</label>&nbsp;<img id="idContrato" title="Condiciones de uso" src="images/downloadPdf.png"  height="45" width="45" onclick="descargaPdf()" style="cursor: pointer;" onclick="mostrarModalConsultaunificada();" />
+                     </div>
+                  </div>
+               </ul>
+               <div class="tab-content" style="padding:20px">
+                  <!--BUSQUEDA POR RIT-->
+                  <div id="busRit" class="tab-pane fade in active">
+                     <!-- INICIO PANEL -->
+                     <div class="jumboTabs" style="padding-bottom:0px !important; margin-bottom:0px !important; text-align: center">
+                        <form name="formConsulta" id="formConsulta" method="POST" action="">
+                           <input type="hidden" id="g-recaptcha-response-rit" name="g-recaptcha-response-rit">
+                           <input type="hidden" name="action" value="validate_captcha_rit">
+                           <div class="form-group col-md-4">
+                              <label for="competencia">Competencia</label>
+                              <select class="form-control" id="competencia" name="competencia" title="Seleccione Competencia...">
+                                 <option value="1" selected="selected">Corte Suprema</option>
+                                 <option value="2">Corte Apelaciones</option>
+                                 <option value="3">Civil</option>
+                                 <option value="4">Laboral</option>
+                                 <option value="5">Penal</option>
+                                 <option value="6">Cobranza</option>
+                                 <option value="7">Familia</option>
+                              </select>
+                           </div>
+                           <div class="form-group col-md-4" data-step="1" data-intro='Por favor, seleccione "Todas" o una "Corte"' data-position='left'>
+                              <label for="conCorte">Corte</label>
+                              <select class="form-control" id="conCorte" name="conCorte" disabled="disabled" title="Seleccione Corte...">
+                                 <option value="0">Seleccione Corte...</option>
+                              </select>
+                           </div>
+                           <div class="form-group col-md-4">
+                              <label for="conTribunal">Tribunal</label>
+                              <select class="form-control" id="conTribunal" name="conTribunal" disabled="disabled" title="Seleccione Tribunal...">
+                                 <option value="0">Seleccione Tribunal...</option>
+                              </select>
+                           </div>
+                           <div style="width:100%">
+                              <!-- BUSQUEDA SUPREMA -->
+                              <div id="busRitSupremaTipo" class="col-md-4 row-1" >
+                                 <label for="conTipoBus">Tipo Busqueda</label>
+                                 <select class="form-control" id="conTipoBus" name="conTipoBus" title="Seleccione Tipo de Búsqueda">
+                                    <option value="0" selected="selected">Recurso Corte Suprema</option>
+                                    <option value="1">Recurso Corte Apelaciones</option>
+                                    <option value="2">Expediente de 1&ordf; Instancia</option>
+                                    <option value="3">Caratulado Recurso Corte Suprema</option>
+                                 </select>
+                              </div>
+                              <!-- ------------ -->
+                              <!-- BUSQUEDA APELACIONES -->
+                              <div id="busRitApelacionesTipo" class="col-md-4 row-1" style="display:none;">
+                                 <label for="conTipoBusApe">Tipo Busqueda</label>
+                                 <select class="form-control" id="conTipoBusApe" name="conTipoBusApe" title="Selecione Tipo de Búsqueda">
+                                    <option value="0">Recurso Corte Apelaciones</option>
+                                    <option value="1">Expediente de 1&ordf; Instancia</option>
+                                 </select>
+                              </div>
+                              <!-- -------------------- -->
+                              <!-- BUSQUEDA PENAL -->
+                              <div id="busRitPenalTipo" class="col-md-3 row-1" style="display:none;">
+                                 <label title="Tipo de Búsqueda Penal" for="conTipoBusPenal">Tipo Busqueda</label>                                                                
+                                 <div class="contRadios">
+                                    <div class="form-group wellRadio" align="center">
+                                       <div class="row">
+                                          <div class="col-md-8">                                                
+                                             <input type="radio" id="radioRitPenal" name="radio-groupPenal"  value="1" checked title="Por Rol o Rit">
+                                             <label for="radioRitPenal">Rol o Rit</label>
+                                          </div>
+                                          <div class="col-md-">
+                                             <input type="radio" id="radioRucPenal" name="radio-groupPenal"  value="2" alt="Por Ruc" title="Por Ruc">
+                                             <label for="radioRucPenal">Ruc</label>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <!-- ------------ -->
+                              <!-- ------------ -->
+                              <div class="col-md-4 row-2" data-step="4" data-intro="Por favor, seleccione Libro/Tipo" data-position='right'>
+                                 <label for="conTipoCausa" id="lblConTipoCausaLib">Libro/Tipo</label>
+                                 <!-- LABEL OCULTO -->
+                                 <label for="conTipoCausa" id="lblConTipoCausaRuc" style="display:none">Seleccione Rol o Rit / Ruc</label>
+                                 <!-- -->
+                                 <select class="form-control" id="conTipoCausa" name="conTipoCausa" disabled="disabled" title="Tipo de Causa o Tipo de Libro">
+                                 </select>
+                                 <!-- RADIO OCULTO -->                                
+                                 <div id="rdioConTipCausa" class="contRadios" style="display:none">
+                                    <div class="form-group wellRadio" align="center">
+                                       <div class="row">
+                                          <div class="col-md-8">                                                
+                                             <input type="radio" id="radioRit" name="radio-group" value="1" checked title="Por Rol o Rit">
+                                             <label for="radioRit">Rol o Rit</label>
+                                          </div>
+                                          <div class="col-md-">
+                                             <input type="radio" id="radioRuc" name="radio-group" value="2" title="Por Ruc">
+                                             <label for="radioRuc">Ruc</label>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <!-- -->
+                              </div>
+                              <!-- ------------ -->
+                              <!-- ------------ BUSQUEDA DE SUPREMA ------------ -->
+                              <div id="rolConTipoCausa">
+                                 <div class="col-md-2 row-3" data-step="3" data-intro="Por favor, ingrese Rol" data-position='right' >
+                                    <label for="conRolCausa">Rol</label>
+                                    <input class="form-control inptNum" id="conRolCausa" name="conRolCausa" type="number" maxlength="6" title="Ingrese Rol">
+                                 </div>
+                                 <div class="col-md-2 row-4" data-step="2" data-intro="Por favor, ingrese A&ntilde;o" data-position='left'>
+                                    <label for="conEraCausa" >A&ntilde;o</label>
+                                    <input class="form-control inptNum ex" id="conEraCausa" name="conEraCausa" type="number" data-minlength="4" maxlength="4" data-toggle="tooltip" data-placement="bottom" title="Ingrese Año">
+                                 </div>
+                              </div>
+                              <div class="col-md-3 row-2" id="rucConTipoCausa" style="display:none;">
+                                 <label>Ruc</label>
+                                 <div class="form-group">
+                                    <div class="row">
+                                       <div class="col-md-6">
+                                          <input class="form-control inptNum" type="text" id="ruc1" name="ruc1" maxlength="10" title="ruc 1">
+                                       </div>
+                                       <div class="col-md-3 col-md-3">
+                                          <input class="form-control" type="text" id="ruc2" name="ruc2" maxlength="1" title="ruc 2">
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <!-- ---------------------------------------------- -->
+                              <!-- ------------ BUSQUEDA DE PENAL ------------ -->
+                              <div class="col-md-3 row-2"  id="rucConTipoCausaPenal" style="display:none;">
+                                 <label>Ruc</label>
+                                 <div class="form-group">
+                                    <div class="row">
+                                       <div class="col-md-4 col-md-4">
+                                          <input class="form-control inptNum" type="text" id="rucPen1" name="rucPen1" maxlength="10" title="ruc">
+                                       </div>
+                                       <div class="col-md-4 col-md-4">
+                                          <input class="form-control" type="text" id="rucPen2" name="rucPen2" maxlength="1" title="ruc dígito">
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <!-- ---------------------------------------------- -->
+                              <div class="clearfix">&nbsp;</div>
+                           </div>
+                           <div id="carConCaratulado" class="form-group" style="display:none;">
+                              <div class="clearfix">&nbsp;</div>
+                              <div class="col-md-3">
+                                 <label for="conCaratulado">Caratulado</label>
+                                 <input class="form-control" id="conCaratulado" name="conCaratulado" type="text" maxlength="100" title="Caratulado">
+                              </div>
+                           </div>
+                           <div class="clearfix">&nbsp;</div>
+                           <div class="text-center">
+                              <button type="submit" class="btn btn-primary" id="btnConConsulta" >Buscar</button>
+                              <button type="button" class="btn btn-info" id="btnConLimpiar" onclick="limpia();">Limpiar</button>
+                           </div>
+                        </form>
+                        <div id="loadPre" ></div>
+                     </div>
+                     <div id="precioRitSuprema" style="margin-top:10px">
+                        <table class="table table-bordered table-responsive">
+                           <tbody>
+                              <tr class="bg-info" style="color:#31708f">
+                                 <td ><strong>VALOR RECUSACI&Oacute;N: $10.852</strong></td>
+                                 <td><strong>AGOSTO 2026</strong></td>
+                                 <td><strong>VALOR SUSPENSI&Oacute;N: $35.825</strong></td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+                     <div class="alert alert-success" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <p style="color: #3c763d; font-size: 17px">
+                           Recuerde que las causas reservadas no se muestran en la consulta unificada, y según el tipo de reserva, podrá acceder a ellas ingresando con su usuario y contraseña a la opción <strong>“Mis Causas”</strong> de la Oficina Judicial Virtual. Para conocer los tipos de reserva, 
+                           <!-- Button trigger modal -->
+                           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                           pinchar aquí
+                           </button>
+                        </p>
+                     </div>
+                     <div id="resultConsulta">
+                        <div class="panel-body">
+                           <div class="table-responsive">
+                              <table id="dtaTableDetalle" class="table table-bordered table-striped table-hover" style="display:none;" width="99%">
+                                 <thead id="thTable">
+                                 </thead>
+                                 <tbody id="verDetalle"> 
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <!-- END BUSQUEDA POR RIT -->
+                  <!--BUSQUEDA POR NOMBRE-->
+                  <div id="BusNombre" class="tab-pane fade">
+                     <div class="jumboTabs" style="padding-bottom:0px !important; margin-bottom:0px !important; text-align: center">
+                        <form name="formConsultaNom" id="formConsultaNom" method="POST" action="">
+                           <input type="hidden" id="g-recaptcha-response-nombre" name="g-recaptcha-response-nombre">
+                           <input type="hidden" name="action" value="validate_captcha_nombre">
+                           <div class="contRadios">
+                              <div class="form-group panel-body2" align="center">
+                                 <div class="container">
+                                    <div class="row">
+                                       <div class="col-sm-3"></div>
+                                       <div class="col-sm-3"><input type="radio" id="radioPerNatural" name="radio-group" value="N" class="option-input radio"  checked title="Por Persona Natural"/>
+                                          <label for="radioPerNatural">Persona Natural </label>
+                                       </div>
+                                       <div class="col-sm-3"> <input type="radio" id="radioPerJuridica" name="radio-group" value="J" class="option-input radio"   title="Por Persona Juridídica"/>
+                                          <label for="radioPerJuridica">Persona Jur&iacute;dica</label>
+                                       </div>
+                                       <div class="col-sm-3"></div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="container">
+                              <div class="form-group" id="divNatural">
+                                 <div class="row">
+                                    <div class="col-md-3">
+                                       <label for="nomNombre">Nombre</label>
+                                       <input class="form-control" id="nomNombre" name="nomNombre" type="text" maxlength="100" title="Nombre">
+                                    </div>
+                                    <div class="col-md-3">
+                                       <label for="nomApePaterno">Apellido Paterno</label>
+                                       <input class="form-control" id="nomApePaterno" name="nomApePaterno" type="text" maxlength="100" title="Apellido Paterno">
+                                    </div>
+                                    <div class="col-md-3">
+                                       <label for="nomApeMaterno" >Apellido Materno</label>
+                                       <input class="form-control" id="nomApeMaterno" name="nomApeMaterno" type="text" maxlength="100" title="Apellido Materno">
+                                    </div>
+                                    <div class="col-md-2">
+                                       <label for="nomEra" >A&ntilde;o</label>
+                                       <input class="form-control inptNum" id="nomEra" name="nomEra" type="number" maxlength="4" title="Año">
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="form-group hidden" id="divJuridico">
+                                 <div class="row">
+                                    <div class="col-md-4">
+                                       <label for="nomNombreJur">Nombre Persona Jur&iacute;dica</label>
+                                       <input class="form-control" id="nomNombreJur" name="nomNombreJur" type="text" maxlength="100" title="Nombre Persona Jurídica">
+                                    </div>
+                                    <div class="col-md-2">
+                                       <label for="nomEraJur" >A&ntilde;o</label>
+                                       <input class="form-control inptNum" id="nomEraJur" name="nomEraJur" type="text" maxlength="4" title="Año">
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="form-group col-md-4">
+                              <label for="nomCompetencia">Competencia</label>
+                              <select class="form-control" id="nomCompetencia" name="nomCompetencia" title="Seleccione Competencia...">
+                                 <option value="1" selected="selected">Corte Suprema</option>
+                                 <option value="2">Corte Apelaciones</option>
+                                 <option value="3">Civil</option>
+                                 <option value="4">Laboral</option>
+                                 <option value="5">Penal</option>
+                                 <option value="6">Cobranza</option>
+                                 <option value="7">Familia</option>
+                              </select>
+                           </div>
+                           <div class="form-group col-md-4">
+                              <label for="nomTribunal">Tribunal</label>
+                              <select class="form-control"  data-live-search="true" disabled="disabled"  id="nomTribunal" name="nomTribunal" title="Selecione Tribunal...">
+                                 <option value="0">Seleccione Tribunal...</option>
+                              </select>
+                           </div>
+                           <div class="form-group col-md-4">
+                              <label for="corteNom">Corte</label>
+                              <select class="form-control" id="corteNom" name="corteNom" disabled="disabled" title="Selecione Corte">
+                                 <option value="0">Seleccione Corte...</option>
+                              </select>
+                           </div>
+                           <div class="clearfix">&nbsp;</div>
+                           <div class="text-center">
+                              <button type="submit" class="btn btn-primary" id="btnConConsultaNom" >Buscar</button>
+                              <button type="button" class="btn btn-info" id="btnConLimpiarNom" onclick="limpiaNom();">Limpiar</button>    
+                           </div>
+                        </form>
+                        <div id="loadPreNombre" ></div>
+                     </div>
+                     <div id="precioNombreSuprema" style="margin-top:10px">
+                        <table class="table table-bordered table-responsive">
+                           <tbody>
+                              <tr class="bg-info" style="color:#31708f">
+                                 <td><strong>VALOR RECUSACI&Oacute;N: $10.852</strong></td>
+                                 <td><strong>AGOSTO 2026</strong></td>
+                                 <td><strong>VALOR SUSPENSI&Oacute;N: $35.825</strong></td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+                     <div class="alert alert-success" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <p style="color: #3c763d; font-size: 17px">
+                           Recuerde que las causas reservadas no se muestran en la consulta unificada, y según el tipo de reserva, podrá acceder a ellas ingresando con su usuario y contraseña a la opción <strong>“Mis Causas”</strong> de la Oficina Judicial Virtual. Para conocer los tipos de reserva, 
+                           <!-- Button trigger modal -->
+                           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                           pinchar aquí
+                           </button>
+                        </p>
+                     </div>
+                     <div id="resultConsultaNombre">
+                        <div class="panel-body">
+                           <div class="table-responsive">
+                              <table id="dtaTableDetalleNombre" class="table table-bordered table-striped table-hover" style="display:none;" width="99%">
+                                 <thead id="thTableNombre">
+                                 </thead>
+                                 <tbody id="verDetalleNombre"> 
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <!-- END BUSQUEDA POR NOMBRE-->
+                  <!--BUSQUEDA POR FECHA-->
+                  <div id="BusFecha" class="tab-pane fade">
+                     <div class="jumboTabs" style="padding-bottom:0px !important; margin-bottom:0px !important; text-align: center">
+                        <form name="formConsultaFec" id="formConsultaFec" method="POST" action="">
+                           <input type="hidden" id="g-recaptcha-response-fecha" name="g-recaptcha-response-fecha">
+                           <input type="hidden" name="action" value="validate_captcha_fecha">
+                           <div class="container">
+                              <div class="form-group">
+                                 <div class="row">
+                                    <div class="col-md-4">
+                                       <label class="control-label">Desde</label>
+                                       <div class="input-group">
+                                          <input id="fecDesde" name="fecDesde" type="text" class="date-picker form-control classname" readonly title="Fecha Desde" />
+                                          <label for="fecDesde" class="input-group-addon btn">
+                                          <i class="fa fa-calendar" aria-hidden="true" style="color:#236aa3;"></i>
+                                          </label>
+                                       </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                       <label class="control-label">Hasta</label>
+                                       <div class="input-group">
+                                          <input id="fecHasta" name="fecHasta" type="text" class="date-picker form-control classname" readonly title="Fecha Hasta" />
+                                          <label for="fecHasta" class="input-group-addon btn">
+                                          <i class="fa fa-calendar" aria-hidden="true" style="color:#236aa3;"></i>
+                                          </label>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="container">
+                              <div class="row">
+                                 <div class="col-sm-4">
+                                    <label for="fecCompetencia">Competencia</label>
+                                    <select class="form-control" id="fecCompetencia" name="fecCompetencia" title="Seleccione Competencia...">
+                                       <option value="1" selected="selected">Corte Suprema</option>
+                                       <option value="2">Corte Apelaciones</option>
+                                       <option value="3">Civil</option>
+                                       <option value="4">Laboral</option>
+                                       <option value="5">Penal</option>
+                                       <option value="6">Cobranza</option>
+                                       <option value="7">Familia</option>
+                                    </select>
+                                 </div>
+                                 <div class="col-sm-4">
+                                    <label for="fecTribunal">Tribunal</label>
+                                    <select class="form-control"  data-live-search="true" id="fecTribunal" name="fecTribunal" disabled="disabled" title="Seleccione Tribunal...">
+                                       <option value="0">Seleccione Tribunal...</option>
+                                    </select>
+                                 </div>
+                                 <div class="col-sm-4">
+                                    <label for="corteFec">Corte</label>
+                                    <select class="form-control" id="corteFec" name="corteFec" disabled="disabled" title="Seleccione Corte...">
+                                       <option value="0">Seleccione Corte...</option>
+                                    </select>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="clearfix">&nbsp;</div>
+                           <div class="text-center">
+                              <button type="submit" class="btn btn-primary" id="btnConConsultaFec" >Buscar</button> 
+                              <button type="button" class="btn btn-info" id="btnConLimpiarFec" onclick="limpiaFec();">Limpiar</button>    
+                           </div>
+                        </form>
+                        <div id="loadPreFecha" ></div>
+                     </div>
+                     <div id="precioFechaSuprema" style="margin-top:10px">
+                        <table class="table table-bordered table-responsive">
+                           <tbody>
+                              <tr class="bg-info" style="color:#31708f">
+                                 <td><strong>VALOR RECUSACI&Oacute;N: $10.852</strong></td>
+                                 <td><strong>AGOSTO 2026</strong></td>
+                                 <td><strong>VALOR SUSPENSI&Oacute;N: $35.825</strong></td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+                     <div class="alert alert-success" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <p style="color: #3c763d; font-size: 17px">
+                           Recuerde que las causas reservadas no se muestran en la consulta unificada, y según el tipo de reserva, podrá acceder a ellas ingresando con su usuario y contraseña a la opción <strong>“Mis Causas”</strong> de la Oficina Judicial Virtual. Para conocer los tipos de reserva, 
+                           <!-- Button trigger modal -->
+                           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                           pinchar aquí
+                           </button>
+                        </p>
+                     </div>
+                     <div id="resultConsultaFecha">
+                        <div class="panel-body">
+                           <div class="table-responsive">
+                              <table id="dtaTableDetalleFecha" class="table table-bordered table-striped table-hover" style="display:none;" width="99%">
+                                 <thead id="thTableFecha">
+                                 </thead>
+                                 <tbody id="verDetalleFecha"> 
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <!--END BUSQUEDA POR FECHA-->
+                  <!--BUSQUEDA POR RUT-->
+                  <div id="BusJuridica" class="tab-pane fade">
+                     <div class="jumboTabs" style="padding-bottom:0px !important; margin-bottom:0px !important; text-align: center">
+                        <form name="formConsultaJur" id="formConsultaJur" method="POST" action="">
+                           <input type="hidden" id="g-recaptcha-response-jur" name="g-recaptcha-response-jur">
+                           <input type="hidden" name="action" value="validate_captcha_jur">
+                           <div class="container">
+                              <div class="row">
+                                 <div class="col-sm-4">
+                                    <label>Rut</label>
+                                    <div class="form-group">
+                                       <div class="row">
+                                          <div class="col-xs-8 col-md-8">
+                                             <input class="form-control inptNum" type="number" id="rutJur" name="rutJur" maxlength="8" title="Rut Persona Jurídica">
+                                          </div>
+                                          <div class="col-xs-3 col-md-3">
+                                             <input class="form-control" type="text" id="dvJur" name="dvJur" maxlength="1" title="Dígito Verificador Persona Jurídica">
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div class="col-sm-4">
+                                    <label>A&ntilde;o</label>
+                                    <div class="form-group">
+                                       <div class="row">
+                                          <div class="col-md-8">
+                                             <input class="form-control inptNum" id="eraJur" name="eraJur" type="number" maxlength="4" title="Año">
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="container">
+                              <div class="row">
+                                 <div class="col-sm-4">
+                                    <label for="jurCompetencia">Competencia</label>
+                                    <select class="form-control" id="jurCompetencia" name="jurCompetencia" title="Selecione Competencia">
+                                       <option value="1" selected="selected">Corte Suprema</option>
+                                       <option value="2">Corte Apelaciones</option>
+                                       <option value="3">Civil</option>
+                                       <option value="4">Laboral</option>
+                                       <option value="5">Penal</option>
+                                       <option value="6">Cobranza</option>
+                                       <option value="7">Familia</option>
+                                    </select>
+                                 </div>
+                                 <div class="col-sm-4">
+                                    <label for="jurTribunal">Tribunal</label>
+                                    <select class="form-control"  data-live-search="true" id="jurTribunal" name="jurTribunal" disabled="disabled" title="Seleccione Tribunal...">
+                                       <option value="0">Seleccione Tribunal...</option>
+                                    </select>
+                                 </div>
+                                 <div class="col-sm-4">
+                                    <label for="corteJur">Corte</label>
+                                    <select class="form-control" id="corteJur" name="corteJur" disabled="disabled" title="Seleccione Corte...">
+                                       <option value="0">Seleccione Corte...</option>
+                                    </select>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="clearfix">&nbsp;</div>
+                           <div class="text-center">
+                              <button type="submit" class="btn btn-primary" id="btnConConsultaJur" >Buscar</button> 
+                              <button type="button" class="btn btn-info" id="btnConLimpiarJur" onclick="limpiaJur();">Limpiar</button>    
+                           </div>
+                        </form>
+                        <div id="loadPreJuridica" ></div>
+                     </div>
+                     <div id="precioJuridicaSuprema" style="margin-top:10px">
+                        <table class="table table-bordered table-responsive">
+                           <tbody>
+                              <tr class="bg-info" style="color:#31708f">
+                                 <td><strong>VALOR RECUSACI&Oacute;N: $10.852</strong></td>
+                                 <td><strong>AGOSTO 2026</strong></td>
+                                 <td><strong>VALOR SUSPENSI&Oacute;N: $35.825</strong></td>
+                              </tr>
+                           </tbody>
+                        </table>
+                     </div>
+                     <div class="alert alert-success" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <p style="color: #3c763d; font-size: 17px">
+                           Recuerde que las causas reservadas no se muestran en la consulta unificada, y según el tipo de reserva, podrá acceder a ellas ingresando con su usuario y contraseña a la opción <strong>“Mis Causas”</strong> de la Oficina Judicial Virtual. Para conocer los tipos de reserva, 
+                           <!-- Button trigger modal -->
+                           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                           pinchar aquí
+                           </button>
+                        </p>
+                     </div>
+                     <div id="resultConsultaJuridica">
+                        <div class="panel-body">
+                           <div class="table-responsive">
+                              <table id="dtaTableDetalleJuridica" class="table table-bordered table-striped table-hover" style="display:none;" width="99%">
+                                 <thead id="thTableJuridica">
+                                 </thead>
+                                 <tbody id="verDetalleJuridica"> 
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <!--END BUSQUEDA POR RUT-->
+               </div>
+            </div>
+         </div>
+         <!-- ------------------ MODALES DE CIVIL ------------------ -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoCausaCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoSolicitudCivil" tabindex="-1">
+         </div>
+		 <!-- Modal -->
+         <div class="modal" id="modalAnexoSolicitudCivilSII" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoSolEscritoCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalReceptorCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalGeoReferenciaCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalExhortoCivil" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalCausaOrigenCivil" tabindex="-1">
+         </div>
+         <!-- ---------------- FIN MODALES DE CIVIL ---------------- -->    
+         <!-- ----------------- MODALES DE LABORAL ------------------- -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalTextoDemandaLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalListadoAudioLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDocuAudienciaLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleTramiteLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoEscritoLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalGeoReferenciaLaboral" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoEscritoPend" tabindex="-1">
+         </div>
+         <!-- ---------------- FIN MODALES DE LABORAL ---------------- -->
+         <!-- ------------------- MODALES DE PENAL ------------------- -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetallePenal" tabindex="-1">
+         </div>
+            <!-- Modal -->
+            <div class="modal" id="modalDetallePenalUnificado" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoDemandaPenal" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoDemandaPenalUnificado" tabindex="-1">
+         </div>
+          <!-- Modal -->
+          <div class="modal" id="modalAcumulacionCausaUnificado" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoEscritoPenal" tabindex="-1">
+         </div>
+
+         <!-- Modal -->
+         <div class="modal" tabindex="-1" id="modalAnexoEscritoUnificado"></div>
+         
+         <!-- Modal -->
+         <div class="modal" id="modalGeoReferenciaPenal" tabindex="-1">
+         </div>
+         <!-- ----------------- FIN MODALES DE PENAL ----------------- -->
+         <!-- ------------------ MODALES DE SUPREMA ------------------ -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleSuprema" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalTextoSuprema" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalTomoSuprema" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDocumentosSuprema" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAgregadosSuprema" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalEscritoSuprema" tabindex="-1">
+         </div>
+         <!-- ---------------- FIN MODALES DE SUPREMA ---------------- -->
+         <!-- ------------------ MODALES DE APELACIONES ------------------ -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleApelaciones" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoRecursoApelaciones" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoEscritoApelaciones" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoCausaApelaciones" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalGeoReferenciaApelaciones" tabindex="-1">
+         </div>
+         <!-- ---------------- FIN MODALES DE SUPREMA ---------------- -->
+         <!-- ------------------ MODALES DE COBRANZA ----------------- -->
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoCausaCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalAnexoEscritoCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalReceptorCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDocumentoLabCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDocumentoCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDetalleExhortosCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalGeoReferenciaCobranza" tabindex="-1">
+         </div>
+         <!-- Modal -->
+         <div class="modal" id="modalDocumentosAcumuladosCobranza" tabindex="-1">
+         </div>
+         <!-- ---------------- FIN MODALES DE COBRANZA --------------- -->
+		 
+		 <!-- ------------------ MODALES DE UNIFICADO ----------------- -->
+         <!-- Modal -->
+         <div class="modal" id="modalGeoRefUnificado" tabindex="-1">
+         </div>
+		 <!-- ------------------ FIN MODALES UNIFICADO ----------------- -->
+      </div>
+   </div>
+   <a href="javascript:" id="return-to-top"><i class="fas fa-arrow-up fa-2x"></i></a>
+</body>
+<script>
+$( document ).ready(function() {
+	
+	
+	
+	if (typeof(Storage) !== 'undefined') {
+	  // Código cuando Storage es compatible
+	  sessionStorage.setItem('InitBusquedaRit', '1');
+	  sessionStorage.setItem('InitBusquedaNom', '1');
+	  sessionStorage.setItem('InitBusquedaFec', '1');
+	  sessionStorage.setItem('InitBusquedaJur', '1');
+	}
+	
+	
+		
+//------------- VALIDA NUMEROS --------------
+$(".inptNum").keydown(function (e) {
+	if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+		(e.keyCode == 65 && e.ctrlKey === true) || 
+		(e.keyCode >= 35 && e.keyCode <= 39)) {
+			 return;
+	}
+
+	if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+		e.preventDefault();
+	}
+});
+//-------------------------------------------
+
+
+//------------- CALENDARIOS --------------
+$('.date-picker').datepicker({
+	autoSize: true,
+	dateFormat: "dd/mm/yy",
+	maxDate: 0,
+	changeYear: true
+	// minDate: "-1m"
+});
+//----------------------------------------
+
+
+//----------------- RADIO BUTTOM ---------------
+$("#radioPerNatural").click(function(){
+	$("#divNatural").removeClass("hidden");
+	$("#divJuridico").css("display", "none");
+	$("#divNatural").css("display", "block");
+	$("#divJuridico").addClass("hidden");
+	//----
+	$('#nomNombreJur').val("");
+	$('#nomEraJur').val("");
+});
+
+$("#radioPerJuridica").click(function(){
+	$("#divJuridico").removeClass("hidden");
+	$("#divNatural").css("display", "none");
+	$("#divJuridico").css("display", "block");
+	$("#divNatural").addClass("hidden");
+	//----
+	$('#nomNombre').val("");
+	$('#nomApePaterno').val("");
+	$('#nomApeMaterno').val("");
+	$('#nomEra').val("");
+});
+//----------------------------------------------
+
+
+
+//------------------- SCRIPT PARA MANTENER MODAL ACTIVO -----------------	
+  $(document).on({
+    'show.bs.modal': function() {
+      var zIndex = 1040 + (10 * $('.modal:visible').length);
+      $(this).css('z-index', zIndex);
+      setTimeout(function() {
+        $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+      }, 0);
+    },
+    'hidden.bs.modal': function() {
+      if ($('.modal:visible').length > 0) {
+        setTimeout(function() {
+          $(document.body).addClass('modal-open');
+        }, 0);
+      }
+    }
+  }, '.modal');
+//-----------------------------------------------------------------------
+
+
+//----------------------- ACORDIONES DE COBRANZA-------------------------
+$('#accordion .panel-default').on('click', function () {
+    $('#accordion .panel-collapse').collapse('toggle');
+});
+//-----------------------------------------------------------------------
+
+
+	
+	
+//-------------------------- COMPENTECIA RIT ----------------------------
+	$("#competencia").change(function(){
+
+		var codCompetencia	= $("#competencia").val();
+		var codCorte		= $("#conCorte").val();
+		var accion			= 'cmbCorte';
+		var tabs			= 60;
+		
+						
+		//-------------------- COMBO TIPO BUSQUEDA SUPREMA ----------------------
+			if(codCompetencia != 1){
+				$("#conTipoBus").prop('disabled', true);
+				$("#conTipoBus").val(0);
+			}else{
+				$("#conTipoBus").prop('disabled', false);
+			}
+		//-----------------------------------------------------------------------
+		
+		
+		if(codCompetencia == 1){
+			accion		= '';
+			
+			$('#conTipoCausa').prop('disabled', true);
+			$('#conCorte').prop('disabled', true);
+			$('select[id=conTribunal]').children('option').remove();
+			$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			$('#conTribunal').prop('disabled', true);
+			//-------
+			$("#busRitSupremaTipo").removeAttr('style');		// OCULTA TIPO BUSQUEDA SUPREMA
+			//-------
+			$("#rolConTipoCausa").removeAttr('style');			// MUESTRA ROL Y ERA
+			//-------
+			$("#lblConTipoCausaLib").removeAttr('style');		// MUESTRA TITULO LIBRO
+			$("#conTipoCausa").removeAttr('style');				// MUESTRA COMBO TIPO/LIBRO
+			//-------
+			$('#busRitPenalTipo').css('display', 'none');		// OCULTA TIPO BUSQUEDA PENAL
+			$('#busRitApelacionesTipo').css('display', 'none');	// OCULTA TIPO BUSQUEDA APLEACIONES
+			//-------
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA TIPO BUSQUEDA PENAL
+			//-------
+			$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+			//-------
+			$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+			//-------
+			$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+			//-------
+			$('#conCaratulado').val('');
+			$('#carConCaratulado').css('display', 'none');		// OCULTA CARATULADO
+			//----
+			$('#conTipoBusApe').val(0);
+			//----
+			$('#rucPen1').val('');
+			$('#rucPen2').val('');
+			//----
+			$('#ruc1').val('');
+			$('#ruc2').val('');
+			$('#ruc3').val('');
+			$('#ruc4').val('');
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+			
+			//---------- VALOR $ ----------//
+			$('#precioRitSuprema').removeAttr('style');
+			$("#precioRitSuprema").css("margin-top","10px");
+			//-----------------------------//
+			$('#conEraCausa').removeAttr('style');
+		}
+		else if(codCompetencia == 2){
+				
+		//----------------- MENSAJE DE AVISO -------------------
+			/*$.toast({
+				text: 'Estimados usuarios, a contar del d\u00eda <strong>01 de enero de 2018</strong> se implement\u00f3 el cambio de libros y tipos de recursos, estandariz\u00e1ndolos para todas las <strong>Cortes de Apelaciones</strong>, como resultado de un trabajo a nivel nacional destinado a facilitar el uso del sistema de ingreso y consulta.'+ 
+					  'De esta manera se presenta la misma denominaci\u00f3n y contenido para los libros de todas las Cortes del pa\u00eds, agrupando cada uno de ellos -seg\u00fan la materia- los distintos tipos de recursos que se pueden ingresar. '+
+					  'Las causas ingresadas hasta el <strong>31 de diciembre de 2017</strong> mantendr\u00e1n el libro en que fueron creadas. Al momento de seleccionar el a\u00f1o de la consulta, el sistema autom\u00e1ticamente mostrar\u00e1 los libros disponibles para ese per\u00edodo. Para conocer los nuevos libros y tipos de recursos, ingrese al siguiente <strong><a href="assets/docs/manuales/Libros2018.pdf" target="new">enlace</a></strong>.',
+				position: { left : 215, right : 'auto', top : 1, bottom : 'auto' },
+				icon: 'info',
+				showHideTransition: 'slide',
+				allowToastClose: true,
+				bgColor: '#4D80C6',
+				textColor: 'white',
+				hideAfter: 40000,
+				stack: false
+			});*/
+		//------------------------------------------------------
+		
+
+		//----------------------------------------------------------------------------------------------------------------------------
+			$("#conEraCausa").css({ 'border-color' : '#e96686', 'box-shadow' : 'inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(233, 102, 125, 0.6)', 'background-color' : 'rgb(254, 217, 217)' });
+			$("#conEraCausa").focus();
+			//$('#conEraCausa').tooltip('show');
+			$(".tooltip-inner").css({ 'background-color' : '#337ACE' });
+			$(".tooltip-arrow").css({ 'border-bottom-color' : '#337ACE' });		
+		//----------------------------------------------------------------------------------------------------------------------------
+
+			$('#conTipoCausa').val('');
+			$('#conTipoCausa').prop('disabled', true);
+			$('#conCorte').prop('disabled', false);
+			$('select[id=conTribunal]').children('option').remove();
+			$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			$('#conTribunal').prop('disabled', true);
+			//-------
+			$("#busRitSupremaTipo").css('display', 'none');		// OCULTA TIPO BUSQUEDA SUPREMA
+			$('#busRitPenalTipo').css('display', 'none');		// OCULTA TIPO BUSQUEDA PENAL
+			$('#busRitApelacionesTipo').removeAttr('style');	// MUESTRA TIPO BUSQUEDA APLEACIONES
+			//-------
+			$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO TIPO/LIBRO
+			//-------	
+			//$('#divTipoCausaApe').removeAttr('style');			// MUESTRA COMBO TIPO/LIBRO APELACIONES
+			//-------	
+			$('#conTipoBus').val(0);							// LIMPIA COMBO BUSQ.
+			$('#conTipoBus').prop('disabled', true);			// DESACTIVA COMBO BUSQ.
+			//-------
+			$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+			$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+			// $('#lblConTipoCausaLib').css('display', 'none');	// OCULTA TITULO LIBRO
+			//-------	
+			$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+			$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+			$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL Y ERA
+			$('#conRolCausa').prop('disabled', false);			// MUESTRA ROL
+			$('#conEraCausa').prop('disabled', false);			// MUESTRA ERA
+			//-------
+			$('#conCaratulado').val('');
+			$('#carConCaratulado').css('display', 'none');		// OCULTA CARATULADO
+			//-------
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC BUSQUEDA PENAL
+			//-------
+			$("#radioRitPenal").prop("checked", true);			// ACTIVA RADIO RIT BUSQUEDA PENAL
+			//----
+			$("#radioRit").prop("checked", true);				// ACTIVA RADIO RIT BUSQUEDA
+			//----
+			$('#conTipoBusApe').val(0);
+			//----
+			$('#rucPen1').val('');
+			$('#rucPen2').val('');
+			//----
+			$('#ruc1').val('');
+			$('#ruc2').val('');
+			$('#ruc3').val('');
+			$('#ruc4').val('');
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+			
+			//---------- VALOR $ ----------//
+			$('#precioRitSuprema').css('display', 'none');
+			//-----------------------------//
+		}
+		else if(codCompetencia == 5){
+			$('#conTipoCausa').prop('disabled', false);
+			$('#conTipoCausa').removeAttr('style');
+			$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+			//-------	
+			$('#conCorte').prop('disabled', false);
+			$('#conTribunal').prop('disabled', false);
+			$('select[id=conTribunal]').children('option').remove();
+			$("#conTribunal").append("<option value='0'>Todos</option>");
+			//-------
+			$('#conRolCausa').prop('disabled', false);			// MUESTRA ROL
+			$('#conEraCausa').prop('disabled', false);			// MUESTRA ERA
+			//-------				
+			$("#busRitSupremaTipo").css('display', 'none');		// OCULTA TIPO BUSQUEDA SUPREMA
+			$('#busRitApelacionesTipo').css('display', 'none');	// OCULTA TIPO BUSQUEDA APLEACIONES
+			$('#busRitPenalTipo').removeAttr('style');			// MUESTRA TIPO BUSQUEDA PENAL
+			//-------	
+			$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL BUSQUEDA
+			//-------
+			$("#radioRitPenal").prop("checked", true);			// ACTIVA RADIO RIT BUSQUEDA PENAL
+			//-------
+			$("#rucConTipoCausa").css('display', 'none');		// OCULTA BUSQUEDA RUC SUPREMA
+			//-------
+			$("#lblConTipoCausaRuc").css('display', 'none');	// OCULTA LABEL RIT/RUC SUPREMA
+			$("#rdioConTipCausa").css('display', 'none');		// OCULTA RADIO RIT/RUC SUPREMA
+			//-------
+			$('#conCaratulado').val('');
+			$('#carConCaratulado').css('display', 'none');		// OCULTA CARATULADO
+			//----
+			$('#conTipoBusApe').val(0);
+			//----
+			$('#rucPen1').val('');
+			$('#rucPen2').val('');
+			//----
+			$('#ruc1').val('');
+			$('#ruc2').val('');
+			$('#ruc3').val('');
+			$('#ruc4').val('');
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+			$('#conEraCausa').val('');
+			
+			//---------- VALOR $ ----------//
+			$('#precioRitSuprema').css('display', 'none');
+			//-----------------------------//
+			$('#conEraCausa').removeAttr('style');
+			
+		}else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+			$('#conEraCausa').val('');
+			
+			//---------- VALOR $ ----------//
+			$('#precioRitSuprema').css('display', 'none');
+			//-----------------------------//
+			$('#conEraCausa').removeAttr('style');
+		}
+		else{
+			$('#conTipoCausa').prop('disabled', false);
+			$('#conTipoCausa').removeAttr('style');
+			//-------	
+			$('#conCorte').prop('disabled', false);
+			$('#conTribunal').prop('disabled', false);
+			$('select[id=conTribunal]').children('option').remove();
+			$("#conTribunal").append("<option value='0'>Todos</option>");
+			//-------	
+			$('#conTipoBus').val(0);							// LIMPIA COMBO BUSQ.
+			$('#conTipoBus').prop('disabled', true);			// DESACTIVA COMBO BUSQ.
+			//-------
+			$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+			$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+			//-------	
+			$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+			$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+			$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL y ERA
+			$('#conRolCausa').prop('disabled', false);			// MUESTRA ROL
+			$('#conEraCausa').prop('disabled', false);			// MUESTRA ERA
+			//-------
+			$('#conCaratulado').val('');
+			$('#carConCaratulado').css('display', 'none');		// OCULTA CARATULADO
+			//-------
+			$("#busRitSupremaTipo").css('display', 'none');		// OCULTA TIPO BUSQUEDA SUPREMA
+			$('#busRitApelacionesTipo').css('display', 'none');	// OCULTA TIPO BUSQUEDA APLEACIONES
+			$('#busRitPenalTipo').css('display', 'none');		// OCULTA TIPO BUSQUEDA PENAL
+			//-------	
+			$("#radioRitPenal").prop("checked", true);			// ACTIVA RADIO RIT BUSQUEDA PENAL
+			//-------
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC BUSQUEDA PENAL
+			//----
+			$('#conTipoBusApe').val(0);
+			//----
+			$('#rucPen1').val('');
+			$('#rucPen2').val('');
+			//----
+			$('#ruc1').val('');
+			$('#ruc2').val('');
+			$('#ruc3').val('');
+			$('#ruc4').val('');
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+			$('#conEraCausa').val('');
+			
+			//---------- VALOR $ ----------//
+			$('#precioRitSuprema').css('display', 'none');
+			//-----------------------------//
+			$('#conEraCausa').removeAttr('style');
+		}
+		
+		
+		// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:tabs }, function(data){
+			// $("#conCorte").html(data);
+		// });
+		
+//---------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=conCorte]').children('option').remove();
+					$("#conCorte").append("<option value='0'>Todos</option>");
+					
+					$.each(data, function(key, value){				
+						$("#conCorte").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+				}
+			});		
+//---------		
+		
+				
+		if(codCompetencia != 2){
+			$.post("ADIR_871/json/cmbTipos.php", { codCompetencia:codCompetencia }, function(data){
+				$("#conTipoCausa").html(data);
+			});
+		}
+		
+	});	
+	
+//----------------------------- COMBO CORTE -----------------------------
+	$("#conCorte").change(function(){
+
+		var codCompetencia	= $("#competencia").val();
+		var codCorte		= $("#conCorte").val();
+
+		if(codCompetencia == 2){
+			
+			$("#conEraCausa").val('');
+			$("#conEraCausa").focus();
+			
+			if(codCorte != 0){
+				
+				// var accionApe = 'cmbTribunalApe';
+				var valorEra		= $("#conEraCausa").val();
+				var tipoBusApe		= $("#conTipoBusApe").val();				
+				var codEstadoRadio	= $('input:radio[name=radio-group]:checked').val();
+				
+				if(valorEra){
+					$('#conTipoCausa').prop('disabled', false);
+				}else{
+					$('#conTipoCausa').prop('disabled', true);
+				}
+				
+				// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accionApe, codCorte:codCorte }, function(data){
+					// $("#conTribunal").html(data);
+				// });
+				
+				if( tipoBusApe == 1 && codEstadoRadio == 1){
+					
+					$('#conTribunal').prop('disabled', false);
+				//----------------------------------------------------------------------------------
+					$.ajax({
+						url : 'combosJSON/leeTrib.php',
+						type : "POST",
+						dataType : 'json',
+						data : {	
+							codCompetencia:codCompetencia, 
+							codCorte:codCorte,
+							tipoBusqueda:1
+						},
+						success : function(data) {
+							$('select[id=conTribunal]').children('option').remove();
+							$("#conTribunal").append("<option value='0'>Todos</option>");
+							
+							$.each(data, function(key, value){				
+								$("#conTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');					
+							});
+							
+							$('#conTribunal').prop('disabled', false);
+						}
+					});
+				//----------------------------------------------------------------------------------
+
+				}else{					
+					$('#conTipoCausa').prop('disabled', true);				
+					$('select[id=conTipoCausa]').children('option').remove();
+					$("#conTipoCausa").append("<option value='0'>Seleccione Tribunal...</option>");					
+				}
+				
+			}else{
+				
+				$('#conTipoCausa').prop('disabled', true);
+				
+				// $('select[id=conTipoCausa]').children('option').remove();
+				// $("#conTipoCausa").append("<option value='0'>Todos</option>");
+			}
+			
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+		}
+		
+	});
+//-----------------------------------------------------------------------
+
+
+
+//----------------------- INPUT AÑO APELACIONES -------------------------
+$("#conEraCausa").on("blur",function(){
+		
+	var codCompetencia	= $("#competencia").val();
+	var codCorte		= $("#conCorte").val();
+	var codTipoBusqueda	= $("#conTipoBusApe").val();
+	var valorEra		= $(this).val();
+	var largoEra		= valorEra.length;
+	
+	if(codCompetencia == 2){
+		
+		$("#conEraCausa").css({ 'border-color' : '#e96686', 'box-shadow' : 'inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(233, 102, 125, 0.6)', 'background-color' : 'rgb(254, 217, 217)' });
+		
+		if(codCorte == 0){	// TODOS
+		
+			$('#conTipoCausa').prop('disabled', true);
+			
+			if(codTipoBusqueda == 0 && largoEra == 4){
+				
+				//$("#conEraCausa").tooltip('disable');
+				$('#conEraCausa').on('hide.bs.tooltip', function () { return true;});				
+				$('#conTipoCausa').prop('disabled', false);				
+				$('#conEraCausa').removeAttr('style');
+				
+				
+				$.post("ADIR_871/json/cmbTipos.php", { codCompetencia:codCompetencia, codCorte:codCorte, codAnho:valorEra }, function(data){
+					$("#conTipoCausa").html(data);
+				});
+				
+				
+			}else if(codTipoBusqueda == 0 && largoEra != 4){
+				
+				//$('#conEraCausa').tooltip('show');
+				$('#conEraCausa').on('hide.bs.tooltip', function () { return false;});	
+				$(".tooltip-inner").css({ 'background-color' : '#337ACE' });
+				$(".tooltip-arrow").css({ 'border-bottom-color' : '#337ACE' });
+			}
+			
+		}else{	// CORTE SELECCIONADA
+			
+			$('#conTipoCausa').prop('disabled', true);
+			
+			if(codTipoBusqueda == 0 && largoEra == 4){
+				
+				//$("#conEraCausa").tooltip('disable');
+				$('#conEraCausa').on('hide.bs.tooltip', function () { return true;});				
+				$('#conTipoCausa').prop('disabled', false);				
+				$('#conEraCausa').removeAttr('style');
+				
+				
+				$.post("ADIR_871/json/cmbTipos.php", { codCompetencia:codCompetencia, codCorte:codCorte, codAnho:valorEra }, function(data){
+					$("#conTipoCausa").html(data);
+				});
+				
+			}else if(codTipoBusqueda == 0 && largoEra != 4){
+				
+				//$('#conEraCausa').tooltip('show');
+				$('#conEraCausa').on('hide.bs.tooltip', function () { return false;});	
+				$(".tooltip-inner").css({ 'background-color' : '#337ACE' });
+				$(".tooltip-arrow").css({ 'border-bottom-color' : '#337ACE' });
+			}
+			
+		}
+	}
+	
+});
+//-----------------------------------------------------------------------
+	
+	
+//------------------------- COMPENTECIA NOMBRES -------------------------
+	$("#nomCompetencia").change(function(){
+
+		var codCompetencia	= $("#nomCompetencia").val();
+		var accion			= 'cmbCorte';
+				
+		if(codCompetencia == 1){
+			$('#corteNom').prop('disabled', true);
+			$('select[id=nomTribunal]').children('option').remove();
+			$("#nomTribunal").append("<option value='0'>----</option>");
+			$('#nomTribunal').prop('disabled', true);
+			$('#nomTribunal').selectpicker('refresh').attr('disabled',true);
+			accion		= '';
+			
+			//---------- VALOR $ ----------//
+			$('#precioNombreSuprema').removeAttr('style');
+			$("#precioNombreSuprema").css("margin-top","10px");
+			//-----------------------------//
+		}
+		else if(codCompetencia == 2){
+			var tabs	= 50;
+			
+			$('#corteNom').prop('disabled', false);
+			$('select[id=nomTribunal]').children('option').remove();
+			$("#nomTribunal").append("<option value='0'>----</option>");
+			$('#nomTribunal').prop('disabled', true);
+			$('#nomTribunal').selectpicker('refresh').attr('disabled',true);
+			
+			//---------- VALOR $ ----------//
+			$('#precioNombreSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:tabs }, function(data){
+				// $("#corteNom").html(data);
+			// });
+//---------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteNom]').children('option').remove();
+					$("#corteNom").append("<option value='0'>Seleccione Corte...</option>");
+					
+					$.each(data, function(key, value){				
+						$("#corteNom").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+				}
+			});
+//---------------
+			
+		}
+		else if(codCompetencia >= 3 && codCompetencia < 7 ){
+			$('#corteNom').prop('disabled', false);
+			$('#nomTribunal').prop('disabled', false);
+			
+			$('select[id=nomTribunal]').children('option').remove();
+			$("#nomTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			
+			//---------- VALOR $ ----------//
+			$('#precioNombreSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:80 }, function(data){
+				// $("#corteNom").html(data);
+			// });
+			
+//---------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteNom]').children('option').remove();
+					$("#corteNom").append("<option value='0'>Todas</option>");
+					
+					$.each(data, function(key, value){	
+						$("#corteNom").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');
+					});
+					
+					codCorte=$("#corteNom").val();
+					
+					$.ajax({
+						url : 'combosJSON/leeTrib.php',
+						type : "POST",
+						dataType : 'json',
+						data : {	
+							codCompetencia:codCompetencia, 
+							codCorte:codCorte,
+							tipoBusqueda:1
+						},
+						success : function(data) {
+							$('select[id=nomTribunal]').children('option').remove();
+							$("#nomTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+							var cant=0;
+							$.each(data, function(key, value)
+							{
+								if(cant==0)
+									$("#nomTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								else
+									$("#nomTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								cant++;
+							});
+						
+							$('#nomTribunal').prop('disabled', false);
+							$('#nomTribunal').selectpicker('refresh');
+
+						}
+					});
+				}
+			});
+			
+			
+//---------------
+			
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+			
+			//---------- VALOR $ ----------//
+			$('#precioNombreSuprema').css('display', 'none');
+			//-----------------------------//
+		}
+				
+				
+	});
+//-----------------------------------------------------------------------
+	
+	
+//-------------------------- COMPENTECIA FECHA --------------------------
+	$("#fecCompetencia").change(function(){
+
+		var codCompetencia	= $("#fecCompetencia").val();
+		var accion			= 'cmbCorte';		
+		
+		if(codCompetencia == 1){
+			$('#corteFec').prop('disabled', true);
+			$('select[id=fecTribunal]').children('option').remove();
+			$("#fecTribunal").append("<option value='0'>----</option>");
+			$('#fecTribunal').prop('disabled', true);
+			$('#fecTribunal').selectpicker('refresh').attr('disabled',true);
+			accion		= '';
+			
+			//---------- VALOR $ ----------//
+			$('#precioFechaSuprema').removeAttr('style');
+			$("#precioFechaSuprema").css("margin-top","10px");
+			//-----------------------------//
+		}
+		else if(codCompetencia == 2){
+			// var tabs	= 50;
+			
+			$('#corteFec').prop('disabled', false);
+			$('select[id=fecTribunal]').children('option').remove();
+			$("#fecTribunal").append("<option value='0'>----</option>");
+			$('#fecTribunal').prop('disabled', true);
+			$('#fecTribunal').selectpicker('refresh').attr('disabled',true);
+			
+			//---------- VALOR $ ----------//
+			$('#precioFechaSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:tabs }, function(data){
+				// $("#corteFec").html(data);
+			// });
+//-----------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteFec]').children('option').remove();
+					$("#corteFec").append("<option value='0'>Seleccione Corte...</option>");
+					
+					$.each(data, function(key, value){				
+						$("#corteFec").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+				}
+			});
+//-----------------		
+			
+		}
+		else if(codCompetencia >= 3 && codCompetencia<7){
+			$('#corteFec').prop('disabled', false);
+			$('#fecTribunal').prop('disabled', false);
+			
+			$('select[id=fecTribunal]').children('option').remove();
+			$("#fecTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			
+			//---------- VALOR $ ----------//
+			$('#precioFechaSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:80 }, function(data){
+				// $("#corteFec").html(data);
+			// });
+			
+//-----------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteFec]').children('option').remove();
+					$("#corteFec").append("<option value='0'>Todos</option>");
+					
+					$.each(data, function(key, value){				
+						$("#corteFec").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+					
+					codCorte=$("#corteFec").val();
+					
+					$.ajax({
+						url : 'combosJSON/leeTrib.php',
+						type : "POST",
+						dataType : 'json',
+						data : {	
+							codCompetencia:codCompetencia, 
+							codCorte:codCorte,
+							tipoBusqueda:1
+						},
+						success : function(data) {
+							$('select[id=fecTribunal]').children('option').remove();
+							$("#fecTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+						
+							var cant=0;
+							$.each(data, function(key, value)
+							{
+								if(cant==0)
+									$("#fecTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								else
+									$("#fecTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								cant++;
+							});
+						
+							$('#fecTribunal').prop('disabled', false);
+							$('#fecTribunal').selectpicker('refresh');
+						}
+					});
+				}
+			});
+//-----------------
+			
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+			
+			//---------- VALOR $ ----------//
+			$('#precioFechaSuprema').css('display', 'none');
+			//-----------------------------//
+		}
+		
+		
+		
+				
+	});
+//-----------------------------------------------------------------------
+	
+	
+//------------------------ COMPENTECIA RUTJURIDICO ----------------------
+	$("#jurCompetencia").change(function(){
+
+		var codCompetencia	= $("#jurCompetencia").val();
+		var accion			= 'cmbCorte';
+		
+		if(codCompetencia == 1){
+			$('#corteJur').prop('disabled', true);
+			$('select[id=jurTribunal]').children('option').remove();
+			$("#jurTribunal").append("<option value='0'>----</option>");
+			$('#jurTribunal').prop('disabled', true);
+			$('#jurTribunal').selectpicker('refresh').attr('disabled',true);
+			accion		= '';
+			
+			//---------- VALOR $ ----------//
+			$('#precioJuridicaSuprema').removeAttr('style');
+			$("#precioJuridicaSuprema").css("margin-top","10px");
+			//-----------------------------//
+		}
+		else if(codCompetencia == 2){
+			// var tabs	= 50;
+			
+			$('#corteJur').prop('disabled', false);
+			$('select[id=jurTribunal]').children('option').remove();
+			$("#jurTribunal").append("<option value='0'>----</option>");
+			$('#jurTribunal').prop('disabled', true);
+			$('#jurTribunal').selectpicker('refresh').attr('disabled',true);
+			
+			//---------- VALOR $ ----------//
+			$('#precioJuridicaSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:tabs }, function(data){
+				// $("#corteJur").html(data);
+			// });
+//-------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteJur]').children('option').remove();
+					$("#corteJur").append("<option value='0'>Seleccione Corte...</option>");
+					
+					$.each(data, function(key, value){				
+						$("#corteJur").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+				}
+			});
+//-------------
+			
+		}
+		else if(codCompetencia >= 3 && codCompetencia < 7)
+		{
+			$('#corteJur').prop('disabled', false);
+			$('#jurTribunal').prop('disabled', false);
+			
+			$('select[id=jurTribunal]').children('option').remove();
+			$("#jurTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			
+			//---------- VALOR $ ----------//
+			$('#precioJuridicaSuprema').css('display', 'none');
+			//-----------------------------//
+			
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, accion:accion, tabs:80 }, function(data){
+				// $("#corteJur").html(data);
+			// });
+			
+//-------------
+			$.ajax({
+				url : 'combosJSON/leeCorte.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					tipoBusqueda:1
+				},
+				success : function(data) {
+					$('select[id=corteJur]').children('option').remove();
+					$("#corteJur").append("<option value='0'>Todos</option>");
+					
+					$.each(data, function(key, value){				
+						$("#corteJur").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+					});
+					
+					codCorte=$("#corteJur").val();
+					$.ajax({
+						url : 'combosJSON/leeTrib.php',
+						type : "POST",
+						dataType : 'json',
+						data : {	
+							codCompetencia:codCompetencia, 
+							codCorte:codCorte,
+							tipoBusqueda:1
+						},
+						success : function(data) {
+							$('select[id=jurTribunal]').children('option').remove();
+							$("#jurTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+						
+							var cant=0;
+							$.each(data, function(key, value)
+							{
+								if(cant==0)
+									$("#jurTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								else
+									$("#jurTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+								cant++;
+							});
+						
+							$('#jurTribunal').prop('disabled', false);
+							$('#jurTribunal').selectpicker('refresh');
+						}
+					});
+				}
+			});
+//-------------
+			
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+			
+			//---------- VALOR $ ----------//
+			$('#precioJuridicaSuprema').css('display', 'none');
+			//-----------------------------//
+		}
+		
+
+	});
+//-----------------------------------------------------------------------
+	
+	
+	
+//--------------------- CARGA CORTE RIT ---------------------------------
+	$("#conCorte").change(function(){
+		
+		var codCompetencia	= $("#competencia").val();
+		var codCorte 		= $("#conCorte").val();
+		var codTipoBus 		= $("#conTipoBus").val();
+		var codTipBusApe	= $("#conTipoBusApe").val();
+		var codEstadoRadio	= $('input:radio[name=radio-group]:checked').val();
+	
+	//---------------------- CONTROL DE APELACIONES ---------------------------
+		if(codCompetencia == 2 && codTipBusApe == 0){
+			$('select[id=conTribunal]').children('option').remove();
+			$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+			$('#conTribunal').prop('disabled', true);
+			
+			$("#conEraCausa").css({ 'border-color' : '#e96686', 'box-shadow' : 'inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(233, 102, 125, 0.6)', 'background-color' : 'rgb(254, 217, 217)' });
+			//$('#conEraCausa').tooltip('show');
+			$('#conEraCausa').on('hide.bs.tooltip', function () { return false;});	
+			$(".tooltip-inner").css({ 'background-color' : '#337ACE' });
+			$(".tooltip-arrow").css({ 'border-bottom-color' : '#337ACE' });
+		}
+		else if(codCompetencia == 2 && codTipBusApe == 1 && codEstadoRadio != 2){
+			$('#conTribunal').prop('disabled', false);
+			
+			//$("#conEraCausa").tooltip('disable');
+			$('#conEraCausa').on('hide.bs.tooltip', function () { return true;});		
+			$('#conEraCausa').removeAttr('style');
+		}
+		else if(codCompetencia == 2 && codTipBusApe == 1 && codEstadoRadio == 2){
+			$('#conTribunal').val(0);
+			$('#conTribunal').prop('disabled', true);
+			
+			//$("#conEraCausa").tooltip('disable');
+			$('#conEraCausa').on('hide.bs.tooltip', function () { return true;});		
+			$('#conEraCausa').removeAttr('style');
+		}
+	//-------------------------------------------------------------------------		
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+		}
+		
+	//---------------------- CONTROL DE SUPREMA ---------------------------
+		else if(codTipoBus == 1 && codCompetencia == 1){
+			
+			$('#conTribunal').prop('disabled', true);			
+			$('#conTipoCausa').prop('disabled', false);
+			
+			$.post("ADIR_871/json/cmbTipos.php", { codCompetencia:codCompetencia, codCorte:codCorte, codTipoBus:codTipoBus }, function(data){
+				$("#conTipoCausa").html(data);
+			});
+			
+		}
+		else if(codTipoBus == 2 && codCompetencia == 1){
+			$('#conTribunal').prop('disabled', false);
+			
+			$.ajax({
+				url : 'combosJSON/leeTrib.php',
+				type : "POST",
+				dataType : 'json',
+				data : {	
+					codCompetencia:codCompetencia, 
+					codCorte:codCorte,
+					tipoBusqueda:2
+				},
+				success : function(data) {
+					$('select[id=conTribunal]').children('option').remove();
+					$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+					
+					$.each(data, function(key, value){				
+						$("#conTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');					
+					});
+					
+					$('#conTribunal').prop('disabled', false);
+				}
+			});
+		}
+	//---------------------------------------------------------------------
+		else{
+			$('#conTribunal').prop('disabled', false);
+				
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, codCorte:codCorte, accion:'cmbTribunal' }, function(data){
+				// $("#conTribunal").html(data);
+				// $('#conTribunal').prop('disabled', false);
+			// });
+			
+//----------------------------------------------------------------------------------
+				$.ajax({
+					url : 'combosJSON/leeTrib.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						codCompetencia:codCompetencia, 
+						codCorte:codCorte,
+						tipoBusqueda:1
+					},
+					success : function(data) {
+						$('select[id=conTribunal]').children('option').remove();
+						$("#conTribunal").append("<option value='0'>Todos</option>");
+						
+						$.each(data, function(key, value){				
+							$("#conTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');					
+						});
+						
+						$('#conTribunal').prop('disabled', false);
+					}
+				});
+//----------------------------------------------------------------------------------
+			
+		}
+	});
+//-----------------------------------------------------------------------
+	
+//--------------------- CARGA CORTE NOMBRES -----------------------------
+	$("#corteNom").change(function(){
+		
+		var codCompetencia	= $("#nomCompetencia").val();
+		var codCorte 		= $("#corteNom").val();
+		
+		if(codCompetencia == 2){
+			$('#nomTribunal').prop('disabled', true);
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+		}
+		else if(codCompetencia >=3 && codCompetencia<7){
+			$('#nomTribunal').prop('disabled', false);
+				
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, codCorte:codCorte, accion:'cmbTribunal', tabs:70 }, function(data){
+				// $("#nomTribunal").html(data);
+				// $('#nomTribunal').prop('disabled', false);
+			// });
+			
+//----------------------------------------------------------------------------------
+				$.ajax({
+					url : 'combosJSON/leeTrib.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						codCompetencia:codCompetencia, 
+						codCorte:codCorte,
+						tipoBusqueda:1
+					},
+					success : function(data) {
+						$('select[id=nomTribunal]').children('option').remove();
+						$("#nomTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+						
+						var cant=0;
+						$.each(data, function(key, value)
+						{
+							if(cant==0)
+								$("#nomTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							else
+								$("#nomTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							cant++;
+						});
+						
+						$('#nomTribunal').prop('disabled', false);
+						$('#nomTribunal').selectpicker('refresh');
+						
+						
+					}
+				});
+//----------------------------------------------------------------------------------
+
+		}
+		
+	});
+//-----------------------------------------------------------------------
+	
+//--------------------- CARGA CORTE FECHA -------------------------------
+	$("#corteFec").change(function(){
+		
+		var codCompetencia	= $("#fecCompetencia").val();
+		var codCorte 		= $("#corteFec").val();
+		
+		
+		
+		if(codCompetencia == 2){
+			$('#fecTribunal').prop('disabled', true);
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+		}
+		else if(codCompetencia >=3 && codCompetencia<7){
+			$('#fecTribunal').prop('disabled', false);
+				
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, codCorte:codCorte, accion:'cmbTribunal', tabs:70 }, function(data){
+				// $("#fecTribunal").html(data);
+				// $('#fecTribunal').prop('disabled', false);
+			// });
+			
+//----------------------------------------------------------------------------------
+				$.ajax({
+					url : 'combosJSON/leeTrib.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						codCompetencia:codCompetencia, 
+						codCorte:codCorte,
+						tipoBusqueda:1
+					},
+					success : function(data) {
+					
+						
+						
+						$('select[id=fecTribunal]').children('option').remove();
+						$("#fecTribunal").append("<option value='0'>Seleccione Tribunal</option>");
+						var cant=0;
+						$.each(data, function(key, value){
+							if(cant==0)
+								$("#fecTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							else
+								$("#fecTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							cant++;
+						});
+						
+						$('#fecTribunal').prop('disabled', false);
+						$('#fecTribunal').selectpicker('refresh');
+					}
+				});
+//----------------------------------------------------------------------------------
+
+		}
+		
+	});
+//-----------------------------------------------------------------------
+	
+//--------------------- CARGA CORTE RUTJURIDICO -------------------------
+	$("#corteJur").change(function(){
+		
+		var codCompetencia	= $("#jurCompetencia").val();
+		var codCorte 		= $("#corteJur").val();
+		
+		if(codCompetencia == 2){
+			$('#jurTribunal').prop('disabled', true);
+		}
+		else if(codCompetencia == 7){
+			swal("","La causas de familia son reservadas, por lo que no se encuentran disponibles para ser consultadas. Para acceder a las que se encuentren vinculadas a su c\u00e9dula de identidad, debe ingresar a trav\u00e9s de la opci\u00f3n \u0022Mis causas\u0022 en el men\u00fa izquierdo de la Oficina Judicial Virtual","warning");
+		}
+		else if(codCompetencia >= 3 && codCompetencia<7)
+		{
+			$('#jurTribunal').prop('disabled', false);
+				
+			// $.post("ADIR_871/json/comboCausas.php", { codCompetencia:codCompetencia, codCorte:codCorte, accion:'cmbTribunal', tabs:70 }, function(data){
+				// $("#jurTribunal").html(data);
+				// $('#jurTribunal').prop('disabled', false);
+			// });
+			
+//----------------------------------------------------------------------------------
+				$.ajax({
+					url : 'combosJSON/leeTrib.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						codCompetencia:codCompetencia, 
+						codCorte:codCorte,
+						tipoBusqueda:1
+					},
+					success : function(data) {
+						$('select[id=jurTribunal]').children('option').remove();
+						//$("#jurTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+						var cant=0;
+						$.each(data, function(key, value){
+							if(cant==0)
+								$("#jurTribunal").append('<option selected=\"selected\" value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							else
+								$("#jurTribunal").append('<option value=' + value.COD_TRIBUNAL + '>' + value.GLS_TRIBUNAL + '</option>');
+							cant++;
+						});
+						
+						$('#jurTribunal').prop('disabled', false);
+						$('#jurTribunal').selectpicker('refresh');
+					}
+				});
+//----------------------------------------------------------------------------------
+
+		}
+		
+	});
+//-----------------------------------------------------------------------
+
+
+
+//----------------------- COMBO TIPO BUSQUEDA SUPREMA ---------------------------
+	$("#conTipoBus").change(function(){
+		
+		var tipoBus			 = $(this).val();
+		var codCompetencia	= $("#competencia").val();
+		
+		if(tipoBus == 0){
+				$('select[id=conCorte]').children('option').remove();
+				$("#conCorte").append("<option value='0'>Seleccione Corte...</option>");
+				$('#conCorte').prop('disabled', true);
+			//----
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+				$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+				$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+				$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+				$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+				$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO LIBRO
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);
+			//----
+				$('#carConCaratulado').css('display', 'none');
+			//----
+				$('#conRolCausa').prop('disabled', false);
+				$('#conEraCausa').prop('disabled', false);
+			//----
+				$('#conCaratulado').val('');
+			
+		}
+		else if(tipoBus == 1){
+				
+				$.ajax({
+					url : 'combosJSON/leeCorte.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						tipoBusqueda:2
+					},
+					success : function(data) {
+						$('select[id=conCorte]').children('option').remove();
+						$("#conCorte").append("<option value='0'>Seleccione Corte...</option>");
+						
+						$.each(data, function(key, value){				
+							$("#conCorte").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+						});
+											
+						$('#conCorte').prop('disabled', false);
+					}
+				});
+			//----	
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+				$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+				$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+				$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+				$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+				$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO LIBRO
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);
+			//----
+				$('#carConCaratulado').css('display', 'none');
+			//----			
+				$('#conRolCausa').prop('disabled', false);
+				$('#conEraCausa').prop('disabled', false);
+			//----
+				$('#conCaratulado').val('');			
+		}
+		else if(tipoBus == 2){
+			
+				$.ajax({
+					url : 'combosJSON/leeCorte.php',
+					type : "POST",
+					dataType : 'json',
+					data : {	
+						tipoBusqueda:2
+					},
+					success : function(data) {
+						$('select[id=conCorte]').children('option').remove();
+						$("#conCorte").append("<option value='0'>Seleccione Corte...</option>");
+						
+						$.each(data, function(key, value){				
+							$("#conCorte").append('<option value=' + value.COD_CORTE + '>' + value.GLS_CORTE + '</option>');					
+						});
+
+						$('#conCorte').prop('disabled', false);
+					}
+				});
+			//----	
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);				
+				$('#conTipoCausa').css('display', 'none');			// OCULTA COMBO LIBRO
+				$('#lblConTipoCausaLib').css('display', 'none');	// OCULTA TITULO LIBRO
+				$('#lblConTipoCausaRuc').removeAttr('style');		// MUESTRA TITULO RIT/RUC
+				$('#rdioConTipCausa').removeAttr('style');			// MUESTRA RADIO RIT/RUC
+			//----
+				$("#radioRit").prop("checked", true);
+			//----
+				$('#carConCaratulado').css('display', 'none');
+			//----
+				$('#conRolCausa').prop('disabled', false);
+				$('#conEraCausa').prop('disabled', false);
+			//----
+				$('#conCaratulado').val('');
+		}
+		else if(tipoBus == 3){
+				$('select[id=conCorte]').children('option').remove();
+				$("#conCorte").append("<option value='0'>Seleccione Corte...</option>");
+				$('#conCorte').prop('disabled', true);
+			//----	
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+				$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+				$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+				$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+				$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+				$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO LIBRO
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);
+			//----
+				$('#conRolCausa').val('');
+				$('#conRolCausa').prop('disabled', true);
+			//----
+				$("#carConCaratulado").removeAttr('style');
+			//----
+				$('#conEraCausa').val('');
+				$('#conEraCausa').prop('disabled', true);
+		}		
+		
+	});
+//-----------------------------------------------------------------------------------
+
+
+
+//----------------------- COMBO TIPO BUSQUEDA APELACIONES ---------------------------
+	$("#conTipoBusApe").change(function(){
+		
+		var tipoBusApe		= $(this).val();
+		var codCompetencia	= $("#competencia").val();
+		
+		if(tipoBusApe == 0){
+				$('#conCorte').val(0);
+			//----
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+				$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+				$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+				$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+				$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+				$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO LIBRO
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);
+			//----
+				$('#carConCaratulado').css('display', 'none');
+			//----
+				$('#conRolCausa').prop('disabled', false);
+				$('#conEraCausa').prop('disabled', false);
+			//----
+				$('#radioRit').prop("checked", true);
+							
+			//-------------------------------------------------------------------
+				$("#conEraCausa").css({ 'border-color' : '#e96686', 'box-shadow' : 'inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(233, 102, 125, 0.6)', 'background-color' : 'rgb(254, 217, 217)' });
+				//$('#conEraCausa').tooltip('enable');
+				$(".tooltip-inner").css({ 'background-color' : '#337ACE' });
+				$(".tooltip-arrow").css({ 'border-bottom-color' : '#337ACE' });
+				$('#conEraCausa').focus();
+			//-------------------------------------------------------------------
+						
+		}
+		else if(tipoBusApe == 1){
+			var codCorteApe	= $("#conCorte").val();
+			
+			//---------------------------------------------
+				//$("#conEraCausa").tooltip('disable');		
+				$('#conEraCausa').removeAttr('style');
+			//---------------------------------------------
+			
+			$('#conCorte').val(0);			
+			//----	
+				$('select[id=conTribunal]').children('option').remove();
+				$("#conTribunal").append("<option value='0'>Todos</option>");
+				$('#conTribunal').prop('disabled', true);
+			//----
+				$('#lblConTipoCausaRuc').removeAttr('style');		// MUESTRA TITULO RIT/RUC
+				$('#rdioConTipCausa').removeAttr('style');			// MUESTRA RADIO RIT/RUC
+				$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+				$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+				$('#lblConTipoCausaLib').css('display', 'none');	// OCULTA TITULO LIBRO
+				$('#conTipoCausa').css('display', 'none');			// OCULTA COMBO LIBRO
+				$('#conTipoCausa').val('');
+				$('#conTipoCausa').prop('disabled', true);
+			//----
+				$('#carConCaratulado').css('display', 'none');
+			//----			
+				$('#conRolCausa').prop('disabled', false);
+				$('#conEraCausa').prop('disabled', false);
+			//----
+				// $('#conCaratulado').val('');
+		}
+		
+	});
+//-----------------------------------------------------------------------------------
+
+
+//----------------- RADIOS PARA TIPO DE BUSQUEDA SUPREMA Y APELACIONES ----------------
+	$("#radioRit").click(function(){		
+		var estadoRadio	= $('input:radio[name=radio-group]:checked').val();
+		
+		$('#conCorte').val(0);
+		$('#conCorte').prop('disabled', false);
+		//----
+		$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+		$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+		$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+		//----
+		$('#ruc1').val('');
+		$('#ruc2').val('');
+		$('#ruc3').val('');
+		$('#ruc4').val('');
+	});
+
+	$("#radioRuc").click(function(){
+		var codCompe	= $("#competencia").val();
+		var estadoRadio	= $('input:radio[name=radio-group]:checked').val();
+		
+		if(codCompe == 1)
+		{
+			$('#conCorte').val(0);
+			$('#conCorte').prop('disabled', true);
+			$('#conTribunal').val(0);
+			$('#conTribunal').prop('disabled', true);
+			//----
+			$('#rolConTipoCausa').css('display', 'none');		// OCULTA ROL
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+			$('#rucConTipoCausa').removeAttr('style');			// MUESTRA RUC
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+		}
+		else if(codCompe == 2 && estadoRadio != 2)
+		{
+			$('#conCorte').val(0);
+			$('#conCorte').prop('disabled', false);
+			$('#conTribunal').val(0);
+			$('#conTribunal').prop('disabled', false);
+			//----
+			$('#rolConTipoCausa').css('display', 'none');		// OCULTA ROL
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+			$('#rucConTipoCausa').removeAttr('style');			// MUESTRA RUC
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+		}
+		else if(codCompe == 2 && estadoRadio == 2)
+		{
+			$('#conCorte').val(0);
+			$('#conCorte').prop('disabled', false);
+			$('#conTribunal').val(0);
+			$('#conTribunal').prop('disabled', true);
+			//----
+			$('#rolConTipoCausa').css('display', 'none');		// OCULTA ROL
+			$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+			$('#rucConTipoCausa').removeAttr('style');			// MUESTRA RUC
+			//----
+			$('#conRolCausa').val('');
+			$('#conEraCausa').val('');
+		}	
+	});
+//------------------------------------------------------------------------------------
+
+
+
+//----------------- RADIOS PARA TIPO DE BUSQUEDA PENAL ------------------
+$("#radioRitPenal").click(function(){
+	$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+	$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC SUPREMA
+	//-------
+	$("#rolConTipoCausa").removeAttr('style');			// MUESTRA BUSQUEDA ROL/RIT SUPREMA
+	//-------
+	$("#rucPen1").val('');								// LIMPIA RUC1 PENAL
+	$("#rucPen2").val('');								// LIMPIA RUC2 PENAL
+});
+
+$("#radioRucPenal").click(function(){
+	$('#rolConTipoCausa').css('display', 'none');		// OCULTA BUSQUEDA ROL/RIT SUPREMA
+	$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC SUPREMA
+	//-------
+	$('#rucConTipoCausaPenal').removeAttr('style');		// MUESTRA RUC
+	//-------
+	$("#conRolCausa").val('');							// LIMPIA ROL PENAL
+	$("#conEraCausa").val('');							// LIMPIA ERA PENAL
+});
+//-----------------------------------------------------------------------
+
+
+//--------------------------------- SUBMIT BUSQUEDA RIT -----------------------------------
+	$("#formConsulta").submit(function(e)
+	{
+		e.preventDefault();
+		var competencia 	= $("#competencia").val();
+		var tipoBusqueda	= $("#conTipoBus").val();
+		var postData = $(this).serialize();
+		var formURL			= "";
+		
+		if(competencia > 7 || $.isNumeric(competencia) != true){
+			swal("","Por favor no modifique la Competencia","error");
+			return false
+		}
+		
+		if(tipoBusqueda > 3 || tipoBusqueda < 0 || $.isNumeric(tipoBusqueda) != true){
+			swal("","Por favor no modifique el Tipo de B\u00fasqueda","error");
+			return false
+		}
+		
+		if(competencia == 1){
+			formURL = "ADIR_871/suprema/consultaRitSuprema.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Tipo Recurso</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Corte</th>"+
+								"</tr>");
+		}
+		if(competencia == 2){
+			formURL = "ADIR_871/apelaciones/consultaRitApelaciones.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Corte</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Fecha Ubicaci&oacute;n</th>"+
+								"	<th>Ubicaci&oacute;n</th>"+
+								"</tr>");
+		}
+		if(competencia == 3){
+			formURL = "ADIR_871/civil/consultaRitCivil.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Fecha</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Tribunal</th>"+
+								"</tr>");
+		}
+		if(competencia == 4){
+			formURL = "ADIR_871/laboral/consultaRitLaboral.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competencia == 5){
+			formURL = "ADIR_871/penal/consultaRitPenal.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competencia == 6){
+			formURL = "ADIR_871/cobranza/consultaRitCobranza.php";
+			
+			$("#thTable").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Procesal</th>"+
+								"</tr>");
+		}
+		if(competencia == 7){
+			return 0;
+		}
+		
+		$.ajax(
+		{
+			url : formURL,
+			type: "POST",
+			data : postData,
+			success:function(data, textStatus, jqXHR) 
+			{
+				$("#dtaTableDetalle").css("display","");
+				//$("html,body").animate({ scrollTop : $("#loadPre").offset().top  }, 1500 );
+				$('#verDetalle').html(data);
+				$(".imgLoad").remove();
+				recaptchacallbackritv3();
+				
+				$("#btnConConsulta").attr("disabled", false);
+				
+				//$("#dtaTableDetalle").stickyTableHeaders();
+			},
+			beforeSend:function()
+			{				
+			 	$("#loadPre").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+				$("#btnConConsulta").attr("disabled", true);
+			},
+			error: function(jqXHR, textStatus, errorThrown) 
+			{
+			}
+		});
+		
+	});
+//-----------------------------------------------------------------------------------------
+
+
+	
+//----------------------------- SUBMIT BUSQUEDA NOMBRES -----------------------------------
+	$("#formConsultaNom").submit(function(e)
+	{
+		e.preventDefault();
+		var competenciaNom 	= $("#nomCompetencia").val();
+		var postDataNom		= $(this).serialize();
+		var formURLNom		= "";
+			
+		if(competenciaNom > 7 || $.isNumeric(competenciaNom) != true){
+			swal("","Por favor no modifique la Competencia","error");
+			return false
+		}
+		
+		if(competenciaNom == 1){
+			formURLNom = "ADIR_871/suprema/consultaNombreSuprema.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Tipo Recurso</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Corte</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 2){
+			formURLNom = "ADIR_871/apelaciones/consultaNombreApelaciones.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Corte</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Fecha Ubicaci&oacute;n</th>"+
+								"	<th>Ubicaci&oacute;n</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 3){
+			formURLNom = "ADIR_871/civil/consultaNombreCivil.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Fecha</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Tribunal</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 4){
+			formURLNom = "ADIR_871/laboral/consultaNombreLaboral.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 5){
+			formURLNom = "ADIR_871/penal/consultaNombrePenal.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 6){
+			formURLNom = "ADIR_871/cobranza/consultaNombreCobranza.php";
+			
+			$("#thTableNombre").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Procesal</th>"+
+								"</tr>");
+		}
+		if(competenciaNom == 7){
+			return 0;
+		}
+		
+		$.ajax(
+		{
+			url : formURLNom,
+			type: "POST",
+			data : postDataNom,
+			success:function(data, textStatus, jqXHR) 
+			{
+				$("#dtaTableDetalleNombre").css("display","");
+				//$("html,body").animate({ scrollTop : $("#loadPreNombre").offset().top  }, 1500 );
+				$('#verDetalleNombre').html(data);
+				$(".imgLoad").remove();
+				recaptchacallbacknombrev3();
+				$("#btnConConsultaNom").attr("disabled", false);
+			},
+			beforeSend:function()
+			{
+				$("#btnConConsultaNom").attr("disabled", true);
+				$("#loadPreNombre").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");			
+			},
+			error: function(jqXHR, textStatus, errorThrown) 
+			{
+			}
+		});
+		
+	});
+//-----------------------------------------------------------------------------------------
+	
+	
+//------------------------------ SUBMIT BUSQUEDA FECHA ------------------------------------
+	$("#formConsultaFec").submit(function(e)
+	{
+		e.preventDefault();
+		var competenciaFec 	= $("#fecCompetencia").val();
+		var postDataFec		= $(this).serialize();
+		var formURLFec		= "";
+			
+		if(competenciaFec > 7 || $.isNumeric(competenciaFec) != true){
+			swal("","Por favor no modifique la Competencia","error");
+			return false
+		}
+		
+		if(competenciaFec == 1){
+			formURLFec = "ADIR_871/suprema/consultaFechaSuprema.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Tipo Recurso</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Corte</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 2){
+			formURLFec = "ADIR_871/apelaciones/consultaFechaApelaciones.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Corte</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Fecha Ubicaci&oacute;n</th>"+
+								"	<th>Ubicaci&oacute;n</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 3){
+			formURLFec = "ADIR_871/civil/consultaFechaCivil.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Fecha</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Tribunal</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 4){
+			formURLFec = "ADIR_871/laboral/consultaFechaLaboral.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 5){
+			formURLFec = "ADIR_871/penal/consultaFechaPenal.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 6){
+			formURLFec = "ADIR_871/cobranza/consultaFechaCobranza.php";
+			
+			$("#thTableFecha").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Procesal</th>"+
+								"</tr>");
+		}
+		if(competenciaFec == 7){
+			return 0;
+		}
+		
+		$.ajax(
+		{
+			url : formURLFec,
+			type: "POST",
+			data : postDataFec,
+			success:function(data, textStatus, jqXHR) 
+			{
+				$("#dtaTableDetalleFecha").css("display","");
+				//$("html,body").animate({ scrollTop : $("#loadPreFecha").offset().top  }, 1500 );
+				$('#verDetalleFecha').html(data);
+				$(".imgLoad").remove();
+				recaptchacallbackfechav3();
+				$("#btnConConsultaFec").attr("disabled", false);
+			},
+			beforeSend:function()
+			{
+				$("#btnConConsultaFec").attr("disabled", true);
+				$("#loadPreFecha").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+			},
+			error: function(jqXHR, textStatus, errorThrown) 
+			{
+			}
+		});
+		
+	});
+//-----------------------------------------------------------------------------------------
+	
+	
+//---------------------------- SUBMIT BUSQUEDA RUT JURIDICO -------------------------------
+	$("#formConsultaJur").submit(function(e)
+	{
+		e.preventDefault();
+		var competenciaJur 	= $("#jurCompetencia").val();
+		var postDataJur		= $(this).serialize();
+		var formURLJur		= "";
+			
+		if(competenciaJur > 7 || $.isNumeric(competenciaJur) != true){
+			swal("","Por favor no modifique la Competencia","error");
+			return false
+		}
+		
+		if(competenciaJur == 1){
+			formURLJur = "ADIR_871/suprema/consultaJuridicaSuprema.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Tipo Recurso</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Corte</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 2){
+			formURLJur = "ADIR_871/apelaciones/consultaJuridicaApelaciones.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Corte</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"	<th>Fecha Ubicaci&oacute;n</th>"+
+								"	<th>Ubicaci&oacute;n</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 3){
+			formURLJur = "ADIR_871/civil/consultaJuridicaCivil.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rol</th>"+
+								"	<th>Fecha</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Tribunal</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 4){
+			formURLJur = "ADIR_871/laboral/consultaJuridicaLaboral.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 5){
+			formURLJur = "ADIR_871/penal/consultaJuridicaPenal.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Causa</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 6){
+			formURLJur = "ADIR_871/cobranza/consultaJuridicaCobranza.php";
+			
+			$("#thTableJuridica").html( "<tr>"+
+								"	<th></th>"+
+								"	<th>Rit</th>"+
+								"	<th>Ruc</th>"+
+								"	<th>Tribunal</th>"+
+								"	<th>Caratulado</th>"+
+								"	<th>Fecha Ingreso</th>"+
+								"	<th>Estado Procesal</th>"+
+								"</tr>");
+		}
+		
+		if(competenciaJur == 7){
+			return 0;
+		}
+		
+		$.ajax(
+		{
+			url : formURLJur,
+			type: "POST",
+			data : postDataJur,
+			success:function(data, textStatus, jqXHR) 
+			{
+				$("#dtaTableDetalleJuridica").css("display","");
+				//$("html,body").animate({ scrollTop : $("#loadPreJuridica").offset().top  }, 1500 );
+				$('#verDetalleJuridica').html(data);
+				$(".imgLoad").remove();
+				recaptchacallbackjurv3();
+				$("#btnConConsultaJur").attr("disabled", false);
+			},
+			beforeSend:function()
+			{
+				$("#btnConConsultaJur").attr("disabled", true);
+				$("#loadPreJuridica").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+			},
+			error: function(jqXHR, textStatus, errorThrown) 
+			{
+			}
+		});
+		
+	});
+//-----------------------------------------------------------------------------------------
+
+});
+
+
+
+//-------------------------------------- FUNCIONES ----------------------------------------
+
+//----------- CIVIL
+function detalleCausaCivil(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_civil'})
+			  .then(function(token) {
+				  
+				  $.ajax({
+					  url     :'../ADIR_871/civil/modal/causaCivil.php',
+					  dataType: "html",
+					  type    : "POST",
+					  cache   : false,
+					  data    :{
+						  dtaCausa : dtaCausa,
+						  token: 'd0a63810ceed8d7710dfdcc0000d9dd6'
+					  },
+					  success:function(data){
+						  $('#modalDetalleCivil').html(data);
+						  $("#modalDetalleCivil").modal("show");
+					  },
+					  beforeSend:function(){
+						  $('body').loadingModal({text: 'Cargando...'});
+					  }
+				  }).done(function() {
+					  $('body').loadingModal('destroy');
+				  });
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaCivilSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+	/*grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_civil'})
+			  .then(function(token) {*/
+			$.ajax({
+				url     :'../ADIR_871/civil/modal/causaCivil.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					dtaCausa : dtaCausa,
+					tokenCaptcha : token,
+							  token: 'd0a63810ceed8d7710dfdcc0000d9dd6'
+				},
+				success:function(data){
+					$('#modalDetalleCivil').html(data);
+					$("#modalDetalleCivil").modal("show");
+				},
+				beforeSend:function(){
+					$('body').loadingModal({text: 'Cargando...'});
+				}
+			}).done(function() {
+				$('body').loadingModal('destroy');
+			});
+		/*});
+		
+	});*/
+	
+}
+
+function anexoCausaCivil(val){
+	
+	var dtaAnexCau	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/anexoCausaCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexCau : dtaAnexCau
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoCausaCivil').html(data);
+			$("#modalAnexoCausaCivil").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoSolicitudCivil(val){
+	
+	var dtaCausaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/anexoCausaSolicitudCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausaAnex : dtaCausaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoSolicitudCivil').html(data);
+			$("#modalAnexoSolicitudCivil").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoSolicitudCivilSII(val){
+	
+	var dtaCausaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/anexoCausaSolicitudCivilSII.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausaAnex : dtaCausaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoSolicitudCivilSII').html(data);
+			$("#modalAnexoSolicitudCivilSII").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoSolicitudCivilEscrit(val){
+	
+	var dtaCausaAnexSol	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/anexoCausaSolEscritoCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausaAnexSol : dtaCausaAnexSol
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoSolEscritoCivil').html(data);
+			$("#modalAnexoSolEscritoCivil").modal("show");		   
+        }
+    });
+	
+}
+
+function historiaCausaCuaderno(val){
+	
+	var valData	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/causaCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausa : valData,
+							  token: 'd0a63810ceed8d7710dfdcc0000d9dd6'
+            },
+        success:function(data){ 
+                     
+			$('#modalDetalleCivil').html(data);
+			$('#modalDetalleCivil').hide().show();
+        },
+		beforeSend:function()
+		{
+			$("#loadHistCuadernoCiv").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+		}
+    });
+	
+}
+
+function historiaCausaCuadernoEx(val){ // (CLON DEL HISTORIA)
+	
+	var valData	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/causaOrigenCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausa : valData
+            },
+        success:function(data){ 
+                     
+			$('#modalCausaOrigenCivil').html(data);
+			$('#modalCausaOrigenCivil').hide().show();
+        },
+		beforeSend:function()
+		{
+			$("#loadHistCuadernoCivEx").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+		}
+    });
+	
+}
+
+function receptorCivil(val){
+	
+	var valReceptor	= val;
+			
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/receptorCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                valReceptor : valReceptor
+            },
+        success:function(data){ 
+                     
+			$('#modalReceptorCivil').html(data);
+			$('#modalReceptorCivil').hide().show();
+        }
+    });
+	
+}
+
+function causaOrigenCivil(val){ // (CON DE DETALLECAUSA)
+	
+	var valCauOri	= val;
+			
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/causaOrigenCivil.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausa : valCauOri
+            },
+        success:function(data){ 
+                     
+			$('#modalCausaOrigenCivil').html(data);
+			$('#modalCausaOrigenCivil').hide().show();
+        }
+    });
+	
+}
+
+function detalleExhortosCivil(val){
+	
+	var valExhorto	= val;
+			
+	$.ajax({
+        url     :'../ADIR_871/civil/modal/detalleExhortos.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                valExhorto : valExhorto
+            },
+        success:function(data){ 
+                     
+			$('#modalExhortoCivil').html(data);
+			$('#modalExhortoCivil').hide().show();
+        }
+    });
+	
+}
+function geoReferencia(val) {
+
+var valGeoRef = val;
+
+/*grecaptcha.ready(function() {
+	grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_georef_civil'})
+		.then(function(token) {*/
+			$.ajax({
+				url     :'../ADIR_871/civil/modal/geoReferenciaCivil.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					valGeoRef : valGeoRef/*,
+					tokenCaptcha : token*/
+				},
+				success:function(data){
+					$('#modalGeoReferenciaCivil').html(data);
+					$('#modalGeoReferenciaCivil').modal({
+						backdrop: 'static',
+						keyboard: false,
+						show: true
+					}).on('shown.bs.modal', function() {
+						google.maps.event.trigger(map, 'resize');
+						map.setCenter(center);
+					});
+					
+				}
+				
+			/*});
+			
+		});*/
+		
+});
+
+return false;
+
+}
+//-----------
+
+
+//----------- LABORAL
+function detalleCausaLaboral(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_laboral'})
+			  .then(function(token) {
+				  
+				$.ajax({
+					url     :'../ADIR_871/laboral/modal/causaLaboral.php',
+					dataType: "html",
+					type    : "POST",
+					cache   : false,
+					data    :{
+						dtaCausa : dtaCausa,
+						tokenCaptcha : token
+					},
+					success:function(data){ 
+								 
+						$('#modalDetalleLaboral').html(data);
+						$("#modalDetalleLaboral").modal("show");		   
+					},
+					beforeSend:function()
+					{
+						$('body').loadingModal({text: 'Cargando...'});
+					}
+				})
+					.done(function() {
+						$('body').loadingModal('destroy');
+				});
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaLaboralSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+	
+	$.ajax({
+		url     :'../ADIR_871/laboral/modal/causaLaboral.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{
+			dtaCausa : dtaCausa,
+			tokenCaptcha : token
+		},
+		success:function(data){ 
+					 
+			$('#modalDetalleLaboral').html(data);
+			$("#modalDetalleLaboral").modal("show");		   
+		},
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+	})
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+function textoDemandaLaboral(val){
+	
+	var dtaTxtDem	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/laboral/modal/textoDemandaLaboral.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaTxtDem : dtaTxtDem
+            },
+        success:function(data){ 
+                     
+			$('#modalTextoDemandaLaboral').html(data);
+			$("#modalTextoDemandaLaboral").modal("show");		   
+        }
+    });
+	
+}
+function anexoEscPendLaboral(val){
+	
+	var dtaTxtDem	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/laboral/modal/anexoEscPendLaboral.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaTxtDem : dtaTxtDem
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoEscritoPend').html(data);
+			$("#modalAnexoEscritoPend").modal("show");		   
+        }
+    });
+	
+}
+function listadoAudioLaboral(val){
+	
+	var dtaAudio	= val;
+	
+	$.ajax({
+		url: '../audio/listadoAudio.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAudio : dtaAudio
+            },
+        success:function(data){ 
+                     
+			$('#modalListadoAudioLaboral').html(data);
+			$("#modalListadoAudioLaboral").modal({
+				backdrop: 'static',
+				keyboard: false,
+				show: true
+			});
+        }
+    });
+}
+
+function detalleDocAudienciaLaboral(val){
+	
+	var dtaAudi	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/laboral/modal/detalleDocAudienciaLaboral.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAudi : dtaAudi
+            },
+        success:function(data){ 
+                     
+			$('#modalDocuAudienciaLaboral').html(data);
+			$("#modalDocuAudienciaLaboral").modal("show");		   
+        }
+    });
+}
+
+function detalleTramiteLaboral(val){
+	
+	var dtaTram	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/laboral/modal/detalleTramiteLaboral.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaTram : dtaTram
+            },
+        success:function(data){ 
+                     
+			$('#modalDetalleTramiteLaboral').html(data);
+			$("#modalDetalleTramiteLaboral").modal("show");		   
+        }
+    });
+}
+
+function anexoEscritoLaboral(val){
+	
+	var dtaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/laboral/modal/anexoEscritoLaboral.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnex : dtaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoEscritoLaboral').html(data);
+			$("#modalAnexoEscritoLaboral").modal("show");		   
+        }
+    });
+}
+function geoReferenciaLaboral(val) {
+
+var valGeoRef = val;
+
+/*grecaptcha.ready(function() {
+	grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_georef_laboral'})
+		.then(function(token) {*/
+			
+			$.ajax({
+				url     :'../ADIR_871/laboral/modal/geoReferenciaLaboral.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					valGeoRef : valGeoRef/*,
+					tokenCaptcha : token*/
+				},
+				success:function(data){
+					$('#modalGeoReferenciaLaboral').html(data);
+					$('#modalGeoReferenciaLaboral').modal({
+						backdrop: 'static',
+						keyboard: false,
+						show: true
+					}).on('shown.bs.modal', function() {
+						google.maps.event.trigger(map, 'resize');
+						map.setCenter(center);
+					});
+				}
+				
+			/*});
+			
+	});*/
+	
+});
+
+return false;
+
+}
+//-----------
+
+
+//----------- PENAL
+function detalleCausaPenal(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_penal'})
+			  .then(function(token) {
+				  
+				$.ajax({
+					url     :'../ADIR_871/penal/modal/causaPenal.php',
+					dataType: "html",
+					type    : "POST",
+					cache   : false,
+					data    :{
+						dtaCausa : dtaCausa,
+						tokenCaptcha : token
+					},
+					success:function(data){ 
+								 
+						$('#modalDetallePenal').html(data);
+						$("#modalDetallePenal").modal("show");		   
+					},
+					beforeSend:function()
+					{
+						$('body').loadingModal({text: 'Cargando...'});
+					}
+				})
+					.done(function() {
+						$('body').loadingModal('destroy');
+				});
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function geoUnificado(val){
+	var valData = val;
+	$.ajax({
+		url: '../ADIR_871/unificado/modal/geoReferencia.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{valData:valData},
+		success:function(data){
+			$('#modalGeoRefUnificado').html(data);
+			$('#modalGeoRefUnificado').modal({
+				backdrop: 'static',
+				keyboard: false,
+				show: true
+			}).on('shown.bs.modal', function() {
+				google.maps.event.trigger(map, 'resize');
+				map.setCenter(center);
+			});
+			
+		}
+		
+	});
+
+	return false;
+}
+
+//----------- PENAL UNIFICADO
+function detalleCausaPenalUnificado(val){
+
+	//Oculto manual si estaba abierto
+	$("#modalAcumulacionCausaUnificado").modal("hide");	
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_penal'})
+			  .then(function(token) {
+				  
+				$.ajax({
+					url     :'../ADIR_871/unificado/modal/causaUnificado.php',
+					dataType: "html",
+					type    : "POST",
+					cache   : false,
+					data    :{
+						dtaCausa : dtaCausa,
+						tokenCaptcha : token
+					},
+					success:function(data){ 
+								 
+						$('#modalDetallePenalUnificado').html(data);
+						$("#modalDetallePenalUnificado").modal("show");		   
+					},
+					beforeSend:function()
+					{
+						$('body').loadingModal({text: 'Cargando...'});
+					}
+				})
+					.done(function() {
+						$('body').loadingModal('destroy');
+				});
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaPenalSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+	
+	$.ajax({
+		url     :'../ADIR_871/penal/modal/causaPenal.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{
+			dtaCausa : dtaCausa,
+			tokenCaptcha : token
+		},
+		success:function(data){ 
+					 
+			$('#modalDetallePenal').html(data);
+			$("#modalDetallePenal").modal("show");		   
+		},
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+	})
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+function anexoDemandaPenal(val){
+	
+	var dtaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/penal/modal/anexoDemandaPenal.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnex : dtaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoDemandaPenal').html(data);
+			$("#modalAnexoDemandaPenal").modal("show");		   
+        },
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+    })
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+
+function anexoDemandaPenalUnificado(val){
+	
+	var dtaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/unificado/modal/anexoDemandaUnificado.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnex : dtaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoDemandaPenalUnificado').html(data);
+			$("#modalAnexoDemandaPenalUnificado").modal("show");		   
+        },
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+    })
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+
+function acumulacionCausaPenalUnificado(val){
+	
+	var dtaAcum	= val;
+
+	 // Cierra el modal manualmente
+	// $("#modalDetallePenalUnificado").modal("hide");
+	
+	$.ajax({
+        url     :'../ADIR_871/unificado/modal/acumulacionesCausaUnificado.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAcum : dtaAcum
+            },
+        success:function(data){ 
+				
+                     
+			$('#modalAcumulacionCausaUnificado').html(data);
+			$("#modalAcumulacionCausaUnificado").modal("show");		   
+        },
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		},
+		
+    
+    })
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+
+function anexoEscritoPenalUnificado(val){
+	
+	var dtaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/unificado/modal/anexoEscritoUnificado.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnex : dtaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoDemandaPenalUnificado').html(data);
+			$("#modalAnexoDemandaPenalUnificado").modal("show");		   
+        },
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+    })
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+
+function anexoEscritoPenal(val){
+	
+	var dtaAnex	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/penal/modal/anexoEscritoPenal.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnex : dtaAnex
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoEscritoPenal').html(data);
+			$("#modalAnexoEscritoPenal").modal("show");		   
+        },
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+    })
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+function geoReferenciaPenal(val) {
+
+var valGeoRef = val;
+
+/*grecaptcha.ready(function() {
+	grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_georef_penal'})
+		.then(function(token) {*/
+			
+			$.ajax({
+				url     :'../ADIR_871/penal/modal/geoReferenciaPenal.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					valGeoRef : valGeoRef/*,
+					tokenCaptcha : token*/
+				},
+				success:function(data){
+					$('#modalGeoReferenciaPenal').html(data);
+					$('#modalGeoReferenciaPenal').modal({
+						backdrop: 'static',
+						keyboard: false,
+						show: true
+					}).on('shown.bs.modal', function() {
+						google.maps.event.trigger(map, 'resize');
+						map.setCenter(center);
+					});
+				}
+				
+			/*});
+			
+	});*/
+	
+});
+
+return false;
+
+}
+//-----------
+
+
+//----------- COBRANZA
+function detalleCausaCobranza(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_cobranza'})
+			  .then(function(token) {
+				  
+				$.ajax({
+					url     :'../ADIR_871/cobranza/modal/causaCobranza.php',
+					dataType: "html",
+					type    : "POST",
+					cache   : false,
+					data    :{
+							dtaCausa : dtaCausa,
+						  token: 'd0a63810ceed8d7710dfdcc0000d9dd6'
+						},
+					success:function(data){ 
+								 
+						$('#modalDetalleCobranza').html(data);
+						$("#modalDetalleCobranza").modal("show");		   
+					},
+					beforeSend:function()
+					{
+						$('body').loadingModal({text: 'Cargando...'});
+					}
+				})
+					.done(function() {
+						$('body').loadingModal('destroy');
+				});
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaCobranzaSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+				  
+	$.ajax({
+		url     :'../ADIR_871/cobranza/modal/causaCobranza.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{
+				dtaCausa : dtaCausa,
+				tokenCaptcha : token
+			},
+		success:function(data){ 
+					 
+			$('#modalDetalleCobranza').html(data);
+			$("#modalDetalleCobranza").modal("show");		   
+		},
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+	})
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+function anexoCausaCobranza(val){
+	
+	var dtaAnexCau	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/anexoCausaCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexCau : dtaAnexCau
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoCausaCobranza').html(data);
+			$("#modalAnexoCausaCobranza").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoEscritoCobranza(val){
+	
+	var dtaAnexEsc	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/anexoEscritoCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexEsc : dtaAnexEsc
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoEscritoCobranza').html(data);
+			$("#modalAnexoEscritoCobranza").modal("show");		   
+        }
+    });
+	
+}
+
+function historiaCausaCuadernoCob(val){
+	
+	var valData	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/causaCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaCausa : valData,
+						   token: 'd0a63810ceed8d7710dfdcc0000d9dd6'
+            },
+        success:function(data){ 
+                     
+			$('#modalDetalleCobranza').html(data);
+			$('#modalDetalleCobranza').hide().show();
+        },
+		beforeSend:function()
+		{
+			$("#loadHistCuadernoCob").html("<center class='imgLoad'></br><img src='images/loadPre.gif' /></center>");
+		}
+    });
+	
+}
+
+function receptorCobranza(val){
+	
+	var valReceptor	= val;
+			
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/receptorCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                valReceptor : valReceptor
+            },
+        success:function(data){ 
+                     
+			$('#modalReceptorCobranza').html(data);
+			$('#modalReceptorCobranza').hide().show();
+        }
+    });
+	
+}
+
+function documentoLabCobranza(val){
+	
+	var docLab	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/documentoLaboralCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                docLab : docLab
+            },
+        success:function(data){ 
+                     
+			$('#modalDocumentoLabCobranza').html(data);
+			$("#modalDocumentoLabCobranza").modal("show");		   
+        }
+    });
+}
+
+function documentosCobranza(val){//alert('va');
+	
+	var docCob	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/documentosCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaDoc : docCob
+            },
+        success:function(data){ 
+                     
+			$('#modalDocumentoCobranza').html(data);
+			$("#modalDocumentoCobranza").modal("show");		   
+        }
+    });
+}
+
+function detalleExhortosCobranza(val){
+	
+	var detExh	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/detalleExhortosCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                detExh : detExh
+            },
+        success:function(data){ 
+                     
+			$('#modalDetalleExhortosCobranza').html(data);
+			$("#modalDetalleExhortosCobranza").modal("show");		   
+        }
+    });
+}
+function geoReferenciaCobranza(val) {
+
+var valGeoRef = val;
+/*grecaptcha.ready(function() {
+	grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_georef_cobranza'})
+		.then(function(token) {*/
+			
+			$.ajax({
+				url     :'../ADIR_871/cobranza/modal/geoReferenciaCobranza.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					valGeoRef : valGeoRef/*,
+					tokenCaptcha : token*/
+				},
+				success:function(data){
+					$('#modalGeoReferenciaCobranza').html(data);
+					$('#modalGeoReferenciaCobranza').modal({
+						backdrop: 'static',
+						keyboard: false,
+						show: true
+					}).on('shown.bs.modal', function() {
+						google.maps.event.trigger(map, 'resize');
+						map.setCenter(center);
+					});
+				}
+				
+			/*});
+			
+	});*/
+	
+});
+
+return false;
+
+}
+
+function detalleDocuAcumuladosCobranza(val){
+	
+	var detAcu	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/cobranza/modal/documentosAcumuladosCobranza.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                detAcu : detAcu
+            },
+        success:function(data){ 
+                     
+			$('#modalDocumentosAcumuladosCobranza').html(data);
+			$("#modalDocumentosAcumuladosCobranza").modal("show");		   
+        }
+    });
+}
+  
+//MODAL REQUIERASE
+function anexoRequieraseCobranza(val){
+  var dtaRequierase = val;
+  $.ajax({
+    url     :'../ADIR_871/cobranza/modal/anexoRequieraseCobranza.php',
+    dataType: "html",
+    type    : "POST",
+    cache   : false,
+    data    :{
+      dtaRequierase : dtaRequierase
+    },
+    success:function(data){ 
+      $('#modalAnexoEscritoCobranza').html(data);
+      $("#modalAnexoEscritoCobranza").modal("show");
+    }
+  });
+}
+//-----------
+
+//MODAL OFICIESE
+function anexoOficieseCobranza(val){
+  var dtaOficiese = val;
+  $.ajax({
+    url     :'../ADIR_871/cobranza/modal/anexoOficieseCobranza.php',
+    dataType: "html",
+    type    : "POST",
+    cache   : false,
+    data    :{
+      dtaOficiese : dtaOficiese
+    },
+    success:function(data){ 
+      $('#modalAnexoEscritoCobranza').html(data);
+      $("#modalAnexoEscritoCobranza").modal("show");
+    }
+  });
+}
+//-----------
+
+//MODAL ARRESTO REVOCA
+function anexoArrestoCobranza(val){
+  var dtaOficiese = val;
+  $.ajax({
+    url     :'../ADIR_871/cobranza/modal/anexoArrestoCobranza.php',
+    dataType: "html",
+    type    : "POST",
+    cache   : false,
+    data    :{
+      dtaOficiese : dtaOficiese
+    },
+    success:function(data){ 
+      $('#modalAnexoEscritoCobranza').html(data);
+      $("#modalAnexoEscritoCobranza").modal("show");
+    }
+  });
+}
+//-----------
+
+
+//----------- SUPREMA
+function detalleCausaSuprema(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_suprema'})
+			  .then(function(token) {
+				  
+				$.ajax({
+					url     :'../ADIR_871/suprema/modal/causaSuprema.php',
+					dataType: "html",
+					type    : "POST",
+					cache   : false,
+					data    :{
+							dtaCausa : dtaCausa,
+							tokenCaptcha : token
+						},
+					success:function(data){ 
+								 
+						$('#modalDetalleSuprema').html(data);
+						$("#modalDetalleSuprema").modal("show");		   
+					},
+					beforeSend:function()
+					{
+						$('body').loadingModal({text: 'Cargando...'});
+					}
+				})
+					.done(function() {
+						$('body').loadingModal('destroy');
+				});
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaSupremaSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+	
+	$.ajax({
+		url     :'../ADIR_871/suprema/modal/causaSuprema.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{
+				dtaCausa : dtaCausa,
+				tokenCaptcha : token
+			},
+		success:function(data){ 
+					 
+			$('#modalDetalleSuprema').html(data);
+			$("#modalDetalleSuprema").modal("show");		   
+		},
+		beforeSend:function()
+		{
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+	})
+		.done(function() {
+			$('body').loadingModal('destroy');
+	});
+	
+}
+
+function textoSuprema(val){
+	
+	var dtaTexto	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/suprema/modal/textoSuprema.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaTexto : dtaTexto
+            },
+        success:function(data){ 
+                     
+			$('#modalTextoSuprema').html(data);
+			$("#modalTextoSuprema").modal("show");		   
+        }
+    });
+	
+}
+
+function tomoSuprema(val){
+	
+	var dtaTomo	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/suprema/modal/tomoSuprema.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaTomo : dtaTomo
+            },
+        success:function(data){ 
+                     
+			$('#modalTomoSuprema').html(data);
+			$("#modalTomoSuprema").modal("show");		   
+        }
+    });
+	
+}
+
+function documentosSuprema(val){
+	
+	var dtaDoc	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/suprema/modal/documentosSuprema.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaDoc : dtaDoc
+            },
+        success:function(data){ 
+                     
+			$('#modalDocumentosSuprema').html(data);
+			$("#modalDocumentosSuprema").modal("show");		   
+        }
+    });
+	
+}
+
+function agregadosSuprema(val){
+	
+	var dtAgre	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/suprema/modal/agregadosSuprema.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtAgre : dtAgre
+            },
+        success:function(data){ 
+                     
+			$('#modalAgregadosSuprema').html(data);
+			$("#modalAgregadosSuprema").modal("show");		   
+        }
+    });
+	
+}
+
+function escritoSuprema(val){
+	
+	var dtEsc	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/suprema/modal/escritoSuprema.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtEsc : dtEsc
+            },
+        success:function(data){ 
+                     
+			$('#modalEscritoSuprema').html(data);
+			$("#modalEscritoSuprema").modal("show");		   
+        }
+    });
+	
+}
+//-----------
+
+
+//----------- APELACIONES
+function detalleCausaApelaciones(val){
+	
+	var dtaCausa	= val;
+	
+	grecaptcha.ready(function() {
+		grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_detcau_apelacion'})
+			  .then(function(token) {
+				  
+				  $.ajax({
+					  url     :'../ADIR_871/apelaciones/modal/causaApelaciones.php',
+					  dataType: "html",
+					  type    : "POST",
+					  cache   : false,
+					  data    :{
+						  dtaCausa : dtaCausa,
+						  tokenCaptcha : token
+					  },
+					  success:function(data){
+						  $('#modalDetalleApelaciones').html(data);
+						  $("#modalDetalleApelaciones").modal("show");
+					  },
+					  beforeSend:function(){
+						  $('body').loadingModal({text: 'Cargando...'});
+					  }
+				  }).done(function() {
+					  $('body').loadingModal('destroy');
+				  });
+				  
+		});
+		
+	});
+
+	return false;
+	
+}
+
+function detalleCausaApelacionesSii(val){
+	
+	var dtaCausa	= val;
+	var token = 'CONTENEDORSII';
+	
+	$.ajax({
+		url     :'../ADIR_871/apelaciones/modal/causaApelaciones.php',
+		dataType: "html",
+		type    : "POST",
+		cache   : false,
+		data    :{
+			dtaCausa : dtaCausa,
+			tokenCaptcha : token
+		},
+		success:function(data){
+			$('#modalDetalleApelaciones').html(data);
+			$("#modalDetalleApelaciones").modal("show");
+		},
+		beforeSend:function(){
+			$('body').loadingModal({text: 'Cargando...'});
+		}
+	}).done(function() {
+		$('body').loadingModal('destroy');
+	});
+	
+}
+
+function anexoRecursoApelaciones(val){
+	
+	var dtaAnexRec	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/apelaciones/modal/anexoRecursoApelaciones.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexRec : dtaAnexRec
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoRecursoApelaciones').html(data);
+			$("#modalAnexoRecursoApelaciones").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoCausaApelaciones(val){
+	
+	var dtaAnexCau	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/apelaciones/modal/anexoCausaApelaciones.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexCau : dtaAnexCau
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoCausaApelaciones').html(data);
+			$("#modalAnexoCausaApelaciones").modal("show");		   
+        }
+    });
+	
+}
+
+function anexoEscritoResApelaciones(){
+	swal("","Documento Reservado","warning");
+}
+	
+function anexoEscritoApelaciones(val){
+	
+	var dtaAnexEsc	= val;
+	
+	$.ajax({
+        url     :'../ADIR_871/apelaciones/modal/anexoEscritoApelaciones.php',
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+        data    :{
+                dtaAnexEsc : dtaAnexEsc
+            },
+        success:function(data){ 
+                     
+			$('#modalAnexoEscritoApelaciones').html(data);
+			$("#modalAnexoEscritoApelaciones").modal("show");		   
+        }
+    });
+	
+}
+function geoReferenciaApelaciones(val) {
+
+var valGeoRef = val;
+
+/*grecaptcha.ready(function() {
+	grecaptcha.execute('6LelLWkUAAAAANPDMkBxllo_QJe5RQVpg6V2pIDt', {action:'validate_captcha_georef_apelaciones'})
+		.then(function(token) {*/
+			
+			$.ajax({
+				url     :'../ADIR_871/apelaciones/modal/geoReferenciaApelaciones.php',
+				dataType: "html",
+				type    : "POST",
+				cache   : false,
+				data    :{
+					valGeoRef : valGeoRef/*,
+					tokenCaptcha : token*/
+				},
+				success:function(data){
+					$('#modalGeoReferenciaApelaciones').html(data);
+					$('#modalGeoReferenciaApelaciones').modal({
+						backdrop: 'static',
+						keyboard: false,
+						show: true
+					}).on('shown.bs.modal', function() {
+						google.maps.event.trigger(map, 'resize');
+						map.setCenter(center);
+					});
+				}
+				
+			/*});
+			
+	});*/
+	
+});
+
+return false;
+
+}
+//----------------------------------------------------------------------
+
+
+
+//---------------------------------- PAGINACION ----------------------------------
+
+//---------- RIT
+function paginaRit(n,c){
+	var pagina 	= n;
+	var comp 	= c;
+	var postDataRit = $("#formConsulta").serialize();
+	var formURLRit	= "";
+	
+	if(comp == 1){
+		formURLRit = "../ADIR_871/suprema/consultaRitSuprema.php";
+	}
+	if(comp == 2){
+		formURLRit = "../ADIR_871/apelaciones/consultaRitApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLRit = "../ADIR_871/civil/consultaRitCivil.php";		
+	}
+	if(comp == 4){
+		formURLRit = "../ADIR_871/laboral/consultaRitLaboral.php";		
+	}
+	if(comp == 5){
+		formURLRit = "../ADIR_871/penal/consultaRitPenal.php";		
+	}
+	if(comp == 6){
+		formURLRit = "../ADIR_871/cobranza/consultaRitCobranza.php";		
+	}	
+	
+	$.ajax({
+        url     : formURLRit,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataRit + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalle').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalRit").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaRitAnt(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina	= num;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataRit = $("#formConsulta").serialize();
+	var formURLRit	= "";
+	
+	if(comp == 1){
+		formURLRit = "../ADIR_871/suprema/consultaRitSuprema.php";
+	}
+	if(comp == 2){
+		formURLRit = "../ADIR_871/apelaciones/consultaRitApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLRit = "../ADIR_871/civil/consultaRitCivil.php";		
+	}
+	if(comp == 4){
+		formURLRit = "../ADIR_871/laboral/consultaRitLaboral.php";		
+	}
+	if(comp == 5){
+		formURLRit = "../ADIR_871/penal/consultaRitPenal.php";		
+	}
+	if(comp == 6){
+		formURLRit = "../ADIR_871/cobranza/consultaRitCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLRit,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataRit + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalle').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalRit").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaRitSig(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina 	= num;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataRit = $("#formConsulta").serialize();
+	var formURLRit	= "";
+	
+	if(comp == 1){
+		formURLRit = "../ADIR_871/suprema/consultaRitSuprema.php";
+	}
+	if(comp == 2){
+		formURLRit = "../ADIR_871/apelaciones/consultaRitApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLRit = "../ADIR_871/civil/consultaRitCivil.php";		
+	}
+	if(comp == 4){
+		formURLRit = "../ADIR_871/laboral/consultaRitLaboral.php";		
+	}
+	if(comp == 5){
+		formURLRit = "../ADIR_871/penal/consultaRitPenal.php";		
+	}
+	if(comp == 6){
+		formURLRit = "../ADIR_871/cobranza/consultaRitCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLRit,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataRit + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalle').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalRit").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+//---------------
+
+//---------- NOMBRE
+function paginaNom(n,c){
+	var pagina 	= n;
+	var comp 	= c;
+	var postDataNom = $("#formConsultaNom").serialize();
+	var formURLNom	= "";
+	
+	if(comp == 1){
+		formURLNom = "../ADIR_871/suprema/consultaNombreSuprema.php";
+	}
+	if(comp == 2){
+		formURLNom = "../ADIR_871/apelaciones/consultaNombreApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLNom = "../ADIR_871/civil/consultaNombreCivil.php";		
+	}
+	if(comp == 4){
+		formURLNom = "../ADIR_871/laboral/consultaNombreLaboral.php";		
+	}
+	if(comp == 5){
+		formURLNom = "../ADIR_871/penal/consultaNombrePenal.php";		
+	}
+	if(comp == 6){
+		formURLNom = "../ADIR_871/cobranza/consultaNombreCobranza.php";		
+	}	
+	
+	$.ajax({
+        url     : formURLNom,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataNom + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleNombre').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalNom").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaNomAnt(n,c)
+{
+	var num 	= n;
+	var comp	= c;
+	var pagina	= num ;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataNom = $("#formConsultaNom").serialize();
+	var formURLNom	= "";
+	
+	if(comp == 1){
+		formURLNom = "../ADIR_871/suprema/consultaNombreSuprema.php";
+	}
+	if(comp == 2){
+		formURLNom = "../ADIR_871/apelaciones/consultaNombreApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLNom = "../ADIR_871/civil/consultaNombreCivil.php";		
+	}
+	if(comp == 4){
+		formURLNom = "../ADIR_871/laboral/consultaNombreLaboral.php";		
+	}
+	if(comp == 5){
+		formURLNom = "../ADIR_871/penal/consultaNombrePenal.php";		
+	}
+	if(comp == 6){
+		formURLNom = "../ADIR_871/cobranza/consultaNombreCobranza.php";		
+	}	
+	
+	$.ajax({
+        url     : formURLNom,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataNom + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleNombre').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalNom").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaNomSig(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina 	= num;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataNom = $("#formConsultaNom").serialize();
+	var formURLNom	= "";
+	
+	if(comp == 1){
+		formURLNom = "../ADIR_871/suprema/consultaNombreSuprema.php";
+	}
+	if(comp == 2){
+		formURLNom = "../ADIR_871/apelaciones/consultaNombreApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLNom = "../ADIR_871/civil/consultaNombreCivil.php";		
+	}
+	if(comp == 4){
+		formURLNom = "../ADIR_871/laboral/consultaNombreLaboral.php";		
+	}
+	if(comp == 5){
+		formURLNom = "../ADIR_871/penal/consultaNombrePenal.php";		
+	}
+	if(comp == 6){
+		formURLNom = "../ADIR_871/cobranza/consultaNombreCobranza.php";		
+	}	
+	
+	$.ajax({
+        url     : formURLNom,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataNom + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleNombre').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalNom").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+//---------------
+
+//---------- FECHA
+function paginaFec(n,c){
+	var pagina 	= n;
+	var comp 	= c;
+	var postDataFec = $("#formConsultaFec").serialize();
+	var formURLFec	= "";
+	
+	if(comp == 1){
+		formURLFec = "../ADIR_871/suprema/consultaFechaSuprema.php";
+	}
+	if(comp == 2){
+		formURLFec = "../ADIR_871/apelaciones/consultaFechaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLFec = "../ADIR_871/civil/consultaFechaCivil.php";		
+	}
+	if(comp == 4){
+		formURLFec = "../ADIR_871/laboral/consultaFechaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLFec = "../ADIR_871/penal/consultaFechaPenal.php";		
+	}
+	if(comp == 6){
+		formURLFec = "../ADIR_871/cobranza/consultaFechaCobranza.php";		
+	}	
+	
+	$.ajax({
+        url     : formURLFec,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataFec + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleFecha').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalFec").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaFecAnt(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina 	= num ;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataFec = $("#formConsultaFec").serialize();
+	var formURLFec	= "";
+	
+	if(comp == 1){
+		formURLFec = "../ADIR_871/suprema/consultaFechaSuprema.php";
+	}
+	if(comp == 2){
+		formURLFec = "../ADIR_871/apelaciones/consultaFechaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLFec = "../ADIR_871/civil/consultaFechaCivil.php";		
+	}
+	if(comp == 4){
+		formURLFec = "../ADIR_871/laboral/consultaFechaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLFec = "../ADIR_871/penal/consultaFechaPenal.php";		
+	}
+	if(comp == 6){
+		formURLFec = "../ADIR_871/cobranza/consultaFechaCobranza.php";		
+	}		
+	
+	$.ajax({
+        url     : formURLFec,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataFec + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleFecha').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalFec").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaFecSig(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina 	= num ;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataFec = $("#formConsultaFec").serialize();
+	var formURLFec	= "";
+	
+	if(comp == 1){
+		formURLFec = "../ADIR_871/suprema/consultaFechaSuprema.php";
+	}
+	if(comp == 2){
+		formURLFec = "../ADIR_871/apelaciones/consultaFechaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLFec = "../ADIR_871/civil/consultaFechaCivil.php";		
+	}
+	if(comp == 4){
+		formURLFec = "../ADIR_871/laboral/consultaFechaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLFec = "../ADIR_871/penal/consultaFechaPenal.php";		
+	}
+	if(comp == 6){
+		formURLFec = "../ADIR_871/cobranza/consultaFechaCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLFec,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataFec + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleFecha').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalFec").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+//---------------
+
+//---------- JURIDICA
+function paginaJur(n,c){
+	var pagina 	= n;
+	var comp 	= c;
+	var postDataJur = $("#formConsultaJur").serialize();
+	var formURLJur	= "";
+	
+	if(comp == 1){
+		formURLJur = "../ADIR_871/suprema/consultaJuridicaSuprema.php";
+	}
+	if(comp == 2){
+		formURLJur = "../ADIR_871/apelaciones/consultaJuridicaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLJur = "../ADIR_871/civil/consultaJuridicaCivil.php";		
+	}
+	if(comp == 4){
+		formURLJur = "../ADIR_871/laboral/consultaJuridicaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLJur = "../ADIR_871/penal/consultaJuridicaPenal.php";		
+	}
+	if(comp == 6){
+		formURLJur = "../ADIR_871/cobranza/consultaJuridicaCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLJur,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataJur + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleJuridica').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalJur").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaJurAnt(n,c){
+	var num 	= n;
+	var comp 	= c;
+	var pagina 	= num;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataJur = $("#formConsultaJur").serialize();
+	var formURLJur	= "";
+	
+	if(comp == 1){
+		formURLJur = "../ADIR_871/suprema/consultaJuridicaSuprema.php";
+	}
+	if(comp == 2){
+		formURLJur = "../ADIR_871/apelaciones/consultaJuridicaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLJur = "../ADIR_871/civil/consultaJuridicaCivil.php";		
+	}
+	if(comp == 4){
+		formURLJur = "../ADIR_871/laboral/consultaJuridicaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLJur = "../ADIR_871/penal/consultaJuridicaPenal.php";		
+	}
+	if(comp == 6){
+		formURLJur = "../ADIR_871/cobranza/consultaJuridicaCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLJur,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataJur + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleJuridica').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalJur").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+
+function paginaJurSig(n,c){
+	var num 	= n;
+	var comp	= c;
+	var pagina 	= num;
+	//if(pagina == 0){ pagina = 1; }
+	
+	var postDataJur = $("#formConsultaJur").serialize();
+	var formURLJur	= "";
+	
+	if(comp == 1){
+		formURLJur = "../ADIR_871/suprema/consultaJuridicaSuprema.php";
+	}
+	if(comp == 2){
+		formURLJur = "../ADIR_871/apelaciones/consultaJuridicaApelaciones.php";		
+	}
+	if(comp == 3){
+		formURLJur = "../ADIR_871/civil/consultaJuridicaCivil.php";		
+	}
+	if(comp == 4){
+		formURLJur = "../ADIR_871/laboral/consultaJuridicaLaboral.php";		
+	}
+	if(comp == 5){
+		formURLJur = "../ADIR_871/penal/consultaJuridicaPenal.php";		
+	}
+	if(comp == 6){
+		formURLJur = "../ADIR_871/cobranza/consultaJuridicaCobranza.php";		
+	}
+	
+	$.ajax({
+        url     : formURLJur,
+        dataType: "html",
+        type    : "POST",
+        cache   : false,
+		data 	: postDataJur + '&pagina=' + pagina,
+        success:function(data){ 
+                     
+			$('#verDetalleJuridica').html(data);		   
+        },
+		beforeSend:function()
+		{
+			$(".loadTotalJur").html("<b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' />");
+		}
+    });
+}
+//---------------
+
+//------------------------------------------------------------------------------
+
+
+//----------------------- FUNCIONES DE LIMPIEZA ------------------------
+function limpia(){
+	$("#competencia").val(1);
+	//--
+	$('select[id=conCorte]').children('option').remove();
+	$("#conCorte").append("<option value='0'>Seleccione Corte...</option>");
+	$('#conCorte').prop('disabled', true);
+	//--	
+	$('select[id=conTribunal]').children('option').remove();
+	$("#conTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+	$('#conTribunal').prop('disabled', true);
+	//--
+	$('#lblConTipoCausaRuc').css('display', 'none');	// OCULTA TITULO RIT/RUC
+	$('#rdioConTipCausa').css('display', 'none');		// OCULTA RADIO RIT/RUC
+	$('#rucConTipoCausa').css('display', 'none');		// OCULTA RUC
+	$('#carConCaratulado').css('display', 'none');		// OCULTA CARATULADO
+	$('#rucConTipoCausaPenal').css('display', 'none');	// OCULTA RUC PENAL
+	$('#busRitPenalTipo').css('display', 'none');		// OCULTA TIPO BUSQUEDA PENAL
+	$('#busRitApelacionesTipo').css('display', 'none');	// OCULTA TIPO BUSQUEDA APELACIONES
+	$('#rolConTipoCausa').removeAttr('style');			// MUESTRA ROL
+	$('#lblConTipoCausaLib').removeAttr('style');		// MUESTRA TITULO LIBRO
+	$('#conTipoCausa').removeAttr('style');				// MUESTRA COMBO LIBRO
+	$('#busRitSupremaTipo').removeAttr('style');		// MUESTRA TIPO BUSQUEDA SUPREMA
+	//--
+	$("#radioRitPenal").prop("checked", true);			// ACTIVA RADIO RIT BUSQUEDA PENAL
+	$("#radioRit").prop("checked", true);				// ACTIVA RADIO RIT BUSQUEDA SUPREMA Y APELACIONES
+	//----
+	$('#conTipoBusApe').val(0);
+	//--
+	$('#conTipoCausa').val("");
+	$('#conTipoCausa').prop('disabled', true);
+	//--
+	$('#conTipoBus').val(0);
+	$('#conTipoBus').prop('disabled', false);
+	//----
+	$('#rucPen1').val('');
+	$('#rucPen2').val('');
+	//----
+	$('#ruc1').val('');
+	$('#ruc2').val('');
+	$('#ruc3').val('');
+	$('#ruc4').val('');
+	//-- 
+	$('#conRolCausa').val("");
+	$('#conEraCausa').val("");
+	//--
+	$('#conEraCausa').removeAttr('style');
+	
+	//---------- VALOR $ ----------//
+	$('#precioRitSuprema').removeAttr('style');
+	$("#precioRitSuprema").css("margin-top","10px");
+	//-----------------------------//
+			
+	//--
+	$("#dtaTableDetalle").css("display","none");
+	$("#dtaTableDetalle_wrapper").css("display","none");
+	
+}
+
+//-------------------------------------
+
+function limpiaNom(){
+	$("#nomCompetencia").val(1);
+	//--
+	$('#nomNombre').val("");
+	//--
+	$('#nomApePaterno').val("");
+	//--
+	$('#nomApeMaterno').val("");
+	//--
+	$('#nomNombreJur').val("");
+	//--
+	$('#nomEra').val("");
+	//--
+	$('#nomEraJur').val("");
+	//--
+	$('select[id=corteNom]').children('option').remove();
+	$("#corteNom").append("<option value='0'>Seleccione Corte...</option>");
+	$('#corteNom').prop('disabled', true);
+	//--	
+	$('select[id=nomTribunal]').children('option').remove();
+	$("#nomTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+	$('#nomTribunal').prop('disabled', true);
+	//--
+	
+	//---------- VALOR $ ----------//
+	$('#precioNombreSuprema').removeAttr('style');
+	$("#precioNombreSuprema").css("margin-top","10px");
+	//-----------------------------//
+	
+	//-------- ESTILOS AÑOS --------//	
+	//$("#conEraCausa").tooltip('disable');
+	//$('#conEraCausa').removeAttr('style');
+	//-----------------------------//
+			
+	//--
+	$("#dtaTableDetalleNombre").css("display","none");
+	$("#dtaTableDetalleNombre_wrapper").css("display","none");
+	
+}
+
+//-------------------------------------
+
+function limpiaFec(){
+	$("#fecCompetencia").val(1);
+	//--
+	$('#fecDesde').val("");
+	//--
+	$('#fecHasta').val("");
+	//--
+ 	$('select[id=corteFec]').children('option').remove();
+	$("#corteFec").append("<option value='0'>Seleccione Corte...</option>");
+	$('#corteFec').prop('disabled', true);
+	//--	
+	$('select[id=fecTribunal]').children('option').remove();
+	$("#fecTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+	$('#fecTribunal').prop('disabled', true);
+	//--
+	
+	//---------- VALOR $ ----------//
+	$('#precioFechaSuprema').removeAttr('style');
+	$("#precioFechaSuprema").css("margin-top","10px");
+	//-----------------------------//
+			
+	//--
+	$("#dtaTableDetalleFecha").css("display","none");
+	$("#dtaTableDetalleFecha_wrapper").css("display","none");
+	
+}
+
+//-------------------------------------
+
+function limpiaJur(){
+	$("#jurCompetencia").val(1);
+	//--
+	$('#rutJur').val("");
+	//--
+	$('#dvJur').val("");
+	//--
+	$('#eraJur').val("");
+	//--
+ 	$('select[id=corteJur]').children('option').remove();
+	$("#corteJur").append("<option value='0'>Seleccione Corte...</option>");
+	$('#corteJur').prop('disabled', true);
+	//--	
+	$('select[id=jurTribunal]').children('option').remove();
+	$("#jurTribunal").append("<option value='0'>Seleccione Tribunal...</option>");
+	$('#jurTribunal').prop('disabled', true);
+	//--
+	
+	//---------- VALOR $ ----------//
+	$('#precioJuridicaSuprema').removeAttr('style');
+	$("#precioJuridicaSuprema").css("margin-top","10px");
+	//-----------------------------//
+			
+	//--
+	$("#dtaTableDetalleJuridica").css("display","none");
+	$("#dtaTableDetalleJuridica_wrapper").css("display","none");
+	
+}
+//----------------------------------------------------------------------
+
+//---Metodos de envio de archivos--------------------------------------
+
+function verDocTramiteSupremaWord(id)
+{
+	
+	$.fileDownload($("#frmWrd"+id).prop('action'), {
+        preparingMessageHtml: "Bajando...",
+        failMessageHtml: "No se pudo desplegar su documento",
+        httpMethod: "POST",
+        data: $("#frmWrd"+id).serialize()
+    });
+}
+
+function verDocTramiteSupremaPdf(id)
+{
+	$.fileDownload($("#frmPdf"+id).prop('action'), {
+        //preparingMessageHtml: "Bajando...",
+        //failMessageHtml: "No se pudo desplegar su documento",
+        httpMethod: "POST",
+        data: $("#frmPdf"+id).serialize()
+    });
+}
+
+
+
+
+
+</script>
+<script> 
+    $('#nuevocolapsador').tabCollapse();  
+   $(document).ready(function()
+   {
+       $("#divJuridico").css("display", "none"); 
+   });
+   function descargaPdf(){
+       
+       var fileURL='Condiciones_de_uso_Consulta_Unificada_de_Causas.pdf';
+       var fileName='Condiciones_de_uso_Consulta_Unificada_de_Causas.pdf';
+       
+       //distinto a internet explorer
+       if (!window.ActiveXObject) {
+           var save = document.createElement('a');
+           save.href = fileURL;
+           save.target = '_blank';
+           var filename = fileURL.substring(fileURL.lastIndexOf('/')+1);
+           save.download = fileName || filename;
+              if ( navigator.userAgent.toLowerCase().match(/(ipad|iphone|safari)/) && navigator.userAgent.search("Chrome") < 0) {
+                   document.location = save.href; 
+               // window event not working here
+               }else{
+                   var evt = new MouseEvent('click', {
+                       'view': window,
+                       'bubbles': true,
+                       'cancelable': false
+                   });
+                   save.dispatchEvent(evt);
+                   (window.URL || window.webkitURL).revokeObjectURL(save.href);
+               }    
+       }
+       // para internet explorer menor a version 11
+       else if ( !! window.ActiveXObject && document.execCommand)     {
+           var _window = window.open(fileURL, '_blank');
+           _window.document.close();
+           _window.document.execCommand('SaveAs', true, fileName || fileURL)
+           _window.close();
+       }
+   
+   }
+   
+</script>
+<script>
+   $('.modal-dialog').draggable();
+   
+   $('#myModal').on('show.bs.modal', function() {
+     $(this).find('.modal-body').css({
+       'max-height': '100%'
+     });
+   });
+   
+   
+</script>
+<script type="text/javascript" src="/js/returnToTop.js"></script>
+<script src="/js/jquery.stickytableheaders.js"></script>
+<style>
+   .modal-title2{
+   font-size: 30px;
+   text-align: center;
+   }
+   @media(min-width:576px){
+   .modal-dialog2{
+   width: 400px!important;
+   width: 50%!important;
+   margin: 30px auto;
+   }
+</style>
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+   <div class="modal-dialog2" role="document">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title2" id="exampleModalLabel">Razones por las que una causa puede estar reservada:</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+            </button>
+         </div>
+         <div class="modal-body" style="font-size: 16px; text-align: justify;">
+            <p><strong>1. </strong>      Diversas normas legales que ordenan la reserva de la información. Un ejemplo es el artículo 2 de Ley Nº 20.886 sobre tramitación electrónica de los procedimientos judiciales, que impide publicar aquellas causas que aún no están notificadas al demandado.&nbsp;<a href="images/Ley-20886_18-DIC-2015.pdf" target="_blank"><img id="idContrato" title="Ley-20886_18-DIC-2015.pdf" src="images/downloadPdf.png"  height="45" width="45" /></a>  </p>
+            <p><strong>2.</strong>       De acuerdo al Acta N° 44-2022 de la Corte Suprema "Sobre criterios de publicidad de sentencias y carpetas electrónicas".<a href="documento/ACTA-44-2022.pdf" target="_blank"><img id="idActa44" title="Acta 44-2022" src="images/downloadPdf.png"  height="45" width="45" /></a> </p>
+            <p><strong>3.</strong>       Decreto Ley N° 409 sobre normas relativas a reos, que prohíbe expedir certificados e informar acerca de personas que han sido agraciadas con los beneficios que establece dicha ley.<a href="documento/DL-409_18-AGO-1932.pdf" target="_blank"><img id="DL-409_18-AGO-1932" title="DL-409_18-AGO-1932" src="images/downloadPdf.png"  height="45" width="45" /></a> </p>
+
+            <p>Si usted tiene los permisos necesarios para ver el contenido de una causa reservada, deberá ingresar a  la opción "Mis Causas" de la Oficina Judicial Virtual, con su Clave Única del Estado o su clave del Poder Judicial (segunda clave). <a href="/home/index.php" style="color: #113f67"><strong>Ingrese aquí</strong></a></p>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+         </div>
+      </div>
+   </div>
+</div>
+

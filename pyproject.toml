@@ -1,0 +1,56 @@
+[project]
+name = "mcp-pjud"
+version = "0.1.0"
+description = "Servidor MCP no oficial de solo lectura para la consulta pública de causas del Poder Judicial de Chile."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "LicenseRef-PolyForm-Strict-1.0.0"
+license-files = ["LICENSE.md"]
+authors = [{ name = "Lucas Pulgar Escobar" }]
+keywords = ["mcp", "chile", "judicial", "legaltech", "plazos", "receptor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Legal Industry",
+    "Natural Language :: Spanish",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Typing :: Typed",
+]
+dependencies = [
+    "mcp>=1.12",
+    "httpx>=0.28",
+    "lxml>=5.3",
+    "pydantic>=2.10",
+]
+
+[project.urls]
+Repositorio = "https://github.com/notluquis/mcp-pjud-cl"
+"Documentación" = "https://mcp-pjud-cl.readthedocs.io"
+Incidencias = "https://github.com/notluquis/mcp-pjud-cl/issues"
+Cambios = "https://github.com/notluquis/mcp-pjud-cl/blob/main/CHANGELOG.md"
+"Uso aceptable" = "https://github.com/notluquis/mcp-pjud-cl/blob/main/ACCEPTABLE_USE.md"
+
+[project.scripts]
+mcp-pjud = "mcp_pjud.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.9"]
+docs = ["sphinx>=8.1", "myst-parser>=4.0", "furo>=2024.8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_pjud"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -1,7 +1,7 @@
 # Ejemplos
 
 Casos resueltos de punta a punta. Los roles son de causas públicas reales y las salidas están
-tomadas de consultas verdaderas.
+tomadas de consultas verdaderas, no de ejemplos armados.
 
 ## Revisar si una notificación ya corre plazo
 
@@ -36,6 +36,18 @@ obtener_actuaciones_receptor(tipo="C", rol=1156, anio=2026, tribunal=162, corte=
 **Cómo se lee.** La notificación se practicó el **27 de marzo**, no el 31. Quien cuente desde
 la fecha de registro se come cuatro días de plazo. En la web esas dos fechas aparecen juntas
 como `31/03/2026 (27/03/2026)`.
+
+**Y no es un caso aislado.** Medido el 17 de agosto de 2026 sobre tres causas distintas, en las
+notificaciones de demanda:
+
+| Causa | Diligencia | Registro | Diferencia |
+|---|---|---|---|
+| C-1156-2026 | 27/03/2026 | 31/03/2026 | 4 días |
+| C-142-2026 | 30/01/2026 | 03/02/2026 | 4 días |
+| E-468-2026 | 17/06/2026 | 22/06/2026 | 5 días |
+
+Cuatro o cinco días, consistentemente. Eso es la diferencia entre un plazo cumplido y uno
+perdido, y es exactamente el dato que el ebook oficial no trae.
 
 ## No perder el cuaderno de apremio
 
@@ -122,6 +134,57 @@ actuación no tiene registro georreferenciado** en la plataforma.
 El artículo 9 inciso 3 de la Ley 20.886 exige ese registro para las actuaciones del receptor,
 así que su ausencia puede ser materia de alegación. Por eso el campo se expone siempre, incluso
 vacío, en vez de omitirse.
+
+## Verificar una cita de jurisprudencia antes de usarla
+
+**Situación.** Un escrito cita una sentencia con su rol y su fecha, tomada de un boletín o de
+un resumen. Antes de invocarla en estrados conviene saber si existe y si la fecha es la que se
+anotó.
+
+```
+buscar_jurisprudencia(rol=51630, anio=2024)
+```
+
+Sobre un conjunto real de 45 citas de Corte Suprema, medido el 17 de agosto de 2026:
+
+| Resultado | Cuántas |
+|---|---|
+| Existen, con su caratulado y su fecha | 38 |
+| No aparecen | 4 |
+| Sin respuesta de la plataforma | 3 |
+
+Y dos fechas anotadas resultaron equivocadas: una por un año y otra por un día. Ninguna de las
+38 era inventada, que era el riesgo de fondo.
+
+### `ocultas` es la diferencia entre dos cosas que se parecen
+
+De las cuatro que no aparecieron, dos son de una clase y dos de otra:
+
+| `ocultas` | Qué significa | Qué se puede afirmar |
+|---|---|---|
+| 0 | El rol no está en el índice | El rol probablemente está mal anotado |
+| 1 | Existe y no se entrega a una consulta anónima | Existe, y no es verificable públicamente |
+
+Sin ese campo las cuatro dirían lo mismo. Con él, dos se corrigen y dos se citan con la reserva
+de que no se pueden comprobar.
+
+## Auditar las citas de la contraparte
+
+**Situación.** Un informe cita varias sentencias para una proposición general. Verificar de qué
+son de verdad cambia qué se puede responder.
+
+Caso real, cinco citas de un mismo informe invocadas para "derechos indubitados":
+
+| Rol | De qué es realmente |
+|---|---|
+| 97.848-2016 | Un operador de casinos contra su regulador |
+| 11.552-2017 | Una clínica privada contra la Superintendencia de Salud |
+| 6931-2017 | Una municipalidad |
+| 11.549-2017 | Una junta de vigilancia de aguas |
+| 6384-2007 | Una persona contra una empresa de telecomunicaciones |
+
+Ninguna es un estudiante contra su institución educativa, que era la materia del caso. Eso no
+es una opinión sobre el informe: es lo que dicen los caratulados.
 
 ## Cuando algo falla
 

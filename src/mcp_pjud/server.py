@@ -31,7 +31,7 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import Actuacion, CausaEncontrada
+from .parser import COMPETENCIAS, Actuacion, CausaEncontrada
 
 # La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
 # servidor la recibe antes de llamar cualquier herramienta.
@@ -130,6 +130,22 @@ Paginas = Annotated[
         le=50,
     ),
 ]
+#: Las competencias que de verdad entregan actuaciones de ministro de fe por esta vía. Se
+#: deriva de la tabla y no se escribe a mano: el alias general ofrecía las cuatro buscables, y
+#: tres de ellas terminan siempre en error acá. Ofrecerle al modelo una opción que siempre
+#: falla lo hace intentarla y atribuir el error a la plataforma.
+_CON_RECEPTOR = sorted(
+    n for n in MODULOS if COMPETENCIAS[n].receptor and COMPETENCIAS[n].receptor_en_historia
+)
+CompetenciaConReceptor = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_RECEPTOR)}. Sólo esas publican las actuaciones "
+        "del ministro de fe en la tabla de Historia. En cobranza existen pero viven en otro "
+        "panel que este servidor todavía no lee, y en las demás no existen."
+    ),
+]
+
 Corte = Annotated[
     int | None,
     Field(
@@ -240,7 +256,7 @@ def obtener_actuaciones_receptor(
     tipo: Tipo,
     rol: Rol,
     anio: Anio,
-    competencia: Competencia = "civil",
+    competencia: CompetenciaConReceptor = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
 ) -> list[Actuacion]:

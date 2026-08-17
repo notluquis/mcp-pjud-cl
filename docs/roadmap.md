@@ -605,6 +605,50 @@ es qué folio apareció, y si trae una fecha de diligencia que echó a correr un
 Sigue vigente lo que bloquea esto: implica persistir datos de terceros, o sea entra de lleno
 en la Ley 21.719.
 
+#### Las diligencias de cobranza no publican fecha
+
+Medido sobre filas reales, y cierra la pregunta que la sección de abajo dejaba abierta.
+`diligenciaCob` sí trae diligencias, y son las que importan:
+
+```
+cumplida | Embargo en cuenta corriente | 31/12/1969 | No Asignado | MONICA ...
+cumplida | Alzamiento embargo en cta cte | 31/12/1969 | No Asignado | MONICA ...
+```
+
+**`31/12/1969` es el epoch de Unix** visto desde una zona al oeste de Greenwich: el valor cero
+impreso como fecha. O sea la columna está vacía. Tres diligencias de una causa real, las tres
+con el mismo cero.
+
+Consecuencia para el proyecto: en cobranza hay diligencias de embargo, con su estado y con un
+responsable identificado, **y sin fecha de diligencia publicada**. Que es justamente el dato por
+el que existe este proyecto. Cobranza queda buscable y con detalle, y no puede entregar lo que
+civil sí entrega, por una razón de la plataforma y no del cliente.
+
+Y de paso apareció una trampa que ahora tiene guardia: devolver `1969-12-31` como fecha real
+sería peor que devolver nulo, porque alguien computaría un plazo desde ahí. `_FECHAS_CENTINELA`
+las descarta. Es el error del proyecto con el signo invertido: no falta un dato, sobra uno que
+tiene forma de dato.
+
+#### Las diligencias de cobranza viven en su propio panel
+
+Medido sobre una respuesta real, y corrige lo que esta misma hoja afirmó antes: en cobranza las
+diligencias del ministro de fe **no están en la tabla de Historia**. Sus trámites son
+`Actuación`, `Resolución` y `Escrito`, nunca "Actuación Receptor".
+
+Están en `diligenciaCob`, que tiene estructura propia:
+
+```
+Doc. Ida | Doc. Vta. | Estado Diligencia | RIT | RUC | Tipo Diligencia | Fecha Trámite | Destinatario | Responsable
+```
+
+Dos cosas que hay que mirar antes de leerlo: si `Fecha Trámite` trae el formato de fecha doble
+como en civil, y qué significa `Responsable`, que probablemente identifica al receptor.
+
+Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver la
+lista vacía que la Historia produciría: esa lista se leería como "no hubo actuaciones" cuando
+lo cierto es "no las estoy leyendo". Es el mismo falso negativo que motivó el proyecto, y
+estuvo brevemente dentro de él.
+
 #### El calendario de días hábiles: la pieza que falta para cerrar el círculo
 
 Revisando el catálogo completo de Boostr apareció lo que este proyecto no tiene y necesita más

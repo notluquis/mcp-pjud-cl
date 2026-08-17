@@ -13,7 +13,7 @@ from mcp_pjud.client import (
     PjudBloqueado,
     PjudClient,
 )
-from mcp_pjud.parser import EstructuraInesperada, parse_resultados
+from mcp_pjud.parser import COMPETENCIAS, EstructuraInesperada, parse_resultados
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -234,8 +234,13 @@ def test_competencia_que_existe_pero_no_se_verifico_se_rechaza():
     vacío, que se lee como que la causa no existe.
     """
     c = PjudClient("test@example.cl")
+    # Se usa una que exista en la plataforma y siga sin verificar. `penal` servía y dejó de
+    # servir al verificarla: un caso de prueba que desaparece porque el código mejoró se
+    # reapunta, no se borra.
+    sin_verificar = sorted(set(COMPETENCIAS) - set(MODULOS))
+    assert sin_verificar, "si ya están todas verificadas, este test hay que retirarlo"
     with pytest.raises(ValueError, match="no verificada"):
-        c._modulo("penal")
+        c._modulo(sin_verificar[0])
 
 
 def test_toda_peticion_queda_en_bitacora(monkeypatch):
@@ -659,6 +664,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
         historia=None,
         receptor=True,
+        receptor_en_historia=True,
     )
     monkeypatch.setitem(REALES, "inventada", inventada)
     monkeypatch.setattr("mcp_pjud.client.MODULOS", {*MODULOS, "inventada"})
@@ -731,3 +737,18 @@ def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
     _, url, estado = c.bitacora[0]
     assert url.endswith("buscar_sentencias")
     assert estado == 0, "se anota con estado 0, que ningún código HTTP usa"
+
+
+def test_pedir_actuaciones_de_cobranza_dice_que_estan_en_otro_panel():
+    """Se midió sobre una respuesta real: los trámites de `historiaCob` son `Actuación`,
+    `Resolución` y `Escrito`, nunca "Actuación Receptor", y las diligencias viven en
+    `diligenciaCob` con estructura propia. La palabra "receptor" aparece en esa respuesta, o
+    sea existen.
+
+    Sin este rechazo, pedir actuaciones de cobranza devolvía una lista vacía mientras las
+    diligencias estaban en el panel de al lado: "no hubo actuaciones" cuando lo cierto era "no
+    las estoy leyendo". Es el falso negativo que este proyecto existe para evitar.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="NO están en la tabla"):
+        c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")

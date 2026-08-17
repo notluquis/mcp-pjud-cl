@@ -32,7 +32,7 @@ Busca causas por rol en la consulta pública.
 | `tipo` | str | Letra del rol. En civil: `C`, `V`, `E`, `A`, `F` o `I` |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
 | `tribunal` | int, opcional | Código del tribunal. Omitir para buscar en todos |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Cuántas páginas recorrer como máximo. Al excederlo levanta excepción en vez de recortar |
@@ -67,7 +67,7 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 | `apellido_materno` | str | Apellido materno |
 | `nombre` | str | Nombres |
 | `anio` | int, opcional | Año de ingreso. **No cuenta** para el mínimo de dos campos |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
 | `tribunal` | int | Obligatorio acá |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
@@ -87,7 +87,7 @@ Exige el dígito verificador y el tribunal.
 | `rut` | int | RUT sin dígito verificador ni puntos |
 | `digito_verificador` | str | Dígito verificador: 0-9 o K |
 | `anio` | int, opcional | Año de ingreso |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
 | `tribunal` | int | Obligatorio acá |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
@@ -104,7 +104,7 @@ Causas ingresadas en un rango de fechas.
 | `desde` | str | Fecha inicial, DD/MM/AAAA |
 | `hasta` | str | Fecha final, DD/MM/AAAA |
 | `tribunal` | int | Obligatorio: la plataforma lo exige |
-| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal` |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 | `paginas` | int | Tope de páginas a recorrer |
 
@@ -118,6 +118,17 @@ rango antes de subir el tope de páginas: cada página son 100 resultados y una 
 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
 proyecto.
+
+:::{warning}
+Sólo **civil** entrega actuaciones por esta vía. En **cobranza** las diligencias del ministro de
+fe existen pero viven en un panel propio (`diligenciaCob`) con otra estructura, que este
+proyecto todavía no lee, así que la llamada se **rechaza** en vez de devolver la lista vacía que
+la Historia produciría. Esa lista se leería como "no hubo actuaciones" cuando lo cierto es "no
+las estoy leyendo".
+
+En laboral, penal, apelaciones y suprema no existen: en todo el sitio sólo hay
+`receptorCivil` y `receptorCobranza`.
+:::
 
 Toma `tipo`, `rol`, `anio`, `competencia`, `tribunal` y `corte`, con el mismo significado que
 en `buscar_causa_por_rit`. No toma `paginas`: de la búsqueda sólo usa la primera causa.

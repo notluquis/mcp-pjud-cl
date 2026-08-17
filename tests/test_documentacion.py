@@ -220,9 +220,13 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     error y se lo atribuya a la plataforma. La primera versión de este guardia cubría la
     documentación y dejaba el esquema fuera, que es el que el modelo lee primero.
     """
+    # `obtener_actuaciones_receptor` queda fuera y tiene su propio guardia: ofrece sólo las
+    # competencias que además publican las actuaciones en la Historia, que hoy es una sola.
+    # Exigirle las cuatro buscables le haría anunciar tres opciones que siempre fallan.
     descripciones = [
         p.get("description", "")
-        for h in expuestas.values()
+        for nombre_h, h in expuestas.items()
+        if nombre_h != "obtener_actuaciones_receptor"
         for nombre, p in (h.input_schema or {}).get("properties", {}).items()
         if nombre == "competencia"
     ]
@@ -605,3 +609,49 @@ def test_toda_busqueda_del_cliente_esta_expuesta_o_excluida_a_proposito(expuesta
         f"El cliente sabe hacer esto y ninguna herramienta lo ofrece: {sin_exponer}. "
         "Si es deliberado, va a NO_SON_HERRAMIENTAS con la razón escrita."
     )
+
+
+def test_la_herramienta_de_actuaciones_solo_ofrece_lo_que_funciona(expuestas):
+    """El alias general de competencia ofrecía las cuatro buscables, y tres siempre fallan acá.
+
+    Ofrecerle al modelo una opción que termina siempre en error lo hace intentarla y
+    atribuirle el fallo a la plataforma. La fuente es la tabla: `receptor` dice si el sitio las
+    expone y `receptor_en_historia` si se leen desde ahí.
+    """
+    sirven = {
+        n for n in MODULOS if COMPETENCIAS[n].receptor and COMPETENCIAS[n].receptor_en_historia
+    }
+    assert sirven, "si ninguna competencia entrega actuaciones, la herramienta no debería existir"
+
+    descripcion = (
+        (expuestas["obtener_actuaciones_receptor"].input_schema or {})
+        .get("properties", {})
+        .get("competencia", {})
+        .get("description", "")
+    )
+    for buena in sirven:
+        assert buena in descripcion, f"{buena!r} entrega actuaciones y el esquema no la ofrece"
+    ofrecidas = descripcion.split("Una de: ", 1)[-1].split(".", 1)[0]
+    for otra in set(MODULOS) - sirven:
+        assert otra not in ofrecidas, (
+            f"el esquema ofrece {otra!r} como opción y la llamada siempre falla"
+        )
+
+
+def test_la_referencia_dice_cuales_competencias_entregan_actuaciones(expuestas):
+    """La afirmación se repite en la referencia, el registro de cambios y el roadmap, y su
+    fuente es `receptor_en_historia`. Sin guardia, implementar cobranza dejaría la referencia
+    diciendo que se rechaza."""
+    seccion = _secciones_de_herramientas()["obtener_actuaciones_receptor"]
+    sirven = {
+        n for n in MODULOS if COMPETENCIAS[n].receptor and COMPETENCIAS[n].receptor_en_historia
+    }
+    for buena in sirven:
+        nombrada = f"**{buena}**" in seccion or f"`{buena}`" in seccion
+        assert nombrada, f"la referencia no dice que {buena!r} entrega actuaciones"
+    # Y las que no, tienen que estar nombradas como excluidas y no en silencio.
+    for otra in set(COMPETENCIAS) - sirven:
+        if COMPETENCIAS[otra].receptor:
+            assert otra in seccion, (
+                f"{otra!r} expone actuaciones que este servidor no lee, y la referencia lo calla"
+            )

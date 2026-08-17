@@ -121,12 +121,16 @@ PAGINAS_MAXIMAS = 10
 #: Verificado el 17 de agosto de 2026 buscando una causa real de cada una y comprobando que
 #: las columnas del listado calzan con lo que `parser.COMPETENCIAS` declara.
 #:
-#: Las tres que faltan se midieron y fallaron, y por eso no están:
-#:   - `penal` devuelve un listado que el parser no reconoce, probablemente porque su tipo de
-#:     causa es una palabra (`Ordinaria`) y no una letra.
-#:   - `apelaciones` y `suprema` responden "Por favor ingrese sólo números para el Tipo de
-#:     Búsqueda": esperan un código numérico de libro donde las otras llevan letra.
-MODULOS: set[str] = {"civil", "laboral", "cobranza"}
+#: En `penal` el tipo de causa va como CÓDIGO NUMÉRICO y no como letra ni como palabra: con
+#: `conTipoCausa="1"` aparece `Ordinaria-528-2017`, y con `"Ordinaria"`, `"O"` o vacío el
+#: listado vuelve vacío. Además exige `radio-groupPenal` (1 por RIT, 2 por RUC) y el código de
+#: tribunal, que se pide a `combosJSON/leeTrib.php` por POST y en la raíz, no bajo el prefijo.
+#:
+#: `suprema` y `apelaciones` siguen fuera. Su validación se pasa agregando `conTipoBus` (0 es
+#: "Recurso Corte Suprema"), pero entonces el servidor responde con el cuerpo VACÍO, sin aviso
+#: y sin listado. Lo que falta es el código de libro en `conTipoCausa`, cuyo combo no está en
+#: el JavaScript de `consultaUnificada.php`.
+MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal"}
 
 
 class ResultadosTruncados(Exception):
@@ -634,6 +638,17 @@ class PjudClient(Transporte):
                 f"No está verificado cómo se lee la historia de {competencia!r}. Se rechaza "
                 "antes de consultar en vez de leerla con el mapa de otra competencia, que "
                 "devolvería filas mal alineadas o una lista vacía."
+            )
+        if not spec.receptor_en_historia:
+            raise ValueError(
+                f"En {competencia!r} las diligencias del ministro de fe NO están en la tabla "
+                "de Historia: viven en un panel propio (`diligenciaCob`) con otra estructura, "
+                "que este proyecto todavía no lee. Medido sobre una respuesta real: los "
+                "trámites de Historia son 'Actuación', 'Resolución' y 'Escrito', nunca "
+                "'Actuación Receptor'.\n\n"
+                "Se rechaza en vez de devolver la lista vacía que la Historia produciría, "
+                "porque esa lista se leería como 'no hubo actuaciones' cuando lo cierto es "
+                "'no las estoy leyendo'."
             )
         # `paginas=1` a propósito: de todo el listado sólo se usa la primera causa, así que
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos

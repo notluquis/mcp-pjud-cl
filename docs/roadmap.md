@@ -191,6 +191,26 @@ requiera consentimiento explícito por llamada, y ruta de destino elegida por el
 
 ### 0.8: el detalle de las competencias ya buscables
 
+De las cuatro, `laboral` ya está medida y el resultado acota el trabajo:
+
+| Qué | Medido |
+|---|---|
+| Panel de historia | `movimientoLab`, no `historiaLab` |
+| Columnas | Como civil, pero con `Estado` donde civil pone `Foja` |
+| Fechas dobles | **ninguna** en las 26 filas |
+| La palabra "receptor" | **cero veces** en toda la respuesta |
+| Paneles propios | `litigantesLab`, `notificacionesLab`, `diligenciasLab` (vacío), `liquidacionLab`, `materiasLab`, `EscPendLab` |
+
+O sea laboral confirma lo que la tabla ya declaraba: no tiene ministro de fe. Mapear su
+historia no se hace todavía, porque el único consumidor de `historia` es
+`actuaciones_receptor`, que exige `receptor=True`: una entrada de tabla que nada lee es una
+rama sin test por construcción.
+
+Faltan `suprema`, `apelaciones` y `penal`. Ojo con el payload: el sitio manda `tokenCaptcha`
+para las cuatro y `token` sólo para civil y cobranza, aunque en laboral se midió que las dos
+formas devuelven lo mismo.
+
+
 Verificar la búsqueda no verifica el detalle, y hoy son cosas separadas a propósito:
 `suprema`, `apelaciones`, `laboral` y `penal` declaran `historia=None`, así que pedirles
 actuaciones se rechaza en vez de adivinar el panel.

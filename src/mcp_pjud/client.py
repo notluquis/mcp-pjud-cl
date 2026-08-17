@@ -561,6 +561,9 @@ class PjudClient(Transporte):
             # usa acá. Ojo con `buscar_por_nombre`: manda un `radio-group` con "N", que es OTRO
             # formulario y otro dominio de valores, no una inconsistencia.
             "radio-group": "1",
+            # Lo que esta competencia exige de más. Sale de la tabla y no de una rama acá:
+            # tres de las seis lo necesitan y las tres estuvieron rotas por no tenerlo.
+            **COMPETENCIAS[modulo].campos_rit,
         }
         if paginas is None:
             return self._primera_pagina(ruta, campos, competencia)

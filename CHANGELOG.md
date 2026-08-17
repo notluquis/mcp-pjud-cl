@@ -16,6 +16,22 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- **La búsqueda por rol no funcionaba en `suprema`, `apelaciones` ni `penal`**, que la 0.2.0
+  anuncia como verificadas. Suprema y apelaciones respondían "Por favor ingrese sólo números
+  para el Tipo de Búsqueda" y penal devolvía un cuerpo sin listado ni aviso: al formulario le
+  faltaba el campo propio de cada una (`conTipoBus`, `conTipoBusApe` y `radio-groupPenal`).
+
+  Quien haya fijado `@v0.2.0` tiene esas tres competencias rotas en la búsqueda por rol. Las
+  otras tres búsquedas (nombre, RUT y fecha) sí funcionan en las seis.
+
+  Cómo pasó, porque el modo de falla importa más que el campo: se midieron con peticiones
+  armadas a mano y los tests usan dobles, así que **nada ejercitó `buscar_por_rit` contra la
+  plataforma**. Verificar la petición no es verificar el cliente. Los campos ahora salen de la
+  tabla de competencias y hay un test que compara el formulario enviado contra lo que ella
+  declara.
+
 ## [0.2.0] - 2026-08-17
 
 Primera versión publicada. La `0.1.0` de abajo quedó documentada pero nunca llegó a tener

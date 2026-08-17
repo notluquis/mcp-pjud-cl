@@ -252,7 +252,7 @@ def _fila_a_actuacion(
         cuaderno=cuaderno,
         foja=txt["foja"],
         # La celda trae un enlace a geoReferencia() cuando hay registro; si no, va vacía.
-        georreferenciado=bool(celdas[COLUMNAS.index("georref")].xpath(".//a")),
+        georreferenciado=bool(celdas[columnas.index("georref")].xpath(".//a")),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
     )
 

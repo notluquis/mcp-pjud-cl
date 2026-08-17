@@ -9,6 +9,7 @@ from datetime import date, time
 from pathlib import Path
 
 import pytest
+from lxml import html as H
 
 from mcp_pjud.parser import (
     COMPETENCIAS,
@@ -378,3 +379,37 @@ def test_no_se_puede_declarar_el_panel_de_historia_sin_sus_columnas():
     assert civil.panel == "Civ"
     assert "georref" in civil.columnas
     assert "georref." in civil.encabezados
+
+
+def test_la_georreferencia_se_lee_de_la_columna_que_declara_la_competencia():
+    """Quedó una posición fija de civil donde debía ir el mapa de la competencia.
+
+    En una tabla con las columnas en otro orden, `georreferenciado` habría salido de la celda
+    equivocada sin que nada reviente, y en una tabla más corta habría dado `IndexError`. Es el
+    campo cuya ausencia puede ser jurídicamente relevante (art. 9 inc. 3 Ley 20.886), así que
+    leerlo de otra columna es de los errores peores que puede tener este parser.
+    """
+    from mcp_pjud.parser import _fila_a_actuacion
+
+    # Un orden invertido respecto de civil: georref primero, folio al final.
+    invertido = (
+        "georref",
+        "foja",
+        "fec_tramite",
+        "desc_tramite",
+        "tramite",
+        "etapa",
+        "anexo",
+        "doc",
+        "folio",
+    )
+    celdas = H.fromstring(
+        "<tr>"
+        '<td><a href="#">geo</a></td><td>0</td><td>31/03/2026 (27/03/2026)</td>'
+        "<td>EMBARGO</td><td>Actuación Receptor</td><td>Apremio</td><td></td><td></td>"
+        "<td>12</td></tr>"
+    ).xpath("./td")
+
+    a = _fila_a_actuacion(celdas, "", invertido)
+    assert a.folio == "12", "el folio salió de la columna equivocada"
+    assert a.georreferenciado is True, "la georreferencia se leyó de una celda que no es la suya"

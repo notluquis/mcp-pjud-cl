@@ -58,12 +58,18 @@ INTERVALO_MINIMO = 5.0
 #: promedio sostenido es el mismo; lo que se permite es que las primeras salgan juntas.
 RAFAGA_MAXIMA = 4
 
+#: Cuánto tarda de verdad el buscador de fallos, medido, y cuánto la página del mismo host.
+#: Son las cifras que justifican `ESPERA_MAXIMA`, y viven acá porque se citan en tres archivos:
+#: `tests/test_documentacion.py` verifica que ninguno quede con la vieja.
+SEGUNDOS_BUSQUEDA_MEDIDOS = 47.8
+SEGUNDOS_PAGINA_MEDIDOS = 4.3
+
 #: Cuánto se espera una respuesta antes de darla por perdida.
 #:
 #: Medido, y por eso es tan alto: una búsqueda del buscador de fallos por rol y año tardó
-#: 47,8 segundos en devolver el primer byte, contra 4,3 segundos que tarda la página del
-#: mismo host. Es una consulta Solr con facetas sobre más de un millón de documentos, así que
-#: la lentitud es del trabajo y no de la red.
+#: `SEGUNDOS_BUSQUEDA_MEDIDOS` en devolver el primer byte, contra `SEGUNDOS_PAGINA_MEDIDOS`
+#: que tarda la página del mismo host. Es una consulta Solr con facetas sobre más de un
+#: millón de documentos, así que la lentitud es del trabajo y no de la red.
 #:
 #: Con los 30 segundos que había antes, cuatro de cada cinco búsquedas morían por timeout y
 #: eso se leía como "la plataforma está caída". Cortar antes de tiempo no protege a nadie: el

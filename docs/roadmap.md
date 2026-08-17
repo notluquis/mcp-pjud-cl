@@ -198,10 +198,17 @@ El mecanismo ya no es el obstáculo: `juris.BUSCADORES` es una tabla que mapea n
 modelo a campo Solr, igual que `parser.COMPETENCIAS` para las causas, y `parse_sentencias`
 recibe el buscador. Agregar uno es leer su `parametros_buscador` y llenar una fila.
 
-Y hay una razón de uso para priorizar dos: sobre un conjunto real de 84 citas de cuatro casos,
-**32 son de Cortes de Apelaciones y de juzgados laborales**, o sea el 38 por ciento de lo que
-alguien necesita verificar cae fuera precisamente por estos dos buscadores. Rinden más que
-cualquier competencia nueva de la Oficina Judicial Virtual.
+Y hay una razón de uso para priorizar dos. Contadas el 17 de agosto de 2026 sobre las citas de
+cuatro casos reales que el titular del proyecto aportó, 84 en total: **32 son de Cortes de
+Apelaciones y de juzgados laborales**, o sea alrededor de un tercio de lo que alguien necesita
+verificar cae fuera precisamente por estos dos buscadores. Rinden más que cualquier competencia
+nueva de la Oficina Judicial Virtual.
+
+Esa cuenta no lleva constante ni guardia en CI, a diferencia de las mediciones de la
+plataforma, y la razón es que no es un dato de la plataforma: es el recuento de un conjunto
+privado de documentos que el repositorio no contiene ni debe contener. Fijarlo en código
+fingiría una verificabilidad que no existe. Lo que corresponde es lo que está escrito: la
+fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué peso darle.
 
 | Buscador | Estado |
 |---|---|

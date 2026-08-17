@@ -297,11 +297,18 @@ class JurisClient(Transporte):
         super().__init__(contacto, intervalo)
         self._token: str | None = None
         self._id_buscador: str | None = None
+        #: Qué buscador abrió la sesión. Sin esto, reutilizar el cliente para otro buscador
+        #: se saltaba `abrir_sesion` porque el token ya existía, y el POST viajaba con el
+        #: `id_buscador` del primero mientras el referer y el parser usaban el segundo: o
+        #: resultados de la fuente equivocada, o un error de estructura. Cuando había un solo
+        #: buscador expuesto era inofensivo; deja de serlo con el segundo.
+        self._buscador_de_la_sesion: str | None = None
 
     def __enter__(self) -> JurisClient:
         return self
 
     def abrir_sesion(self, buscador: str = "suprema") -> None:
+        buscador = buscador.lower()
         if buscador not in BUSCADORES:
             raise ValueError(
                 f"Buscador '{buscador}' no verificado. Disponible: "
@@ -319,6 +326,7 @@ class JurisClient(Transporte):
                 "resultados vacíos indistinguibles de 'no hay jurisprudencia'."
             )
         self._token, self._id_buscador = token.group(1), ident.group(1)
+        self._buscador_de_la_sesion = buscador
 
     def buscar(
         self,
@@ -365,7 +373,7 @@ class JurisClient(Transporte):
             raise ValueError(
                 f"Buscador {buscador!r} no verificado. Disponible: {', '.join(sorted(BUSCADORES))}."
             )
-        if not self._token:
+        if not self._token or self._buscador_de_la_sesion != buscador.lower():
             self.abrir_sesion(buscador)
 
         r = self._req(

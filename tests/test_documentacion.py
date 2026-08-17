@@ -24,7 +24,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mcp_pjud.client import INTERVALO_MINIMO, MODULOS
+from mcp_pjud.client import (
+    INTERVALO_MINIMO,
+    MODULOS,
+    SEGUNDOS_BUSQUEDA_MEDIDOS,
+    SEGUNDOS_PAGINA_MEDIDOS,
+)
 from mcp_pjud.juris import (
     BUSCADORES,
     FECHA_MEDICION,
@@ -522,4 +527,30 @@ def test_ningun_workflow_permite_salir_al_poder_judicial():
                     con_pjud.append(str(w.relative_to(RAIZ)))
     assert not con_pjud, (
         f"Workflows que declaran un destino del Poder Judicial como permitido: {con_pjud}"
+    )
+
+
+def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
+    """Justifican `ESPERA_MAXIMA` y se citan en tres archivos.
+
+    Mismo criterio que las cifras del buscador: si una queda vieja, la prosa describe una
+    medición que ya no es la que sostiene la constante, y quien la lea calculará mal cuánto
+    tolerar antes de dar una consulta por perdida.
+    """
+
+    def coma(x: float) -> str:
+        return f"{x:g}".replace(".", ",")
+
+    busqueda, pagina = coma(SEGUNDOS_BUSQUEDA_MEDIDOS), coma(SEGUNDOS_PAGINA_MEDIDOS)
+    citan = [p for p in PROSA if busqueda in _texto(p) or pagina in _texto(p)]
+    assert citan, f"ninguna página cita la latencia medida ({busqueda} s / {pagina} s)"
+
+    a_medias = [
+        str(p.relative_to(RAIZ))
+        for p in citan
+        if not (busqueda in _texto(p) and pagina in _texto(p))
+    ]
+    assert not a_medias, (
+        f"Páginas que citan una de las dos latencias sin la otra: {a_medias}. "
+        f"Las vigentes son {busqueda} s la búsqueda y {pagina} s la página del mismo host."
     )

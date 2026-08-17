@@ -101,6 +101,7 @@ def _sin_red() -> JurisClient:
         transport=httpx.MockTransport(lambda _: pytest.fail("no debía consultar"))
     )
     c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
     return c
 
 
@@ -133,6 +134,7 @@ def test_solo_se_envian_los_filtros_con_valor(monkeypatch):
     c = JurisClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
     c.buscar(rol=34546, anio=2025)
 
     assert enviados == {"rol": "34546", "era": "2025"}, "no deben viajar claves vacías"

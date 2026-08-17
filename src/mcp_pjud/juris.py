@@ -62,6 +62,17 @@ class Buscador(NamedTuple):
 
     ruta: str
     campos: Mapping[str, str]
+    #: Si `condition_pub_sf.numFound_sf` cuenta la consulta o el corpus entero.
+    #:
+    #: Medido, y difiere entre buscadores. En Suprema es por consulta: un rol que existe da
+    #: 2 y 2, uno imposible da 0 y 0. En Laborales es el corpus: 269.264 en los dos casos,
+    #: incluida una consulta sin resultados. Ahí la diferencia contra lo visible no es
+    #: "coincidencias reservadas" sino el tamaño del índice, y presentarla como ocultas haría
+    #: ver cada resultado como una fracción de un universo oculto que no existe.
+    #:
+    #: Cuando es falso, `ocultas` viene en nulo en vez de traer un número sin significado. Un
+    #: campo que miente es peor que un campo ausente.
+    coincidencias_por_consulta: bool
 
 
 #: Campos que toda sentencia tiene que traer: son los que identifican la cita. Sin ellos se
@@ -93,6 +104,7 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto": "texto_sentencia",
             "texto_anonimizado": "texto_sentencia_anon",
         },
+        coincidencias_por_consulta=True,
     ),
     "apelaciones": Buscador(
         "Corte_de_Apelaciones",
@@ -112,6 +124,10 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto": "texto_sentencia",
             "texto_anonimizado": "texto_sentencia_anon",
         },
+        # Sin medir: los cuatro intentos de verificarlo murieron por timeout. Se asume que no
+        # es por consulta, que es la opción conservadora: mejor no informar ocultas que
+        # informar una cifra que puede ser el corpus.
+        coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(
         "Laborales",
@@ -134,6 +150,9 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto": "texto_sentencia",
             "texto_anonimizado": "texto_sentencia_anon",
         },
+        # Medido: 269.264 tanto para un rol que existe como para uno imposible, o sea es el
+        # corpus y no la consulta.
+        coincidencias_por_consulta=False,
     ),
 }
 
@@ -237,14 +256,18 @@ class ResultadoJurisprudencia(BaseModel):
 
     sentencias: list[Sentencia]
     visibles: int = Field(description="Cuántas coincidencias son visibles para esta consulta.")
-    coincidencias: int = Field(
+    coincidencias: int | None = Field(
         description="Cuántas coincidencias declara el buscador ANTES de aplicar el filtro de "
-        "condición de publicación. No es el tamaño del índice: es el universo del que sale "
-        "esta búsqueda."
+        "condición de publicación. Nulo cuando ese número, en este buscador, cuenta el corpus "
+        "entero y no la consulta: informarlo entonces sería dar por medido algo que no lo es."
     )
-    ocultas: int = Field(
+    ocultas: int | None = Field(
         description="Coincidencias que existen y NO se entregan. Si es mayor que cero, la "
-        "lista es un subconjunto: no se puede afirmar que no exista lo que no aparece."
+        "lista es un subconjunto: no se puede afirmar que no exista lo que no aparece.\n\n"
+        "NULO significa que en este buscador no se puede saber, porque el número que la "
+        "plataforma entrega cuenta el índice completo. Nulo NO significa cero: significa que "
+        "la pregunta no tiene respuesta acá, y un resultado sin coincidencias puede igual "
+        "corresponder a algo reservado."
     )
     condiciones_de_publicacion: dict[str, int] = Field(
         description="Desglose de TODAS las coincidencias por condición de publicación, "
@@ -311,7 +334,9 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
             "permite saber cuántas coincidencias quedaron fuera. Sin ese dato la lista no "
             "se puede presentar como completa."
         )
-    coincidencias = int(condicion["numFound_sf"])
+    # Sólo se informa cuando está medido que cuenta la consulta. Ver `Buscador`.
+    por_consulta = BUSCADORES[buscador.lower()].coincidencias_por_consulta
+    coincidencias = int(condicion["numFound_sf"]) if por_consulta else None
 
     # `counts` viene como lista plana [etiqueta, cantidad, etiqueta, cantidad, ...] y es la
     # partición COMPLETA: sus valores suman `numFound_sf`, no la diferencia con lo visible.
@@ -367,7 +392,7 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
         sentencias=sentencias,
         visibles=visibles,
         coincidencias=coincidencias,
-        ocultas=max(0, coincidencias - visibles),
+        ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
         condiciones_de_publicacion=condiciones,
     )
 
@@ -504,6 +529,13 @@ class JurisClient(Transporte):
                     f"La sentencia {rol}-{anio} existe en el índice pero no se entrega a una "
                     f"consulta anónima: {r.ocultas} coincidencia(s) reservada(s). No es que no "
                     "exista, es que no se publica."
+                )
+            if r.ocultas is None:
+                raise EstructuraInesperada(
+                    f"No aparece ninguna sentencia {rol}-{anio} en el buscador de {buscador}, "
+                    "y en este buscador NO se puede saber si existe reservada: el número que "
+                    "la plataforma entrega cuenta el índice completo. O sea esto no prueba que "
+                    "la sentencia no exista."
                 )
             raise EstructuraInesperada(
                 f"No hay ninguna sentencia {rol}-{anio} en el buscador de {buscador}, ni "

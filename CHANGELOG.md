@@ -187,6 +187,17 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- `ocultas` no significaba lo mismo en todos los buscadores, y se informaba igual. Medido: en
+  `suprema` el número que la plataforma entrega cuenta la consulta (2 y 2 para un rol que
+  existe, 0 y 0 para uno imposible); en `laborales` cuenta el índice completo, 269.264 en los
+  dos casos.
+
+  O sea una búsqueda laboral con 8 resultados reportaba 269.256 ocultas, que hacía ver cada
+  resultado como una fracción de un universo oculto que no existe. Ahora `ocultas` y
+  `coincidencias` vienen en nulo donde no está medido que cuenten la consulta, y queda dicho
+  que **nulo no es cero**: es "acá no se puede saber". Un campo que miente es peor que un campo
+  ausente, y éste era el campo del que dependían las conclusiones más fuertes.
+
 - Las peticiones que mueren por timeout ahora quedan en la bitácora, con estado 0. Una
   petición sin respuesta igual salió a la red, y sin registrarla el registro subestimaba el
   tráfico generado justo en las corridas donde la plataforma iba peor, que son las que uno

@@ -185,7 +185,25 @@ Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, 
 búsqueda.
 
 :::{warning}
-El resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
+**`ocultas` sólo tiene significado en `suprema`, y está medido.**
+
+| Buscador | Rol que existe | Rol imposible | Qué cuenta |
+|---|---|---|---|
+| `suprema` | 2 y 2 | 0 y 0 | la consulta |
+| `laborales` | 8 y **269.264** | 0 y **269.264** | el índice completo |
+
+En `laborales` el número que la plataforma entrega es el tamaño del corpus, así que la
+diferencia contra lo visible no son coincidencias reservadas. Informar 269.256 ocultas para una
+consulta que encontró 8 haría ver cada resultado como una fracción de un universo oculto que no
+existe, así que ahí `ocultas` y `coincidencias` vienen en **nulo**.
+
+**Nulo no es cero.** Cero significa "no hay nada reservado"; nulo significa "en este buscador no
+se puede saber", y entonces un resultado vacío puede igual corresponder a algo reservado.
+`apelaciones` está en nulo por precaución: los cuatro intentos de medirlo murieron por timeout.
+:::
+
+:::{warning}
+En `suprema`, el resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
 anónima. Medido el 16 de agosto de 2026 sin filtros, el buscador declaraba **1.223.925**
 coincidencias y entregaba **300.005**.
 

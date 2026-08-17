@@ -307,3 +307,43 @@ def test_el_rol_de_laborales_no_lleva_la_letra_del_tipo_de_causa():
     assert "NO lleva la letra del tipo de causa" in fuente, (
         "se borró la advertencia que registra que el rol de laborales no distingue tipos"
     )
+
+
+# -- ocultas no significa lo mismo en todos los buscadores ------------------------
+
+
+def test_ocultas_viene_en_nulo_donde_el_numero_cuenta_el_corpus():
+    """Medido: en `laborales`, `numFound_sf` da 269.264 tanto para un rol que existe como para
+    uno imposible, o sea es el tamaño del índice y no la consulta.
+
+    Informar 269.256 ocultas para una consulta que encontró 8 haría ver cada resultado como
+    una fracción de un universo oculto que no existe. Un campo que miente es peor que un campo
+    ausente, así que viene en nulo.
+    """
+    assert BUSCADORES["suprema"].coincidencias_por_consulta is True
+    assert BUSCADORES["laborales"].coincidencias_por_consulta is False
+
+    d = json.loads(CITA)
+    d["condition_pub_sf"]["numFound_sf"] = 269264
+    cuerpo = json.dumps(d)
+
+    en_suprema = parse_sentencias(cuerpo, "suprema")
+    assert en_suprema.coincidencias == 269264
+    assert en_suprema.ocultas == 269263
+
+    en_laborales = parse_sentencias(cuerpo, "laborales")
+    assert en_laborales.coincidencias is None, "no se informa lo que no está medido"
+    assert en_laborales.ocultas is None, "nulo no es cero: es 'acá no se puede saber'"
+
+
+def test_pedir_el_texto_donde_no_se_puede_saber_lo_dice(monkeypatch):
+    """Sin resultados en `laborales` no prueba que la sentencia no exista, porque ahí no se
+    puede distinguir de una reservada. El error tiene que decirlo en vez de afirmar."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    c = _con_respuesta(json.dumps(d))
+    c._buscador_de_la_sesion = "laborales"
+    with pytest.raises(EstructuraInesperada, match="no prueba que"):
+        c.texto(rol=364, anio=2020, buscador="laborales")

@@ -16,9 +16,23 @@ jobs:
     permissions:
       contents: write
     steps:
+      # `block` y no `audit`: este job corre la suite, así que le vale la misma garantía que
+      # a `tests.yml`. Sin esto, una prueba que abriera un cliente real quedaría detenida en
+      # aquel workflow y saldría por éste. Ningún dominio de `pjud.cl` está en la lista.
       - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            astral.sh:443
+            codeload.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            objects.githubusercontent.com:443
+            pypi.org:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            uploads.github.com:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

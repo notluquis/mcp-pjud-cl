@@ -22,6 +22,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+import yaml
 
 from mcp_pjud.client import INTERVALO_MINIMO, MODULOS
 from mcp_pjud.juris import (
@@ -474,4 +475,51 @@ def test_toda_pagina_que_da_el_intervalo_menciona_la_rafaga():
     ]
     assert not incompletas, (
         f"Páginas que dan el intervalo sostenido y callan la ráfaga: {incompletas}"
+    )
+
+
+# -- la garantía de que CI no consulta al Poder Judicial ---------------------------
+
+
+def _workflows() -> list[Path]:
+    return sorted((RAIZ / ".github" / "workflows").glob("*.yml"))
+
+
+def test_todo_workflow_que_corre_la_suite_bloquea_el_trafico_saliente():
+    """La promesa es que CI nunca consulta al Poder Judicial. Con `audit` eso es un registro
+    que hay que ir a mirar; con `block` es una imposibilidad.
+
+    Se comprueba en todos los workflows que corren la suite y no sólo en uno, que es
+    exactamente el hueco que tenía: `tests.yml` bloqueaba y los de mutación y publicación
+    seguían en `audit`, así que una prueba que abriera un cliente real quedaba detenida en el
+    primero y salía por los otros.
+    """
+    incumplen = []
+    for w in _workflows():
+        texto = _texto(w)
+        if not re.search(r"\b(pytest|mutmut)\b", texto):
+            continue
+        if "egress-policy: block" not in texto:
+            incumplen.append(str(w.relative_to(RAIZ)))
+
+    assert not incumplen, (
+        f"Workflows que corren la suite sin bloquear el tráfico saliente: {incumplen}"
+    )
+
+
+def test_ningun_workflow_permite_salir_al_poder_judicial():
+    """El complemento del anterior: bloquear no sirve si el destino está en la lista.
+
+    Se lee el valor de `allowed-endpoints` y no el archivo entero, porque los comentarios que
+    explican esta misma garantía nombran el dominio. La primera versión los contaba y fallaba
+    sobre un repositorio correcto, que es la otra forma de tener un guardia inútil.
+    """
+    con_pjud = []
+    for w in _workflows():
+        for job in (yaml.safe_load(_texto(w)) or {}).get("jobs", {}).values():
+            for paso in job.get("steps") or []:
+                if "pjud.cl" in str((paso.get("with") or {}).get("allowed-endpoints", "")):
+                    con_pjud.append(str(w.relative_to(RAIZ)))
+    assert not con_pjud, (
+        f"Workflows que declaran un destino del Poder Judicial como permitido: {con_pjud}"
     )

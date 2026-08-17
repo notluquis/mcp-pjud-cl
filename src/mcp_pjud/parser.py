@@ -283,21 +283,29 @@ def revisar_aviso(html_respuesta: str) -> None:
 #: no un número: la plataforma pagina por token y no por índice.
 _SIGUIENTE = re.compile(r"pagina\w*Sig\('([^']+)'")
 
-#: Cuántos resultados devuelve la plataforma por página. Medido: una búsqueda de 251
-#: resultados vino en tres páginas de 100, 100 y 51, sin solapamiento entre ellas.
-POR_PAGINA = 100
-
-
 def siguiente_pagina(html_busqueda: str) -> str | None:
     """Identificador de la página siguiente, o None si es la última."""
     m = _SIGUIENTE.search(html_busqueda)
     return m.group(1) if m else None
 
 
+#: El total que declara el listado. Se acepta cualquier atributo en la etiqueta, espacios y
+#: entidades entre medio, y separadores de miles.
+#:
+#: La versión anterior sólo reconocía `<b>7</b>` exacto. Con `1.234` devolvía None, y como el
+#: guardia de completitud se saltaba cuando el total era desconocido, se desactivaba solo
+#: justo a partir de mil registros, que es donde más falta hace.
+_TOTAL = re.compile(
+    r"Total\s+de\s+registros:\s*(?:&nbsp;|\s)*<b[^>]*>\s*([\d.,]+)\s*</b>", re.I
+)
+
+
 def total_declarado(html_busqueda: str) -> int | None:
-    """Cuántos resultados dice la plataforma que hay en total."""
-    m = re.search(r"Total de registros:\s*<b>(\d+)</b>", html_busqueda)
-    return int(m.group(1)) if m else None
+    """Cuántos resultados dice la plataforma que hay en total, o None si no lo declara."""
+    m = _TOTAL.search(html_busqueda)
+    if not m:
+        return None
+    return int(m.group(1).replace(".", "").replace(",", ""))
 
 
 def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:

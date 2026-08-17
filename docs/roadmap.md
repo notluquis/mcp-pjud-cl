@@ -46,8 +46,6 @@ rechaza en vez de adivinar sus parámetros:
 
 ### Sin cubrir del todo
 
-- **Paginación.** Se procesa el primer resultado de la búsqueda. Una búsqueda con varias
-  causas devuelve sólo una.
 - **Causas reservadas.** No aparecen y no aparecerán.
 - **Expiración de referencias.** Caducan a los 30 minutos. El flujo cabe holgado, pero no hay
   manejo explícito de expiración a mitad de cadena.

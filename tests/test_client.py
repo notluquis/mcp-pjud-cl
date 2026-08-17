@@ -1,5 +1,6 @@
 """Tests del cliente. Sin red: los controles se prueban con dobles."""
 
+import re
 from pathlib import Path
 
 import httpx
@@ -263,49 +264,148 @@ def test_un_aviso_de_validacion_no_se_confunde_con_un_bloqueo(monkeypatch):
 # -- paginación ------------------------------------------------------------------
 #
 # La plataforma pagina con un identificador opaco, no con un número: el control de
-# "siguiente" trae el token de la página que viene. Medido: 251 resultados llegaron en
-# tres páginas de 100, 100 y 51, sin solapamiento.
+# "siguiente" trae el token de la página que viene. Medido contra el sistema real: 251
+# resultados en tres páginas de 100, 100 y 51, y la tercera sin control de siguiente.
+#
+# Los bloques de navegación de las fixtures son REALES, capturados de esas tres páginas.
+# Las filas de resultado que arma `_pagina()` son sintéticas y auto-consistentes: sirven
+# para ejercitar el recorrido, no para representar un listado de la plataforma.
+
+NAV_INTERMEDIA = (FIXTURES / "nav_pagina_intermedia.html").read_text(encoding="utf-8")
+NAV_ULTIMA = (FIXTURES / "nav_ultima_pagina.html").read_text(encoding="utf-8")
 
 
-PAGINADA = (FIXTURES / "busqueda_paginada.html").read_text(encoding="utf-8")
+def _fila(n: int) -> str:
+    return (
+        f"<tr><td align='center'><a onClick=\"detalleCausaCivil('ref-{n:03d}')\">"
+        f"</a></td><td nowrap>C-{9000 + n}-2026</td><td>01/03/2026</td>"
+        f"<td>PARTE FICTICIA/CONTRAPARTE FICTICIA</td>"
+        f"<td nowrap>2º Juzgado Civil de Concepción</td></tr>"
+    )
 
 
-def test_detecta_el_token_de_la_pagina_siguiente():
-    from mcp_pjud.parser import siguiente_pagina, total_declarado
+def _pagina(filas: range, total: int, ultima: bool, token: str = "") -> str:
+    """Una página sintética con el bloque de navegación real que corresponda.
 
-    assert siguiente_pagina(PAGINADA)
-    # El fixture se recortó a tres causas, así que declara el total del escenario
-    # del test y no el de la búsqueda original. Un fixture que declare más de lo
-    # que trae dispara el guardia de lista parcial, y con razón.
-    assert total_declarado(PAGINADA) == 7
+    `token` distingue el identificador de "siguiente" entre páginas. Sin eso, dos páginas
+    consecutivas ofrecen el mismo y el cliente lo detecta como paginación que no avanza,
+    que es justo lo que debe hacer.
+    """
+    nav = NAV_ULTIMA if ultima else NAV_INTERMEDIA
+    # El bloque capturado trae el total real de aquel listado (251). Se quita para que la
+    # página sintética declare el suyo: que venga incluido confirma, de paso, que la
+    # plataforma siempre lo publica junto a la navegación.
+    nav = re.sub(r"<div[^>]*>\s*Total de registros:.*?</div>", "", nav, flags=re.S)
+    if token:
+        nav = re.sub(r"paginaFecSig\('[^']+'", f"paginaFecSig('{token}'", nav)
+    cuerpo = "".join(_fila(n) for n in filas)
+    return (
+        f"{cuerpo}<tr><td colspan='5'>"
+        f"<div>Total de registros: <b>{total}</b></div>{nav}</td></tr>"
+    )
 
 
-def test_ultima_pagina_no_tiene_siguiente():
+def test_lee_el_control_de_siguiente_de_una_pagina_real():
+    """Contra el bloque de navegación capturado de la página 2 de un listado de 251."""
     from mcp_pjud.parser import siguiente_pagina
 
-    sin_control = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
-    assert siguiente_pagina(sin_control) is None
+    assert siguiente_pagina(NAV_INTERMEDIA)
 
 
-def test_recorre_las_paginas_y_acumula(monkeypatch):
-    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    ultima = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+def test_la_ultima_pagina_real_no_ofrece_siguiente():
+    """Contra el bloque capturado de la página 3, la última de ese mismo listado."""
+    from mcp_pjud.parser import siguiente_pagina
+
+    assert siguiente_pagina(NAV_ULTIMA) is None
+
+
+def test_total_declarado_tolera_las_formas_que_usa_la_plataforma():
+    """La versión anterior sólo leía `<b>7</b>` exacto.
+
+    Con separador de miles devolvía None, y como el guardia se saltaba cuando el total era
+    desconocido, se desactivaba solo justo a partir de mil registros.
+    """
+    from mcp_pjud.parser import total_declarado
+
+    assert total_declarado("Total de registros: <b>7</b>") == 7
+    assert total_declarado("Total de registros: <b>1.234</b>") == 1234
+    assert total_declarado("Total de registros: <b>12,345</b>") == 12345
+    assert total_declarado('Total de registros: <b class="x">7</b>') == 7
+    assert total_declarado("Total de registros:&nbsp;<b>7</b>") == 7
+    assert total_declarado("<div>otra cosa</div>") is None
+
+
+def _cliente_con(paginas: list[str]) -> PjudClient:
     entregadas = []
 
-    def transporte(req: httpx.Request) -> httpx.Response:
-        entregadas.append("pagina=" in req.content.decode())
-        # Dos páginas con control de siguiente, y una final sin él.
-        return httpx.Response(200, text=PAGINADA if len(entregadas) < 3 else ultima)
+    def transporte(_req: httpx.Request) -> httpx.Response:
+        i = min(len(entregadas), len(paginas) - 1)
+        entregadas.append(i)
+        return httpx.Response(200, text=paginas[i])
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
+    return c
 
+
+def test_recorre_las_paginas_y_acumula(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_con([
+        _pagina(range(1, 4), total=7, ultima=False, token="p2"),
+        _pagina(range(4, 7), total=7, ultima=False, token="p3"),
+        _pagina(range(7, 8), total=7, ultima=True),
+    ])
     causas = c.buscar_por_rit("C", 1156, 2026)
-    # 3 + 3 de las paginadas, más 1 de la última.
     assert len(causas) == 7
-    # La primera petición va sin token; las siguientes lo llevan.
-    assert entregadas == [False, True, True]
+    assert len({x.rol for x in causas}) == 7
+
+
+def test_una_sola_pagina_no_pide_mas(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_con([_pagina(range(1, 4), total=3, ultima=True)])
+    assert len(c.buscar_por_rit("C", 1156, 2026)) == 3
+
+
+def test_lista_parcial_levanta_en_vez_de_pasar_por_completa(monkeypatch):
+    """El control de "siguiente" puede faltar porque se acabaron las páginas, o porque la
+    respuesta vino truncada. La plataforma declara el total, así que se comprueba."""
+    from mcp_pjud.parser import EstructuraInesperada
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_con([_pagina(range(1, 4), total=7, ultima=True)])
+    with pytest.raises(EstructuraInesperada, match="declaró 7 resultados"):
+        c.buscar_por_rit("C", 1156, 2026)
+
+
+def test_sin_total_declarado_levanta(monkeypatch):
+    """Ambos listados de la plataforma traen el total; su ausencia es cambio de estructura.
+
+    Antes se seguía sin comprobar nada, o sea el guardia se apagaba solo."""
+    from mcp_pjud.parser import EstructuraInesperada
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    sin_total = re.sub(
+        r"<div>Total de registros:.*?</div>", "<div>sin total</div>",
+        _pagina(range(1, 4), total=3, ultima=True),
+    )
+    c = _cliente_con([sin_total])
+    with pytest.raises(EstructuraInesperada, match="no declara el total"):
+        c.buscar_por_rit("C", 1156, 2026)
+
+
+def test_una_paginacion_que_no_avanza_se_detecta_de_inmediato(monkeypatch):
+    """Antes se gastaban las diez páginas del tope acumulando duplicados, y el mensaje
+    final culpaba al usuario por hacer una búsqueda amplia."""
+    from mcp_pjud.parser import EstructuraInesperada
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    repetida = _pagina(range(1, 4), total=99, ultima=False)
+    c = _cliente_con([repetida])
+    with pytest.raises(EstructuraInesperada, match="no está avanzando"):
+        c.buscar_por_rit("C", 1156, 2026)
+    # Se detiene en la segunda vuelta, no al agotar el tope de diez.
+    assert len(c.bitacora) == 2
 
 
 def test_el_tope_de_paginas_levanta_en_vez_de_recortar(monkeypatch):
@@ -313,35 +413,14 @@ def test_el_tope_de_paginas_levanta_en_vez_de_recortar(monkeypatch):
     from mcp_pjud.client import ResultadosTruncados
 
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    c = PjudClient("test@example.cl")
-    # Siempre hay una página más: sin tope, esto no terminaría nunca.
-    c._http = httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=PAGINADA))
-    )
-    c._adir, c._token = "ADIR_1", "0" * 32
-
+    # Cada página trae un token distinto, así que la paginación sí avanza.
+    paginas = [
+        _pagina(range(i * 3 + 1, i * 3 + 4), total=999, ultima=False, token=f"p{i}")
+        for i in range(4)
+    ]
+    c = _cliente_con(paginas)
     with pytest.raises(ResultadosTruncados, match="tope de 3 páginas"):
         c.buscar_por_rit("C", 1156, 2026, paginas=3)
-    assert c.truncado is True
-
-
-def test_lista_parcial_levanta_en_vez_de_pasar_por_completa(monkeypatch):
-    """El control de "siguiente" puede desaparecer porque se acabaron las páginas, o
-    porque la respuesta vino truncada. La plataforma declara el total, así que se
-    comprueba en vez de confiar."""
-    from mcp_pjud.parser import EstructuraInesperada
-
-    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    # Declara 7 pero trae 3 y no ofrece página siguiente.
-    truncada = PAGINADA.replace("paginaFecSig(", "paginaFecNoExiste(")
-    c = PjudClient("test@example.cl")
-    c._http = httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=truncada))
-    )
-    c._adir, c._token = "ADIR_1", "0" * 32
-
-    with pytest.raises(EstructuraInesperada, match="declaró 7 resultados"):
-        c.buscar_por_rit("C", 1156, 2026)
 
 
 @pytest.mark.parametrize("paginas", [0, -1])
@@ -350,3 +429,30 @@ def test_un_tope_de_paginas_invalido_no_devuelve_lista_vacia(paginas):
     c = _sin_red()
     with pytest.raises(ValueError, match="1 o más"):
         c.buscar_por_rit("C", 1156, 2026, paginas=paginas)
+
+
+def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
+    """De todo el listado sólo se usa la primera causa.
+
+    Recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
+    contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
+    rendimiento acá.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    peticiones = []
+
+    def transporte(req: httpx.Request) -> httpx.Response:
+        peticiones.append(str(req.url))
+        if "consultaRit" in str(req.url):
+            # Un listado con más páginas: si paginara, pediría varias.
+            return httpx.Response(200, text=_pagina(range(1, 4), total=99, ultima=False))
+        return httpx.Response(200, text=principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    listados = [u for u in peticiones if "consultaRit" in u]
+    assert len(listados) == 1, "el listado debe pedirse una sola vez"

@@ -29,7 +29,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   pedirles actuaciones se rechaza en vez de adivinar el panel.
 
 - Buscador de fallos de **Cortes de Apelaciones**, verificado. Los cuatro intentos anteriores
-  se habían dado por muertos por timeout; la consulta responde en 115,6 s.
+  se habían dado por muertos por timeout; la consulta responde, y tardó 115,6 s una vez y
+  177,0 s otra.
 
 ### Corregido
 

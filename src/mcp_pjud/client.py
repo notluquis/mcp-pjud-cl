@@ -68,12 +68,15 @@ SEGUNDOS_PAGINA_MEDIDOS = 4.3
 #: arriba era una sola muestra, y tomarla por techo costó tres diagnósticos equivocados
 #: seguidos sobre las mismas tres consultas: primero "la plataforma está caída", después
 #: "esas consultas no terminan", y recién a la tercera, midiendo con paciencia de 300
-#: segundos, aparecieron en 81,2 s, 102,0 s y 38,7 s. El buscador de Cortes de Apelaciones
-#: llegó a 115,6 s.
+#: segundos, aparecieron en 81,2 s, 102,0 s y 38,7 s.
+#:
+#: Y la lección se repitió el mismo día: esta constante se puso en 115,6 s con la primera
+#: consulta al buscador de Cortes de Apelaciones, y la segunda tardó 177,0 s. O sea la muestra
+#: nueva tampoco era el techo. Por eso `ESPERA_MAXIMA` no se calcula pegado a este número.
 #:
 #: La lección no es el número: es que una muestra no es un techo. Si mañana aparece una más
 #: lenta, sube esta constante en vez de concluir que la consulta no funciona.
-SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 115.6
+SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 177.0
 
 #: Cuánto se espera una respuesta antes de darla por perdida.
 #:

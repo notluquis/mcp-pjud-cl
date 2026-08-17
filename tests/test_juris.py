@@ -322,6 +322,9 @@ def test_ocultas_viene_en_nulo_donde_el_numero_cuenta_el_corpus():
     """
     assert BUSCADORES["suprema"].coincidencias_por_consulta is True
     assert BUSCADORES["laborales"].coincidencias_por_consulta is False
+    # Apelaciones se midió igual y dio lo mismo: 5.290.009 para el rol que existe y para el
+    # imposible. Estaba en falso por prudencia y resultó estar en falso por medición.
+    assert BUSCADORES["apelaciones"].coincidencias_por_consulta is False
 
     d = json.loads(CITA)
     d["condition_pub_sf"]["numFound_sf"] = 269264
@@ -347,3 +350,24 @@ def test_pedir_el_texto_donde_no_se_puede_saber_lo_dice(monkeypatch):
     c._buscador_de_la_sesion = "laborales"
     with pytest.raises(EstructuraInesperada, match="no prueba que"):
         c.texto(rol=364, anio=2020, buscador="laborales")
+
+
+def test_las_visibles_salen_de_response_y_las_coincidencias_del_desglose():
+    """Son dos campos distintos y confundirlos lleva a la conclusión contraria.
+
+    `response.numFound` son las VISIBLES y siguen a la consulta en los tres buscadores, incluso
+    donde la bandera es falsa: medirlo en apelaciones da 18 para un rol que existe y 0 para uno
+    imposible, y de ahí se concluiría "es por consulta" justo donde no lo es. El campo que
+    decide es `condition_pub_sf.numFound_sf`, que ahí vale 5.290.009 en los dos casos.
+
+    Este guardia los ata a su origen: si alguien intercambia las dos lecturas, `ocultas` pasa a
+    restar contra el corpus y ninguno de los otros tests se entera.
+    """
+    d = json.loads(CITA)
+    d["response"]["numFound"] = 7
+    d["condition_pub_sf"]["numFound_sf"] = 31
+    r = parse_sentencias(json.dumps(d), "suprema")
+
+    assert r.visibles == 7, "las visibles salen de response.numFound"
+    assert r.coincidencias == 31, "las coincidencias salen de condition_pub_sf.numFound_sf"
+    assert r.ocultas == 24

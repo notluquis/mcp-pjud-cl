@@ -128,12 +128,14 @@ BUSCADORES: Mapping[str, Buscador] = {
         # sentencias en 115,6 s. Los cuatro intentos anteriores se habían dado por muertos por
         # timeout, y el timeout era nuestro.
         #
-        # Lo que sigue SIN medir es esta bandera, y conviene ser preciso: que el buscador
-        # responda no dice si el número de coincidencias es de la consulta o del corpus. Para
-        # saberlo hay que comparar el `numFound` de un rol que existe contra uno imposible, que
-        # es como se descubrió que en `laborales` era el corpus. Mientras no se mida, queda en
-        # falso, que es la opción conservadora: `ocultas` viaja en nulo en vez de traer una
-        # cifra que podría ser el tamaño del índice.
+        # Y la bandera quedó medida el mismo día, comparando un rol que existe contra uno
+        # imposible: `numFound_sf` dio 5.290.009 en los dos casos. Es el corpus, así que el
+        # falso que ya estaba puesto por prudencia resultó ser el correcto.
+        #
+        # El campo que decide esto es `condition_pub_sf.numFound_sf` y NO `response.numFound`.
+        # El segundo son las visibles, y ésas siguen a la consulta en los tres buscadores,
+        # incluido `laborales`: medirlo daría 18 contra 0 y haría concluir "es por consulta"
+        # justo donde no lo es.
         coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(

@@ -39,6 +39,10 @@ en vez de elegir una.
 Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba
 que la causa no exista.
 
+Si una búsqueda excede el tope de páginas, la herramienta falla en vez de devolver una
+lista recortada. Ese error significa "hay más resultados de los que caben", no "no hay
+resultados": acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada.
+
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
 expediente.
 """
@@ -74,6 +78,17 @@ Competencia = Annotated[
 Tribunal = Annotated[
     int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
 ]
+Paginas = Annotated[
+    int,
+    Field(
+        description="Cuántas páginas de resultados recorrer como máximo. La plataforma "
+        "devuelve 100 por página. Si la búsqueda excede este tope, la herramienta falla en "
+        "vez de devolver una lista recortada, porque un listado truncado en silencio se "
+        "leería como si no hubiera más resultados.",
+        ge=1,
+        le=50,
+    ),
+]
 Corte = Annotated[
     int | None,
     Field(
@@ -94,10 +109,11 @@ def buscar_causa_por_rit(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
+    paginas: Paginas = 10,
 ) -> list[CausaEncontrada]:
     """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
     with _cliente() as c:
-        return c.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte)
+        return c.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas)
 
 
 @mcp.tool(
@@ -112,6 +128,7 @@ def buscar_causa_por_nombre(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
+    paginas: Paginas = 10,
 ) -> list[CausaEncontrada]:
     """Busca causas por nombre de litigante.
 
@@ -121,7 +138,7 @@ def buscar_causa_por_nombre(
     """
     with _cliente() as c:
         return c.buscar_por_nombre(
-            nombre, apellido_paterno, apellido_materno, anio, competencia, tribunal, corte
+            nombre, apellido_paterno, apellido_materno, anio, competencia, tribunal, corte, paginas
         )
 
 
@@ -136,6 +153,7 @@ def buscar_causa_por_rut_juridica(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
+    paginas: Paginas = 10,
 ) -> list[CausaEncontrada]:
     """Busca causas de una persona jurídica por su RUT.
 
@@ -144,7 +162,7 @@ def buscar_causa_por_rut_juridica(
     """
     with _cliente() as c:
         return c.buscar_por_rut_juridica(
-            rut, digito_verificador, anio, competencia, tribunal, corte
+            rut, digito_verificador, anio, competencia, tribunal, corte, paginas
         )
 
 

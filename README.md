@@ -149,7 +149,8 @@ Ese criterio manda sobre cualquier ganancia de velocidad.
 - Sólo competencia **civil** verificada. Las otras seis se rechazan en vez de adivinar sus
   parámetros.
 - **Las causas reservadas no aparecen.** Un resultado vacío no prueba que la causa no exista.
-- Sin paginación: se procesa el primer resultado de la búsqueda.
+- Una búsqueda muy amplia **levanta excepción en vez de devolver una lista recortada**.
+  Acota la consulta o sube el tope de páginas.
 - `corte` sin valor por defecto a propósito: fijarla produce falsos negativos.
 - Si la plataforma cambia, el parser **levanta excepción en vez de devolver vacío**. Una lista
   vacía se leería como "no hubo actuaciones", y así se pierden plazos.

@@ -22,6 +22,7 @@ from .parser import (
     EstructuraInesperada,
     actuaciones_receptor,
     es_aviso_de_captcha,
+    es_sin_resultados,
     leer_aviso,
     parse_cuadernos,
     parse_resultados,
@@ -52,9 +53,9 @@ COMPETENCIAS = {
 #: página, así que el valor por defecto cubre mil causas: más que cualquier consulta
 #: razonable, y bajo el intervalo de 5 segundos son unos 50 segundos.
 #:
-#: Existe para que una búsqueda demasiado amplia no se convierta en un barrido. Cuando el
-#: tope se alcanza, el cliente lo dice en la bitácora en vez de devolver una lista recortada
-#: en silencio, que se leería como "no hay más".
+#: Existe para que una búsqueda demasiado amplia no se convierta en un barrido. Al
+#: alcanzarlo se levanta `ResultadosTruncados` en vez de devolver una lista recortada en
+#: silencio, que se leería como "no hay más".
 PAGINAS_MAXIMAS = 10
 
 #: Rutas verificadas. Las demás competencias existen en el sitio pero no están probadas
@@ -106,7 +107,6 @@ class PjudClient:
         self._adir: str | None = None
         self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
-        self.truncado = False
 
     def __enter__(self) -> PjudClient:
         return self
@@ -150,11 +150,24 @@ class PjudClient:
         r.raise_for_status()
         return r
 
+    def _primera_pagina(self, ruta: str, data: dict[str, str]) -> list[CausaEncontrada]:
+        """Una sola página, sin comprobar completitud.
+
+        Para quien sólo necesita el primer resultado, como el flujo de actuaciones de
+        receptor. Se separa del recorrido completo a propósito: acá una lista parcial es
+        lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
+        no detectarla.
+        """
+        return parse_resultados(self._ajax(ruta, data))
+
     def _paginado(self, ruta: str, data: dict[str, str], paginas: int) -> list[CausaEncontrada]:
         """Recorre las páginas de un listado hasta agotarlo o hasta el tope.
 
-        La plataforma pagina con un identificador opaco, no con un número de página: el
-        control de "siguiente" trae el token de la página que viene.
+        La plataforma pagina con un identificador opaco, no con un número: el control de
+        "siguiente" trae el token de la página que viene.
+
+        Las tres comprobaciones de abajo existen porque la falla que importa acá no es
+        romperse, es devolver menos de lo que hay sin decirlo.
         """
         if paginas < 1:
             # Con cero o menos, el bucle no corre y se devolvería una lista vacía
@@ -163,19 +176,44 @@ class PjudClient:
             raise ValueError(f"El tope de páginas debe ser 1 o más, se recibió {paginas}.")
 
         acumuladas: list[CausaEncontrada] = []
+        vistos: set[str] = set()
         token: str | None = None
         total: int | None = None
+
         for numero in range(1, paginas + 1):
             html_ = self._ajax(ruta, data if token is None else {**data, "pagina": token})
+
+            if es_sin_resultados(html_):
+                # Esa respuesta viene sin navegación y sin total, así que hay que
+                # reconocerla antes de exigir esos datos. Una búsqueda legítima sin
+                # coincidencias no es un cambio de estructura.
+                return acumuladas
+
             acumuladas.extend(parse_resultados(html_))
-            if total is None:
+
+            if numero == 1:
                 total = total_declarado(html_)
+                if total is None:
+                    # Ambos listados que devuelve la plataforma traen este dato, así que su
+                    # ausencia es señal de que la estructura cambió. Antes se seguía sin
+                    # comprobar nada, o sea el guardia se apagaba solo.
+                    raise EstructuraInesperada(
+                        "El listado no declara el total de registros. Sin ese dato no se "
+                        "puede comprobar que el recorrido devolvió todo, y una lista "
+                        "incompleta se leería como completa."
+                    )
+
+            if len(acumuladas) > total:
+                # Más de lo declarado sólo puede venir de páginas repetidas.
+                raise EstructuraInesperada(
+                    f"Se acumularon {len(acumuladas)} causas y la plataforma declara "
+                    f"{total}. La paginación no está avanzando."
+                )
+
             token = siguiente_pagina(html_)
+
             if token is None:
-                # El control de "siguiente" puede faltar porque de verdad se acabaron las
-                # páginas, o porque la respuesta vino truncada o el HTML cambió. La
-                # plataforma declara el total, así que se comprueba en vez de confiar.
-                if total is not None and len(acumuladas) != total:
+                if len(acumuladas) != total:
                     raise EstructuraInesperada(
                         f"La plataforma declaró {total} resultados y se recuperaron "
                         f"{len(acumuladas)}. El control de página siguiente desapareció "
@@ -184,16 +222,22 @@ class PjudClient:
                         "completa."
                     )
                 return acumuladas
-            if numero == paginas:
-                total = total_declarado(html_)
-                self.truncado = True
-                raise ResultadosTruncados(
-                    f"La búsqueda devolvió más de {len(acumuladas)} causas"
-                    + (f" de {total} declaradas" if total else "")
-                    + f" y se alcanzó el tope de {paginas} páginas. Acota la búsqueda: "
-                    "un listado recortado en silencio se leería como si no hubiera más."
+
+            if token in vistos:
+                # El mismo token dos veces significa que la página no avanza. Sin esto se
+                # gastaban las diez páginas del tope acumulando duplicados, y el mensaje
+                # final culpaba al usuario por hacer una búsqueda amplia.
+                raise EstructuraInesperada(
+                    f"La paginación devolvió el mismo identificador de página en la vuelta "
+                    f"{numero}: no está avanzando."
                 )
-        return acumuladas
+            vistos.add(token)
+
+        raise ResultadosTruncados(
+            f"La búsqueda tiene {total} resultados y se alcanzó el tope de {paginas} "
+            f"páginas con {len(acumuladas)} recuperadas. Acota la búsqueda o sube el tope: "
+            "un listado recortado en silencio se leería como si no hubiera más."
+        )
 
     def _ajax(self, ruta: str, data: dict[str, str]) -> str:
         return self._req(
@@ -255,7 +299,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int = PAGINAS_MAXIMAS,
+        paginas: int | None = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por rol. `tipo` es la letra del rol: C, V, E, A, F o I en civil.
 
@@ -268,19 +312,19 @@ class PjudClient:
         # resultados: la misma consulta devolvió dos causas sin él y una con él.
         if not rol or not anio:
             raise ValueError("La búsqueda por rol exige número de rol y año.")
-        return self._paginado(
-            f"{modulo}/consultaRit{modulo.capitalize()}.php",
-            {
-                "conTipoCausa": tipo.upper(),
-                "conRolCausa": str(rol),
-                "conEraCausa": str(anio),
-                "conCompetencia": str(COMPETENCIAS[competencia.lower()]),
-                "conCorte": str(corte or 0),
-                "conTribunal": str(tribunal or 0),
-                "conCaratulado": "",
-            },
-            paginas,
-        )
+        ruta = f"{modulo}/consultaRit{modulo.capitalize()}.php"
+        campos = {
+            "conTipoCausa": tipo.upper(),
+            "conRolCausa": str(rol),
+            "conEraCausa": str(anio),
+            "conCompetencia": str(COMPETENCIAS[competencia.lower()]),
+            "conCorte": str(corte or 0),
+            "conTribunal": str(tribunal or 0),
+            "conCaratulado": "",
+        }
+        if paginas is None:
+            return self._primera_pagina(ruta, campos)
+        return self._paginado(ruta, campos, paginas)
 
     # -- búsquedas ---------------------------------------------------------------
     #
@@ -298,7 +342,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int = PAGINAS_MAXIMAS,
+        paginas: int | None = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por nombre de litigante.
 
@@ -346,7 +390,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int = PAGINAS_MAXIMAS,
+        paginas: int | None = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas de una persona jurídica por su RUT.
 
@@ -378,7 +422,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int = PAGINAS_MAXIMAS,
+        paginas: int | None = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas ingresadas en un rango de fechas, en formato DD/MM/AAAA.
 
@@ -425,7 +469,11 @@ class PjudClient:
         La Oficina Judicial Virtual no direcciona el detalle por rol, así que hay que
         buscar primero para obtener la referencia opaca de la causa.
         """
-        causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte)
+        # `paginas=1` a propósito: de todo el listado sólo se usa la primera causa, así que
+        # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
+        # contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
+        # rendimiento acá.
+        causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
         if not causas:
             return []
 

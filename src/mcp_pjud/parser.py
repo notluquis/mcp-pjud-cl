@@ -283,9 +283,16 @@ def revisar_aviso(html_respuesta: str) -> None:
 #: no un número: la plataforma pagina por token y no por índice.
 _SIGUIENTE = re.compile(r"pagina\w*Sig\('([^']+)'")
 
-#: Cuántos resultados devuelve la plataforma por página. Medido: una búsqueda de 251
-#: resultados vino en tres páginas de 100, 100 y 51, sin solapamiento entre ellas.
-POR_PAGINA = 100
+#: Texto exacto con que la plataforma informa que no hubo coincidencias. Esa respuesta viene
+#: sin bloque de navegación y sin total declarado, así que hay que reconocerla antes de
+#: exigir esos datos: si no, una búsqueda legítima sin resultados se leería como un cambio de
+#: estructura, que es el error contrario pero igual de equivocado.
+SIN_RESULTADOS = "No se han encontrado resultados"
+
+
+def es_sin_resultados(html_busqueda: str) -> bool:
+    """Si la plataforma respondió con su mensaje conocido de búsqueda sin coincidencias."""
+    return SIN_RESULTADOS in html_busqueda
 
 
 def siguiente_pagina(html_busqueda: str) -> str | None:
@@ -294,10 +301,23 @@ def siguiente_pagina(html_busqueda: str) -> str | None:
     return m.group(1) if m else None
 
 
+#: El total que declara el listado. Se acepta cualquier atributo en la etiqueta, espacios y
+#: entidades entre medio, y separadores de miles.
+#:
+#: La versión anterior sólo reconocía `<b>7</b>` exacto. Con `1.234` devolvía None, y como el
+#: guardia de completitud se saltaba cuando el total era desconocido, se desactivaba solo
+#: justo a partir de mil registros, que es donde más falta hace.
+_TOTAL = re.compile(
+    r"Total\s+de\s+registros:\s*(?:&nbsp;|\s)*<b[^>]*>\s*([\d.,]+)\s*</b>", re.I
+)
+
+
 def total_declarado(html_busqueda: str) -> int | None:
-    """Cuántos resultados dice la plataforma que hay en total."""
-    m = re.search(r"Total de registros:\s*<b>(\d+)</b>", html_busqueda)
-    return int(m.group(1)) if m else None
+    """Cuántos resultados dice la plataforma que hay en total, o None si no lo declara."""
+    m = _TOTAL.search(html_busqueda)
+    if not m:
+        return None
+    return int(m.group(1).replace(".", "").replace(",", ""))
 
 
 def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
@@ -329,7 +349,7 @@ def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
             )
         )
 
-    if not causas and "No se han encontrado resultados" not in html_busqueda:
+    if not causas and not es_sin_resultados(html_busqueda):
         raise EstructuraInesperada(
             "El listado no trae filas ni el mensaje de 'sin resultados'. "
             "La estructura de la búsqueda cambió."

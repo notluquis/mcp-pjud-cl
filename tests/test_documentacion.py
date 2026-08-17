@@ -431,18 +431,46 @@ def test_ninguna_pagina_declara_un_numero_de_leyes_distinto_del_real():
     assert not malos, f"Cuentas de leyes que no coinciden con la tabla: {malos}"
 
 
+#: Cómo se escribe el intervalo en prosa. Se incluye la forma con palabras porque la primera
+#: versión de este guardia sólo reconocía el número, y por ese hueco quedaron dos afirmaciones
+#: falsas en el roadmap: una prometía "una petición cada cinco segundos" sin la ráfaga y otra
+#: calculaba cinco minutos con el límite plano anterior.
+_EN_PALABRAS = {
+    1: "un",
+    2: "dos",
+    3: "tres",
+    4: "cuatro",
+    5: "cinco",
+    6: "seis",
+    7: "siete",
+    8: "ocho",
+    9: "nueve",
+    10: "diez",
+}
+
+
+def _menciona_el_intervalo(texto: str) -> bool:
+    n = int(INTERVALO_MINIMO)
+    formas = [rf"cada {n} segundos"]
+    if n in _EN_PALABRAS:
+        formas.append(rf"cada {_EN_PALABRAS[n]} segundos")
+    return any(re.search(f, texto, re.I) for f in formas)
+
+
 def test_toda_pagina_que_da_el_intervalo_menciona_la_rafaga():
     """El control tiene dos números y describir sólo uno lo cuenta mal.
 
     Una página que diga "una cada 5 segundos" y calle la ráfaga describe un límite plano que
     no existe: quien la lea calculará mal cuánto tarda una consulta, y quien audite el
     proyecto creerá que el control es más estricto de lo que es.
+
+    Se reconocen las dos formas de escribirlo, con número y con palabra. La primera versión
+    miraba sólo la numérica y dejó pasar dos afirmaciones falsas.
     """
     incompletas = [
         str(p.relative_to(RAIZ))
         for p in PROSA
-        if re.search(rf"cada {INTERVALO_MINIMO:.0f} segundos", _texto(p))
-        and not re.search(r"ráfaga", _texto(p), re.I)
+        if _menciona_el_intervalo(_texto(p)) and not re.search(r"ráfaga", _texto(p), re.I)
     ]
     assert not incompletas, (
         f"Páginas que dan el intervalo sostenido y callan la ráfaga: {incompletas}"

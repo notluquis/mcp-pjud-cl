@@ -8,6 +8,7 @@ import pytest
 
 from mcp_pjud.client import (
     INTERVALO_MINIMO,
+    MODULOS,
     RAFAGA_MAXIMA,
     PjudBloqueado,
     PjudClient,
@@ -643,13 +644,28 @@ def test_pedir_actuaciones_de_una_competencia_sin_receptor_no_gasta_peticiones()
         c.actuaciones_receptor("O", 1583, 2018, competencia="laboral")
 
 
-def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticiones():
-    """Cobranza sí tiene receptor y su panel `historiaCob` existe, pero sus columnas son
-    otras: trae `Estado Firma` y no trae `Foja` ni `Georref.`. Leerla con el mapa de civil
-    daría filas mal alineadas."""
+def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticiones(monkeypatch):
+    """Una competencia puede exponer ministro de fe y no tener su historia medida.
+
+    Hoy no existe ninguna así: civil y cobranza son las dos con receptor y las dos tienen su
+    tabla. O sea el guardia quedaría inalcanzable, que es la forma más silenciosa de que un
+    guardia deje de servir. Se construye la competencia que falta para poder ejercitarlo.
+    """
+    from mcp_pjud.parser import COMPETENCIAS as REALES
+    from mcp_pjud.parser import Competencia
+
+    inventada = Competencia(
+        99,
+        {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        historia=None,
+        receptor=True,
+    )
+    monkeypatch.setitem(REALES, "inventada", inventada)
+    monkeypatch.setattr("mcp_pjud.client.MODULOS", {*MODULOS, "inventada"})
+
     c = _sin_red()
     with pytest.raises(ValueError, match="No está verificado"):
-        c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
+        c.actuaciones_receptor("C", 1, 2019, competencia="inventada")
 
 
 def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
@@ -691,3 +707,27 @@ def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
         "la segunda tiene que esperar el intervalo completo: el minuto que la primera estuvo "
         f"colgada no se convierte en fichas. Esperas observadas: {dormido}"
     )
+
+
+def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
+    """La bitácora existe para acreditar cuánto se consultó (§8).
+
+    Una petición que no llegó a respuesta igual salió a la red. Sin registrarla, el registro
+    subestima el tráfico generado justo en las corridas donde la plataforma va peor, que son
+    las que uno querría poder explicar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(req):
+        raise httpx.ReadTimeout("la plataforma no respondió", request=req)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(httpx.ReadTimeout):
+        c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
+
+    assert len(c.bitacora) == 1, "la petición que murió por timeout tiene que quedar anotada"
+    _, url, estado = c.bitacora[0]
+    assert url.endswith("buscar_sentencias")
+    assert estado == 0, "se anota con estado 0, que ningún código HTTP usa"

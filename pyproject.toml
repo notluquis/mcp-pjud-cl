@@ -85,10 +85,11 @@ select = ["E", "F", "I", "UP", "B", "SIM", "S", "DTZ", "RUF", "PT", "C4", "PTH"]
 # devolver (float, str, bytes, lista de nodos). Es fiel a la especificación e inútil acá:
 # todas nuestras consultas devuelven nodos. Se acotan estas reglas en el parser en vez de
 # renunciar a los stubs, que sí tipan bien el resto de lxml.
-include = ["src/mcp_pjud/parser.py"]
+include = ["src/mcp_pjud/parser.py", "tests/test_parser.py"]
 
 [tool.ty.overrides.rules]
 unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"
 not-iterable = "ignore"
 not-subscriptable = "ignore"
 

@@ -18,6 +18,30 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Herramienta `buscar_causa_por_fecha`. Existía en el cliente y no estaba expuesta: es la
+  cuarta búsqueda que la plataforma ofrece, y sin ella no había forma de responder "qué
+  ingresó contra esta empresa esta semana" sabiendo el tribunal pero no el rol.
+
+  Nadie lo había notado porque nada comparaba las dos listas. Ahora hay un test que exige que
+  todo método público de consulta del cliente esté expuesto como herramienta o excluido a
+  propósito con la razón escrita.
+
+- Herramienta `obtener_texto_sentencia`: el texto completo de un fallo, de a uno por llamada.
+
+  Está separada de la búsqueda por una razón medida: una sentencia de trece páginas son 25.473
+  caracteres, así que devolver diez con cada búsqueda serían 250.000. La búsqueda entrega
+  `texto_preview` y la extensión en palabras y páginas, que suele bastar para decidir.
+
+  Declara `anonimizada` y `fuente`: si lo entregado es la versión con los datos de las personas
+  naturales suprimidos por el propio tribunal, y de cuál de los dos campos del buscador salió.
+  Y si la sentencia existe pero está reservada para consultas anónimas, levanta en vez de
+  devolver un texto vacío que se leería como una sentencia sin contenido.
+
+- Buscadores de **Corte de Apelaciones** y **Laborales** en el buscador de fallos, con sus
+  campos leídos de `parametros_buscador`. Confirman la premisa de la tabla: Apelaciones
+  identifica sus sentencias con `rol_era_ape_s` donde Suprema usa `rol_era_sup_s`. En Laborales
+  el origen es un juzgado y no una corte.
+
 - Búsquedas en **laboral** y **cobranza**, verificadas contra el sistema real y con fixtures
   propias. Cobranza publica RUC, que civil no tiene; laboral publica estado de causa.
 
@@ -162,6 +186,22 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   alguien tiene que poder encontrar sin pasar por el sitio de documentación.
 
 ### Corregido
+
+- `ocultas` no significaba lo mismo en todos los buscadores, y se informaba igual. Medido: en
+  `suprema` el número que la plataforma entrega cuenta la consulta (2 y 2 para un rol que
+  existe, 0 y 0 para uno imposible); en `laborales` cuenta el índice completo, 269.264 en los
+  dos casos.
+
+  O sea una búsqueda laboral con 8 resultados reportaba 269.256 ocultas, que hacía ver cada
+  resultado como una fracción de un universo oculto que no existe. Ahora `ocultas` y
+  `coincidencias` vienen en nulo donde no está medido que cuenten la consulta, y queda dicho
+  que **nulo no es cero**: es "acá no se puede saber". Un campo que miente es peor que un campo
+  ausente, y éste era el campo del que dependían las conclusiones más fuertes.
+
+- Las peticiones que mueren por timeout ahora quedan en la bitácora, con estado 0. Una
+  petición sin respuesta igual salió a la red, y sin registrarla el registro subestimaba el
+  tráfico generado justo en las corridas donde la plataforma iba peor, que son las que uno
+  querría poder explicar.
 
 - `actuaciones_receptor` no reenviaba la competencia al parser, así que la historia se leía
   siempre con el panel de civil y el guardia que lo protege era inalcanzable. Medido con

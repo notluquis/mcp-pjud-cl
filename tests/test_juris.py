@@ -6,8 +6,13 @@ from pathlib import Path
 import httpx
 import pytest
 
-from mcp_pjud.juris import BUSCADORES, JurisClient, parse_sentencias
-from mcp_pjud.parser import EstructuraInesperada
+from mcp_pjud.juris import (
+    BUSCADORES,
+    INDISPENSABLES,
+    JurisClient,
+    parse_sentencias,
+)
+from mcp_pjud.parser import EstructuraInesperada, PlataformaRechaza
 
 FIXTURES = Path(__file__).parent / "fixtures"
 AMPLIA = (FIXTURES / "juris_busqueda_amplia.json").read_text(encoding="utf-8")
@@ -101,6 +106,7 @@ def _sin_red() -> JurisClient:
         transport=httpx.MockTransport(lambda _: pytest.fail("no debía consultar"))
     )
     c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
     return c
 
 
@@ -112,10 +118,34 @@ def test_buscar_sin_criterios_se_rechaza_antes_de_consultar():
 
 def test_un_buscador_no_verificado_se_rechaza():
     """Cada buscador declara sus propios campos Solr. Exponer los no medidos devolvería
-    campos vacíos en vez de un error."""
-    assert "apelaciones" not in BUSCADORES
+    campos vacíos en vez de un error.
+
+    Se prueba con un nombre que no existe en vez de con uno de los nueve pendientes: la lista
+    de verificados crece, y un test que nombre uno concreto se cae al verificarlo, que es
+    justo cuando no debería.
+    """
+    assert "compendio_extranjeria" not in BUSCADORES
     with pytest.raises(ValueError, match="no verificado"):
-        _sin_red().abrir_sesion("apelaciones")
+        _sin_red().abrir_sesion("compendio_extranjeria")
+
+
+def test_cada_buscador_declara_los_campos_indispensables():
+    """Sin rol y fecha no se puede verificar una cita, que es para lo que existe esto."""
+    for nombre, b in BUSCADORES.items():
+        for campo in INDISPENSABLES:
+            assert campo in b.campos, f"{nombre} no declara el campo {campo!r}"
+
+
+def test_apelaciones_identifica_sus_sentencias_con_otro_campo_que_suprema():
+    """Es la razón concreta por la que esto es una tabla y no un parser.
+
+    Un cliente que asumiera los campos de Suprema devolvería el rol vacío en Apelaciones sin
+    que nada reviente, o sea una cita que no dice a qué sentencia corresponde.
+    """
+    assert BUSCADORES["suprema"].campos["rol"] == "rol_era_sup_s"
+    assert BUSCADORES["apelaciones"].campos["rol"] == "rol_era_ape_s"
+    # Y en Laborales el origen es un juzgado, no una corte.
+    assert BUSCADORES["laborales"].campos["corte_origen"] == "gls_juz_s"
 
 
 def test_solo_se_envian_los_filtros_con_valor(monkeypatch):
@@ -133,6 +163,7 @@ def test_solo_se_envian_los_filtros_con_valor(monkeypatch):
     c = JurisClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
     c.buscar(rol=34546, anio=2025)
 
     assert enviados == {"rol": "34546", "era": "2025"}, "no deben viajar claves vacías"
@@ -168,3 +199,151 @@ def test_una_sentencia_sin_lo_que_la_identifica_se_levanta(campo):
     del d["response"]["docs"][0][campo]
     with pytest.raises(EstructuraInesperada, match=campo):
         parse_sentencias(json.dumps(d))
+
+
+# -- el texto completo, que se pide aparte ----------------------------------------
+
+
+def _con_respuesta(cuerpo: str) -> JurisClient:
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=cuerpo))
+    )
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    return c
+
+
+def _con_texto(texto: str, anonimizada: int = 0, anon: str = "ANONIMIZADO") -> str:
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["texto_sentencia"] = texto
+    d["response"]["docs"][0]["texto_sentencia_anon"] = anon
+    d["response"]["docs"][0]["sit_fallo_anonimizado_i"] = anonimizada
+    d["response"]["docs"][0]["sent__word_count_i"] = 3881
+    d["response"]["docs"][0]["sent__npages_i"] = 13
+    return json.dumps(d, ensure_ascii=False)
+
+
+def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
+    """Una sentencia de trece páginas son unos 25.000 caracteres, medido. Diez por búsqueda
+    serían 250.000, así que `Sentencia` lleva el preview y no el fallo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto("X" * 25473))
+    s = c.buscar(rol=34546, anio=2025).sentencias[0]
+    assert "texto" not in s.model_dump(), "el texto completo no puede viajar en cada fila"
+    # La extensión sí viaja: es lo que permite decidir si pedir el resto.
+    assert s.palabras == 3881
+    assert s.paginas == 13
+
+
+def test_el_texto_completo_dice_de_cual_de_los_dos_campos_salio(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto("Santiago, a catorce de agosto."))
+    t = c.texto(rol=34546, anio=2025)
+    assert t.anonimizada is False
+    assert t.fuente == "texto_sentencia"
+    assert t.texto.startswith("Santiago")
+    assert (t.palabras, t.paginas) == (3881, 13)
+
+
+def test_un_fallo_anonimizado_entrega_la_version_anonimizada(monkeypatch):
+    """Cuando el tribunal anonimizó el fallo, lo publicado es la otra columna. Entregar la
+    primera devolvería el marcador `ANONIMIZADO` como si fuera el texto."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(
+        _con_texto("ANONIMIZADO", anonimizada=1, anon="Santiago, a catorce. NOMBRE SUPRIMIDO.")
+    )
+    t = c.texto(rol=34546, anio=2025)
+    assert t.anonimizada is True
+    assert t.fuente == "texto_sentencia_anon"
+    assert "SUPRIMIDO" in t.texto
+
+
+def test_pedir_el_texto_de_una_sentencia_reservada_no_devuelve_vacio(monkeypatch):
+    """`ocultas` mayor que cero significa que existe y no se publica. Devolver una cadena
+    vacía se leería como una sentencia sin contenido."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 1
+    c = _con_respuesta(json.dumps(d))
+    with pytest.raises(PlataformaRechaza, match="reservada"):
+        c.texto(rol=34546, anio=2025)
+
+
+def test_pedir_el_texto_de_una_sentencia_inexistente_se_distingue_de_una_reservada(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 0
+    c = _con_respuesta(json.dumps(d))
+    with pytest.raises(EstructuraInesperada, match="reservada"):
+        c.texto(rol=34546, anio=2025)
+
+
+def test_una_sentencia_sin_el_campo_de_texto_se_levanta(monkeypatch):
+    """Devolver una cadena vacía se leería como una sentencia sin contenido, y una sentencia
+    sin contenido no existe: si el campo falta, el buscador cambió."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto(""))
+    with pytest.raises(EstructuraInesperada, match="texto_sentencia"):
+        c.texto(rol=34546, anio=2025)
+
+
+def test_el_rol_de_laborales_no_lleva_la_letra_del_tipo_de_causa():
+    """Medido: pedir el rol 364 del año 2020 devuelve `O-364-2020` aunque lo buscado sea
+    `T-364-2020`. El campo del buscador no separa los tipos.
+
+    Se fija acá porque es un falso positivo silencioso: una respuesta con el mismo número
+    parece confirmar la cita y puede ser otra causa. Si alguien decide filtrar por tipo, este
+    test es donde se documenta que el buscador no lo hace por él.
+    """
+    assert BUSCADORES["laborales"].campos["rol"] == "rol_era_sup_s"
+    fuente = (Path(__file__).parents[1] / "src" / "mcp_pjud" / "juris.py").read_text(
+        encoding="utf-8"
+    )
+    assert "NO lleva la letra del tipo de causa" in fuente, (
+        "se borró la advertencia que registra que el rol de laborales no distingue tipos"
+    )
+
+
+# -- ocultas no significa lo mismo en todos los buscadores ------------------------
+
+
+def test_ocultas_viene_en_nulo_donde_el_numero_cuenta_el_corpus():
+    """Medido: en `laborales`, `numFound_sf` da 269.264 tanto para un rol que existe como para
+    uno imposible, o sea es el tamaño del índice y no la consulta.
+
+    Informar 269.256 ocultas para una consulta que encontró 8 haría ver cada resultado como
+    una fracción de un universo oculto que no existe. Un campo que miente es peor que un campo
+    ausente, así que viene en nulo.
+    """
+    assert BUSCADORES["suprema"].coincidencias_por_consulta is True
+    assert BUSCADORES["laborales"].coincidencias_por_consulta is False
+
+    d = json.loads(CITA)
+    d["condition_pub_sf"]["numFound_sf"] = 269264
+    cuerpo = json.dumps(d)
+
+    en_suprema = parse_sentencias(cuerpo, "suprema")
+    assert en_suprema.coincidencias == 269264
+    assert en_suprema.ocultas == 269263
+
+    en_laborales = parse_sentencias(cuerpo, "laborales")
+    assert en_laborales.coincidencias is None, "no se informa lo que no está medido"
+    assert en_laborales.ocultas is None, "nulo no es cero: es 'acá no se puede saber'"
+
+
+def test_pedir_el_texto_donde_no_se_puede_saber_lo_dice(monkeypatch):
+    """Sin resultados en `laborales` no prueba que la sentencia no exista, porque ahí no se
+    puede distinguir de una reservada. El error tiene que decirlo en vez de afirmar."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    c = _con_respuesta(json.dumps(d))
+    c._buscador_de_la_sesion = "laborales"
+    with pytest.raises(EstructuraInesperada, match="no prueba que"):
+        c.texto(rol=364, anio=2020, buscador="laborales")

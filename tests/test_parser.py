@@ -9,9 +9,11 @@ from datetime import date, time
 from pathlib import Path
 
 import pytest
+from lxml import html as H
 
 from mcp_pjud.parser import (
     COMPETENCIAS,
+    Competencia,
     EstructuraInesperada,
     actuaciones_receptor,
     parse_cuadernos,
@@ -279,9 +281,14 @@ def test_una_fila_con_control_ilegible_se_levanta():
 
 def test_leer_la_historia_de_una_competencia_sin_panel_verificado_se_levanta():
     """El guardia existía y era inalcanzable: `actuaciones_receptor` no reenviaba la
-    competencia, así que el parser siempre miraba `historiaCiv`."""
+    competencia, así que el parser siempre miraba `historiaCiv`.
+
+    Se usa `laboral`, que no tiene historia mapeada. Antes se usaba `cobranza` y dejó de
+    servir cuando cobranza pasó a tenerla: un test cuyo caso de prueba desaparece porque el
+    código mejoró es un test que hay que reapuntar, no borrar.
+    """
     with pytest.raises(EstructuraInesperada, match="No está verificado"):
-        actuaciones_receptor("<html></html>", "", "cobranza")
+        actuaciones_receptor("<html></html>", "", "laboral")
 
 
 def test_las_columnas_de_cada_competencia_son_las_que_declara_el_sitio():
@@ -353,3 +360,61 @@ def test_leer_un_listado_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():
     # Y al revés no alcanza: laboral tiene menos celdas de las que cobranza declara.
     with pytest.raises(EstructuraInesperada, match="celdas"):
         parse_resultados(LABORAL, "cobranza")
+
+
+def test_no_se_puede_declarar_el_panel_de_historia_sin_sus_columnas():
+    """Las tres cosas viajan juntas en `Historia` a propósito.
+
+    Antes el sufijo del panel estaba en la tabla y las columnas seguían clavadas a civil, así
+    que poner `panel="Cob"` habría corrido las filas de cobranza por el mapa de nueve columnas
+    de civil: `Estado Firma` en `foja`, la georreferencia leída de otra celda. Lo único que lo
+    impedía era que civil exige el encabezado `georref.`, que cobranza no trae, o sea una
+    protección accidental. Ahora es imposible por construcción.
+    """
+    # Se comprueba sobre la forma del tipo y no llamándolo mal: `ty` caza la llamada inválida
+    # antes de que se ejecute, así que un test que la escriba rompe el chequeo de tipos.
+    assert "panel" not in Competencia._fields, (
+        "volvió a existir un campo `panel` suelto, que se puede declarar sin las columnas"
+    )
+    assert "historia" in Competencia._fields
+
+    # Y la de civil declara las tres.
+    civil = COMPETENCIAS["civil"].historia
+    assert civil is not None
+    assert civil.panel == "Civ"
+    assert "georref" in civil.columnas
+    assert "georref." in civil.encabezados
+
+
+def test_la_georreferencia_se_lee_de_la_columna_que_declara_la_competencia():
+    """Quedó una posición fija de civil donde debía ir el mapa de la competencia.
+
+    En una tabla con las columnas en otro orden, `georreferenciado` habría salido de la celda
+    equivocada sin que nada reviente, y en una tabla más corta habría dado `IndexError`. Es el
+    campo cuya ausencia puede ser jurídicamente relevante (art. 9 inc. 3 Ley 20.886), así que
+    leerlo de otra columna es de los errores peores que puede tener este parser.
+    """
+    from mcp_pjud.parser import _fila_a_actuacion
+
+    # Un orden invertido respecto de civil: georref primero, folio al final.
+    invertido = (
+        "georref",
+        "foja",
+        "fec_tramite",
+        "desc_tramite",
+        "tramite",
+        "etapa",
+        "anexo",
+        "doc",
+        "folio",
+    )
+    celdas = H.fromstring(
+        "<tr>"
+        '<td><a href="#">geo</a></td><td>0</td><td>31/03/2026 (27/03/2026)</td>'
+        "<td>EMBARGO</td><td>Actuación Receptor</td><td>Apremio</td><td></td><td></td>"
+        "<td>12</td></tr>"
+    ).xpath("./td")
+
+    a = _fila_a_actuacion(celdas, "", invertido)
+    assert a.folio == "12", "el folio salió de la columna equivocada"
+    assert a.georreferenciado is True, "la georreferencia se leyó de una celda que no es la suya"

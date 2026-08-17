@@ -31,13 +31,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from datetime import date
+from typing import NamedTuple
 
 import httpx
 from pydantic import BaseModel, Field
 
 from .client import INTERVALO_MINIMO, Transporte
-from .parser import EstructuraInesperada
+from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
@@ -45,7 +47,118 @@ BASE = "https://juris.pjud.cl"
 #: buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones), así que exponer los otros sin medirlos devolvería campos vacíos en vez de
 #: un error, que es la falla que este proyecto existe para no cometer.
-BUSCADORES = {"suprema": "Corte_Suprema"}
+
+
+class Buscador(NamedTuple):
+    """Cómo leer las sentencias de un buscador.
+
+    Mismo criterio que `parser.COMPETENCIAS`: los diez buscadores comparten el endpoint, el
+    contrato de la petición y la forma de la respuesta Solr. Lo único que difiere son los
+    nombres de los campos, así que esto es una tabla y no diez parsers.
+
+    `campos` mapea nombre del modelo a campo Solr. Los que no aparecen quedan vacíos, salvo
+    los indispensables para identificar una cita, que se exigen.
+    """
+
+    ruta: str
+    campos: Mapping[str, str]
+    #: Si `condition_pub_sf.numFound_sf` cuenta la consulta o el corpus entero.
+    #:
+    #: Medido, y difiere entre buscadores. En Suprema es por consulta: un rol que existe da
+    #: 2 y 2, uno imposible da 0 y 0. En Laborales es el corpus: 269.264 en los dos casos,
+    #: incluida una consulta sin resultados. Ahí la diferencia contra lo visible no es
+    #: "coincidencias reservadas" sino el tamaño del índice, y presentarla como ocultas haría
+    #: ver cada resultado como una fracción de un universo oculto que no existe.
+    #:
+    #: Cuando es falso, `ocultas` viene en nulo en vez de traer un número sin significado. Un
+    #: campo que miente es peor que un campo ausente.
+    coincidencias_por_consulta: bool
+
+
+#: Campos que toda sentencia tiene que traer: son los que identifican la cita. Sin ellos se
+#: entregaría una sentencia que no dice a qué sentencia corresponde.
+INDISPENSABLES = ("rol", "fecha_sentencia")
+
+#: Los campos salen de `parametros_buscador`, que cada página del buscador declara. Confirman
+#: la premisa del diseño: Apelaciones identifica sus sentencias con `rol_era_ape_s` y Laborales
+#: con `rol_era_sup_s`, así que un cliente que asumiera los campos de Suprema devolvería el rol
+#: vacío en Apelaciones sin que nada reviente.
+BUSCADORES: Mapping[str, Buscador] = {
+    "suprema": Buscador(
+        "Corte_Suprema",
+        {
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "sala": "gls_sala_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "corte_origen": "gls_corte_s",
+            "rol_corte_apelaciones": "rol_era_ape_s",
+            "redactor": "gls_redactor_s",
+            "ministros": "sent__gls_int_firma_sup_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        coincidencias_por_consulta=True,
+    ),
+    "apelaciones": Buscador(
+        "Corte_de_Apelaciones",
+        {
+            # Es el campo que cambia respecto de Suprema, y el que justifica esta tabla.
+            "rol": "rol_era_ape_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "sala": "gls_sala_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "corte_origen": "gls_corte_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Sin medir: los cuatro intentos de verificarlo murieron por timeout. Se asume que no
+        # es por consulta, que es la opción conservadora: mejor no informar ocultas que
+        # informar una cifra que puede ser el corpus.
+        coincidencias_por_consulta=False,
+    ),
+    "laborales": Buscador(
+        "Laborales",
+        {
+            # Medido: el rol que este buscador publica NO lleva la letra del tipo de causa.
+            # Pedir el rol 364 del año 2020 devolvió `O-364-2020` cuando lo buscado era
+            # `T-364-2020`: son causas distintas y el filtro no las separa. Quien verifique una
+            # cita laboral por rol y año tiene que comparar el caratulado, porque una respuesta
+            # con el mismo número no prueba que sea la misma causa.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            # Acá el origen es un juzgado y no una corte, así que la etiqueta cambia de
+            # significado aunque el campo del modelo sea el mismo.
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido: 269.264 tanto para un rol que existe como para uno imposible, o sea es el
+        # corpus y no la consulta.
+        coincidencias_por_consulta=False,
+    ),
+}
+
+#: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir
+#: sesión y no se hardcodean; esto queda como referencia de lo medido el 17 de agosto de 2026.
+IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")
@@ -98,6 +211,40 @@ class Sentencia(BaseModel):
     )
     anonimizada: bool = Field(description="Si el texto publicado viene anonimizado.")
     url: str = Field(description="Enlace permanente a la sentencia en el buscador.")
+    palabras: int | None = Field(
+        default=None, description="Extensión del fallo en palabras, según el buscador."
+    )
+    paginas: int | None = Field(default=None, description="Extensión en páginas.")
+    texto_preview: str = Field(
+        default="",
+        description="Primeras líneas del fallo, tal como el buscador las entrega para la "
+        "lista de resultados. Sirve para decidir si vale pedir el texto completo, que es dos "
+        "órdenes de magnitud más grande.",
+    )
+
+
+class TextoSentencia(BaseModel):
+    """El texto completo de una sentencia.
+
+    Va en un modelo aparte y se pide de una en una a propósito: una sentencia de trece
+    páginas son unos veinticinco mil caracteres, así que devolver diez con la búsqueda serían
+    doscientos cincuenta mil. El costo no es sólo de tamaño: el texto trae nombres y cédulas
+    de las personas que fueron parte, y pedirlo tiene que ser una decisión explícita y no el
+    efecto colateral de una búsqueda.
+    """
+
+    rol: str
+    anonimizada: bool = Field(
+        description="Si lo que se entrega es la versión anonimizada. Cuando es verdadero, los "
+        "datos de las personas naturales vienen suprimidos por el propio tribunal."
+    )
+    fuente: str = Field(
+        description="Cuál de los dos campos del buscador se entregó: `texto_sentencia` o "
+        "`texto_sentencia_anon`. Se dice para que quien lo lea sepa qué está leyendo."
+    )
+    palabras: int | None = None
+    paginas: int | None = None
+    texto: str
 
 
 class ResultadoJurisprudencia(BaseModel):
@@ -109,14 +256,18 @@ class ResultadoJurisprudencia(BaseModel):
 
     sentencias: list[Sentencia]
     visibles: int = Field(description="Cuántas coincidencias son visibles para esta consulta.")
-    coincidencias: int = Field(
+    coincidencias: int | None = Field(
         description="Cuántas coincidencias declara el buscador ANTES de aplicar el filtro de "
-        "condición de publicación. No es el tamaño del índice: es el universo del que sale "
-        "esta búsqueda."
+        "condición de publicación. Nulo cuando ese número, en este buscador, cuenta el corpus "
+        "entero y no la consulta: informarlo entonces sería dar por medido algo que no lo es."
     )
-    ocultas: int = Field(
+    ocultas: int | None = Field(
         description="Coincidencias que existen y NO se entregan. Si es mayor que cero, la "
-        "lista es un subconjunto: no se puede afirmar que no exista lo que no aparece."
+        "lista es un subconjunto: no se puede afirmar que no exista lo que no aparece.\n\n"
+        "NULO significa que en este buscador no se puede saber, porque el número que la "
+        "plataforma entrega cuenta el índice completo. Nulo NO significa cero: significa que "
+        "la pregunta no tiene respuesta acá, y un resultado sin coincidencias puede igual "
+        "corresponder a algo reservado."
     )
     condiciones_de_publicacion: dict[str, int] = Field(
         description="Desglose de TODAS las coincidencias por condición de publicación, "
@@ -143,7 +294,7 @@ def _lista(valor: str | None) -> list[str]:
     return [p.strip() for p in (valor or "").split(",") if p.strip()]
 
 
-def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
+def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurisprudencia:
     """Convierte la respuesta del buscador en el modelo. Sin red: se prueba offline.
 
     Levanta `EstructuraInesperada` en vez de devolver una lista vacía, por la misma razón
@@ -183,7 +334,9 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
             "permite saber cuántas coincidencias quedaron fuera. Sin ese dato la lista no "
             "se puede presentar como completa."
         )
-    coincidencias = int(condicion["numFound_sf"])
+    # Sólo se informa cuando está medido que cuenta la consulta. Ver `Buscador`.
+    por_consulta = BUSCADORES[buscador.lower()].coincidencias_por_consulta
+    coincidencias = int(condicion["numFound_sf"]) if por_consulta else None
 
     # `counts` viene como lista plana [etiqueta, cantidad, etiqueta, cantidad, ...] y es la
     # partición COMPLETA: sus valores suman `numFound_sf`, no la diferencia con lo visible.
@@ -196,11 +349,13 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         if int(crudo[i + 1]) > 0
     }
 
+    campos = BUSCADORES[buscador.lower()].campos
+
     # El rol y la fecha son lo que identifica una cita. Si el buscador los renombra, una
     # `Sentencia` con `rol=""` llegaría al usuario como una cita verificada que no dice a qué
     # sentencia corresponde, en una herramienta cuyo propósito es verificar citas.
     for i, d in enumerate(respuesta["docs"], 1):
-        faltantes = [c for c in ("rol_era_sup_s", "fec_sentencia_sup_dt") if not d.get(c)]
+        faltantes = [campos[c] for c in INDISPENSABLES if not d.get(campos[c])]
         if faltantes:
             raise EstructuraInesperada(
                 f"La sentencia {i} de la respuesta no trae {faltantes}, que es lo que la "
@@ -208,21 +363,27 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
                 "una cita que no se puede verificar."
             )
 
+    def leer(d: dict, nombre: str) -> str:
+        return str(d.get(campos.get(nombre, ""), "") or "")
+
     sentencias = [
         Sentencia(
-            rol=d["rol_era_sup_s"],
-            caratulado=d.get("caratulado_s", ""),
-            fecha_sentencia=_fecha(d.get("fec_sentencia_sup_dt")),
-            sala=d.get("gls_sala_sup_s", ""),
-            tipo_recurso=d.get("gls_tip_recurso_sup_s", ""),
-            resultado_recurso=d.get("resultado_recurso_sup_s", ""),
-            corte_origen=d.get("gls_corte_s", ""),
-            rol_corte_apelaciones=d.get("rol_era_ape_s", ""),
-            redactor=d.get("gls_redactor_s", ""),
-            ministros=_lista(d.get("sent__gls_int_firma_sup_s")),
-            condicion_publicacion=d.get("gls_condicion_publicacion_s", ""),
-            anonimizada=bool(d.get("sit_fallo_anonimizado_i", 0)),
-            url=d.get("url_acceso_sentencia", ""),
+            rol=leer(d, "rol"),
+            caratulado=leer(d, "caratulado"),
+            fecha_sentencia=_fecha(leer(d, "fecha_sentencia")),
+            sala=leer(d, "sala"),
+            tipo_recurso=leer(d, "tipo_recurso"),
+            resultado_recurso=leer(d, "resultado_recurso"),
+            corte_origen=leer(d, "corte_origen"),
+            rol_corte_apelaciones=leer(d, "rol_corte_apelaciones"),
+            redactor=leer(d, "redactor"),
+            ministros=_lista(leer(d, "ministros")),
+            condicion_publicacion=leer(d, "condicion_publicacion"),
+            anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
+            url=leer(d, "url"),
+            palabras=d.get("sent__word_count_i"),
+            paginas=d.get("sent__npages_i"),
+            texto_preview=leer(d, "texto_preview"),
         )
         for d in respuesta["docs"]
     ]
@@ -231,7 +392,7 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         sentencias=sentencias,
         visibles=visibles,
         coincidencias=coincidencias,
-        ocultas=max(0, coincidencias - visibles),
+        ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
         condiciones_de_publicacion=condiciones,
     )
 
@@ -249,18 +410,28 @@ class JurisClient(Transporte):
         super().__init__(contacto, intervalo)
         self._token: str | None = None
         self._id_buscador: str | None = None
+        #: Qué buscador abrió la sesión. Sin esto, reutilizar el cliente para otro buscador
+        #: se saltaba `abrir_sesion` porque el token ya existía, y el POST viajaba con el
+        #: `id_buscador` del primero mientras el referer y el parser usaban el segundo: o
+        #: resultados de la fuente equivocada, o un error de estructura. Cuando había un solo
+        #: buscador expuesto era inofensivo; deja de serlo con el segundo.
+        self._buscador_de_la_sesion: str | None = None
+        #: Cuerpo de la última respuesta. Lo guarda para que `texto` pueda releer el campo
+        #: del fallo completo sin repetir la petición.
+        self._ultima_respuesta: str | None = None
 
     def __enter__(self) -> JurisClient:
         return self
 
     def abrir_sesion(self, buscador: str = "suprema") -> None:
+        buscador = buscador.lower()
         if buscador not in BUSCADORES:
             raise ValueError(
                 f"Buscador '{buscador}' no verificado. Disponible: "
                 f"{', '.join(sorted(BUSCADORES))}. Los demás declaran otros campos y "
                 "devolverían datos vacíos en vez de un error."
             )
-        html = self._req("GET", f"{BASE}/busqueda?{BUSCADORES[buscador]}").text
+        html = self._req("GET", f"{BASE}/busqueda?{BUSCADORES[buscador].ruta}").text
 
         token = _TOKEN.search(html)
         ident = _ID_BUSCADOR.search(html)
@@ -271,6 +442,7 @@ class JurisClient(Transporte):
                 "resultados vacíos indistinguibles de 'no hay jurisprudencia'."
             )
         self._token, self._id_buscador = token.group(1), ident.group(1)
+        self._buscador_de_la_sesion = buscador
 
     def buscar(
         self,
@@ -284,6 +456,7 @@ class JurisClient(Transporte):
         hasta: str = "",
         filas: int = 10,
         orden: str = "recientes",
+        buscador: str = "suprema",
     ) -> ResultadoJurisprudencia:
         """Busca sentencias. Sin ningún criterio devolvería el índice entero, y eso no es
         una búsqueda: es un volcado."""
@@ -312,10 +485,14 @@ class JurisClient(Transporte):
                 "Hay que dar al menos un criterio: rol y año, texto, o un rango de fechas."
             )
 
-        if not self._token:
-            self.abrir_sesion()
+        if buscador.lower() not in BUSCADORES:
+            raise ValueError(
+                f"Buscador {buscador!r} no verificado. Disponible: {', '.join(sorted(BUSCADORES))}."
+            )
+        if not self._token or self._buscador_de_la_sesion != buscador.lower():
+            self.abrir_sesion(buscador)
 
-        r = self._req(
+        self._ultima_respuesta = self._req(
             "POST",
             f"{BASE}/busqueda/buscar_sentencias",
             files={
@@ -329,10 +506,66 @@ class JurisClient(Transporte):
             },
             headers={
                 "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{BASE}/busqueda?{BUSCADORES['suprema']}",
+                "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
+        ).text
+        return parse_sentencias(self._ultima_respuesta, buscador)
+
+    def texto(self, *, rol: int, anio: int, buscador: str = "suprema") -> TextoSentencia:
+        """El texto completo de una sentencia, de una en una.
+
+        Se resuelve con la misma búsqueda por rol y año: el buscador ya devuelve el texto en
+        la respuesta del listado, así que no hace falta una petición aparte. Lo que cambia
+        respecto de `buscar` es qué se entrega, no cuántas veces se consulta.
+
+        Cuando el fallo está anonimizado, lo publicado es la versión con los datos de las
+        personas naturales suprimidos por el propio tribunal, y se dice cuál de los dos
+        campos se entregó.
+        """
+        r = self.buscar(rol=rol, anio=anio, filas=1, buscador=buscador)
+        if not r.sentencias:
+            if r.ocultas:
+                raise PlataformaRechaza(
+                    f"La sentencia {rol}-{anio} existe en el índice pero no se entrega a una "
+                    f"consulta anónima: {r.ocultas} coincidencia(s) reservada(s). No es que no "
+                    "exista, es que no se publica."
+                )
+            if r.ocultas is None:
+                raise EstructuraInesperada(
+                    f"No aparece ninguna sentencia {rol}-{anio} en el buscador de {buscador}, "
+                    "y en este buscador NO se puede saber si existe reservada: el número que "
+                    "la plataforma entrega cuenta el índice completo. O sea esto no prueba que "
+                    "la sentencia no exista."
+                )
+            raise EstructuraInesperada(
+                f"No hay ninguna sentencia {rol}-{anio} en el buscador de {buscador}, ni "
+                "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
+            )
+
+        # El texto viene en la misma respuesta del listado, así que no hace falta otra
+        # petición: se relee el cuerpo que `buscar` acaba de traer. `Sentencia` no lo lleva a
+        # propósito, para que una búsqueda no arrastre veinticinco mil caracteres por fila.
+        campos = BUSCADORES[buscador.lower()].campos
+        docs = json.loads(self._ultima_respuesta or "{}").get("response", {}).get("docs", [])
+        crudo = docs[0] if docs else {}
+        s = r.sentencias[0]
+        anon = s.anonimizada
+        clave = campos["texto_anonimizado"] if anon else campos["texto"]
+        texto = str(crudo.get(clave, "") or "")
+        if not texto:
+            raise EstructuraInesperada(
+                f"La sentencia {rol}-{anio} llegó sin el campo {clave!r}, que es donde el "
+                "buscador publica su texto. Devolver una cadena vacía se leería como una "
+                "sentencia sin contenido."
+            )
+        return TextoSentencia(
+            rol=s.rol,
+            anonimizada=anon,
+            fuente=clave,
+            palabras=s.palabras,
+            paginas=s.paginas,
+            texto=texto,
         )
-        return parse_sentencias(r.text)
 
     def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
         """El buscador responde JSON. Un cuerpo con verificación en vez de resultados es un

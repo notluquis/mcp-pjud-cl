@@ -95,6 +95,25 @@ Exige el dígito verificador y el tribunal.
 ```{include} _generado/buscar_causa_por_rut_juridica.md
 ```
 
+## `buscar_causa_por_fecha`
+
+Causas ingresadas en un rango de fechas.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `desde` | str | Fecha inicial, DD/MM/AAAA |
+| `hasta` | str | Fecha final, DD/MM/AAAA |
+| `tribunal` | int | Obligatorio: la plataforma lo exige |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+| `paginas` | int | Tope de páginas a recorrer |
+
+Es la cuarta búsqueda que la plataforma ofrece y responde una pregunta que las otras tres no:
+qué ingresó contra alguien en un período, sabiendo el tribunal pero no el rol.
+
+Un solo día en un solo tribunal puede devolver decenas de causas, así que conviene acotar el
+rango antes de subir el tope de páginas: cada página son 100 resultados y una petición.
+
 ## `obtener_actuaciones_receptor`
 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
@@ -160,12 +179,31 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `excluir` | str, opcional | Palabras que no deben aparecer |
 | `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
 | `filas` | int | Cuántas traer, de 1 a 250 |
+| `buscador` | str | `suprema`, `apelaciones` o `laborales` |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
 búsqueda.
 
 :::{warning}
-El resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
+**`ocultas` sólo tiene significado en `suprema`, y está medido.**
+
+| Buscador | Rol que existe | Rol imposible | Qué cuenta |
+|---|---|---|---|
+| `suprema` | 2 y 2 | 0 y 0 | la consulta |
+| `laborales` | 8 y **269.264** | 0 y **269.264** | el índice completo |
+
+En `laborales` el número que la plataforma entrega es el tamaño del corpus, así que la
+diferencia contra lo visible no son coincidencias reservadas. Informar 269.256 ocultas para una
+consulta que encontró 8 haría ver cada resultado como una fracción de un universo oculto que no
+existe, así que ahí `ocultas` y `coincidencias` vienen en **nulo**.
+
+**Nulo no es cero.** Cero significa "no hay nada reservado"; nulo significa "en este buscador no
+se puede saber", y entonces un resultado vacío puede igual corresponder a algo reservado.
+`apelaciones` está en nulo por precaución: los cuatro intentos de medirlo murieron por timeout.
+:::
+
+:::{warning}
+En `suprema`, el resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
 anónima. Medido el 16 de agosto de 2026 sin filtros, el buscador declaraba **1.223.925**
 coincidencias y entregaba **300.005**.
 
@@ -197,11 +235,61 @@ No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero 
 serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
 quien lo necesite entra.
 
-Sólo el buscador de **Corte Suprema** está verificado. Cada uno de los otros nueve declara sus
-propios campos, así que exponerlos sin medirlos devolvería campos vacíos en vez de un error.
+Están verificados tres de los diez buscadores: **suprema**, **apelaciones** y **laborales**.
+Se eligen con el parámetro `buscador`.
+
+Cada uno declara sus propios campos, y ésa es la razón de que esto sea una tabla y no un
+parser por buscador: Corte Suprema identifica sus sentencias con `rol_era_sup_s` y Apelaciones
+con `rol_era_ape_s`, así que un cliente que asumiera los campos del primero devolvería el rol
+vacío en el segundo sin que nada reviente. En **laborales** el origen es un juzgado y no una
+corte, así que `corte_origen` trae el juzgado.
+
+Los siete restantes se rechazan en vez de adivinar sus campos.
+
+:::{warning}
+En **laborales** el rol que el buscador publica **no lleva la letra del tipo de causa**. Medido:
+pedir el rol 364 del año 2020 devuelve `O-364-2020` aunque lo buscado sea `T-364-2020`, que es
+otra causa. Una respuesta con el mismo número **no prueba** que sea la misma causa: hay que
+comparar el caratulado.
+
+Es el falso positivo simétrico del que motivó el proyecto. Acá no es que falte un dato: es que
+sobra uno que parece el correcto.
+:::
 
 ```{include} _generado/buscar_jurisprudencia.md
 ```
+
+## `obtener_texto_sentencia`
+
+El texto completo de una sentencia, de una en una.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `rol` | int | Rol de la sentencia, sin el año |
+| `anio` | int | Año del rol |
+| `buscador` | str | `suprema`, `apelaciones` o `laborales` |
+
+Está separado de la búsqueda a propósito, y la razón es de tamaño: **una sentencia de trece
+páginas son unos 25.000 caracteres**, medido. Devolver diez con cada búsqueda serían 250.000.
+La búsqueda entrega `texto_preview`, más la extensión en palabras y páginas, que suele bastar
+para decidir si vale pedir el resto.
+
+:::{warning}
+El texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado
+también sus cédulas.
+
+`anonimizada` dice si lo entregado es la versión con los datos suprimidos por el propio
+tribunal, y `fuente` dice cuál de los dos campos del buscador se leyó (`texto_sentencia` o
+`texto_sentencia_anon`). Se informan las dos cosas para que quien lea sepa qué está leyendo.
+:::
+
+### Campos de la respuesta
+
+`rol`, `anonimizada`, `fuente`, `palabras`, `paginas` y `texto`.
+
+Si la sentencia existe en el índice pero está reservada para consultas anónimas, se levanta
+`PlataformaRechaza` con el número de coincidencias reservadas, en vez de devolver un texto
+vacío. Distinguir "existe y no se publica" de "no existe" es el punto.
 
 ## Errores
 

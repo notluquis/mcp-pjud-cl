@@ -21,12 +21,14 @@ from .client import (
     PjudClient,
 )
 from .juris import (
+    BUSCADORES,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
     VISIBLES_MEDIDAS,
     JurisClient,
     ResultadoJurisprudencia,
+    TextoSentencia,
     miles,
 )
 from .parser import Actuacion, CausaEncontrada
@@ -206,6 +208,31 @@ def buscar_causa_por_rut_juridica(
 
 
 @mcp.tool(
+    title="Buscar causas por fecha de ingreso",
+    annotations=SOLO_LECTURA,
+)
+def buscar_causa_por_fecha(
+    desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
+    hasta: Annotated[str, Field(description="Fecha final del rango, DD/MM/AAAA.")],
+    tribunal: Annotated[int, Field(description="Código del tribunal. La plataforma lo exige acá.")],
+    competencia: Competencia = "civil",
+    corte: Corte = None,
+    paginas: Paginas = PAGINAS_MAXIMAS,
+) -> list[CausaEncontrada]:
+    """Causas ingresadas en un rango de fechas.
+
+    Existía en el cliente y no estaba expuesta: es la cuarta búsqueda que la plataforma
+    ofrece, y sin ella no hay forma de responder "qué ingresó contra esta empresa esta
+    semana" sabiendo el tribunal pero no el rol.
+
+    Exige tribunal, igual que la plataforma. Un solo día en un solo tribunal puede devolver
+    decenas de causas, así que conviene acotar el rango antes de subir el tope de páginas.
+    """
+    with _cliente() as c:
+        return c.buscar_por_fecha(desde, hasta, competencia, tribunal, corte, paginas)
+
+
+@mcp.tool(
     title="Actuaciones del receptor",
     annotations=SOLO_LECTURA,
 )
@@ -245,8 +272,16 @@ def buscar_jurisprudencia(
     filas: Annotated[
         int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
     ] = 10,
+    buscador: Annotated[
+        str,
+        Field(
+            description=f"Cuál de los buscadores de fallos consultar. Verificados: "
+            f"{', '.join(sorted(BUSCADORES))}. En `laborales` el origen es un juzgado y no "
+            "una corte."
+        ),
+    ] = "suprema",
 ) -> ResultadoJurisprudencia:
-    """Busca sentencias de la Corte Suprema en el Buscador Unificado de Fallos.
+    """Busca sentencias en el Buscador Unificado de Fallos.
 
     Sirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve
     la sentencia con su caratulado, sala, fecha y enlace permanente.
@@ -264,7 +299,34 @@ def buscar_jurisprudencia(
             desde=desde,
             hasta=hasta,
             filas=filas,
+            buscador=buscador,
         )
+
+
+@mcp.tool(
+    title="Texto completo de una sentencia",
+    annotations=SOLO_LECTURA,
+)
+def obtener_texto_sentencia(
+    rol: Annotated[int, Field(description="Rol de la sentencia, sin el año.", ge=1)],
+    anio: Annotated[int, Field(description="Año del rol.", ge=1900, le=2100)],
+    buscador: Annotated[
+        str,
+        Field(description=f"Uno de: {', '.join(sorted(BUSCADORES))}."),
+    ] = "suprema",
+) -> TextoSentencia:
+    """El texto completo de una sentencia, de una en una.
+
+    Se pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son
+    unos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en
+    palabras y páginas, que suele bastar para decidir si vale pedir el resto.
+
+    El texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado
+    también sus cédulas. `anonimizada` y `fuente` dicen qué versión se entregó. No reproducir
+    datos de personas naturales más allá de lo que la respuesta al usuario necesite.
+    """
+    with JurisClient(_contacto()) as c:
+        return c.texto(rol=rol, anio=anio, buscador=buscador)
 
 
 def main() -> None:

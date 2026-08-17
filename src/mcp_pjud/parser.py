@@ -28,17 +28,69 @@ from pydantic import BaseModel, Field
 # Marcador de que una fila de Historia es una actuación del ministro de fe.
 TRAMITE_RECEPTOR = "actuación receptor"
 
-COLUMNAS = [
-    "folio",
-    "doc",
-    "anexo",
-    "etapa",
-    "tramite",
-    "desc_tramite",
-    "fec_tramite",
-    "foja",
-    "georref",
-]
+
+class Historia(NamedTuple):
+    """Cómo leer la tabla de Historia de una competencia.
+
+    Las tres cosas viajan juntas a propósito. Antes el sufijo del panel estaba en la tabla y
+    las columnas seguían clavadas a civil, así que poner `panel="Cob"` habría corrido las
+    filas de cobranza por el mapa de nueve columnas de civil: `Estado Firma` habría caído en
+    `foja` y la georreferencia se habría leído de la celda equivocada. Lo único que lo
+    impedía era que civil exige el encabezado `georref.`, que cobranza no trae, o sea una
+    protección accidental. Con esto no se puede declarar el panel sin declarar sus columnas.
+    """
+
+    #: Sufijo del identificador del panel: `Civ` da `historiaCiv`.
+    panel: str
+    #: Orden de las celdas en cada fila.
+    columnas: tuple[str, ...]
+    #: Encabezados que se exigen. Su ausencia significa que la estructura cambió.
+    encabezados: tuple[str, ...]
+
+
+#: La de cobranza, medida pidiendo un detalle real el 17 de agosto de 2026.
+#:
+#: La diferencia con civil no es que le falten columnas: reemplaza `Foja` por `Estado Firma`
+#: y la pone ANTES de `Fec. Trámite`. Leerla con el mapa de civil no da error, da algo peor:
+#: `fec_tramite` sale de la celda de `Estado Firma`, cuyo valor es "Firmado", así que no se
+#: parsea ninguna fecha y `fecha_diligencia` queda en `None`. Un plazo que sí corrió se
+#: informaría como no informado.
+HISTORIA_COBRANZA = Historia(
+    panel="Cob",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "etapa",
+        "tramite",
+        "desc_tramite",
+        "estado_firma",
+        "fec_tramite",
+        "georref",
+    ),
+    encabezados=("folio", "desc. trámite", "estado firma", "fec. trámite", "georref."),
+)
+
+#: La de civil, medida sobre respuestas reales.
+HISTORIA_CIVIL = Historia(
+    panel="Civ",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "etapa",
+        "tramite",
+        "desc_tramite",
+        "fec_tramite",
+        "foja",
+        "georref",
+    ),
+    encabezados=("folio", "desc. trámite", "fec. trámite", "georref."),
+)
+
+#: Columnas de la tabla de Historia en civil. Se conserva el nombre porque hay tests y
+#: comentarios que lo referencian; la fuente única es `HISTORIA_CIVIL.columnas`.
+COLUMNAS = HISTORIA_CIVIL.columnas
 
 # La plataforma devuelve sus avisos de validación como una llamada a swal() dentro de un
 # <script>, con HTTP 200. Ej: swal("","Por favor ingresar Rol para la búsqueda","warning")
@@ -97,7 +149,16 @@ class Actuacion(BaseModel):
     cuaderno: str = Field(
         default="", description="Cuaderno al que pertenece la actuación. Ej: '0 - Principal'."
     )
-    foja: str
+    foja: str | None = Field(
+        default=None,
+        description="Foja del expediente. La publica civil; cobranza no la trae, y ahí es "
+        "ausente y no vacía.",
+    )
+    estado_firma: str | None = Field(
+        default=None,
+        description="Estado de firma del trámite. La publica cobranza en lugar de la foja; "
+        "civil no la trae.",
+    )
     georreferenciado: bool = Field(
         description="Si la actuación tiene registro georreferenciado (art. 9 inc. 3 "
         "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
@@ -129,13 +190,13 @@ def parse_historia(
 ) -> list[Actuacion]:
     """Extrae todas las filas de la pestaña Historia del detalle de causa."""
     spec = COMPETENCIAS[competencia.lower()]
-    if spec.panel is None:
+    if spec.historia is None:
         raise EstructuraInesperada(
             f"No está verificado cómo se llama el panel de historia en {competencia}. "
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    panel = f"historia{spec.panel}"
+    panel = f"historia{spec.historia.panel}"
 
     doc = html.fromstring(html_detalle)
     # Los comentarios traen copias del texto de las celdas; sin esto se duplican.
@@ -153,7 +214,7 @@ def parse_historia(
         raise EstructuraInesperada(f"El panel {panel!r} no contiene ninguna tabla.")
 
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    for esperado in ("folio", "desc. trámite", "fec. trámite", "georref."):
+    for esperado in spec.historia.encabezados:
         if not any(esperado in h for h in encabezados):
             raise EstructuraInesperada(
                 f"Falta la columna {esperado!r} en Historia. Encabezados: {encabezados}"
@@ -162,9 +223,9 @@ def parse_historia(
     actuaciones = []
     for fila in tablas[0].xpath(".//tr"):
         celdas = _celdas(fila)
-        if len(celdas) < len(COLUMNAS):
+        if len(celdas) < len(spec.historia.columnas):
             continue  # fila de encabezado o de paginación
-        actuaciones.append(_fila_a_actuacion(celdas, cuaderno))
+        actuaciones.append(_fila_a_actuacion(celdas, cuaderno, spec.historia.columnas))
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el
@@ -183,8 +244,10 @@ def parse_historia(
     return actuaciones
 
 
-def _fila_a_actuacion(celdas: list, cuaderno: str = "") -> Actuacion:
-    txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(COLUMNAS)}
+def _fila_a_actuacion(
+    celdas: list, cuaderno: str = "", columnas: tuple[str, ...] = HISTORIA_CIVIL.columnas
+) -> Actuacion:
+    txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
 
     # "22/06/2026 (18/06/2026)": la primera es el registro, la de paréntesis la diligencia.
     registro = diligencia = None
@@ -219,10 +282,11 @@ def _fila_a_actuacion(celdas: list, cuaderno: str = "") -> Actuacion:
         fecha_registro=registro,
         discrepancia_fechas=discrepancia,
         cuaderno=cuaderno,
-        foja=txt["foja"],
+        foja=txt.get("foja"),
+        estado_firma=txt.get("estado_firma"),
         # La celda trae un enlace a geoReferencia() cuando hay registro; si no, va vacía.
-        georreferenciado=bool(celdas[COLUMNAS.index("georref")].xpath(".//a")),
-        tiene_documento=bool(celdas[COLUMNAS.index("doc")].xpath(".//form | .//a")),
+        georreferenciado=bool(celdas[columnas.index("georref")].xpath(".//a")),
+        tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
     )
 
 
@@ -305,9 +369,9 @@ class Competencia(NamedTuple):
 
     codigo: int
     columnas: Mapping[str, int]
-    #: Sufijo de los paneles del detalle: `historiaCiv`, `historiaCob`. `None` mientras no se
-    #: haya visto una respuesta real, y en ese caso el detalle se rechaza en vez de adivinar.
-    panel: str | None
+    #: Cómo leer su tabla de Historia, o `None` mientras no se haya medido una respuesta
+    #: real. En ese caso el detalle se rechaza en vez de adivinar.
+    historia: Historia | None
     #: Si la competencia expone actuaciones de ministro de fe. Sólo existen `receptorCivil` y
     #: `receptorCobranza` en todo el sitio, así que en las demás la pregunta que da sentido a
     #: este proyecto no tiene respuesta y conviene decirlo en vez de devolver una lista vacía.
@@ -326,7 +390,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
-        panel=None,
+        historia=None,
         receptor=False,
     ),
     "apelaciones": Competencia(
@@ -339,36 +403,31 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
-        panel=None,
+        historia=None,
         receptor=False,
     ),
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
-        panel="Civ",
+        historia=HISTORIA_CIVIL,
         receptor=True,
     ),
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
-        panel=None,
+        historia=None,
         receptor=False,
     ),
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
-        panel=None,
+        historia=None,
         receptor=False,
     ),
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
-        # `historiaCob` existe, verificado pidiendo un detalle real, y junto a él vienen
-        # `diligenciaCob`, `litigantesCob`, `notificacionCob`, `deudaCob` y `liquidacionCob`.
-        # Aun así queda en None: su tabla de historia trae `Estado Firma` y NO trae `Foja` ni
-        # `Georref.`, o sea las columnas son otras. Leerla con el mapa de civil fallaría, y
-        # ese fallo es el correcto hasta tener el orden real de sus encabezados.
-        panel=None,
+        historia=HISTORIA_COBRANZA,
         receptor=True,
     ),
 }

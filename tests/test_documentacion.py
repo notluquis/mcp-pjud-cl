@@ -297,6 +297,43 @@ def test_el_guardia_de_rut_reconoce_las_dos_formas_de_escribirlo(escrito):
 # -- citas legales ----------------------------------------------------------------
 
 
+#: Fila de la tabla de normas: número de ley, enlace a la Biblioteca del Congreso Nacional,
+#: y el resto de la fila. Se exige la forma completa y no la sola mención, porque la primera
+#: versión de este guardia daba por conocida cualquier aparición del número antes de cierto
+#: encabezado: un número suelto ahí bastaba para colar una cita sin fuente.
+_FILA_DE_NORMA = re.compile(
+    r"^\|\s*\[Ley\s+(\d{1,2}\.\d{3})\]\((https://www\.bcn\.cl/[^)]+)\)\s*\|.*\|.*\|\s*$",
+    re.M,
+)
+
+
+def _tabla_de_normas() -> dict[str, str]:
+    texto = _texto(RAIZ / "docs" / "cumplimiento.md")
+    seccion = texto.split("## Normas que este proyecto cita")[1].split("\n## ")[0]
+    return dict(_FILA_DE_NORMA.findall(seccion))
+
+
+def test_la_tabla_de_normas_trae_enlace_y_fecha():
+    """Lo que el guardia promete tiene que ser lo que comprueba.
+
+    Su primera versión decía exigir enlace y fecha y no miraba ninguno de los dos: quitarlos
+    dejaba la suite verde. Acá se exige la fila completa, con el enlace a la Biblioteca del
+    Congreso Nacional, y que la sección declare cuándo se revisó.
+    """
+    tabla = _tabla_de_normas()
+    assert tabla, "La tabla de normas de cumplimiento.md no tiene ninguna fila con enlace"
+
+    seccion = (
+        _texto(RAIZ / "docs" / "cumplimiento.md")
+        .split("## Normas que este proyecto cita")[1]
+        .split("\n## ")[0]
+    )
+    assert re.search(r"[Vv]erificado el \d{1,2} de \w+ de \d{4}", seccion), (
+        "La tabla de normas no dice cuándo se revisó, que es lo único que permite a quien "
+        "lea juzgar si sigue vigente"
+    )
+
+
 def test_toda_ley_citada_esta_en_la_tabla_de_normas():
     """La suite no consulta la red por diseño, así que una cita legal no se puede verificar
     en CI. Lo que sí se puede exigir es que exista una sola entrada con su enlace y su fecha,
@@ -307,8 +344,7 @@ def test_toda_ley_citada_esta_en_la_tabla_de_normas():
     un dato mal parseado.
     """
     ley = re.compile(r"Ley\s+(?:N°\s*)?(\d{1,2}\.\d{3})")
-    tabla = _texto(RAIZ / "docs" / "cumplimiento.md").split("## El antecedente")[0]
-    conocidas = set(ley.findall(tabla))
+    conocidas = set(_tabla_de_normas())
     assert conocidas, "La tabla de normas de cumplimiento.md quedó vacía"
 
     huerfanas = sorted(
@@ -323,3 +359,33 @@ def test_toda_ley_citada_esta_en_la_tabla_de_normas():
         f"Leyes citadas que no están en la tabla de docs/cumplimiento.md: {huerfanas}. "
         "Se agrega ahí, con enlace a la Biblioteca del Congreso Nacional y fecha de revisión."
     )
+
+
+def test_ninguna_pagina_declara_un_numero_de_leyes_distinto_del_real():
+    """Decir "las seis leyes que este proyecto cita" junto a una tabla de cinco es una
+    contradicción que un lector encuentra y un test de números de ley no ve. Se evita
+    exigiendo que nadie escriba la cuenta a mano: si hay que decirla, se dice el número.
+    """
+    escritos = {
+        "una": 1,
+        "dos": 2,
+        "tres": 3,
+        "cuatro": 4,
+        "cinco": 5,
+        "seis": 6,
+        "siete": 7,
+        "ocho": 8,
+        "nueve": 9,
+        "diez": 10,
+    }
+    real = len(_tabla_de_normas())
+    alternativas = "|".join(escritos)
+    patron = re.compile(rf"\b(?:las\s+)?({alternativas}|\d+)\s+leyes\b", re.I)
+
+    malos = [
+        f"{p.relative_to(RAIZ)}: '{m}' pero la tabla tiene {real}"
+        for p in PROSA
+        for m in patron.findall(_texto(p))
+        if escritos.get(m.lower(), int(m) if m.isdigit() else -1) != real
+    ]
+    assert not malos, f"Cuentas de leyes que no coinciden con la tabla: {malos}"

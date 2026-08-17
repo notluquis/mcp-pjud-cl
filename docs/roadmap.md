@@ -605,8 +605,8 @@ que la modifican; verificado el 17 de agosto de 2026.
 Ese "verificado" es lo único que se puede ofrecer acá, y conviene decir por qué: la suite no
 consulta la red por diseño, así que **ninguna cita legal de esta documentación puede
 comprobarse en CI**. Lo que sí se comprueba es que venga con enlace y con la fecha en que
-alguien la miró, que es lo que permite a quien lea juzgar si sigue vigente. Vale para las seis
-leyes que este proyecto cita.
+alguien la miró, que es lo que permite a quien lea juzgar si sigue vigente. Vale para todas las
+leyes que este proyecto cita, que están en una tabla única en la página de cumplimiento.
 
 #### Del mismo catálogo: qué más sirve y qué se rechaza
 

@@ -16,6 +16,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.3.0] - 2026-08-17
+
+Sube la minor y no la patch porque hay herramienta nueva y campos nuevos en el modelo de
+actuación, no sólo correcciones. Trae además el arreglo de un defecto que la 0.2.1 publicó:
+en Cortes de Apelaciones se abría la primera causa del listado, y ahí el número de rol no
+identifica una causa.
+
 ### Corregido
 
 - **Se abría siempre la primera causa del listado, y en Cortes de Apelaciones eso entrega la
@@ -511,7 +518,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.2.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.3.0
 [0.2.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.1
 [0.2.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.0
 [0.1.0]: https://github.com/notluquis/mcp-pjud-cl/commit/506b5b7

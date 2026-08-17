@@ -907,14 +907,20 @@ def test_la_busqueda_por_rol_no_exige_acotar_en_ninguna_competencia(monkeypatch)
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     for competencia in COMPETENCIAS:
         c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+        motivo = ""
         try:
             c.buscar_por_rit("C", 1156, 2026, competencia=competencia, paginas=None)
         except ValueError as e:
-            assert "exige tribunal" not in str(e) and "exige corte" not in str(e), (
-                f"la búsqueda por rol en {competencia} no debe exigir acotación: {e}"
-            )
+            motivo = str(e)
         except EstructuraInesperada:
             # La fila sintética no calza con todas las competencias, y da lo mismo: la
             # pregunta es si la petición salió.
             pass
+
+        assert "exige tribunal" not in motivo, (
+            f"la búsqueda por rol en {competencia} no debe exigir tribunal: {motivo}"
+        )
+        assert "exige corte" not in motivo, (
+            f"la búsqueda por rol en {competencia} no debe exigir corte: {motivo}"
+        )
         assert enviados, f"en {competencia} la búsqueda por rol se rechazó antes de consultar"

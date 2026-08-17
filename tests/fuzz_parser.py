@@ -16,6 +16,7 @@ plazo, y eso es peor que no devolver ninguna.
 
 import re
 import sys
+from datetime import date
 
 import atheris
 
@@ -23,6 +24,25 @@ with atheris.instrument_imports():
     from mcp_pjud.parser import EstructuraInesperada, parse_historia
 
 _FECHA = re.compile(r"\d{2}/\d{2}/\d{4}")
+
+
+def _fechas_de(texto: str) -> set[date]:
+    """Fechas presentes en el texto, como objetos `date`.
+
+    Se comparan objetos y no cadenas a propósito. Reconstruir la fecha en formato chileno
+    para compararla contra el texto original da falsos positivos en dos casos que Atheris
+    genera: el año 1 se reconstruye como `01/01/1` y no `01/01/0001`, y `\d` de Python
+    matchea dígitos Unicode, que `int()` acepta pero cuya reconstrucción sale en ASCII.
+    """
+    encontradas = set()
+    for hallazgo in _FECHA.findall(texto):
+        d, m, a = hallazgo.split("/")
+        try:
+            encontradas.add(date(int(a), int(m), int(d)))
+        except ValueError:
+            # 31/02 y similares: el parser tampoco las acepta.
+            continue
+    return encontradas
 
 PLANTILLA = """<div id="historiaCiv"><table>
   <thead><tr><th>Folio</th><th>Doc.</th><th>Anexo</th><th>Etapa</th>
@@ -52,15 +72,14 @@ def prueba(datos: bytes) -> None:
         # correcto y no un hallazgo.
         return
 
-    presentes = set(_FECHA.findall(desc)) | set(_FECHA.findall(fec))
+    presentes = _fechas_de(desc) | _fechas_de(fec)
     for a in actuaciones:
         for campo, valor in (("diligencia", a.fecha_diligencia), ("registro", a.fecha_registro)):
             if valor is None:
                 continue
-            chilena = f"{valor.day:02d}/{valor.month:02d}/{valor.year}"
-            assert chilena in presentes, (
-                f"El parser inventó una fecha de {campo}: {chilena} no aparece en la entrada. "
-                f"desc={desc!r} fec={fec!r}"
+            assert valor in presentes, (
+                f"El parser inventó una fecha de {campo}: {valor.isoformat()} no aparece en "
+                f"la entrada. desc={desc!r} fec={fec!r}"
             )
 
 

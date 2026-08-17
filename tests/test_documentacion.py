@@ -1166,3 +1166,30 @@ def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
     )
     for nombre in BUSCADORES:
         assert f"**{nombre}**" in referencia, f"la referencia no nombra el buscador {nombre!r}"
+
+
+def test_el_esquema_dice_donde_el_rol_lleva_libro(expuestas):
+    """La referencia lo explicaba y el esquema seguía diciendo sólo "Letra del rol".
+
+    Lo que el modelo lee es el esquema, no esta página. Con la descripción vieja mandaba una
+    letra o un valor vacío en apelaciones, donde el número de rol se repite entre libros, y la
+    desambiguación fallaba con un error que parece de la plataforma.
+
+    Se deriva de `parser.COMPETENCIAS` para que agregar una competencia con libro no dependa de
+    que alguien se acuerde de dos lugares.
+    """
+    con_libro = [n for n in MODULOS if COMPETENCIAS[n].rol_con_libro]
+    assert con_libro, "si ninguna lleva libro, este guardia hay que retirarlo"
+
+    descripciones = [
+        p.get("description", "")
+        for h in expuestas.values()
+        for nombre, p in (h.input_schema or {}).get("properties", {}).items()
+        if nombre == "tipo"
+    ]
+    assert descripciones, "ninguna herramienta declara el parámetro `tipo`"
+    for descripcion in descripciones:
+        for competencia in con_libro:
+            assert competencia in descripcion, (
+                f"el esquema del parámetro `tipo` no dice que en {competencia} va el libro"
+            )

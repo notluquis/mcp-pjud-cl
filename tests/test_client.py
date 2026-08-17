@@ -303,7 +303,9 @@ def test_recorre_todos_los_cuadernos(monkeypatch):
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    acts = c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    # El listado es la fixture real de civil, cuyo rol es E-468-2026: se pide ése, porque
+    # ahora la causa que se abre tiene que corresponder a la pedida.
+    acts = c.actuaciones_receptor("E", 468, 2026, tribunal=162)
     cuadernos = {a.cuaderno for a in acts}
     assert cuadernos == {"1 - Principal", "2 - Apremio Ejecutivo Obligación de Dar"}
     assert any("EMBARGO" in a.desc_tramite for a in acts)
@@ -681,6 +683,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
     inventada = Competencia(
         99,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        rol_con_libro=False,
         campos_rit={},
         historia=None,
         receptor=True,
@@ -1044,9 +1047,9 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
         return c, pedidos
 
     c, pedidos_receptor = cliente()
-    del_receptor = c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    del_receptor = c.actuaciones_receptor("C", 9001, 2026, tribunal=162)
     c, pedidos_historia = cliente()
-    de_historia = c.historia_causa("C", 1156, 2026, tribunal=162)
+    de_historia = c.historia_causa("C", 9001, 2026, tribunal=162)
 
     assert pedidos_receptor == pedidos_historia, (
         "las dos lecturas tienen que hacer exactamente las mismas peticiones"
@@ -1122,3 +1125,25 @@ def test_el_mensaje_de_ambiguedad_nombra_los_libros_encontrados(monkeypatch):
         c.historia_causa("", 9999, 2019, competencia="apelaciones", corte=46)
     for libro in ("Exhorto", "Civil", "Protección"):
         assert libro in str(fallo.value), f"el mensaje no nombra el libro {libro!r}"
+
+
+def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):
+    """El atajo de devolver la única coincidencia dejaba el riesgo intacto.
+
+    `buscar_por_rit` no filtra apelaciones por `tipo`, así que pedir un libro y recibir una
+    sola fila de OTRO libro es un caso real: con el atajo se abría igual, sin comparar nada, y
+    entregaba la historia de una causa distinta. Que haya un solo resultado no prueba que sea
+    el pedido.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    completo = (FIXTURES / "busqueda_rit_apelaciones.html").read_text(encoding="utf-8")
+    # Se recorta el listado a la fila del Exhorto: una sola coincidencia, de otro libro.
+    corte = completo.index("Civil-9999-2019")
+    solo_exhorto = (
+        completo[: completo.rindex("<tr", 0, corte)]
+        + completo[completo.index("Total de registros") - 40 :]
+    )
+
+    c, _ = _capturando(solo_exhorto)
+    with pytest.raises(ValueError, match="ambigüedad"):
+        c.historia_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)

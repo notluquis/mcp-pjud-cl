@@ -500,6 +500,17 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Si el rol que el listado publica lleva el LIBRO adelante en vez de una letra.
+    #:
+    #: Medido: apelaciones devuelve `Exhorto-1504-2019` y penal `Ordinaria-528-2017`, mientras
+    #: civil, laboral y cobranza usan una letra y suprema no lleva prefijo. Donde va el libro,
+    #: el número de rol NO identifica una causa: el mismo número y año existen en varios libros
+    #: a la vez, con historias distintas.
+    #:
+    #: Está en la tabla porque el esquema MCP tiene que decirlo. La referencia lo explicaba y
+    #: el esquema seguía anunciando "Letra del rol", y lo que el modelo lee es el esquema: con
+    #: eso mandaba una letra, la desambiguación fallaba y el error parecía de la plataforma.
+    rol_con_libro: bool
     #: Campos que la búsqueda POR ROL exige de más en esta competencia, con su valor.
     #:
     #: Existen porque el formulario del sitio es uno solo para las seis y cada competencia
@@ -539,6 +550,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
+        rol_con_libro=False,
         campos_rit={"conTipoBus": "0"},
         historia=HISTORIA_SUPREMA,
         receptor=False,
@@ -555,6 +567,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
+        rol_con_libro=True,
         campos_rit={"conTipoBusApe": "0"},
         historia=HISTORIA_APELACIONES,
         receptor=False,
@@ -564,6 +577,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_CIVIL,
         receptor=True,
@@ -573,6 +587,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_LABORAL,
         receptor=False,
@@ -582,6 +597,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        rol_con_libro=True,
         campos_rit={"radio-groupPenal": "1"},
         historia=None,
         receptor=False,
@@ -591,6 +607,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_COBRANZA,
         receptor=True,

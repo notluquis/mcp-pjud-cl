@@ -618,3 +618,35 @@ def test_leer_suprema_con_el_mapa_de_apelaciones_no_pasa_en_silencio():
         parse_historia(DETALLE_SUPREMA, "", "apelaciones")
     with pytest.raises(EstructuraInesperada, match="movimientosSup"):
         parse_historia(DETALLE_APELACIONES, "", "suprema")
+
+
+def test_la_marca_de_rol_con_libro_calza_con_lo_que_publican_las_fixtures():
+    """La bandera dice si el rol lleva el libro adelante, y eso es medible.
+
+    Sin esto, el guardia del esquema MCP sólo comprueba que las competencias marcadas se
+    nombren: marcar apelaciones como si no llevara libro lo dejaba verde, y con eso el modelo
+    volvería a mandar una letra donde el número de rol se repite entre libros.
+
+    Se compara contra los listados reales, que es de donde salió la bandera.
+    """
+    listados = {
+        "civil": "busqueda_rit_civil",
+        "laboral": "busqueda_rit_laboral",
+        "cobranza": "busqueda_rit_cobranza",
+        "suprema": "busqueda_rit_suprema",
+        "apelaciones": "busqueda_rit_apelaciones",
+    }
+    for competencia, archivo in listados.items():
+        html_ = (FIXTURES / f"{archivo}.html").read_text(encoding="utf-8")
+        causas = parse_resultados(html_, competencia)
+        assert causas, f"la fixture de {competencia} no trae causas"
+
+        # Un libro es un prefijo de más de una letra antes del primer guion: `Exhorto-1504-2019`
+        # contra `C-1156-2026`, que es la letra del tipo de causa.
+        prefijos = [(c.rol or "").split("-")[0] for c in causas]
+        con_libro = all(len(p) > 1 and not p.isdigit() for p in prefijos)
+
+        assert con_libro == COMPETENCIAS[competencia].rol_con_libro, (
+            f"{competencia} declara rol_con_libro="
+            f"{COMPETENCIAS[competencia].rol_con_libro} y sus roles reales son {prefijos}"
+        )

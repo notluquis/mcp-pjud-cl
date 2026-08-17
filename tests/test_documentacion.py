@@ -241,10 +241,10 @@ def _secciones_de_herramientas() -> dict[str, str]:
 
 
 def test_la_documentacion_no_anuncia_buscadores_que_el_codigo_rechaza():
-    assert set(BUSCADORES) == {"suprema"}, (
-        "Se amplió BUSCADORES: hay que actualizar la referencia y el roadmap"
-    )
-    assert "Sólo el buscador de **Corte Suprema** está verificado" in HERRAMIENTAS
+    for verificado in BUSCADORES:
+        assert verificado in HERRAMIENTAS.lower(), (
+            f"El buscador {verificado!r} está verificado y la referencia no lo nombra"
+        )
 
 
 def test_el_ejecutable_que_documentan_las_guias_es_el_que_declara_el_paquete():

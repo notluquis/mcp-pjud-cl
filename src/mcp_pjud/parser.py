@@ -48,6 +48,29 @@ class Historia(NamedTuple):
     encabezados: tuple[str, ...]
 
 
+#: La de cobranza, medida pidiendo un detalle real el 17 de agosto de 2026.
+#:
+#: La diferencia con civil no es que le falten columnas: reemplaza `Foja` por `Estado Firma`
+#: y la pone ANTES de `Fec. Trámite`. Leerla con el mapa de civil no da error, da algo peor:
+#: `fec_tramite` sale de la celda de `Estado Firma`, cuyo valor es "Firmado", así que no se
+#: parsea ninguna fecha y `fecha_diligencia` queda en `None`. Un plazo que sí corrió se
+#: informaría como no informado.
+HISTORIA_COBRANZA = Historia(
+    panel="Cob",
+    columnas=(
+        "folio",
+        "doc",
+        "anexo",
+        "etapa",
+        "tramite",
+        "desc_tramite",
+        "estado_firma",
+        "fec_tramite",
+        "georref",
+    ),
+    encabezados=("folio", "desc. trámite", "estado firma", "fec. trámite", "georref."),
+)
+
 #: La de civil, medida sobre respuestas reales.
 HISTORIA_CIVIL = Historia(
     panel="Civ",
@@ -126,7 +149,16 @@ class Actuacion(BaseModel):
     cuaderno: str = Field(
         default="", description="Cuaderno al que pertenece la actuación. Ej: '0 - Principal'."
     )
-    foja: str
+    foja: str | None = Field(
+        default=None,
+        description="Foja del expediente. La publica civil; cobranza no la trae, y ahí es "
+        "ausente y no vacía.",
+    )
+    estado_firma: str | None = Field(
+        default=None,
+        description="Estado de firma del trámite. La publica cobranza en lugar de la foja; "
+        "civil no la trae.",
+    )
     georreferenciado: bool = Field(
         description="Si la actuación tiene registro georreferenciado (art. 9 inc. 3 "
         "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
@@ -250,7 +282,8 @@ def _fila_a_actuacion(
         fecha_registro=registro,
         discrepancia_fechas=discrepancia,
         cuaderno=cuaderno,
-        foja=txt["foja"],
+        foja=txt.get("foja"),
+        estado_firma=txt.get("estado_firma"),
         # La celda trae un enlace a geoReferencia() cuando hay registro; si no, va vacía.
         georreferenciado=bool(celdas[columnas.index("georref")].xpath(".//a")),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
@@ -394,12 +427,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
-        # `historiaCob` existe, verificado pidiendo un detalle real, y junto a él vienen
-        # `diligenciaCob`, `litigantesCob`, `notificacionCob`, `deudaCob` y `liquidacionCob`.
-        # Aun así queda en None: su tabla de historia trae `Estado Firma` y NO trae `Foja` ni
-        # `Georref.`, o sea las columnas son otras. Leerla con el mapa de civil fallaría, y
-        # ese fallo es el correcto hasta tener el orden real de sus encabezados.
-        historia=None,
+        historia=HISTORIA_COBRANZA,
         receptor=True,
     ),
 }

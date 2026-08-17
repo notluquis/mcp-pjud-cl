@@ -160,6 +160,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `excluir` | str, opcional | Palabras que no deben aparecer |
 | `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
 | `filas` | int | Cuántas traer, de 1 a 250 |
+| `buscador` | str | `suprema`, `apelaciones` o `laborales` |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
 búsqueda.
@@ -197,8 +198,16 @@ No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero 
 serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
 quien lo necesite entra.
 
-Sólo el buscador de **Corte Suprema** está verificado. Cada uno de los otros nueve declara sus
-propios campos, así que exponerlos sin medirlos devolvería campos vacíos en vez de un error.
+Están verificados tres de los diez buscadores: **suprema**, **apelaciones** y **laborales**.
+Se eligen con el parámetro `buscador`.
+
+Cada uno declara sus propios campos, y ésa es la razón de que esto sea una tabla y no un
+parser por buscador: Corte Suprema identifica sus sentencias con `rol_era_sup_s` y Apelaciones
+con `rol_era_ape_s`, así que un cliente que asumiera los campos del primero devolvería el rol
+vacío en el segundo sin que nada reviente. En **laborales** el origen es un juzgado y no una
+corte, así que `corte_origen` trae el juzgado.
+
+Los siete restantes se rechazan en vez de adivinar sus campos.
 
 ```{include} _generado/buscar_jurisprudencia.md
 ```

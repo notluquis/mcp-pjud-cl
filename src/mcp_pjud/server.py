@@ -21,6 +21,7 @@ from .client import (
     PjudClient,
 )
 from .juris import (
+    BUSCADORES,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
@@ -245,8 +246,16 @@ def buscar_jurisprudencia(
     filas: Annotated[
         int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
     ] = 10,
+    buscador: Annotated[
+        str,
+        Field(
+            description=f"Cuál de los buscadores de fallos consultar. Verificados: "
+            f"{', '.join(sorted(BUSCADORES))}. En `laborales` el origen es un juzgado y no "
+            "una corte."
+        ),
+    ] = "suprema",
 ) -> ResultadoJurisprudencia:
-    """Busca sentencias de la Corte Suprema en el Buscador Unificado de Fallos.
+    """Busca sentencias en el Buscador Unificado de Fallos.
 
     Sirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve
     la sentencia con su caratulado, sala, fecha y enlace permanente.
@@ -264,6 +273,7 @@ def buscar_jurisprudencia(
             desde=desde,
             hasta=hasta,
             filas=filas,
+            buscador=buscador,
         )
 
 

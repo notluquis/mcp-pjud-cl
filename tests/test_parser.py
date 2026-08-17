@@ -281,9 +281,14 @@ def test_una_fila_con_control_ilegible_se_levanta():
 
 def test_leer_la_historia_de_una_competencia_sin_panel_verificado_se_levanta():
     """El guardia existía y era inalcanzable: `actuaciones_receptor` no reenviaba la
-    competencia, así que el parser siempre miraba `historiaCiv`."""
+    competencia, así que el parser siempre miraba `historiaCiv`.
+
+    Se usa `laboral`, que no tiene historia mapeada. Antes se usaba `cobranza` y dejó de
+    servir cuando cobranza pasó a tenerla: un test cuyo caso de prueba desaparece porque el
+    código mejoró es un test que hay que reapuntar, no borrar.
+    """
     with pytest.raises(EstructuraInesperada, match="No está verificado"):
-        actuaciones_receptor("<html></html>", "", "cobranza")
+        actuaciones_receptor("<html></html>", "", "laboral")
 
 
 def test_las_columnas_de_cada_competencia_son_las_que_declara_el_sitio():

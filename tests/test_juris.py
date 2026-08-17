@@ -6,7 +6,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from mcp_pjud.juris import BUSCADORES, JurisClient, parse_sentencias
+from mcp_pjud.juris import (
+    BUSCADORES,
+    INDISPENSABLES,
+    JurisClient,
+    parse_sentencias,
+)
 from mcp_pjud.parser import EstructuraInesperada
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -113,10 +118,34 @@ def test_buscar_sin_criterios_se_rechaza_antes_de_consultar():
 
 def test_un_buscador_no_verificado_se_rechaza():
     """Cada buscador declara sus propios campos Solr. Exponer los no medidos devolvería
-    campos vacíos en vez de un error."""
-    assert "apelaciones" not in BUSCADORES
+    campos vacíos en vez de un error.
+
+    Se prueba con un nombre que no existe en vez de con uno de los nueve pendientes: la lista
+    de verificados crece, y un test que nombre uno concreto se cae al verificarlo, que es
+    justo cuando no debería.
+    """
+    assert "compendio_extranjeria" not in BUSCADORES
     with pytest.raises(ValueError, match="no verificado"):
-        _sin_red().abrir_sesion("apelaciones")
+        _sin_red().abrir_sesion("compendio_extranjeria")
+
+
+def test_cada_buscador_declara_los_campos_indispensables():
+    """Sin rol y fecha no se puede verificar una cita, que es para lo que existe esto."""
+    for nombre, b in BUSCADORES.items():
+        for campo in INDISPENSABLES:
+            assert campo in b.campos, f"{nombre} no declara el campo {campo!r}"
+
+
+def test_apelaciones_identifica_sus_sentencias_con_otro_campo_que_suprema():
+    """Es la razón concreta por la que esto es una tabla y no un parser.
+
+    Un cliente que asumiera los campos de Suprema devolvería el rol vacío en Apelaciones sin
+    que nada reviente, o sea una cita que no dice a qué sentencia corresponde.
+    """
+    assert BUSCADORES["suprema"].campos["rol"] == "rol_era_sup_s"
+    assert BUSCADORES["apelaciones"].campos["rol"] == "rol_era_ape_s"
+    # Y en Laborales el origen es un juzgado, no una corte.
+    assert BUSCADORES["laborales"].campos["corte_origen"] == "gls_juz_s"
 
 
 def test_solo_se_envian_los_filtros_con_valor(monkeypatch):

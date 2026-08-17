@@ -68,7 +68,10 @@ class Buscador(NamedTuple):
 #: entregaría una sentencia que no dice a qué sentencia corresponde.
 INDISPENSABLES = ("rol", "fecha_sentencia")
 
-#: Sólo Corte Suprema está verificado contra el sistema real.
+#: Los campos salen de `parametros_buscador`, que cada página del buscador declara. Confirman
+#: la premisa del diseño: Apelaciones identifica sus sentencias con `rol_era_ape_s` y Laborales
+#: con `rol_era_sup_s`, así que un cliente que asumiera los campos de Suprema devolvería el rol
+#: vacío en Apelaciones sin que nada reviente.
 BUSCADORES: Mapping[str, Buscador] = {
     "suprema": Buscador(
         "Corte_Suprema",
@@ -88,7 +91,41 @@ BUSCADORES: Mapping[str, Buscador] = {
             "url": "url_acceso_sentencia",
         },
     ),
+    "apelaciones": Buscador(
+        "Corte_de_Apelaciones",
+        {
+            # Es el campo que cambia respecto de Suprema, y el que justifica esta tabla.
+            "rol": "rol_era_ape_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "sala": "gls_sala_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "corte_origen": "gls_corte_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+        },
+    ),
+    "laborales": Buscador(
+        "Laborales",
+        {
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            # Acá el origen es un juzgado y no una corte, así que la etiqueta cambia de
+            # significado aunque el campo del modelo sea el mismo.
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+        },
+    ),
 }
+
+#: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir
+#: sesión y no se hardcodean; esto queda como referencia de lo medido el 17 de agosto de 2026.
+IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")

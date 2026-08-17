@@ -786,3 +786,79 @@ def test_la_hoja_de_ruta_no_publica_el_diagnostico_que_resulto_falso():
         "la hoja de ruta tiene que nombrar el campo que de verdad bloqueaba a suprema y "
         "apelaciones, o el diagnóstico se pierde"
     )
+
+
+# -- las cifras de los ejemplos medidos -----------------------------------------
+#
+# La página de ejemplos afirma cantidades que se pueden contradecir entre sí con una edición
+# parcial: el total de citas contra el desglose, "tres causas" contra las filas de su tabla,
+# "cinco citas" contra las de la suya. Nada las ataba, y `AGENTS.md` exige que toda afirmación
+# verificable de la documentación traiga su test.
+#
+# El guardia es de consistencia interna y no contra una constante inventada. Estas cifras no
+# las usa el código: son el resultado de una verificación puntual, y darles una fuente única en
+# `src/` sería agregar una constante muerta para que un test la lea. Lo que sí protege es que
+# el desglose siga sumando y que cada cuadro tenga las filas que su prosa anuncia.
+
+EJEMPLOS = RAIZ / "docs" / "ejemplos.md"
+
+
+def _filas_de_tabla(texto: str, encabezado: str) -> list[str]:
+    """Las filas de datos de la tabla que sigue a `encabezado`, sin la fila separadora."""
+    resto = texto.split(encabezado, 1)[1]
+    filas = []
+    for linea in resto.splitlines():
+        recortada = linea.strip()
+        if not recortada.startswith("|"):
+            if filas:
+                break
+            continue
+        if set(recortada) <= set("|-: "):
+            continue
+        filas.append(recortada)
+    return filas
+
+
+def test_el_desglose_de_citas_verificadas_suma_el_total():
+    """Verificadas más no encontradas tiene que dar el conjunto completo.
+
+    El desglose ya cambió una vez: tres citas pasaron de "sin respuesta de la plataforma" a
+    verificadas al descubrir que el tope de espera era nuestro. Esa fila desapareció y el total
+    se movió. Sin este guardia, la próxima corrección deja la página diciendo dos cosas
+    distintas sobre el mismo conjunto.
+    """
+    texto = _texto(EJEMPLOS)
+    total = re.search(r"conjunto real de (\d+) citas", texto)
+    assert total, "la página ya no declara el tamaño del conjunto de citas"
+
+    filas = _filas_de_tabla(texto, "| Resultado | Cuántas |")
+    cifras = [int(m.group(1)) for f in filas if (m := re.search(r"\|\s*(\d+)\s*\|?\s*$", f))]
+    assert cifras, f"no se pudieron leer las cantidades del desglose: {filas}"
+    assert sum(cifras) == int(total.group(1)), (
+        f"el desglose suma {sum(cifras)} y el conjunto declara {total.group(1)} citas"
+    )
+
+
+def test_cada_cuadro_de_ejemplos_trae_las_filas_que_su_prosa_anuncia():
+    """Una tabla y la frase que la introduce se editan por separado, y ahí se separan.
+
+    Son las dos afirmaciones contables de la página: las causas donde se midió la brecha entre
+    diligencia y registro, y las citas de la contraparte que se auditaron.
+    """
+    texto = _texto(EJEMPLOS)
+    numeros = {"tres": 3, "cuatro": 4, "cinco": 5, "seis": 6}
+
+    causas = re.search(r"sobre (\w+) causas distintas", texto)
+    assert causas, "la página ya no dice sobre cuántas causas se midió la brecha de fechas"
+    esperadas = numeros[causas.group(1)]
+    filas = _filas_de_tabla(texto, "| Causa | Diligencia | Registro | Diferencia |")
+    assert len(filas) == esperadas, (
+        f"la prosa dice {causas.group(1)} causas y el cuadro trae {len(filas)} filas"
+    )
+
+    citas = re.search(r"(\w+) citas de un mismo informe", texto)
+    assert citas, "la página ya no dice cuántas citas de la contraparte se auditaron"
+    filas = _filas_de_tabla(texto, "| Rol | De qué es realmente |")
+    assert len(filas) == numeros[citas.group(1)], (
+        f"la prosa dice {citas.group(1)} citas y el cuadro trae {len(filas)} filas"
+    )

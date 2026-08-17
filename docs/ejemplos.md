@@ -149,12 +149,17 @@ Sobre un conjunto real de 45 citas de Corte Suprema, medido el 17 de agosto de 2
 
 | Resultado | Cuántas |
 |---|---|
-| Existen, con su caratulado y su fecha | 38 |
+| Existen, con su caratulado y su fecha | 41 |
 | No aparecen | 4 |
-| Sin respuesta de la plataforma | 3 |
 
 Y dos fechas anotadas resultaron equivocadas: una por un año y otra por un día. Ninguna de las
-38 era inventada, que era el riesgo de fondo.
+41 era inventada, que era el riesgo de fondo.
+
+Tres de esas 41 estuvieron un rato contadas como "sin respuesta de la plataforma", y no era la
+plataforma: era el tope de espera de este cliente. Respondían en 81, 102 y 39 segundos contra
+un tope de 90. Que fallaran **siempre**, en todas las corridas, se leyó como que esas consultas
+no terminaban; la consistencia venía de que la lenta siempre era la misma. Vale como advertencia
+de uso: si una consulta al buscador de fallos no vuelve, mídela antes de darla por imposible.
 
 ### `ocultas` es la diferencia entre dos cosas que se parecen
 
@@ -185,6 +190,10 @@ Caso real, cinco citas de un mismo informe invocadas para "derechos indubitados"
 
 Ninguna es un estudiante contra su institución educativa, que era la materia del caso. Eso no
 es una opinión sobre el informe: es lo que dicen los caratulados.
+
+Una sexta cita del mismo informe, invocada para el concepto de amenaza, resultó ser el rol
+3739-2007, de agosto de 2007: también una municipalidad. Estaba entre las tres que se habían
+dado por "sin respuesta".
 
 ## Cuando algo falla
 

@@ -58,6 +58,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- La nota sobre el hallazgo `Fuzzing` de Scorecard estaba mal fundada. Su documentación sí
+  acepta pruebas basadas en propiedades como fuzzing válido; lo que falta es que su detector
+  incluya Hypothesis, que es el equivalente en Python.
+- `main` exige pull request. Los commits directos quedan cerrados.
 - Las guías dejan de nombrarse por cargo ("para abogados", "para el área de informática") y
   pasan a nombrarse por tarea: uso e interpretación, e instalación y operación.
 - Los archivos de comunidad se mueven a `.github/`. En la raíz quedan los operativos: los que

@@ -157,9 +157,33 @@ Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
 | `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
 | `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
 | `SAST` | Punto ciego de Scorecard | CodeQL **sí** está activo, en el modo gestionado por GitHub. Scorecard busca `codeql-action` en los workflows o la aplicación de escaneo en pull requests fusionados, y el modo gestionado no deja ninguna de las dos huellas |
-| `Fuzzing` | No se va a implementar | Busca OSS-Fuzz o ClusterFuzzLite. Acá el equivalente útil son las pruebas basadas en propiedades con Hypothesis, que Scorecard no reconoce. Para un parser de 500 líneas en un lenguaje con memoria gestionada, montar infraestructura de fuzzing no compensa |
+| `Fuzzing` | Cubierto en el fondo, no reconocido | Ver abajo |
 | `CII-Best-Practices` | Pendiente, requiere inscripción | La insignia se obtiene llenando un formulario en bestpractices.dev. Es gratis y manual |
 
 Sobre `Code-Review`: en un proyecto de una persona no tiene arreglo técnico, pero para código
 que decide plazos procesales vale preguntarse si conviene un segundo par de ojos antes de
 tocar el parser. Queda dicho como pregunta abierta y no como casilla marcada.
+
+### Sobre `Fuzzing`
+
+La primera versión de esta nota decía que Scorecard "no reconoce" las pruebas basadas en
+propiedades. Es incorrecto, y conviene decirlo bien porque cambia la conclusión.
+
+Scorecard acepta tres señales: inclusión en [OSS-Fuzz](https://google.github.io/oss-fuzz/),
+despliegue de ClusterFuzzLite, o funciones de fuzzing definidas por el proyecto. Y en esa
+tercera categoría **sí cuenta explícitamente las librerías de pruebas basadas en propiedades**:
+QuickCheck, Hedgehog, SmallCheck y validity en Haskell, fast-check en JavaScript, proper y
+quickcheck en Erlang, FsCheck en C# y F#.
+
+O sea el enfoque que este proyecto usa es exactamente el que Scorecard considera válido. Lo
+que falta es que su detector incluya **Hypothesis**, que es el equivalente en Python y no está
+en esa lista.
+
+De modo que el hallazgo no dice "a este proyecto le falta fuzzing". Dice "Scorecard todavía no
+sabe detectar el fuzzing que este proyecto tiene".
+
+Queda pendiente evaluar OSS-Fuzz, que sí soporta Python vía Atheris y es gratuito para
+proyectos abiertos. Pero para un parser de HTML sin manejo de memoria manual, donde el modo de
+falla que importa es leer mal una fecha y no corromper memoria, las invariantes de Hypothesis
+atrapan más que un fuzzer de bytes: `test_nunca_inventa_una_fecha` verifica algo que un fuzzer
+no sabe verificar.

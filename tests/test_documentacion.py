@@ -94,7 +94,7 @@ def test_los_campos_de_completitud_estan_documentados(expuestas):
     una lista. Si sale del modelo o de la página, la herramienta se lee como si entregara
     todo, que es justo el defecto que motivó el proyecto."""
     salida = (expuestas["buscar_jurisprudencia"].output_schema or {}).get("properties", {})
-    for campo in ("visibles", "coincidencias", "ocultas", "motivos_de_reserva"):
+    for campo in ("visibles", "coincidencias", "ocultas", "condiciones_de_publicacion"):
         assert campo in salida, f"el modelo dejó de declarar `{campo}`"
         assert f"`{campo}`" in HERRAMIENTAS, f"`{campo}` no está en la referencia"
 
@@ -124,22 +124,43 @@ def test_ninguna_pagina_cita_un_intervalo_distinto_del_real():
     assert not malos, f"Se cita un intervalo distinto de '{correcto}': {malos}"
 
 
-def test_las_cifras_medidas_del_buscador_son_las_mismas_en_todas_partes():
-    """Aparecen en la directiva del servidor y en tres páginas. La directiva las interpola
-    desde el código; las páginas se escriben a mano y son las que pueden quedar viejas."""
-    for cifra in (miles(VISIBLES_MEDIDAS), miles(INDEXADAS_MEDIDAS)):
-        paginas = [p for p in PROSA if cifra in _texto(p)]
-        assert paginas, f"Ninguna página cita {cifra}: se perdió el dato al reescribir"
+#: Páginas que citan la medición del buscador. Es una lista explícita y no un barrido,
+#: porque el barrido tiene un agujero: una página con las DOS cifras viejas no contiene
+#: ninguna de las nuevas, así que "buscar quién las menciona" la deja fuera justo cuando está
+#: mal. Si una página nueva cita la medición, se agrega acá.
+PAGINAS_CON_LA_MEDICION = (
+    "docs/herramientas.md",
+    "docs/roadmap.md",
+    "CHANGELOG.md",
+)
 
-    # El error que importa: que quede la cifra vieja junto a la nueva. Se detecta buscando
-    # cualquier número con separador de miles chileno de siete dígitos que no sea el actual.
-    ajenas = {
-        f"{p.relative_to(RAIZ)}: {m}"
+
+def test_las_cifras_medidas_del_buscador_son_las_mismas_en_todas_partes():
+    """La directiva del servidor las interpola desde el código; estas páginas se escriben a
+    mano y son las que pueden quedar viejas."""
+    visibles, universo = miles(VISIBLES_MEDIDAS), miles(INDEXADAS_MEDIDAS)
+
+    viejas = [
+        ruta
+        for ruta in PAGINAS_CON_LA_MEDICION
+        if not (visibles in _texto(RAIZ / ruta) and universo in _texto(RAIZ / ruta))
+    ]
+    assert not viejas, (
+        f"Estas páginas no citan la medición vigente ({visibles} visibles de {universo} "
+        f"coincidencias declaradas): {viejas}"
+    )
+
+
+def test_ninguna_otra_pagina_cita_la_medicion_a_medias():
+    """Y si alguna otra la menciona, que la mencione entera: `300.005` sin su universo no
+    dice nada, y quien lo lea entenderá que ése es el total."""
+    visibles, universo = miles(VISIBLES_MEDIDAS), miles(INDEXADAS_MEDIDAS)
+    a_medias = [
+        str(p.relative_to(RAIZ))
         for p in PROSA
-        for m in re.findall(r"\b\d\.\d{3}\.\d{3}\b", _texto(p))
-        if m != miles(INDEXADAS_MEDIDAS)
-    }
-    assert not ajenas, f"Cifras de millones que no coinciden con la medición vigente: {ajenas}"
+        if (visibles in _texto(p)) != (universo in _texto(p))
+    ]
+    assert not a_medias, f"Páginas que citan una cifra de la medición sin la otra: {a_medias}"
 
 
 def test_la_fecha_de_la_medicion_acompana_a_las_cifras():

@@ -23,6 +23,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Verificación de una cita por rol y año | Rol y año existentes → exactamente una sentencia, con sala, fecha y enlace |
 | El buscador de fallos entrega menos de lo que indexa | 300.005 visibles de 1.223.925, medido sin filtros |
 | Su reCAPTCHA no bloquea la búsqueda | Sesión anónima sin token → 200 con resultados reales |
+| El tope real de filas por página es 250 | Se pidieron 250 y entregó 250, pese a que su configuración declara `10-20-50` |
 
 ### Verificado sólo contra fixtures
 
@@ -192,18 +193,25 @@ Una consulta anónima recibe bastante menos de lo que hay indexado. Medido el 16
 | | |
 |---|---|
 | Visibles para una consulta anónima | 300.005 |
-| Indexadas | 1.223.925 |
+| Coincidencias que declara, antes de su filtro de publicación | 1.223.925 |
 
-La diferencia no es un misterio: la propia respuesta la desglosa por condición de publicación
-(`Excluido salud` 829.079, `Anonimizadas` 20.924, `Reservado restringido` 6.677, entre otras).
+La propia respuesta desglosa **todas** las coincidencias por condición de publicación
+(`Excluido salud` 829.079, `Publicable` 232.021, `Anonimizadas` 20.924, `Reservado
+restringido` 6.677, entre otras), y ese desglose suma el total, no la diferencia. O sea
+incluye a las visibles: no dice cuáles faltan, porque el buscador no publica su regla de
+visibilidad.
 
 Lo notable es que **el sitio dejó de decirlo**. Los dos mensajes que avisaban de esa diferencia
 siguen en su JavaScript, comentados: uno agregaba "sentencias ocultas por limitaciones de
 visualización del perfil de usuario" y el otro decía "sus permisos de usuario no permiten la
 visualización de esta(s) sentencia(s)".
 
+Esa segunda cifra no es el tamaño del índice: el Poder Judicial habla públicamente de más de
+un millón y medio de sentencias, y la diferencia no está explicada. Se registra como lo que
+es, una cifra medida en una respuesta, y no como el universo.
+
 Por eso `buscar_jurisprudencia` no devuelve una lista pelada sino un resultado con `ocultas` y
-`motivos_de_reserva` como campos. Un listado que no diga cuánto falta se lee como el universo
+`condiciones_de_publicacion` como campos. Un listado que no diga cuánto falta se lee como el universo
 completo, que es el mismo defecto que el ebook de la Oficina Judicial Virtual y la razón de ser
 del proyecto entero.
 

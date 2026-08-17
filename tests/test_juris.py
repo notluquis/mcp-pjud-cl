@@ -28,11 +28,15 @@ def test_declara_cuantas_coincidencias_quedaron_ocultas():
     assert r.ocultas == 923920, "la diferencia tiene que llegar al modelo, no quedarse en el JSON"
 
 
-def test_declara_por_que_estan_ocultas():
-    """Saber cuántas faltan sin saber por qué no permite decidir si buscar por otra vía."""
+def test_desglosa_todas_las_coincidencias_por_condicion_de_publicacion():
+    """El desglose es la partición COMPLETA: suma `coincidencias`, no `ocultas`.
+
+    Presentarlo como "por qué están ocultas" haría leer las 232.021 'Publicable' como
+    retenidas, que es exactamente lo contrario de lo que son.
+    """
     r = parse_sentencias(AMPLIA)
-    assert r.motivos_de_reserva["Reservado restringido"] == 6677
-    assert r.motivos_de_reserva["Anonimizadas"] == 20924
+    assert r.condiciones_de_publicacion["Reservado restringido"] == 6677
+    assert r.condiciones_de_publicacion["Anonimizadas"] == 20924
 
 
 def test_una_cita_verificada_no_declara_ocultas():

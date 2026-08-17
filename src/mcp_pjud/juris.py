@@ -17,10 +17,14 @@ en su JavaScript, comentados::
     //       de usuario no permiten la visualización de esta(s) sentencia(s).")
 
 Medido el 16-08-2026 sobre el buscador de Corte Suprema, sin filtros: 300.005 visibles de
-1.223.925 indexadas. Un resultado que no diga eso se lee como el universo completo, que es
-el mismo defecto que motivó el resto del proyecto. Por eso la búsqueda no devuelve una
-lista pelada sino `ResultadoJurisprudencia`, donde el número de ocultas es un campo y no
-una nota al pie.
+1.223.925 coincidencias declaradas. Un resultado que no diga eso se lee como el universo
+completo, que es el mismo defecto que motivó el resto del proyecto. Por eso la búsqueda no
+devuelve una lista pelada sino `ResultadoJurisprudencia`, donde el número de ocultas es un
+campo y no una nota al pie.
+
+Cuidado con qué significa esa segunda cifra. Es lo que el buscador declara antes de aplicar
+su filtro de condición de publicación, no el tamaño del índice: el Poder Judicial habla
+públicamente de más de un millón y medio de sentencias, y esa diferencia no está explicada.
 """
 
 from __future__ import annotations
@@ -46,8 +50,12 @@ BUSCADORES = {"suprema": "Corte_Suprema"}
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")
 
-#: Filas por página que ofrece el buscador. Pedir más de lo que ofrece su propio control
-#: sería empujarlo fuera de su uso normal.
+#: Filas por página. Medido contra el sistema real: pedir 250 devuelve 250.
+#:
+#: Hay una contradicción en el propio sitio que conviene dejar anotada, porque invita a
+#: "corregir" esto a la baja: `parametros_buscador` del buscador de Corte Suprema declara
+#: `numero_resultados_pagina: "10-20-50"`, pero su desplegable ofrece hasta 250 y el servidor
+#: los entrega. Lo declarado es la configuración de la interfaz, no un límite del servidor.
 FILAS_MAXIMAS = 250
 
 ORDENES = ("recientes", "antiguos", "rol", "rel")
@@ -95,20 +103,28 @@ class Sentencia(BaseModel):
 class ResultadoJurisprudencia(BaseModel):
     """Resultado de una búsqueda, con lo que quedó fuera declarado.
 
-    `ocultas` no es una advertencia: es la diferencia entre lo que el índice tiene y lo que
-    una consulta anónima puede ver.
+    `ocultas` no es una advertencia: es la diferencia entre lo que el buscador dice que
+    coincide y lo que una consulta anónima puede ver.
     """
 
     sentencias: list[Sentencia]
     visibles: int = Field(description="Cuántas coincidencias son visibles para esta consulta.")
-    coincidencias: int = Field(description="Cuántas hay en el índice, visibles o no.")
+    coincidencias: int = Field(
+        description="Cuántas coincidencias declara el buscador ANTES de aplicar el filtro de "
+        "condición de publicación. No es el tamaño del índice: es el universo del que sale "
+        "esta búsqueda."
+    )
     ocultas: int = Field(
         description="Coincidencias que existen y NO se entregan. Si es mayor que cero, la "
         "lista es un subconjunto: no se puede afirmar que no exista lo que no aparece."
     )
-    motivos_de_reserva: dict[str, int] = Field(
-        description="Por qué están ocultas, según la condición de publicación que declara "
-        "el propio buscador. Ej: 'Anonimizadas', 'Reservado restringido'."
+    condiciones_de_publicacion: dict[str, int] = Field(
+        description="Desglose de TODAS las coincidencias por condición de publicación, "
+        "visibles incluidas. Suma `coincidencias`, no `ocultas`: la categoría 'Publicable' "
+        "son justamente las que sí se entregan. Sirve para ver de qué está hecho el universo "
+        "(anonimizadas, reservadas, excluidas de salud), no para saber cuáles faltan: el "
+        "buscador no publica la regla de visibilidad, así que no se puede decir qué "
+        "categorías componen `ocultas`."
     )
 
 
@@ -161,9 +177,12 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         )
     coincidencias = int(condicion["numFound_sf"])
 
-    # `counts` viene como lista plana [etiqueta, cantidad, etiqueta, cantidad, ...]
+    # `counts` viene como lista plana [etiqueta, cantidad, etiqueta, cantidad, ...] y es la
+    # partición COMPLETA: sus valores suman `numFound_sf`, no la diferencia con lo visible.
+    # Verificado sobre la respuesta real. Presentarlo como "por qué están ocultas" haría leer
+    # las 232.021 'Publicable' como retenidas, que es exactamente lo contrario.
     crudo = condicion.get("counts") or []
-    motivos = {
+    condiciones = {
         str(crudo[i]): int(crudo[i + 1])
         for i in range(0, len(crudo) - 1, 2)
         if int(crudo[i + 1]) > 0
@@ -193,7 +212,7 @@ def parse_sentencias(cuerpo: str) -> ResultadoJurisprudencia:
         visibles=visibles,
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles),
-        motivos_de_reserva=motivos,
+        condiciones_de_publicacion=condiciones,
     )
 
 

@@ -155,11 +155,14 @@ búsqueda.
 :::{warning}
 El resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
 anónima. Medido el 16 de agosto de 2026 sin filtros, el buscador declaraba **1.223.925**
-sentencias indexadas y entregaba **300.005**.
+coincidencias y entregaba **300.005**.
 
 Si `ocultas` es mayor que cero, la lista es un subconjunto. No se puede afirmar que algo no
-existe porque no aparezca, y `motivos_de_reserva` dice por qué falta (`Excluido salud`,
-`Anonimizadas`, `Reservado restringido`, entre otros).
+existe porque no aparezca, y `condiciones_de_publicacion` desglosa **todas** las
+coincidencias por su condición (`Excluido salud`, `Anonimizadas`, `Reservado restringido`,
+`Publicable`, entre otras). Ese desglose suma `coincidencias`, **no** `ocultas`: incluye a las
+visibles. El buscador no publica su regla de visibilidad, así que no se puede decir qué
+categorías componen las que faltan.
 
 El propio sitio dejó de mostrar ese aviso: los dos mensajes que lo decían siguen en su
 JavaScript, comentados.
@@ -168,7 +171,11 @@ JavaScript, comentados.
 ### Campos de la respuesta
 
 `sentencias`, más cuatro campos de completitud: `visibles`, `coincidencias`, `ocultas` y
-`motivos_de_reserva`.
+`condiciones_de_publicacion`.
+
+`coincidencias` es lo que el buscador declara **antes** de aplicar su filtro de condición de
+publicación. No es el tamaño del índice: el Poder Judicial habla públicamente de más de un
+millón y medio de sentencias, y esa diferencia no está explicada.
 
 Cada sentencia trae `rol`, `caratulado`, `fecha_sentencia` (ISO 8601), `sala`, `tipo_recurso`,
 `resultado_recurso`, `corte_origen`, `rol_corte_apelaciones`, `redactor`, `ministros`,
@@ -189,7 +196,8 @@ propios campos, así que exponerlos sin medirlos devolvería campos vacíos en v
 | `PlataformaRechaza` | La plataforma rechazó la consulta por sus propias reglas | El mensaje es el suyo, textual. Corregir los parámetros |
 | `ValueError` sobre campos | Faltan campos que la plataforma exige | Se detecta antes de consultar, sin gastar una petición |
 | `EstructuraInesperada` | El HTML no tiene la forma esperada | La plataforma cambió. Reportar con la plantilla correspondiente |
-| `ValueError` | Competencia no implementada, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
+| `ValueError` | Competencia o buscador no verificado, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
+| `httpx.HTTPStatusError` | La plataforma respondió 5xx | Error suyo, no de la consulta. No está envuelto en una excepción propia porque no hay nada que interpretar: se reintenta más tarde, respetando el intervalo |
 
 El SDK de MCP convierte una excepción en un resultado con `is_error: true` y el mensaje como
 contenido, así que el cliente ve el error en vez de recibir una lista vacía que parecería

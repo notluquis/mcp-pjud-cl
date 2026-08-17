@@ -23,7 +23,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
   Su resultado declara **`ocultas`**, que es cuántas coincidencias existen y no se entregan a
   una consulta anónima. Medido el 16 de agosto de 2026, sin filtros: 300.005 visibles de
-  1.223.925 indexadas. El propio sitio dejó de avisarlo (los dos mensajes siguen comentados en su JavaScript), y un listado
+  1.223.925 coincidencias declaradas. El propio sitio dejó de avisarlo (los dos mensajes siguen comentados en su JavaScript), y un listado
   que no diga cuánto falta se lee como el universo completo.
 
   Sólo el buscador de Corte Suprema está verificado: cada uno de los otros nueve declara sus

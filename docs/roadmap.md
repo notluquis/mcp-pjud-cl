@@ -183,7 +183,18 @@ De modo que el hallazgo no dice "a este proyecto le falta fuzzing". Dice "Scorec
 sabe detectar el fuzzing que este proyecto tiene".
 
 Queda pendiente evaluar OSS-Fuzz, que sí soporta Python vía Atheris y es gratuito para
-proyectos abiertos. Pero para un parser de HTML sin manejo de memoria manual, donde el modo de
-falla que importa es leer mal una fecha y no corromper memoria, las invariantes de Hypothesis
-atrapan más que un fuzzer de bytes: `test_nunca_inventa_una_fecha` verifica algo que un fuzzer
-no sabe verificar.
+proyectos abiertos.
+
+Conviene precisar en qué se diferencian, porque no es en el oráculo. Un harness de Atheris que
+ejecute el parser y afirme que toda fecha devuelta viene en la entrada detecta la misma
+infracción que `test_nunca_inventa_una_fecha`: los fuzzers no están limitados a encontrar
+corrupción de memoria, y cualquier harness puede llevar el oráculo que se le ponga.
+
+La diferencia real está en cómo se llega a la entrada que rompe. Hypothesis genera desde
+estrategias tipadas, así que produce fechas y horas bien formadas y explora el espacio que le
+interesa a este parser, y cuando falla **reduce** el caso hasta el ejemplo mínimo. Un fuzzer
+guiado por cobertura muta bytes, lo que le permite alcanzar caminos que una estrategia tipada
+quizá nunca genere, a cambio de entregar entradas menos legibles.
+
+Son complementarios. Para este parser, la generación estructurada rinde más por hora invertida,
+así que se parte por ahí. OSS-Fuzz queda como paso posterior y no como reemplazo.

@@ -57,10 +57,11 @@ requerimiento de pago y el embargo.
 ```
 src/mcp_pjud/
   server.py    Herramientas MCP, anotaciones, directiva operativa
-  client.py    Cadena HTTP, control de ritmo, detención
+  client.py    `Transporte` (ritmo, detención, bitácora) y la consulta de causas
+  juris.py     Buscador de fallos. Comparte el transporte, no la sesión
   parser.py    Extracción de tablas. Sin red: se prueba offline
 tests/
-  fixtures/    HTML real anonimizado. Ningún test consulta al Poder Judicial
+  fixtures/    Respuestas reales anonimizadas. Ningún test consulta al Poder Judicial
 docs/          Documentación publicada en Read the Docs
 ```
 
@@ -69,7 +70,8 @@ docs/          Documentación publicada en Read the Docs
 ```bash
 uv sync --all-groups
 uv run pytest              # sin red
-uv run ruff check .
+uv run ruff check . && uv run ruff format --check .
+uv run ty check            # sin chequeador de tipos pasaban firmas que reventaban
 uv run sphinx-build -b html docs docs/_build/html
 uv run zizmor .github/workflows/ .github/dependabot.yml
 uv run mutmut run          # testing de mutación, lento
@@ -112,6 +114,9 @@ No lo aceptes en su nombre.
   identificable pasa.
 - Agregar competencias sin verificarlas contra el sistema real. Sólo civil está verificada; las
   demás se rechazan a propósito en vez de adivinar sus parámetros.
-- Ampliar el alcance a `juris.pjud.cl`. Ese host rechaza nominalmente a los agentes de esta
-  clase en su robots.txt.
+- Levantar un segundo servidor MCP para jurisprudencia. Serían dos procesos con dos
+  semáforos, o sea el doble de peticiones contra la misma institución, y `ACCEPTABLE_USE.md`
+  prohíbe correr instancias en paralelo. Por eso `juris.py` comparte el transporte.
+- Agregar buscadores de `juris.pjud.cl` sin verificarlos. Cada uno declara sus propios campos
+  Solr: sólo Corte Suprema está medido.
 - Presentar la salida como información oficial del Poder Judicial.

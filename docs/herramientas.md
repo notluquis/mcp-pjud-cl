@@ -1,6 +1,6 @@
 # Referencia de herramientas
 
-Ambas están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las cinco están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real
@@ -107,6 +107,54 @@ cuaderno, porque la plataforma no direcciona el detalle por rol.
   "tiene_documento": true
 }
 ```
+
+## `buscar_jurisprudencia`
+
+Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para
+**verificar que una cita existe** antes de usarla: con `rol` y `anio` devuelve la sentencia con
+su caratulado, sala, fecha, ministros y enlace permanente.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `rol` | int, opcional | Rol ante la Corte Suprema, sin el año |
+| `anio` | int, opcional | Año del rol |
+| `todas` | str, opcional | Texto libre: deben aparecer todas estas palabras |
+| `literal` | str, opcional | Frase exacta |
+| `excluir` | str, opcional | Palabras que no deben aparecer |
+| `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
+| `filas` | int | Cuántas traer, de 1 a 250 |
+
+Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
+búsqueda.
+
+:::{warning}
+El resultado trae **`ocultas`**: cuántas coincidencias existen y no se entregan a una consulta
+anónima. Medido el 16 de agosto de 2026 sin filtros, el buscador declaraba **1.223.925**
+sentencias indexadas y entregaba **300.005**.
+
+Si `ocultas` es mayor que cero, la lista es un subconjunto. No se puede afirmar que algo no
+existe porque no aparezca, y `motivos_de_reserva` dice por qué falta (`Excluido salud`,
+`Anonimizadas`, `Reservado restringido`, entre otros).
+
+El propio sitio dejó de mostrar ese aviso: los dos mensajes que lo decían siguen en su
+JavaScript, comentados.
+:::
+
+### Campos de la respuesta
+
+`sentencias`, más cuatro campos de completitud: `visibles`, `coincidencias`, `ocultas` y
+`motivos_de_reserva`.
+
+Cada sentencia trae `rol`, `caratulado`, `fecha_sentencia` (ISO 8601), `sala`, `tipo_recurso`,
+`resultado_recurso`, `corte_origen`, `rol_corte_apelaciones`, `redactor`, `ministros`,
+`condicion_publicacion`, `anonimizada` y `url`.
+
+No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero diez sentencias
+serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
+quien lo necesite entra.
+
+Sólo el buscador de **Corte Suprema** está verificado. Cada uno de los otros nueve declara sus
+propios campos, así que exponerlos sin medirlos devolvería campos vacíos en vez de un error.
 
 ## Errores
 

@@ -119,6 +119,28 @@ def test_el_bloqueo_detiene_tambien_al_resto_del_proceso(codigo, monkeypatch):
     assert len(llamadas) == 1, "tras el bloqueo no debe salir ninguna petición más"
 
 
+def test_un_bloqueo_en_un_host_no_deja_sin_consulta_al_otro(monkeypatch):
+    """La detención es del host que bloqueó, no del proceso entero.
+
+    Si una búsqueda de jurisprudencia se topa con un bloqueo y eso dejara sin consulta de
+    causas al mismo proceso, una consulta de referencia terminaría costando un plazo que
+    nadie pudo revisar. El semáforo sí es común: el ritmo se le debe a la institución.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(req):
+        return httpx.Response(403 if "juris" in str(req.url) else 200, text="ok")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(PjudBloqueado):
+        c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
+
+    r = c._req("GET", "https://oficinajudicialvirtual.pjud.cl/consultaUnificada.php")
+    assert r.status_code == 200, "el bloqueo de juris no debe detener la consulta de causas"
+
+
 def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):
     """Si el sitio cambia y ya no se puede derivar el prefijo, detenerse.
     Consultar rutas que ya no existen produciría falsos negativos."""
@@ -195,9 +217,10 @@ def test_recorre_todos_los_cuadernos(monkeypatch):
 
 
 def test_sin_resultados_devuelve_lista_vacia_sin_reventar():
-    assert parse_resultados(
+    sin_coincidencias = (
         "<tr><td colspan='8'>No se han encontrado resultados con los datos ingresados.</td></tr>"
-    ) == []
+    )
+    assert parse_resultados(sin_coincidencias) == []
 
 
 def test_listado_irreconocible_levanta_excepcion():
@@ -349,8 +372,7 @@ def _pagina(filas: range, total: int, ultima: bool, token: str = "") -> str:
         nav = re.sub(r"paginaFecSig\('[^']+'", f"paginaFecSig('{token}'", nav)
     cuerpo = "".join(_fila(n) for n in filas)
     return (
-        f"{cuerpo}<tr><td colspan='5'>"
-        f"<div>Total de registros: <b>{total}</b></div>{nav}</td></tr>"
+        f"{cuerpo}<tr><td colspan='5'><div>Total de registros: <b>{total}</b></div>{nav}</td></tr>"
     )
 
 
@@ -400,11 +422,13 @@ def _cliente_con(paginas: list[str]) -> PjudClient:
 
 def test_recorre_las_paginas_y_acumula(monkeypatch):
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    c = _cliente_con([
-        _pagina(range(1, 4), total=7, ultima=False, token="p2"),
-        _pagina(range(4, 7), total=7, ultima=False, token="p3"),
-        _pagina(range(7, 8), total=7, ultima=True),
-    ])
+    c = _cliente_con(
+        [
+            _pagina(range(1, 4), total=7, ultima=False, token="p2"),
+            _pagina(range(4, 7), total=7, ultima=False, token="p3"),
+            _pagina(range(7, 8), total=7, ultima=True),
+        ]
+    )
     causas = c.buscar_por_rit("C", 1156, 2026)
     assert len(causas) == 7
     assert len({x.rol for x in causas}) == 7
@@ -435,7 +459,8 @@ def test_sin_total_declarado_levanta(monkeypatch):
 
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     sin_total = re.sub(
-        r"<div>Total de registros:.*?</div>", "<div>sin total</div>",
+        r"<div>Total de registros:.*?</div>",
+        "<div>sin total</div>",
         _pagina(range(1, 4), total=3, ultima=True),
     )
     c = _cliente_con([sin_total])

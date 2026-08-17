@@ -52,6 +52,8 @@ dev = [
     "mutmut>=3.2",
     "zizmor>=1.29",
     "hypothesis>=6.165.10",
+    "ty>=0.0.72",
+    "lxml-stubs>=0.5.1",
 ]
 
 [build-system]
@@ -71,7 +73,27 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+# `S` (bandit) porque el proyecto declara una postura de seguridad y conviene que la
+# revise una herramienta, no sólo la revisión humana. `DTZ` porque acá las fechas deciden
+# plazos procesales y una fecha sin zona horaria es justo el error que no se puede cometer.
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "DTZ", "RUF", "PT", "C4", "PTH"]
+
+[[tool.ty.overrides]]
+# `lxml-stubs` tipa el retorno de `.xpath()` como la unión de todo lo que XPath puede
+# devolver (float, str, bytes, lista de nodos). Es fiel a la especificación e inútil acá:
+# todas nuestras consultas devuelven nodos. Se acotan estas reglas en el parser en vez de
+# renunciar a los stubs, que sí tipan bien el resto de lxml.
+include = ["src/mcp_pjud/parser.py"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+not-iterable = "ignore"
+not-subscriptable = "ignore"
+
+[tool.ty.src]
+# Mismo motivo que en pytest y en ruff: el harness de fuzzing importa atheris, que se
+# instala a demanda y no es dependencia del proyecto.
+exclude = ["tests/fuzz_parser.py"]
 
 [tool.mutmut]
 # Se muta el parser y el cliente: ahí vive la lógica que puede costar un plazo.
@@ -81,3 +103,7 @@ tests_dir = ["tests/"]
 [tool.ruff.lint.per-file-ignores]
 # El harness de fuzzing importa atheris, que se instala a demanda y no es dependencia.
 "tests/fuzz_parser.py" = ["E402"]
+# S101 es `assert`, que en pytest es la forma de escribir un test. S106 marca literales que
+# parecen contraseñas: acá son tokens de mentira para los dobles, y las fixtures ya se
+# revisan aparte en `test_fixtures.py`.
+"tests/*" = ["S101", "S106"]

@@ -56,6 +56,14 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
+      - name: Formato
+        run: uv run ruff format --check .
+
+      # Encontró que tres de las cuatro búsquedas declaraban aceptar `paginas=None` y
+      # reventaban con TypeError, porque sólo la búsqueda por rol implementaba esa rama.
+      - name: Tipos
+        run: uv run ty check
+
       - name: Documentación
         run: uv run sphinx-build -b html docs docs/_build/html
 
@@ -88,9 +96,13 @@ jobs:
 
       # La garantía central del proyecto es que no puede escribir en los sistemas del
       # Poder Judicial. Esto lo verifica en cada cambio, en vez de confiar en la revisión.
-      - name: Buscar endpoints de ingreso de escritos
+      # Los cuatro primeros son de la Oficina Judicial Virtual. Los tres últimos son del
+      # buscador de fallos: guardar sentencias y cambiar la clave escriben en una cuenta, y
+      # compartir por correo manda correo desde la infraestructura del Poder Judicial. Que
+      # sean de lectura de jurisprudencia no los vuelve inofensivos.
+      - name: Buscar endpoints de escritura
         run: |
-          if grep -rniE 'ingresoCausas|ingresoEscrito|subirEscrito|presentarEscrito' \
+          if grep -rniE 'ingresoCausas|ingresoEscrito|subirEscrito|presentarEscrito|mail_compartir_sentencia|sentencias_guardadas|cambiar_clave' \
                --include='*.py' src/ tests/; then
             echo "::error::Se encontró una referencia a endpoints de escritura del PJUD."
             exit 1

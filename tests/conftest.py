@@ -14,7 +14,7 @@ from mcp_pjud import client
 @pytest.fixture(autouse=True)
 def _reiniciar_estado_del_proceso():
     client._ULTIMA = 0.0
-    client._BLOQUEADO = None
+    client._BLOQUEADO.clear()
     yield
     client._ULTIMA = 0.0
-    client._BLOQUEADO = None
+    client._BLOQUEADO.clear()

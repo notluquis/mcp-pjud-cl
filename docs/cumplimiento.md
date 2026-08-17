@@ -72,11 +72,36 @@ merece tener.
 
 Consecuencias asumidas:
 
-- **La jurisprudencia (`juris.pjud.cl`) quedó fuera de alcance de forma permanente.** Ese host
-  rechaza nominalmente a los agentes de esta clase. La vía correcta para jurisprudencia son
-  las solicitudes por Ley 20.285 de Transparencia o una fuente licenciada.
 - La consulta de causas se hace por el enlace que **la propia institución publica en la
   portada de `www.pjud.cl`** como acceso público, en un host que no publica robots.txt.
+- **La jurisprudencia sí está implementada, y la decisión fue consciente.** Queda escrito acá
+  para que no se lea como un descuido.
+
+### Sobre incluir jurisprudencia pese al rechazo nominal
+
+`juris.pjud.cl` bloquea con comodín y **además nombra a `Anthropic-ai` y `Claude-Web`**.
+Re-verificado el 17 de agosto de 2026: el archivo sigue igual.
+
+El proyecto empezó dejando ese host fuera de alcance por esa razón. El titular del proyecto
+revisó el hallazgo y decidió incluirlo de todos modos. Es su decisión y está tomada; no se
+re-discute cada vez que alguien lee esta página. Lo que corresponde es dejar constancia de qué
+se sabía al tomarla:
+
+| | |
+|---|---|
+| El bloqueo comodín | Aplica igual que en la Oficina Judicial Virtual, cuyo alcance ya estaba asumido |
+| El bloqueo nominal | Nombra rastreadores de IA. Este cliente se identifica como `mcp-pjud`, no como ninguno de ellos, y **eso no lo exime**: el comodín ya lo cubre |
+| Diferencia de fondo | En la Oficina Judicial Virtual el rechazo es genérico; acá hay una manifestación específica contra agentes de esta clase |
+| Lo que no cambia | Ritmo, identificación, detención total, solo lectura y no persistencia rigen igual en los dos hosts |
+
+Lo que **no** se hace, y sigue sin hacerse: no se rota IP, no se suplanta un navegador, no se
+resuelve ni se evade la verificación, y no se usan credenciales del Poder Judicial para ver más
+sentencias de las que ve cualquiera.
+
+Sobre esa verificación, para que quede medido y no inferido: el buscador ejecuta un reCAPTCHA
+v3 al cargar la página y valida el token contra su propia ruta. **La búsqueda no depende de
+ese token**: una sesión anónima sin captcha recibe resultados reales. No se tocó nada para
+lograrlo. Si algún día empieza a exigirlo, la respuesta es detenerse, no resolverlo.
 
 ## Ley 21.719 sobre protección de datos personales
 

@@ -47,10 +47,15 @@ INTERVALO_MINIMO = 5.0
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
-#: Motivo del bloqueo, si el portal ya nos rechazó. También es del proceso, y a propósito
-#: no se limpia: la detención total significa que no se vuelve a consultar hasta que una
-#: persona revise si la IP quedó restringida y reinicie el servidor.
-_BLOQUEADO: str | None = None
+#: Motivo del bloqueo por host, si alguno ya nos rechazó. También es del proceso y a
+#: propósito no se limpia: la detención total significa que no se vuelve a consultar ese
+#: host hasta que una persona revise si la IP quedó restringida y reinicie el servidor.
+#:
+#: Va por host y no global porque los dos sistemas sirven a fines distintos: si una
+#: consulta de jurisprudencia se topa con un bloqueo, dejar sin consulta de causas al
+#: mismo proceso convierte una búsqueda de referencia en un plazo que nadie pudo revisar.
+#: El semáforo sí es común, porque el ritmo se le debe a la institución, no al host.
+_BLOQUEADO: dict[str, str] = {}
 
 COMPETENCIAS = {
     "suprema": 1,
@@ -100,7 +105,15 @@ class PjudBloqueado(Exception):
     """
 
 
-class PjudClient:
+class Transporte:
+    """Cadena HTTP compartida: ritmo, detención y bitácora.
+
+    Los dos sistemas del Poder Judicial que este servidor consulta tienen sesiones muy
+    distintas (la Oficina Judicial Virtual deriva un prefijo de rutas; el buscador de
+    fallos usa un token CSRF de Laravel), pero le deben el mismo trato a la institución.
+    Lo que se comparte es el trato, no la sesión.
+    """
+
     def __init__(self, contacto: str, intervalo: float = INTERVALO_MINIMO) -> None:
         if intervalo < INTERVALO_MINIMO:
             raise ValueError(
@@ -116,11 +129,9 @@ class PjudClient:
             follow_redirects=True,
             timeout=30.0,
         )
-        self._adir: str | None = None
-        self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
 
-    def __enter__(self) -> PjudClient:
+    def __enter__(self):
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -129,7 +140,9 @@ class PjudClient:
     def cerrar(self) -> None:
         self._http.close()
 
-    # -- transporte -------------------------------------------------------------
+    def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
+        """Bloqueo que llega con HTTP 200 en el cuerpo. Cada sistema lo dice a su modo."""
+        return None
 
     def _esperar(self) -> None:
         pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
@@ -137,14 +150,15 @@ class PjudClient:
             time.sleep(pendiente)
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
-        global _ULTIMA, _BLOQUEADO
+        global _ULTIMA
+        anfitrion = httpx.URL(url).host
         # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
         # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
         # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
         # cuando la primera ya recibió el bloqueo. Eso es reintentar por el lado.
         with _TURNO:
-            if _BLOQUEADO:
-                raise PjudBloqueado(_BLOQUEADO)
+            if anfitrion in _BLOQUEADO:
+                raise PjudBloqueado(_BLOQUEADO[anfitrion])
 
             self._esperar()
             try:
@@ -156,27 +170,43 @@ class PjudClient:
             self.bitacora.append((time.time(), url, r.status_code))
 
             if r.status_code in (403, 429):
-                _BLOQUEADO = (
+                _BLOQUEADO[anfitrion] = (
                     f"El Poder Judicial respondió {r.status_code} a {url}. "
                     "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
                     "bloqueada antes de volver a consultar."
                 )
-                raise PjudBloqueado(_BLOQUEADO)
+                raise PjudBloqueado(_BLOQUEADO[anfitrion])
 
-            # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
-            # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y
-            # el usuario reintentaría, que es justo lo que la detención total prohíbe.
-            aviso = leer_aviso(r.text)
-            if aviso and es_aviso_de_captcha(aviso):
-                _BLOQUEADO = (
+            # Un bloqueo puede llegar como aviso dentro de una respuesta 200, no como un
+            # código de error. Sin esto quedaría clasificado como "corrige los parámetros"
+            # y el usuario reintentaría, que es justo lo que la detención total prohíbe.
+            aviso = self._bloqueo_encubierto(r)
+            if aviso:
+                _BLOQUEADO[anfitrion] = (
                     f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
                     "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
                     "acceso quedó restringido."
                 )
-                raise PjudBloqueado(_BLOQUEADO)
+                raise PjudBloqueado(_BLOQUEADO[anfitrion])
 
         r.raise_for_status()
         return r
+
+
+class PjudClient(Transporte):
+    """Consulta pública de causas de la Oficina Judicial Virtual."""
+
+    def __init__(self, contacto: str, intervalo: float = INTERVALO_MINIMO) -> None:
+        super().__init__(contacto, intervalo)
+        self._adir: str | None = None
+        self._token: str | None = None
+
+    def __enter__(self) -> PjudClient:
+        return self
+
+    def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
+        aviso = leer_aviso(r.text)
+        return aviso if aviso and es_aviso_de_captcha(aviso) else None
 
     def _primera_pagina(self, ruta: str, data: dict[str, str]) -> list[CausaEncontrada]:
         """Una sola página, sin comprobar completitud.
@@ -221,15 +251,15 @@ class PjudClient:
 
             if numero == 1:
                 total = total_declarado(html_)
-                if total is None:
-                    # Ambos listados que devuelve la plataforma traen este dato, así que su
-                    # ausencia es señal de que la estructura cambió. Antes se seguía sin
-                    # comprobar nada, o sea el guardia se apagaba solo.
-                    raise EstructuraInesperada(
-                        "El listado no declara el total de registros. Sin ese dato no se "
-                        "puede comprobar que el recorrido devolvió todo, y una lista "
-                        "incompleta se leería como completa."
-                    )
+            if total is None:
+                # Ambos listados que devuelve la plataforma traen este dato, así que su
+                # ausencia es señal de que la estructura cambió. Antes se seguía sin
+                # comprobar nada, o sea el guardia se apagaba solo.
+                raise EstructuraInesperada(
+                    "El listado no declara el total de registros. Sin ese dato no se "
+                    "puede comprobar que el recorrido devolvió todo, y una lista "
+                    "incompleta se leería como completa."
+                )
 
             if len(acumuladas) > total:
                 # Más de lo declarado sólo puede venir de páginas repetidas.
@@ -283,7 +313,15 @@ class PjudClient:
     def _prefijo(self) -> str:
         if self._adir is None:
             self.abrir_sesion()
-        assert self._adir is not None
+        if self._adir is None:
+            # No es un assert a propósito: bajo `python -O` los assert desaparecen, y este
+            # guardia protege justo el caso en que se consultarían rutas sin prefijo, que
+            # devuelven vacío en vez de fallar.
+            raise PjudBloqueado(
+                "No se pudo derivar el prefijo de rutas tras abrir sesión. Detención: "
+                "consultar sin prefijo devuelve respuestas vacías indistinguibles de "
+                "'no hay causas'."
+            )
         return self._adir
 
     def abrir_sesion(self) -> None:
@@ -370,7 +408,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por nombre de litigante.
 
@@ -418,7 +456,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas de una persona jurídica por su RUT.
 
@@ -450,7 +488,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas ingresadas en un rango de fechas, en formato DD/MM/AAAA.
 

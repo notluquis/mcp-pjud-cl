@@ -170,15 +170,28 @@ class Actuacion(BaseModel):
         return TRAMITE_RECEPTOR in self.tramite.lower()
 
 
+#: Fechas que la plataforma imprime cuando el campo está vacío, no cuando pasó algo ese día.
+#:
+#: Medido en `diligenciaCob`: una diligencia de embargo cumplida traía `31/12/1969` en su
+#: columna de fecha. Es el epoch de Unix visto desde una zona al oeste de Greenwich, o sea el
+#: valor cero renderizado como fecha.
+#:
+#: Devolverlas como fechas reales es peor que devolver nulo: alguien computaría un plazo desde
+#: 1969. Y es el error que este proyecto existe para no cometer, con el signo invertido: no
+#: falta un dato, sobra uno que tiene forma de dato.
+_FECHAS_CENTINELA = frozenset({date(1969, 12, 31), date(1970, 1, 1)})
+
+
 def _fecha(txt: str) -> date | None:
     m = _FECHA.search(txt)
     if not m:
         return None
     d, mes, a = (int(x) for x in m.groups())
     try:
-        return date(a, mes, d)
+        parsed = date(a, mes, d)
     except ValueError:  # 31/02/2026 y similares: dato malo, no reventar la fila entera.
         return None
+    return None if parsed in _FECHAS_CENTINELA else parsed
 
 
 def _celdas(fila) -> list:

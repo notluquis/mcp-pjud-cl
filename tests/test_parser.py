@@ -418,3 +418,19 @@ def test_la_georreferencia_se_lee_de_la_columna_que_declara_la_competencia():
     a = _fila_a_actuacion(celdas, "", invertido)
     assert a.folio == "12", "el folio salió de la columna equivocada"
     assert a.georreferenciado is True, "la georreferencia se leyó de una celda que no es la suya"
+
+
+@pytest.mark.parametrize("centinela", ["31/12/1969", "01/01/1970"])
+def test_el_cero_renderizado_como_fecha_no_se_devuelve_como_fecha(centinela):
+    """Medido en `diligenciaCob`: una diligencia de embargo cumplida traía `31/12/1969`.
+
+    Es el epoch de Unix visto desde una zona al oeste de Greenwich, o sea el valor cero
+    impreso como fecha. Devolverlo sería peor que devolver nulo: alguien computaría un plazo
+    desde 1969. Es el error del proyecto con el signo invertido: no falta un dato, sobra uno
+    que tiene forma de dato.
+    """
+    from mcp_pjud.parser import _fecha
+
+    assert _fecha(centinela) is None
+    # Y una fecha real del mismo entorno sigue funcionando.
+    assert _fecha("31/03/2026") == date(2026, 3, 31)

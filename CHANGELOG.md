@@ -18,6 +18,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Búsqueda de causas en **penal**, verificada. Su tipo de causa va como código numérico y no
+  como letra ni como palabra: con `conTipoCausa="1"` aparece la causa, y con `"Ordinaria"`,
+  `"O"` o vacío el listado vuelve vacío. Exige además `radio-groupPenal` y el código de
+  tribunal, que se pide a `combosJSON/leeTrib.php` por POST y en la raíz del sitio.
+
 - Herramienta `buscar_causa_por_fecha`. Existía en el cliente y no estaba expuesta: es la
   cuarta búsqueda que la plataforma ofrece, y sin ella no había forma de responder "qué
   ingresó contra esta empresa esta semana" sabiendo el tribunal pero no el rol.
@@ -186,6 +191,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   alguien tiene que poder encontrar sin pasar por el sitio de documentación.
 
 ### Corregido
+
+- Las fechas que la plataforma imprime cuando el campo está vacío ya no se devuelven como
+  fechas. Medido en `diligenciaCob`: una diligencia de embargo cumplida traía `31/12/1969`, que
+  es el epoch de Unix visto desde una zona al oeste de Greenwich, o sea el valor cero
+  renderizado.
+
+  Devolverla habría sido peor que devolver nulo, porque alguien computaría un plazo desde 1969.
+  Es el error que este proyecto existe para no cometer con el signo invertido: no falta un dato,
+  sobra uno que tiene forma de dato.
 
 - Cobranza prometía actuaciones de ministro de fe leyéndolas de la tabla de Historia, y ahí no
   están. Medido sobre una respuesta real: sus trámites son `Actuación`, `Resolución` y

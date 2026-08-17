@@ -13,7 +13,7 @@ from mcp_pjud.client import (
     PjudBloqueado,
     PjudClient,
 )
-from mcp_pjud.parser import EstructuraInesperada, parse_resultados
+from mcp_pjud.parser import COMPETENCIAS, EstructuraInesperada, parse_resultados
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -234,8 +234,13 @@ def test_competencia_que_existe_pero_no_se_verifico_se_rechaza():
     vacío, que se lee como que la causa no existe.
     """
     c = PjudClient("test@example.cl")
+    # Se usa una que exista en la plataforma y siga sin verificar. `penal` servía y dejó de
+    # servir al verificarla: un caso de prueba que desaparece porque el código mejoró se
+    # reapunta, no se borra.
+    sin_verificar = sorted(set(COMPETENCIAS) - set(MODULOS))
+    assert sin_verificar, "si ya están todas verificadas, este test hay que retirarlo"
     with pytest.raises(ValueError, match="no verificada"):
-        c._modulo("penal")
+        c._modulo(sin_verificar[0])
 
 
 def test_toda_peticion_queda_en_bitacora(monkeypatch):

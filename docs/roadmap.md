@@ -31,6 +31,16 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 | Fecha imposible (31/02) | Defensa preventiva, nunca observada |
 | Mensaje de "sin resultados" | Se copió de una respuesta real, pero el camino completo no se ejercitó |
 
+### Sondeado contra el sistema real, sin implementar
+
+| Qué | Resultado |
+|---|---|
+| Códigos de cobranza (competencia 6, tribunal 1332, tipos `A C D E J L P R`) | Confirmados |
+| Estructura del detalle de cobranza | Difiere de civil: panel `historiaCob`, columna `Estado Firma`, sin `Foja`, panel `diligenciaCob` |
+| Actuaciones de receptor en cobranza | **No encontradas** en la causa sondeada |
+| Reglas de la búsqueda por nombre | Exige mínimo dos campos y un tribunal; las búsquedas amplias agotan el tiempo de espera |
+| `sitemap.xml` y `.well-known/security.txt` | No existen en ninguno de los dos hosts |
+
 ### Mapeado pero nunca ejecutado
 
 Las rutas se extrajeron del código de la plataforma. **No se probó ninguna.** El cliente las
@@ -74,27 +84,52 @@ Las tres, no dos de tres:
 
 ### 0.2: paginación y varias causas
 
-El caso "busco por nombre y salen doce causas" hoy no funciona. Se procesa la primera.
+El caso "busco y salen doce causas" hoy no funciona: se procesa la primera.
 
 - Parsear los controles de paginación
 - Devolver todas las causas del listado
-- Decidir qué hacer cuando una búsqueda devuelve muchas: ¿traer actuaciones de todas, con lo
-  que eso implica en tiempo bajo el intervalo de 5 segundos?
-- Herramienta `buscar_causa_por_nombre`, que es la que un abogado realmente usa cuando no
-  recuerda el rol
+- Herramienta `buscar_causa_por_nombre`
 
-**Riesgo conocido:** doce causas × 5 peticiones × 5 segundos = cinco minutos. Puede que la
-respuesta correcta sea devolver el listado y que el usuario elija, en vez de encadenar todo.
+**Lo que se aprendió sondeando la búsqueda por nombre**, y que cambia el diseño previsto:
+
+| Regla de la plataforma | Consecuencia |
+|---|---|
+| Exige **mínimo dos campos** llenos. Si no: `Por favor llene mínimo 2 campos para la búsqueda` | Hay que validarlo en el cliente. Si no, el usuario recibe un `<script>swal(...)` como si fuera un resultado |
+| Exige **seleccionar un tribunal**. Si no: `Por favor seleccione un Tribunal para la búsqueda` | Contradice el supuesto de que esta búsqueda sirve cuando no se sabe dónde está la causa. Hay que conocer el tribunal igual |
+| Una búsqueda amplia por apellido común **agota el tiempo de espera** | Necesita un timeout mayor que el resto, y conviene exigir entradas más específicas |
+
+Ese último punto además marcó el límite del sondeo: insistir con búsquedas amplias es
+exactamente la carga que este proyecto se comprometió a no generar, así que se detuvo ahí y
+la verificación se retoma con una causa acotada y conocida.
+
+**Riesgo que sigue en pie:** doce causas × 5 peticiones × 5 segundos son cinco minutos. La
+respuesta correcta probablemente sea devolver el listado y que el usuario elija, en vez de
+encadenar todo.
 
 ### 0.3: cobranza laboral y previsional
 
-La primera competencia nueva, y la elegida a propósito: `receptorCobranza.php` existe, o sea
-que también tiene actuaciones de ministro de fe, que es donde está el valor.
+Sondeada contra el sistema real con `C-208-2019` del Jdo. Cobranza Laboral y Previsional de
+Concepción (tribunal `1332`, competencia `6`, tipos de causa `A C D E J L P R`).
 
-- Fixture de una causa real (`C-208-2019` del Juzgado de Cobranza de Concepción es candidata)
-- Verificar si el formato de fecha doble es el mismo
-- Parser propio si difiere
-- Ampliar `MODULOS` sólo después de verificar, nunca antes
+**Su estructura difiere de civil**, así que necesita parser propio y no una ampliación de
+`MODULOS`:
+
+| | Civil | Cobranza |
+|---|---|---|
+| Panel de historia | `historiaCiv` | `historiaCob` |
+| Columnas | Folio, Doc., Anexo, Etapa, Trámite, Desc. Trámite, **Fec. Trámite, Foja**, Georref. | Folio, Doc., Anexo, Etapa, Trámite, Desc. Trámite, **Estado Firma, Fec. Trámite**, Georref. |
+| Paneles propios | Litigantes, Notificaciones, Escritos, Exhortos, Piezas Exhorto | Deuda, **Diligencia**, Liquidación, Litigantes, Notificación |
+
+O sea: entra una columna `Estado Firma`, desaparece `Foja`, y hay un panel `diligenciaCob` que
+civil no tiene.
+
+**Lo que no se pudo verificar, y es lo que importa:** esa causa no trae ninguna fila con
+`Actuación Receptor`, ninguna fecha doble ni ningún `Diligencia:`. El panel `diligenciaCob`
+resultó ser de oficios y liquidaciones, no de actuaciones del ministro de fe.
+
+Así que sigue sin evidencia de que cobranza exponga el dato que da sentido al proyecto. Antes
+de implementarla hay que encontrar una causa de cobranza que sí lo traiga; si no existe, la
+competencia no vale el esfuerzo por más que sus rutas estén mapeadas.
 
 ### 0.4: exhortos y documentos
 

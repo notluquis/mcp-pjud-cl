@@ -247,3 +247,14 @@ def test_hora_imposible_no_revienta_la_fila():
     a = actuaciones_receptor(_historia(_fila("X Diligencia:31/03/2026 25:99", "01/04/2026")))[0]
     assert a.fecha_diligencia == date(2026, 3, 31)
     assert a.hora_diligencia is None
+
+
+def test_tabla_con_encabezados_y_cero_filas_levanta_excepcion():
+    """Esta forma la produce una respuesta truncada o HTML que lxml no recupera.
+
+    Lo detectó Hypothesis: con ciertas entradas malformadas, lxml perdía las filas y el
+    parser devolvía una lista vacía sin avisar. Esa es exactamente la falla silenciosa
+    que el proyecto existe para evitar, así que ahora levanta.
+    """
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_historia(_historia(""))

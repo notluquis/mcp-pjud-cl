@@ -68,7 +68,7 @@ docs/          Documentación publicada en Read the Docs
 
 ```bash
 uv sync --all-groups
-uv run pytest              # 49 tests, sin red
+uv run pytest              # 50 tests, sin red
 uv run ruff check .
 uv run sphinx-build -b html docs docs/_build/html
 uv run zizmor .github/workflows/ .github/dependabot.yml

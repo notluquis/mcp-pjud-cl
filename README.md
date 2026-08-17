@@ -158,7 +158,7 @@ El estado detallado de qué está probado contra el sistema real y qué no está
 ## Desarrollo
 
 ```bash
-uv run pytest        # 49 tests, sin red
+uv run pytest        # 50 tests, sin red
 uv run ruff check .
 ```
 

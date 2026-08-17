@@ -135,6 +135,21 @@ def parse_historia(html_detalle: str, cuaderno: str = "") -> list[Actuacion]:
         if len(celdas) < len(COLUMNAS):
             continue  # fila de encabezado o de paginación
         actuaciones.append(_fila_a_actuacion(celdas, cuaderno))
+
+    if not actuaciones:
+        # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el
+        # folio de ingreso. Esta forma la produce una respuesta truncada, una conexión
+        # cortada a mitad de tabla, o HTML que lxml no logra recuperar, y en todos esos
+        # casos devolver una lista vacía se leería como "no hubo actuaciones".
+        #
+        # Se prefiere un error que alguien pueda reportar antes que un silencio que se
+        # computa como plazo no corrido. Si aparece una causa que legítimamente no tiene
+        # folios, esto va a fallar y hay que reportarlo: la decisión es deliberada.
+        raise EstructuraInesperada(
+            "La tabla de Historia tiene encabezados pero ninguna fila. La respuesta "
+            "puede venir truncada o la estructura cambió. No se devuelve una lista "
+            "vacía porque se leería como que la causa no tiene actuaciones."
+        )
     return actuaciones
 
 

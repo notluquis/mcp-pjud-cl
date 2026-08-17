@@ -25,6 +25,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   runner con harden-runner. Esto último deja verificable la promesa de que CI nunca consulta al
   Poder Judicial.
 - Testing de mutación con mutmut, mensual y a pedido.
+- El parser levanta excepción cuando la tabla de Historia trae encabezados y cero filas.
+  Esa forma la produce una respuesta truncada, y antes devolvía una lista vacía que se
+  leería como que la causa no tiene actuaciones. Lo destapó Hypothesis.
 - Pruebas basadas en propiedades con Hypothesis sobre el parser de fechas. La invariante
   central es que nunca devuelva una fecha que no venga en la entrada: una fecha de diligencia
   inventada se computa como plazo, y eso es peor que no devolver ninguna.

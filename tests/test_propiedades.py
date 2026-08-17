@@ -23,10 +23,13 @@ horas = st.times().map(lambda t: t.replace(second=0, microsecond=0))
 #
 # Se excluyen `<>&"'` porque romperían el HTML de la fixture sintética, no el parser.
 #
-# Se excluyen también los sustitutos (categoría Cs). Hypothesis los genera y hacen que
-# lxml pierda la fila, pero no son un caso posible: la plataforma sirve UTF-8, y un
-# sustituto no emparejado no puede existir en texto decodificado desde UTF-8. Dejarlos
-# haría fallar la prueba por una entrada que nunca va a llegar.
+# Se excluyen también los sustitutos (categoría Cs), por una razón que conviene dejar
+# escrita. Hypothesis los generó y descubrió que lxml perdía la fila y el parser devolvía
+# una lista vacía sin avisar. Un sustituto no emparejado no puede llegar desde la
+# plataforma, que sirve UTF-8, así que se sacan del generador. Pero la falla que
+# destaparon sí era real y se arregló donde correspondía: `parse_historia` ahora levanta
+# excepción cuando encuentra encabezados y cero filas, forma que también produce una
+# respuesta truncada. Ver test_tabla_con_encabezados_y_cero_filas_levanta_excepcion.
 texto = st.text(
     alphabet=st.characters(blacklist_characters="<>&\"'", blacklist_categories=("Cs",)),
     max_size=40,

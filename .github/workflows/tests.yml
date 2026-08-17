@@ -109,13 +109,20 @@ jobs:
           fi
           echo "Sin referencias a endpoints de escritura."
 
-      - name: Verificar que el intervalo mínimo no bajó
+      # Las dos constantes definen juntas el ritmo: el intervalo fija el régimen sostenido
+      # y la ráfaga cuántas pueden salir juntas antes de que ese régimen mande. Subir la
+      # segunda sin tocar la primera vacía la garantía sin cambiar el número que todos miran.
+      - name: Verificar que el ritmo de las consultas no se relajó
         run: |
           grep -q 'INTERVALO_MINIMO = 5.0' src/mcp_pjud/client.py || {
             echo "::error::El intervalo mínimo entre peticiones cambió. Es la cláusula CUARTA."
             exit 1
           }
-          echo "Intervalo mínimo intacto."
+          grep -q 'RAFAGA_MAXIMA = 4' src/mcp_pjud/client.py || {
+            echo "::error::La ráfaga máxima cambió. Con el intervalo, define el ritmo total."
+            exit 1
+          }
+          echo "Ritmo intacto: intervalo de 5 s y ráfaga de 4."
 
       # La anonimización de las fixtures la cubre tests/test_fixtures.py, en el job de
       # arriba. Se hizo en Python y no en grep a propósito: la primera versión usaba una

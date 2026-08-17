@@ -22,7 +22,7 @@ Cierra #
 
 - [ ] **No agrega ninguna capacidad de escritura** sobre sistemas del Poder Judicial, ni
       siquiera desactivada o detrás de una bandera.
-- [ ] **No baja el intervalo mínimo** de 5 segundos entre peticiones.
+- [ ] **No relaja el ritmo**: régimen sostenido de una petición cada 5 segundos y ráfaga máxima de 4.
 - [ ] **Mantiene la detención total** ante 403, 429 o captcha. Sin reintento, sin evasión.
 - [ ] **El parser sigue fallando ruidosamente**: excepción ante estructura desconocida,
       nunca lista vacía.

@@ -389,3 +389,21 @@ def test_ninguna_pagina_declara_un_numero_de_leyes_distinto_del_real():
         if escritos.get(m.lower(), int(m) if m.isdigit() else -1) != real
     ]
     assert not malos, f"Cuentas de leyes que no coinciden con la tabla: {malos}"
+
+
+def test_toda_pagina_que_da_el_intervalo_menciona_la_rafaga():
+    """El control tiene dos números y describir sólo uno lo cuenta mal.
+
+    Una página que diga "una cada 5 segundos" y calle la ráfaga describe un límite plano que
+    no existe: quien la lea calculará mal cuánto tarda una consulta, y quien audite el
+    proyecto creerá que el control es más estricto de lo que es.
+    """
+    incompletas = [
+        str(p.relative_to(RAIZ))
+        for p in PROSA
+        if re.search(rf"cada {INTERVALO_MINIMO:.0f} segundos", _texto(p))
+        and not re.search(r"ráfaga", _texto(p), re.I)
+    ]
+    assert not incompletas, (
+        f"Páginas que dan el intervalo sostenido y callan la ráfaga: {incompletas}"
+    )

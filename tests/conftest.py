@@ -14,7 +14,9 @@ from mcp_pjud import client
 @pytest.fixture(autouse=True)
 def _reiniciar_estado_del_proceso():
     client._ULTIMA = 0.0
+    client._FICHAS = float(client.RAFAGA_MAXIMA)
     client._BLOQUEADO = None
     yield
     client._ULTIMA = 0.0
+    client._FICHAS = float(client.RAFAGA_MAXIMA)
     client._BLOQUEADO = None

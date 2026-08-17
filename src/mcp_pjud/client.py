@@ -38,12 +38,30 @@ PORTADA = "https://www.pjud.cl/"
 #: público a la consulta de causas. No requiere Clave Única.
 ENTRADA = f"{BASE}/includes/sesion-consultaunificada.php"
 
+#: Intervalo sostenido: a la larga no sale más de una petición cada 5 segundos. Es la
+#: cláusula CUARTA implementada en código, no una constante de rendimiento.
 INTERVALO_MINIMO = 5.0
 
-#: El semáforo es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en
-#: cada llamada de herramienta, así que un contador por instancia se reinicia solo y deja
-#: pasar la primera petición de cada llamada sin esperar: dos herramientas seguidas
-#: golpean el portal sin intervalo. La cláusula CUARTA habla del portal, no del objeto.
+#: Cuántas peticiones pueden salir juntas antes de que el ritmo sostenido empiece a mandar.
+#:
+#: Existe porque el ritmo se le debe al portal, y al portal le da lo mismo cómo se reparten
+#: las peticiones dentro de un minuto: le importa cuántas recibe. Una consulta de actuaciones
+#: son cinco peticiones encadenadas, y con un intervalo plano tardaba veinticinco segundos
+#: para responder una sola pregunta.
+#:
+#: Hay que decir qué se cambió, porque contradice una decisión anterior de este mismo
+#: proyecto: se habían descartado las librerías de control de ritmo justo por implementar un
+#: balde de fichas que permite ráfagas. Lo que cambió no es la opinión sobre la librería sino
+#: la especificación: antes era "al menos 5 segundos entre peticiones consecutivas" y ahora
+#: es "a lo más una cada 5 segundos en régimen, con una ráfaga acotada al principio". El
+#: promedio sostenido es el mismo; lo que se permite es que las primeras salgan juntas.
+RAFAGA_MAXIMA = 4
+
+#: El balde es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en cada
+#: llamada de herramienta, así que un contador por instancia se reinicia solo y deja pasar la
+#: primera petición de cada llamada sin esperar. La cláusula CUARTA habla del portal, no del
+#: objeto.
+_FICHAS = float(RAFAGA_MAXIMA)
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
@@ -148,9 +166,20 @@ class Transporte:
         return None
 
     def _esperar(self) -> None:
-        pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
-        if pendiente > 0:
-            time.sleep(pendiente)
+        """Toma una ficha del balde, esperando si no hay.
+
+        El balde se recarga a razón de una ficha por intervalo, y el reloj de recarga sólo
+        corre entre peticiones: el tiempo que la plataforma tarda en responder no cuenta como
+        espera. Así el régimen sostenido queda igual de conservador que el intervalo plano
+        anterior, que medía desde el fin de una petición hasta el inicio de la siguiente.
+        """
+        global _FICHAS, _ULTIMA
+        _FICHAS = min(RAFAGA_MAXIMA, _FICHAS + (time.monotonic() - _ULTIMA) / self.intervalo)
+        if _FICHAS < 1.0:
+            time.sleep((1.0 - _FICHAS) * self.intervalo)
+            _FICHAS = 0.0
+        else:
+            _FICHAS -= 1.0
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
         global _ULTIMA, _BLOQUEADO
@@ -166,8 +195,9 @@ class Transporte:
             try:
                 r = self._http.request(metodo, url, **kw)
             finally:
-                # Un timeout que no estampara dejaría al siguiente salir sin esperar,
-                # justo cuando el portal está peor.
+                # El reloj de recarga arranca cuando la petición termina, no cuando empieza.
+                # Un timeout que no lo moviera regalaría fichas por el tiempo que estuvo
+                # colgado, justo cuando el portal está peor.
                 _ULTIMA = time.monotonic()
             self.bitacora.append((time.time(), url, r.status_code))
 

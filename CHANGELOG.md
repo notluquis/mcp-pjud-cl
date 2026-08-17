@@ -105,6 +105,24 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- El control de ritmo pasa de un intervalo plano a un balde de fichas: hasta 4 peticiones
+  seguidas y después una cada 5 segundos. El régimen sostenido no cambia; lo que cambia es
+  que una consulta de actuaciones, que son cinco peticiones encadenadas para responder una
+  sola pregunta, baja de 25 segundos a 5.
+
+  Hay que decir qué se cambió, porque contradice una decisión anterior de este mismo
+  proyecto: se habían descartado las librerías de control de ritmo justo por implementar un
+  balde que permite ráfagas. Lo que cambió no es la opinión sobre la librería sino la
+  especificación. Antes era "al menos 5 segundos entre peticiones consecutivas"; ahora es "a
+  lo más una cada 5 segundos en régimen, con ráfaga acotada a 4". La sobrecarga que la
+  cláusula CUARTA prohíbe es una propiedad del régimen, no de dos peticiones sueltas.
+
+  El tope de la ráfaga es lo único que separa esto de no tener control, así que tiene su
+  propio guardia: un test que lo acota a la cadena más larga que hace el cliente, y un job de
+  CI que verifica las dos constantes. Los tests de ritmo dimensionan sus bucles con la
+  constante, o sea crecen con ella y no pueden detectar que crezca: ese piso lo pone el test
+  del tope y nada más.
+
 - Todas las acciones de CI fijadas por SHA de commit en vez de etiqueta. Una etiqueta se puede
   mover; un SHA no. En `setup-uv` además dejó de ser opcional: desde su v8 no publican
   etiquetas de versión mayor.

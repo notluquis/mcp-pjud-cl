@@ -70,7 +70,10 @@ La cláusula operativa es la **CUARTA**:
 > Los usuarios no deben utilizar el servicio de formas que "dañar, inutilizar, **sobrecargar**,
 > deteriorar el Portal o impedir su normal utilización".
 
-Lo que el contrato prohíbe es la **sobrecarga**. De ahí que el intervalo de 5 segundos sea el
+Lo que el contrato prohíbe es la **sobrecarga**, que es una propiedad del régimen y no de
+dos peticiones sueltas: al portal le importa cuántas recibe, no cómo se reparten dentro de un
+minuto. De ahí que el ritmo sostenido de una consulta cada 5 segundos, con ráfaga acotada a
+4, sea el
 control jurídicamente cargante del proyecto y no una cortesía: es esa cláusula implementada en
 código.
 

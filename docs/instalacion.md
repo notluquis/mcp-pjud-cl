@@ -189,7 +189,7 @@ proyecto. El camino que cumple es el mismo que funciona.
 
 Están en `client.py` y existen por razones jurídicas y operacionales, no de rendimiento.
 
-### Intervalo mínimo de 5 segundos
+### Ritmo: 5 segundos sostenidos, ráfaga de 4
 
 ```python
 INTERVALO_MINIMO = 5.0
@@ -231,7 +231,9 @@ la Ley 21.719. Ver {doc}`cumplimiento`.
 
 ### Cuánto demora
 
-Una consulta de actuaciones son 4 o 5 peticiones. Con el intervalo de 5 segundos, entre 20 y
+Una consulta de actuaciones son 4 o 5 peticiones, y la ráfaga está dimensionada justo para
+esa cadena: la primera consulta sale casi de inmediato. La segunda seguida ya espera. Con el
+intervalo de 5 segundos y sin ráfaga disponible, entre 20 y
 30 segundos por causa. **No es optimizable**: el cuello es el semáforo, y es deliberado.
 
 Esto descarta de entrada cualquier uso masivo. Si necesitas revisar 200 causas, son unas dos

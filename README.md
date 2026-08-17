@@ -134,7 +134,9 @@ y [ejemplos resueltos](https://mcp-pjud-cl.readthedocs.io/es/latest/ejemplos.htm
 
 ### Uso responsable
 
-- **Una consulta cada 5 segundos como mínimo**, no configurable hacia abajo. Es la cláusula
+- **Una consulta cada 5 segundos en régimen sostenido**, con una ráfaga de hasta 4 al
+  inicio para que una pregunta se responda de una vez. Ninguno de los dos es configurable
+  hacia abajo. Es la cláusula
   CUARTA de las condiciones de uso de la Oficina Judicial Virtual, que prohíbe sobrecargar el
   portal, implementada en código.
 - **Detención total ante 403, 429 o captcha.** Sin reintento, sin rotación de IP, sin evasión.

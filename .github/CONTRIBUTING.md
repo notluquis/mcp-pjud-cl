@@ -46,7 +46,8 @@ Estas salen de para qué existe el proyecto, no de gusto personal:
    modificación, ni eliminación. No debe existir el código, ni siquiera desactivado ni
    detrás de una bandera. Un PR que agregue capacidad de escritura se rechaza sin discusión.
 
-2. **El intervalo mínimo entre peticiones no se baja.** Está en 5 segundos y es la
+2. **El ritmo de las consultas no se relaja.** Régimen sostenido de una petición cada 5
+   segundos, con una ráfaga de 4 al inicio, y ninguno de los dos se toca. Es la
    implementación de la cláusula CUARTA de las condiciones de uso de la OJV, que prohíbe
    sobrecargar el portal. No es una constante de rendimiento.
 

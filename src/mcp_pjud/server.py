@@ -13,7 +13,13 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from .client import COMPETENCIAS, INTERVALO_MINIMO, PAGINAS_MAXIMAS, PjudClient
+from .client import (
+    COMPETENCIAS,
+    INTERVALO_MINIMO,
+    PAGINAS_MAXIMAS,
+    RAFAGA_MAXIMA,
+    PjudClient,
+)
 from .juris import (
     FECHA_MEDICION,
     FILAS_MAXIMAS,
@@ -63,8 +69,9 @@ Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o
 fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
 como verificada si la búsqueda no la devolvió.
 
-Cada petición a la plataforma respeta un intervalo mínimo de {INTERVALO_MINIMO:.0f} segundos,
-que implementa la prohibición de sobrecargarla. Una consulta de actuaciones son
+Las consultas van a ritmo controlado: hasta {RAFAGA_MAXIMA} peticiones seguidas y después
+una cada {INTERVALO_MINIMO:.0f} segundos, que implementa la prohibición de sobrecargar la
+plataforma. Una consulta de actuaciones son
 varias peticiones encadenadas, así que tarda. No es un error ni algo que convenga paralelizar.
 
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del

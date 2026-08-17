@@ -34,8 +34,9 @@ def test_espera_entre_peticiones(monkeypatch):
     monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: reloj[0])
     monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
 
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", reloj[0] - 1.0)  # pasó 1 s
+
     c = PjudClient("test@example.cl")
-    c._ultima = reloj[0] - 1.0  # pasó 1 s desde la última consulta
     c._esperar()
 
     assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)]
@@ -44,10 +45,29 @@ def test_espera_entre_peticiones(monkeypatch):
 def test_no_espera_si_ya_paso_el_intervalo(monkeypatch):
     monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: pytest.fail("no debía dormir"))
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - (INTERVALO_MINIMO + 1))
 
     c = PjudClient("test@example.cl")
-    c._ultima = 100.0 - (INTERVALO_MINIMO + 1)
     c._esperar()
+
+
+def test_un_cliente_nuevo_no_reinicia_el_semaforo(monkeypatch):
+    """`server.py` abre un cliente por llamada de herramienta.
+
+    Con un contador por instancia, cada herramienta empezaba con la marca en cero y su
+    primera petición salía sin esperar: dos herramientas seguidas golpeaban el portal sin
+    intervalo. El semáforo es del proceso.
+    """
+    dormido = []
+    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - 1.0)  # otro cliente acaba de consultar
+
+    PjudClient("test@example.cl")._esperar()  # cliente recién creado
+
+    assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)], (
+        "un cliente nuevo debe respetar la última petición del proceso, no partir de cero"
+    )
 
 
 # -- detención total: sin reintento, sin evasión --------------------------------
@@ -68,6 +88,35 @@ def test_403_y_429_detienen_sin_reintentar(codigo, monkeypatch):
     with pytest.raises(PjudBloqueado, match=str(codigo)):
         c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
     assert len(llamadas) == 1, "no debe reintentar"
+
+
+@pytest.mark.parametrize("codigo", [403, 429])
+def test_el_bloqueo_detiene_tambien_al_resto_del_proceso(codigo, monkeypatch):
+    """La detención es del portal, no de la llamada que se topó con él.
+
+    `server.py` abre un cliente por herramienta y el cliente MCP puede llamar a dos a la
+    vez. Si el bloqueo quedara guardado en la instancia, la segunda esperaría su turno y
+    consultaría igual cuando la primera ya recibió el rechazo: reintentar por el lado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    llamadas = []
+
+    def transporte(req):
+        llamadas.append(req.url)
+        return httpx.Response(codigo, text="bloqueado")
+
+    primero = PjudClient("test@example.cl")
+    primero._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    with pytest.raises(PjudBloqueado):
+        primero._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+
+    # Cliente distinto, como el que abriría la herramienta siguiente.
+    segundo = PjudClient("test@example.cl")
+    segundo._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    with pytest.raises(PjudBloqueado, match=str(codigo)):
+        segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/y")
+
+    assert len(llamadas) == 1, "tras el bloqueo no debe salir ninguna petición más"
 
 
 def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):

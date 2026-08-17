@@ -12,6 +12,7 @@ entre peticiones es la implementación de esa cláusula, no una cortesía: no se
 from __future__ import annotations
 
 import re
+import threading
 import time
 
 import httpx
@@ -38,6 +39,18 @@ PORTADA = "https://www.pjud.cl/"
 ENTRADA = f"{BASE}/includes/sesion-consultaunificada.php"
 
 INTERVALO_MINIMO = 5.0
+
+#: El semáforo es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en
+#: cada llamada de herramienta, así que un contador por instancia se reinicia solo y deja
+#: pasar la primera petición de cada llamada sin esperar: dos herramientas seguidas
+#: golpean el portal sin intervalo. La cláusula CUARTA habla del portal, no del objeto.
+_ULTIMA = 0.0
+_TURNO = threading.Lock()
+
+#: Motivo del bloqueo, si el portal ya nos rechazó. También es del proceso, y a propósito
+#: no se limpia: la detención total significa que no se vuelve a consultar hasta que una
+#: persona revise si la IP quedó restringida y reinicie el servidor.
+_BLOQUEADO: str | None = None
 
 COMPETENCIAS = {
     "suprema": 1,
@@ -103,7 +116,6 @@ class PjudClient:
             follow_redirects=True,
             timeout=30.0,
         )
-        self._ultima = 0.0
         self._adir: str | None = None
         self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
@@ -120,32 +132,48 @@ class PjudClient:
     # -- transporte -------------------------------------------------------------
 
     def _esperar(self) -> None:
-        pendiente = self.intervalo - (time.monotonic() - self._ultima)
+        pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
         if pendiente > 0:
             time.sleep(pendiente)
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
-        self._esperar()
-        r = self._http.request(metodo, url, **kw)
-        self._ultima = time.monotonic()
-        self.bitacora.append((time.time(), url, r.status_code))
+        global _ULTIMA, _BLOQUEADO
+        # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
+        # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
+        # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
+        # cuando la primera ya recibió el bloqueo. Eso es reintentar por el lado.
+        with _TURNO:
+            if _BLOQUEADO:
+                raise PjudBloqueado(_BLOQUEADO)
 
-        if r.status_code in (403, 429):
-            raise PjudBloqueado(
-                f"El Poder Judicial respondió {r.status_code} a {url}. "
-                "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
-                "bloqueada antes de volver a consultar."
-            )
-        # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
-        # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y el
-        # usuario reintentaría, que es justo lo que la regla de detención total prohíbe.
-        aviso = leer_aviso(r.text)
-        if aviso and es_aviso_de_captcha(aviso):
-            raise PjudBloqueado(
-                f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
-                "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
-                "acceso quedó restringido."
-            )
+            self._esperar()
+            try:
+                r = self._http.request(metodo, url, **kw)
+            finally:
+                # Un timeout que no estampara dejaría al siguiente salir sin esperar,
+                # justo cuando el portal está peor.
+                _ULTIMA = time.monotonic()
+            self.bitacora.append((time.time(), url, r.status_code))
+
+            if r.status_code in (403, 429):
+                _BLOQUEADO = (
+                    f"El Poder Judicial respondió {r.status_code} a {url}. "
+                    "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
+                    "bloqueada antes de volver a consultar."
+                )
+                raise PjudBloqueado(_BLOQUEADO)
+
+            # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
+            # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y
+            # el usuario reintentaría, que es justo lo que la detención total prohíbe.
+            aviso = leer_aviso(r.text)
+            if aviso and es_aviso_de_captcha(aviso):
+                _BLOQUEADO = (
+                    f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
+                    "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
+                    "acceso quedó restringido."
+                )
+                raise PjudBloqueado(_BLOQUEADO)
 
         r.raise_for_status()
         return r

@@ -147,3 +147,19 @@ La hoja de ruta la mueve el uso real, no la lista de deseos del autor. Lo más �
 - Reportar que **la plataforma cambió**
 - Pedir una **competencia** con una causa pública que sirva de fixture
 - Contar en Discusiones **qué te falta** para poder usarlo
+
+## Hallazgos de OpenSSF Scorecard que siguen abiertos
+
+Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
+
+| Hallazgo | Estado | Por qué |
+|---|---|---|
+| `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
+| `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
+| `SAST` | Punto ciego de Scorecard | CodeQL **sí** está activo, en el modo gestionado por GitHub. Scorecard busca `codeql-action` en los workflows o la aplicación de escaneo en pull requests fusionados, y el modo gestionado no deja ninguna de las dos huellas |
+| `Fuzzing` | No se va a implementar | Busca OSS-Fuzz o ClusterFuzzLite. Acá el equivalente útil son las pruebas basadas en propiedades con Hypothesis, que Scorecard no reconoce. Para un parser de 500 líneas en un lenguaje con memoria gestionada, montar infraestructura de fuzzing no compensa |
+| `CII-Best-Practices` | Pendiente, requiere inscripción | La insignia se obtiene llenando un formulario en bestpractices.dev. Es gratis y manual |
+
+Sobre `Code-Review`: en un proyecto de una persona no tiene arreglo técnico, pero para código
+que decide plazos procesales vale preguntarse si conviene un segundo par de ojos antes de
+tocar el parser. Queda dicho como pregunta abierta y no como casilla marcada.

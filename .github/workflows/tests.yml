@@ -46,7 +46,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync --all-groups
+      - run: uv sync --all-extras --all-groups
 
       # Los tests corren contra HTML real guardado en tests/fixtures/. Ninguno consulta
       # al Poder Judicial: CI nunca genera tráfico a la plataforma.

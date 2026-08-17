@@ -34,6 +34,17 @@ Cambios = "https://github.com/notluquis/mcp-pjud-cl/blob/main/CHANGELOG.md"
 [project.scripts]
 mcp-pjud = "mcp_pjud.server:main"
 
+# Las dependencias de documentación van como extra y no como grupo, para que Read the Docs,
+# que instala con pip, y uv usen exactamente la misma lista. Tenerlas en dos archivos ya
+# rompió un build: se agregó una extensión al grupo y el requirements.txt quedó atrás.
+[project.optional-dependencies]
+docs = [
+    "sphinx>=8.1",
+    "myst-parser>=4.0",
+    "furo>=2024.8",
+    "sphinx-llm>=1.0.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
@@ -41,12 +52,6 @@ dev = [
     "mutmut>=3.2",
     "zizmor>=1.29",
     "hypothesis>=6.165.10",
-]
-docs = [
-    "sphinx>=8.1",
-    "myst-parser>=4.0",
-    "furo>=2024.8",
-    "sphinx-llm>=1.0.0",
 ]
 
 [build-system]

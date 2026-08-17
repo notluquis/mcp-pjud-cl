@@ -65,6 +65,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Las dependencias de documentación estaban en dos listas, un grupo de `uv` y un
+  `requirements.txt`, y se desincronizaron: el build de Read the Docs falló por una extensión
+  que estaba en una y no en la otra. Ahora van como extra `docs`, que pip y uv leen igual.
+- El pin de `github/codeql-action` apuntaba a la release del bundle de CodeQL y no a la
+  versión de la acción, así que el comentario de versión decía algo que ese SHA no era.
 - El piso de `mcp` decía `>=1.12`, pero el código usa `MCPServer`, que existe desde la 2.0. Con
   una 1.x el servidor no arrancaba.
 

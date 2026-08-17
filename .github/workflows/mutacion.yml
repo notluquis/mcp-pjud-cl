@@ -37,7 +37,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync --all-groups
+      - run: uv sync --all-extras --all-groups
 
       - name: Ejecutar mutación
         run: uv run mutmut run || true

@@ -8,9 +8,14 @@ build:
 sphinx:
   configuration: docs/conf.py
 
+# Se instala el propio paquete con su extra `docs`, en vez de un requirements.txt aparte.
+# Una lista duplicada se desincroniza: ya pasó una vez y rompió el build.
 python:
   install:
-    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
 
 formats:
   - pdf

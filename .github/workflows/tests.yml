@@ -16,7 +16,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -36,7 +36,7 @@ jobs:
     name: Verificar que no exista código de escritura
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # La garantía central del proyecto es que no puede escribir en los sistemas del
       # Poder Judicial. Esto lo verifica mecánicamente en cada PR, en vez de confiar en

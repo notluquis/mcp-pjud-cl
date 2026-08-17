@@ -24,17 +24,34 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Registra todo el tráfico saliente del runner. Para este proyecto no es sólo
-      # higiene: la promesa es que CI nunca consulta al Poder Judicial, y esto lo deja
-      # auditable en vez de pedir que se confíe en la palabra.
+      # Bloquea todo el tráfico saliente salvo lo declarado. Para este proyecto no es sólo
+      # higiene: la promesa es que CI nunca consulta al Poder Judicial, y con `block` deja
+      # de ser una promesa auditable para pasar a ser una imposibilidad. Ningún dominio de
+      # `pjud.cl` está en la lista, así que una petición desde CI no sale.
       #
-      # Siguiente paso, una vez que una corrida muestre los destinos reales: pasar a
-      # egress-policy: block con la lista explícita. Se parte en audit porque block con
-      # una lista adivinada rompe CI sin aportar nada.
-      - name: Auditar tráfico saliente
+      # Cada entrada corresponde a un paso concreto de este job:
+      #   github.com, api.github.com, codeload.github.com  -> checkout y las acciones
+      #   objects.githubusercontent.com, release-assets.githubusercontent.com
+      #                                                    -> binarios de las acciones
+      #   astral.sh                                        -> instalador de uv
+      #   pypi.org, files.pythonhosted.org                 -> uv sync
+      #
+      # Si esto pone CI en rojo con un destino no declarado, la respuesta correcta es
+      # mirar cuál es y decidir si corresponde agregarlo, no volver a `audit`. Un fallo
+      # ruidoso acá vale exactamente lo mismo que en el parser.
+      - name: Bloquear tráfico saliente no declarado
         uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            astral.sh:443
+            codeload.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            objects.githubusercontent.com:443
+            pypi.org:443
+            release-assets.githubusercontent.com:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -1,10 +1,16 @@
 """Configuración de Sphinx."""
 
+from importlib.metadata import version as _version
+
 project = "mcp-pjud"
 copyright = "2026, Lucas Pulgar Escobar"
 author = "Lucas Pulgar Escobar"
-release = "0.1.0"
-version = "0.1"
+
+# La versión se lee de los metadatos del paquete y no se escribe acá. Duplicarla significa
+# que al subir la versión en pyproject alguien tiene que acordarse de este archivo, y no
+# se acuerda.
+release = _version("mcp-pjud")
+version = ".".join(release.split(".")[:2])
 
 language = "es"
 

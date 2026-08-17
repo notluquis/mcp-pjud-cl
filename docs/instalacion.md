@@ -74,7 +74,7 @@ uv sync --all-groups
 ### Verificar
 
 ```bash
-uv run pytest        # 50 tests, sin red
+uv run pytest        # sin red
 uv run ruff check .
 ```
 

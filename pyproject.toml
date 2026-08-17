@@ -34,18 +34,18 @@ Cambios = "https://github.com/notluquis/mcp-pjud-cl/blob/main/CHANGELOG.md"
 [project.scripts]
 mcp-pjud = "mcp_pjud.server:main"
 
-# Las dependencias de documentación van como extra y no como grupo, para que Read the Docs,
-# que instala con pip, y uv usen exactamente la misma lista. Tenerlas en dos archivos ya
-# rompió un build: se agregó una extensión al grupo y el requirements.txt quedó atrás.
-[project.optional-dependencies]
+[dependency-groups]
+# `docs` es un grupo y no un extra a propósito. Un extra se publica en los metadatos del
+# paquete, y quien instale mcp-pjud vería un `[docs]` que arrastra un tema de Sphinx. Read
+# the Docs lee grupos de forma nativa con `method: uv`, que además respeta uv.lock, así que
+# instala exactamente las mismas versiones que CI. Un requirements.txt aparte no lograba
+# ninguna de las dos cosas.
 docs = [
     "sphinx>=8.1",
     "myst-parser>=4.0",
     "furo>=2024.8",
     "sphinx-llm>=1.0.0",
 ]
-
-[dependency-groups]
 dev = [
     "pytest>=8.3",
     "ruff>=0.9",
@@ -63,6 +63,8 @@ packages = ["src/mcp_pjud"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# El harness de fuzzing no es un test: requiere atheris y se corre a mano.
+addopts = "--ignore=tests/fuzz_parser.py"
 
 [tool.ruff]
 line-length = 100
@@ -75,3 +77,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 # Se muta el parser y el cliente: ahí vive la lógica que puede costar un plazo.
 paths_to_mutate = ["src/mcp_pjud/"]
 tests_dir = ["tests/"]
+
+[tool.ruff.lint.per-file-ignores]
+# El harness de fuzzing importa atheris, que se instala a demanda y no es dependencia.
+"tests/fuzz_parser.py" = ["E402"]

@@ -157,7 +157,7 @@ Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
 | `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
 | `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
 | `SAST` | Resuelto | Se pasó de modo gestionado a workflow con `codeql-action` fijado por SHA y consultas `security-extended`, que es una de las dos huellas que Scorecard busca |
-| `Fuzzing` | Cubierto en el fondo, no reconocido | Ver abajo |
+| `Fuzzing` | Resuelto | Harness de Atheris en `tests/fuzz_parser.py`. Ver abajo por qué también hay pruebas de propiedades |
 | `CII-Best-Practices` | **Inalcanzable con esta licencia** | Ver abajo |
 
 Sobre `Code-Review`: en un proyecto de una persona no tiene arreglo técnico, pero para código
@@ -172,8 +172,9 @@ propiedades. Es incorrecto, y conviene decirlo bien porque cambia la conclusión
 Scorecard acepta tres señales: inclusión en [OSS-Fuzz](https://google.github.io/oss-fuzz/),
 despliegue de ClusterFuzzLite, o funciones de fuzzing definidas por el proyecto. Y en esa
 tercera categoría **sí cuenta explícitamente las librerías de pruebas basadas en propiedades**:
-QuickCheck, Hedgehog, SmallCheck y validity en Haskell, fast-check en JavaScript, proper y
-quickcheck en Erlang, FsCheck en C# y F#.
+QuickCheck, Hedgehog, SmallCheck y validity en Haskell, fast-check en JavaScript y TypeScript,
+proper y quickcheck en Erlang, FsCheck en C# y F#, PropCheck y ExUnitProperties en Elixir, y
+qcheck en Gleam.
 
 O sea el enfoque que este proyecto usa es exactamente el que Scorecard considera válido. Lo
 que falta es que su detector incluya **Hypothesis**, que es el equivalente en Python y no está
@@ -182,8 +183,15 @@ en esa lista.
 De modo que el hallazgo no dice "a este proyecto le falta fuzzing". Dice "Scorecard todavía no
 sabe detectar el fuzzing que este proyecto tiene".
 
-Queda pendiente evaluar OSS-Fuzz, que sí soporta Python vía Atheris y es gratuito para
-proyectos abiertos.
+Y hay un detalle que la primera versión de esta nota tampoco tenía: **Scorecard detecta
+Atheris con un grep**. Su código (`checks/raw/fuzzing.go`) busca el patrón `import atheris` en
+archivos `*.py`, sin exigir inscripción en OSS-Fuzz ni infraestructura alguna. Inscribirse en
+OSS-Fuzz son semanas de trámite; un archivo con ese import son minutos. La nota anterior
+mandaba por el camino largo.
+
+El repositorio tiene ahora `tests/fuzz_parser.py`, un harness real que corre el parser y
+verifica la misma invariante. No corre en CI porque el fuzzing por tiempo no encaja en un
+check obligatorio; se ejecuta a mano al tocar el parser.
 
 Conviene precisar en qué se diferencian, porque no es en el oráculo. Un harness de Atheris que
 ejecute el parser y afirme que toda fecha devuelta viene en la entrada detecta la misma
@@ -196,8 +204,10 @@ interesa a este parser, y cuando falla **reduce** el caso hasta el ejemplo míni
 guiado por cobertura muta bytes, lo que le permite alcanzar caminos que una estrategia tipada
 quizá nunca genere, a cambio de entregar entradas menos legibles.
 
-Son complementarios. Para este parser, la generación estructurada rinde más por hora invertida,
-así que se parte por ahí. OSS-Fuzz queda como paso posterior y no como reemplazo.
+Son complementarios, y por eso están los dos. La generación estructurada de Hypothesis corre en
+cada cambio y rinde más por hora invertida; el harness de Atheris se usa cuando se toca el
+parser. La inscripción en OSS-Fuzz, que automatizaría el segundo de forma continua, queda como
+paso posterior y no como requisito.
 
 ### Sobre `CII-Best-Practices`
 

@@ -28,12 +28,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El parser levanta excepción cuando la tabla de Historia trae encabezados y cero filas.
   Esa forma la produce una respuesta truncada, y antes devolvía una lista vacía que se
   leería como que la causa no tiene actuaciones. Lo destapó Hypothesis.
+- Harness de fuzzing con Atheris en `tests/fuzz_parser.py`, con el mismo oráculo que la
+  invariante central. No corre en CI; se ejecuta a mano al tocar el parser.
 - Pruebas basadas en propiedades con Hypothesis sobre el parser de fechas. La invariante
   central es que nunca devuelva una fecha que no venga en la entrada: una fecha de diligencia
   inventada se computa como plazo, y eso es peor que no devolver ninguna.
-- OpenSSF Scorecard y revisión de dependencias en pull requests. CodeQL queda en el modo
-  gestionado por GitHub, que ya estaba activo: una configuración avanzada en workflow no
-  puede coexistir con él.
+- OpenSSF Scorecard y revisión de dependencias en pull requests.
+- CodeQL por workflow con `security-extended`. Pasó por dos estados en este ciclo: primero se
+  quitó el workflow porque chocaba con el modo gestionado que estaba activo, y después se
+  restituyó tras deshabilitar ese modo. Queda una dependencia de configuración fuera del
+  repositorio: si alguien reactiva el modo gestionado, el workflow falla.
 - Período de enfriamiento en Dependabot: una versión recién publicada ya no llega como pull
   request el mismo día, que es la ventana que aprovechan los ataques de cadena de suministro.
 - Publicación automática al empujar una etiqueta `v*`, con notas generadas e inventario de
@@ -46,7 +50,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Página de ejemplos con casos resueltos de punta a punta.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
-  hora inválida. Con las de propiedades, la suite queda en 49 tests.
+  hora inválida. Con las de propiedades, la suite queda en 50 tests.
 
 ### Cambiado
 
@@ -56,7 +60,6 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `permissions: {}` por defecto en los workflows, con permisos por job.
 - `persist-credentials: false` en los checkout, que no hacen push.
 
-### Cambiado
 
 - La nota sobre el hallazgo `Fuzzing` de Scorecard estaba mal fundada. Su documentación sí
   acepta pruebas basadas en propiedades como fuzzing válido; lo que falta es que su detector
@@ -69,6 +72,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- La nota sobre el pin de `github/codeql-action` atribuía mal la causa. `codeql-bundle-v2.26.3`
+  sí apunta a ese SHA, pero ese commit **es** de la acción, de época v4; el tag `v2.26.3` de la
+  acción apunta a otro. El defecto era un comentario de versión que no correspondía al SHA.
 - Las dependencias de documentación estaban en dos listas, un grupo de `uv` y un
   `requirements.txt`, y se desincronizaron: el build de Read the Docs falló por una extensión
   que estaba en una y no en la otra. Ahora van como extra `docs`, que pip y uv leen igual.

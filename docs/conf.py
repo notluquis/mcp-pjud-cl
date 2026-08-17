@@ -13,10 +13,10 @@ extensions = [
     # Genera una versión Markdown de cada página, más llms.txt y llms-full.txt.
     # Es lo que permite que un agente lea la documentación sin atravesar el HTML.
     "sphinx_llm.txt",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
 ]
+
+# Sin autodoc, napoleon ni viewcode: ninguna página usa directivas de API. Estaban
+# cargadas sin hacer nada.
 
 # Sólo lo que se usa. `colon_fence` para los avisos, `deflist` para las listas de campos.
 myst_enable_extensions = ["colon_fence", "deflist"]

@@ -1,13 +1,18 @@
 name: codeql
 
-# Configuración avanzada, en reemplazo del modo gestionado por GitHub. Se cambió para poder
-# usar el conjunto de consultas `security-extended` y para dejar el análisis fijado por SHA
-# como el resto de los workflows.
+# Configuración avanzada, en reemplazo del modo gestionado por GitHub.
 #
-# Las dos configuraciones no pueden coexistir: mientras exista este archivo, el modo
-# gestionado tiene que quedar deshabilitado en Settings. Si alguien lo reactiva, este
-# workflow falla con "CodeQL analyses from advanced configurations cannot be processed when
-# the default setup is enabled".
+# Qué gana sobre el modo gestionado, dicho con precisión: la acción queda fijada por SHA
+# como el resto de los workflows, y la configuración vive en el repositorio en vez de en un
+# panel. `security-extended` NO es parte de la ganancia: el modo gestionado también lo
+# ofrece desde Settings.
+#
+# Qué cuesta: las dos configuraciones no pueden coexistir. Mientras exista este archivo, el
+# modo gestionado tiene que estar deshabilitado en Settings, y eso es estado fuera del
+# control de versiones que nada acá puede verificar. Si alguien lo reactiva, este workflow
+# falla con "CodeQL analyses from advanced configurations cannot be processed when the
+# default setup is enabled", y como es check obligatorio en main, bloquea todo merge hasta
+# que alguien toque ese panel.
 
 on:
   push:
@@ -19,9 +24,9 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# Sin `cancel-in-progress`. El único producto de este workflow es la subida del SARIF, así
+# que una corrida cancelada deja ese commit sin resultados de escaneo. La plantilla oficial
+# de CodeQL tampoco define grupo de concurrencia, por lo mismo.
 
 jobs:
   analizar:

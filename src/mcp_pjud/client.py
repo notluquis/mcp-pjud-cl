@@ -47,6 +47,11 @@ INTERVALO_MINIMO = 5.0
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
+#: Motivo del bloqueo, si el portal ya nos rechazó. También es del proceso, y a propósito
+#: no se limpia: la detención total significa que no se vuelve a consultar hasta que una
+#: persona revise si la IP quedó restringida y reinicie el servidor.
+_BLOQUEADO: str | None = None
+
 COMPETENCIAS = {
     "suprema": 1,
     "apelaciones": 2,
@@ -132,35 +137,43 @@ class PjudClient:
             time.sleep(pendiente)
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
-        global _ULTIMA
-        # El turno se toma para toda la petición, no sólo para la espera: dos llamadas
-        # concurrentes leerían la misma marca y saldrían juntas. Y la marca se estampa en
-        # `finally` porque un timeout que no estampara dejaría al siguiente salir sin
-        # esperar, justo cuando el portal está peor.
+        global _ULTIMA, _BLOQUEADO
+        # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
+        # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
+        # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
+        # cuando la primera ya recibió el bloqueo. Eso es reintentar por el lado.
         with _TURNO:
+            if _BLOQUEADO:
+                raise PjudBloqueado(_BLOQUEADO)
+
             self._esperar()
             try:
                 r = self._http.request(metodo, url, **kw)
             finally:
+                # Un timeout que no estampara dejaría al siguiente salir sin esperar,
+                # justo cuando el portal está peor.
                 _ULTIMA = time.monotonic()
-        self.bitacora.append((time.time(), url, r.status_code))
+            self.bitacora.append((time.time(), url, r.status_code))
 
-        if r.status_code in (403, 429):
-            raise PjudBloqueado(
-                f"El Poder Judicial respondió {r.status_code} a {url}. "
-                "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
-                "bloqueada antes de volver a consultar."
-            )
-        # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
-        # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y el
-        # usuario reintentaría, que es justo lo que la regla de detención total prohíbe.
-        aviso = leer_aviso(r.text)
-        if aviso and es_aviso_de_captcha(aviso):
-            raise PjudBloqueado(
-                f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
-                "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
-                "acceso quedó restringido."
-            )
+            if r.status_code in (403, 429):
+                _BLOQUEADO = (
+                    f"El Poder Judicial respondió {r.status_code} a {url}. "
+                    "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
+                    "bloqueada antes de volver a consultar."
+                )
+                raise PjudBloqueado(_BLOQUEADO)
+
+            # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
+            # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y
+            # el usuario reintentaría, que es justo lo que la detención total prohíbe.
+            aviso = leer_aviso(r.text)
+            if aviso and es_aviso_de_captcha(aviso):
+                _BLOQUEADO = (
+                    f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
+                    "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
+                    "acceso quedó restringido."
+                )
+                raise PjudBloqueado(_BLOQUEADO)
 
         r.raise_for_status()
         return r

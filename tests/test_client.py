@@ -90,6 +90,35 @@ def test_403_y_429_detienen_sin_reintentar(codigo, monkeypatch):
     assert len(llamadas) == 1, "no debe reintentar"
 
 
+@pytest.mark.parametrize("codigo", [403, 429])
+def test_el_bloqueo_detiene_tambien_al_resto_del_proceso(codigo, monkeypatch):
+    """La detención es del portal, no de la llamada que se topó con él.
+
+    `server.py` abre un cliente por herramienta y el cliente MCP puede llamar a dos a la
+    vez. Si el bloqueo quedara guardado en la instancia, la segunda esperaría su turno y
+    consultaría igual cuando la primera ya recibió el rechazo: reintentar por el lado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    llamadas = []
+
+    def transporte(req):
+        llamadas.append(req.url)
+        return httpx.Response(codigo, text="bloqueado")
+
+    primero = PjudClient("test@example.cl")
+    primero._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    with pytest.raises(PjudBloqueado):
+        primero._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+
+    # Cliente distinto, como el que abriría la herramienta siguiente.
+    segundo = PjudClient("test@example.cl")
+    segundo._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    with pytest.raises(PjudBloqueado, match=str(codigo)):
+        segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/y")
+
+    assert len(llamadas) == 1, "tras el bloqueo no debe salir ninguna petición más"
+
+
 def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):
     """Si el sitio cambia y ya no se puede derivar el prefijo, detenerse.
     Consultar rutas que ya no existen produciría falsos negativos."""

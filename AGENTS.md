@@ -128,6 +128,15 @@ prosa se escribe a mano, `tests/test_documentacion.py` compara cada dato repetid
 
 **Commits:** [Conventional Commits](https://www.conventionalcommits.org/es/) en español.
 
+**El registro de cambios no es el lugar para contar la historia.** Cada entrada de
+`CHANGELOG.md` dice QUÉ cambió y, si hace falta, qué tiene que hacer distinto quien actualiza.
+Una o dos líneas. Cómo se encontró el problema, qué hipótesis fallaron y por qué se eligió una
+versión y no otra van en el PR y en el mensaje del commit, que es donde alguien los busca.
+
+Se degradó solo una vez: las entradas pasaron a ser párrafos, una versión llegó a 333 líneas
+con 67 viñetas, y encima repetían lo que la sección de al lado ya decía. `test_documentacion.py`
+acota el largo de cada viñeta.
+
 ## Licencia y contribuciones
 
 El proyecto usa [PolyForm Strict 1.0.0](LICENSE.md), que no otorga derecho a modificar el

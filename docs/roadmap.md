@@ -605,6 +605,26 @@ es qué folio apareció, y si trae una fecha de diligencia que echó a correr un
 Sigue vigente lo que bloquea esto: implica persistir datos de terceros, o sea entra de lleno
 en la Ley 21.719.
 
+#### Las diligencias de cobranza viven en su propio panel
+
+Medido sobre una respuesta real, y corrige lo que esta misma hoja afirmó antes: en cobranza las
+diligencias del ministro de fe **no están en la tabla de Historia**. Sus trámites son
+`Actuación`, `Resolución` y `Escrito`, nunca "Actuación Receptor".
+
+Están en `diligenciaCob`, que tiene estructura propia:
+
+```
+Doc. Ida | Doc. Vta. | Estado Diligencia | RIT | RUC | Tipo Diligencia | Fecha Trámite | Destinatario | Responsable
+```
+
+Dos cosas que hay que mirar antes de leerlo: si `Fecha Trámite` trae el formato de fecha doble
+como en civil, y qué significa `Responsable`, que probablemente identifica al receptor.
+
+Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver la
+lista vacía que la Historia produciría: esa lista se leería como "no hubo actuaciones" cuando
+lo cierto es "no las estoy leyendo". Es el mismo falso negativo que motivó el proyecto, y
+estuvo brevemente dentro de él.
+
 #### El calendario de días hábiles: la pieza que falta para cerrar el círculo
 
 Revisando el catálogo completo de Boostr apareció lo que este proyecto no tiene y necesita más

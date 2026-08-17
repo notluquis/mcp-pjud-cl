@@ -635,6 +635,17 @@ class PjudClient(Transporte):
                 "antes de consultar en vez de leerla con el mapa de otra competencia, que "
                 "devolvería filas mal alineadas o una lista vacía."
             )
+        if not spec.receptor_en_historia:
+            raise ValueError(
+                f"En {competencia!r} las diligencias del ministro de fe NO están en la tabla "
+                "de Historia: viven en un panel propio (`diligenciaCob`) con otra estructura, "
+                "que este proyecto todavía no lee. Medido sobre una respuesta real: los "
+                "trámites de Historia son 'Actuación', 'Resolución' y 'Escrito', nunca "
+                "'Actuación Receptor'.\n\n"
+                "Se rechaza en vez de devolver la lista vacía que la Historia produciría, "
+                "porque esa lista se leería como 'no hubo actuaciones' cuando lo cierto es "
+                "'no las estoy leyendo'."
+            )
         # `paginas=1` a propósito: de todo el listado sólo se usa la primera causa, así que
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
         # contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de

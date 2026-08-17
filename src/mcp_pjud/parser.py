@@ -376,6 +376,19 @@ class Competencia(NamedTuple):
     #: `receptorCobranza` en todo el sitio, así que en las demás la pregunta que da sentido a
     #: este proyecto no tiene respuesta y conviene decirlo en vez de devolver una lista vacía.
     receptor: bool
+    #: Si esas actuaciones se leen desde la tabla de Historia.
+    #:
+    #: En civil sí: la columna `Trámite` dice "Actuación Receptor". En cobranza NO, y esto se
+    #: midió sobre una respuesta real: los trámites de `historiaCob` son `Actuación`,
+    #: `Resolución` y `Escrito`, nunca "Actuación Receptor", mientras las diligencias viven en
+    #: un panel aparte, `diligenciaCob`, con estructura propia (`Estado Diligencia`,
+    #: `Tipo Diligencia`, `Destinatario`, `Responsable`). La palabra "receptor" aparece en esa
+    #: respuesta, o sea existen: lo que no existe es la forma de leerlas desde Historia.
+    #:
+    #: Sin esta distinción, pedir actuaciones de cobranza devolvía una lista vacía mientras las
+    #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
+    #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
+    receptor_en_historia: bool
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -392,6 +405,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         },
         historia=None,
         receptor=False,
+        receptor_en_historia=False,
     ),
     "apelaciones": Competencia(
         2,
@@ -405,30 +419,35 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         },
         historia=None,
         receptor=False,
+        receptor_en_historia=False,
     ),
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
         historia=HISTORIA_CIVIL,
         receptor=True,
+        receptor_en_historia=True,
     ),
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
         historia=None,
         receptor=False,
+        receptor_en_historia=False,
     ),
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
         historia=None,
         receptor=False,
+        receptor_en_historia=False,
     ),
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
         historia=HISTORIA_COBRANZA,
         receptor=True,
+        receptor_en_historia=False,
     ),
 }
 

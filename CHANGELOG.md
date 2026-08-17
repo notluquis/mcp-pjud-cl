@@ -187,6 +187,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Cobranza prometía actuaciones de ministro de fe leyéndolas de la tabla de Historia, y ahí no
+  están. Medido sobre una respuesta real: sus trámites son `Actuación`, `Resolución` y
+  `Escrito`, nunca "Actuación Receptor", y las diligencias viven en `diligenciaCob` con
+  estructura propia. La palabra "receptor" aparece en esa respuesta, o sea existen.
+
+  El efecto era devolver una lista vacía mientras las diligencias estaban en el panel de al
+  lado: "no hubo actuaciones" cuando lo cierto era "no las estoy leyendo". Es el falso negativo
+  que este proyecto existe para evitar, y estuvo brevemente dentro de él. Ahora la llamada se
+  rechaza con esa explicación.
+
 - `ocultas` no significaba lo mismo en todos los buscadores, y se informaba igual. Medido: en
   `suprema` el número que la plataforma entrega cuenta la consulta (2 y 2 para un rol que
   existe, 0 y 0 para uno imposible); en `laborales` cuenta el índice completo, 269.264 en los

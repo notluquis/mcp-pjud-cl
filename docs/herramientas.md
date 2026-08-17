@@ -119,6 +119,17 @@ rango antes de subir el tope de páginas: cada página son 100 resultados y una 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
 proyecto.
 
+:::{warning}
+Sólo **civil** entrega actuaciones por esta vía. En **cobranza** las diligencias del ministro de
+fe existen pero viven en un panel propio (`diligenciaCob`) con otra estructura, que este
+proyecto todavía no lee, así que la llamada se **rechaza** en vez de devolver la lista vacía que
+la Historia produciría. Esa lista se leería como "no hubo actuaciones" cuando lo cierto es "no
+las estoy leyendo".
+
+En laboral, penal, apelaciones y suprema no existen: en todo el sitio sólo hay
+`receptorCivil` y `receptorCobranza`.
+:::
+
 Toma `tipo`, `rol`, `anio`, `competencia`, `tribunal` y `corte`, con el mismo significado que
 en `buscar_causa_por_rit`. No toma `paginas`: de la búsqueda sólo usa la primera causa.
 

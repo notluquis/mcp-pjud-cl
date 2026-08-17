@@ -862,3 +862,72 @@ def test_cada_cuadro_de_ejemplos_trae_las_filas_que_su_prosa_anuncia():
     assert len(filas) == numeros[citas.group(1)], (
         f"la prosa dice {citas.group(1)} citas y el cuadro trae {len(filas)} filas"
     )
+
+
+def test_todo_lo_que_declara_una_version_dice_la_misma():
+    """La versión se copiaba a mano en cuatro lugares y se quedó atrás en los cuatro.
+
+    Al publicar la 0.2.0 seguían diciendo 0.1: el User-Agent identificaba cada petición ante el
+    Poder Judicial como una versión que no era, la instalación fijada del README y de la guía
+    apuntaba a una etiqueta inexistente, y `CITATION.cff` atribuía una fecha a una publicación
+    que nunca ocurrió.
+
+    El agente es el caso que no es cosmético: la regla 2 exige que sea identificable, y esa
+    cadena es lo único que tiene la institución para saber qué software la consulta. Ahora sale
+    del paquete instalado; los demás siguen escritos a mano y este guardia es lo que los ata.
+    """
+    version = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["version"]
+
+    # Se lee el header que un cliente MANDA, no la constante. La primera versión de este
+    # guardia comparaba `client.VERSION` contra `pyproject.toml`, y con eso no podía fallar:
+    # volver a escribir la versión a mano dentro del User-Agent lo dejaba verde, que es
+    # exactamente el bug que este test existe para atrapar.
+    from mcp_pjud.client import PjudClient
+
+    agente = PjudClient("test@example.cl")._http.headers["User-Agent"]
+    assert agente.startswith(f"mcp-pjud/{version} "), (
+        f"el servidor se identifica ante el Poder Judicial como {agente!r} y el paquete es "
+        f"la versión {version}"
+    )
+
+    # El ejemplo vivo del agente, que lleva el prefijo `User-Agent: `. La tabla de la medición
+    # de user agents queda fuera a propósito: es el registro de lo que se envió aquella vez, y
+    # actualizarla para que pase este guardia falsearía la medición.
+    guia = _texto(RAIZ / "docs" / "instalacion.md")
+    assert f"User-Agent: mcp-pjud/{version} " in guia, (
+        f"la guía muestra un User-Agent que no es el que el servidor envía (mcp-pjud/{version})"
+    )
+
+    etiqueta = f"@v{version}"
+    for archivo in ("README.md", "docs/instalacion.md"):
+        texto = _texto(RAIZ / archivo)
+        if "@v" not in texto:
+            continue
+        assert etiqueta in texto, (
+            f"{archivo} recomienda fijar una versión distinta de la publicada: la instalación "
+            f"fijada apuntaría a una etiqueta que no existe. Debe decir {etiqueta}"
+        )
+
+    citation = _texto(RAIZ / "CITATION.cff")
+    assert f"version: {version}" in citation, (
+        f"CITATION.cff atribuye una versión distinta de {version}"
+    )
+
+
+def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
+    """El registro de cambios y `pyproject.toml` se editan por separado, y ahí se separan.
+
+    Ya pasó: la versión `0.1.0` quedó escrita en el registro con su enlace a
+    `releases/tag/v0.1.0`, y esa etiqueta nunca se creó. El enlace estuvo muerto desde que se
+    escribió y nada lo notó, porque nada comparaba una cosa con la otra.
+
+    Subir la versión sin anotarla, o anotarla sin subirla, deja el paquete diciendo que es una
+    versión y su registro diciendo que es otra. Quien instale desde el índice ve la primera.
+    """
+    version = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["version"]
+    publicadas = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", _texto(RAIZ / "CHANGELOG.md"), re.M)
+    assert publicadas, "el registro de cambios no declara ninguna versión publicada"
+    assert publicadas[0] == version, (
+        f"`pyproject.toml` dice {version} y la última anotada en el registro es "
+        f"{publicadas[0]}. Las versiones se anotan al publicarlas, no después."
+    )

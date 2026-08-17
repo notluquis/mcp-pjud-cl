@@ -65,7 +65,7 @@ $(document).ready(function(){
 									<td>
 										<strong>Texto Demanda:</strong>
 										<form name="form" action="ADIR_871/civil/documentos/docu.php" method="get" target="txtD">
-											<input type='hidden' name='valorEncTxtDmda' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9EXC9MZGpVdkliZDhKT3E3SFljUFM3clNJbTRwVHBpVFlMZ2w4akhQc2k5WjZOaStMbmZicVJJS2hcL20yUXZaejJ4Q1VnTDNxUHVYWlREc2c2eFhTMjN3PSJ9.lAOu6rEV0bvGmq2BheA-uNURFj-50CIPuVgTklRk_PY'>
+											<input type='hidden' name='valorEncTxtDmda' value='referencia-ficticia-001'>
 											<a href="#" onClick='$(this).closest("form").submit();' title="Archivo Texto Demanda" role="img">
 												<i title="Texto Demanda" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 											</a>
@@ -89,7 +89,7 @@ $(document).ready(function(){
 								<!-- Bloque boton ebook -->
 										<strong>Ebook:</strong>
 										<form name="form" action="ADIR_871/civil/documentos/newebookcivil.php" method="get" target="_blank">
-											<input type='hidden' name='dtaEbook' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiT1lWbXlLTUtXM1wvZm9mNFdkUGM4T1d3UGFiTWQ0XC9xQ3pGRlBCR0MwVERHWnd0Nmt2TUFlbFZtOURVeDFcLzRuVSJ9.0r9AMDq7ZZY_BJnCiy2KsQeCLV1NmZiT6dzcvS1O3ao'>
+											<input type='hidden' name='dtaEbook' value='referencia-ficticia-002'>
 											<a href="#"  onClick='$(this).closest("form").submit();' title="Descargar Ebook" role="img">
 											<i title="Descargar Ebook" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 											</a>
@@ -107,8 +107,8 @@ $(document).ready(function(){
 						
 									<td>
 										<strong>Causa Origen:</strong> C-15411-2025										&nbsp;&nbsp;&nbsp;&nbsp;
-										<!--<a data-toggle="modal" href="#modalCausaOrigenCivil" title="Causa origen" onClick="causaOrigenCivil('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiT1lWbXlLTUtXM1wvZm9mNFdkUGM4T1d3UGFiTWQ0XC9xQ3pGRlBCR0MwVERHWnd0Nmt2TUFlbFZtOURVeDFcLzRuVSJ9.0r9AMDq7ZZY_BJnCiy2KsQeCLV1NmZiT6dzcvS1O3ao');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>-->
-										<a data-toggle="modal" href="#modalDetalleCivil" title="Causa origen" onClick="detalleCausaCivil('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiM1JyOTlNcFlJdkNYZUFzZ2RIbzFNcEtYeExidmJuS0RBUXJSUzhMQkJKWGdialFBTFRMYUNwRENXQUx1bGZTWlphQUFxa3J1dzNPM1l3MmtcLzk3SHhEU2hQVXE0RlRiZDV6eXhtUHZ1SFBZSW9ZK21TMmswaldFUVRHTHFZS0Rwc3Z5eU5Zb1M3cVp0SzFXXC9mXC9LYXNVbkdkVVZuUk12eXJTZWtwc1plem9MbnZNVE1CeUdhYTd5eUNWYmpWMWNuMFJGTnFrZGx5bzFBR2NPUGQ5OHIrSXFicERVVG02aWFBXC80ZlwvZFZ4VG40dE90N0pnK0w1OUNuVHVJd1FKUWZqaWJQaUx2cU9HdjBPWGdLMjJjakpOTzBaUXlxVEJVSDRqTlBuV3ZWWUdna3d3eVpqRmU0U1UxaEYzYVc0TzBUN1dHdXdFUDFKcituQWdZZW1ZUlkxaE1LUm9SdGppY0xXTTgwYkMyUlpTNW02WkdhNzlrRjdhMGF4WndRU1c1T1VjYUxOa3NYQUpxaGg0OEZnSnIzY0RaeUZabXBHRW1uWkhZbXZBXC9uOVRjczhsWFJITFFkd21hc0kzOHdzNklGdVJqR2JpekZsRnZodmxTWUtYUFwvUGdQcjRPN29EN1o3SkhSK3N4TWJmMmVKNDVST3VmeEhQU05ZdTBGVjZPUUdQZXRQVXZTU0RkXC9Pd2pKMlRod05KOG45MDNtQTM4SFAzTFZMRTllaThJRXpQd2RpdlVpRFM4MWxTQnBsWUFCbnA0Uzczd1wvVWFJTGVIZUhGM09yeGtaRFlXQXpoVGNsV3VLSzBXUmlCTlwvOXRPZVdFVEx4b25uV3d3RzJhVjJWdzI4amdvaEtMTVI2V3RBQldCdzNxXC9xZ0FKSVhsUXhSN3NvNUV6WG5yUW13cWdaQ3lBMWkwbjZcL2FoQXlQQlJTOWdBTHRHY3BpNExlYXQ1cnNKVXRVSHFTMDM0aE1LVUVBYTNXK0psK1RmNVg1cUwwaWZGcHo1dVNnZXRlWURnblI3T1ZydWg1WTJlV0xHTUI0UVY2NzltMUhJRTJlUVFIZHVxczQ0NlNUWXNCWWZBQmxzak11Sk1sNHV1Y1J4a2FTNGMrOWtIRWRpK0Fic3ZXZUpPTHg5VnIwWjduRkZYQ3R5MjkrSVB5citsWlNuME4rb0lhTENiXC9heURPa0hPZmh2WG9RZTNTcjFtTlNMRG5qdXY3SWJGaWdWVThybHpiU3N1bVBXdHpOXC9XM1NORVNWbHVtbTMwWm5kVGxBVEtRWUdxdWhaVGEzNmlNRHpENlhDUDUwbTdNNlwvbXo2aVFYVE8wT1FodWQxUmlaUGtJNVREVFVsQXcxbXZtemt1aFwvaXZmNWZLanU2eE1QRjFQeUZkOGV4azRrMWdQS1VlVFJlcFc2QzlGQWxPZ0dKV01zVGpuVEMwWnRJdkdPWUg5TkFWIn0.1YLm9XXTNkYlQOdQqRlhV40wFY3rNb2RmekLTxGEHVE');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+										<!--<a data-toggle="modal" href="#modalCausaOrigenCivil" title="Causa origen" onClick="causaOrigenCivil('referencia-ficticia-002');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>-->
+										<a data-toggle="modal" href="#modalDetalleCivil" title="Causa origen" onClick="detalleCausaCivil('referencia-ficticia-003');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
 									</td>
 									<td><strong>Tribunal Origen:</strong> 11º Juzgado Civil de Santiago                     </td>
 									<!-- Fin Bloque Piezas Exhorto -->
@@ -124,7 +124,7 @@ $(document).ready(function(){
 									<td>
 										<strong>Historia Causa Cuaderno</strong><br>
 										<select id="selCuaderno" class="form-control form-control-sm">
-												<option value="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiM1JyOTlNcFlJdkNYZUFzZ2RIbzFNaVNoM2p1Q3hNTTljaU9aSmJBS01JRXJJdHZUXC9JRkExTm9YWllyVjh3TzZoTkhuSHZTWFZlRVwvUDU1SzFsZk9uM1RxaFNxOVpSZlg5WU5IRGdmNTNxRnBqQ2dxaHJzUXZVT2pKcW1Ca2c5akp0TXFtUlNxZ3pGSjUwQk01cUYwVUdYQUVwUWdiWmdpdURlTVwvKzVIaTFFPSJ9.TBn1KC4wZM0_6E-8hvQj14vAOO4bHA-XyaEReIaQmC0" selected="selected">0 - Principal</option>
+												<option value="referencia-ficticia-004" selected="selected">0 - Principal</option>
 	
 										</select>
 										<!--
@@ -133,7 +133,7 @@ $(document).ready(function(){
 									<td>
 										<strong>Informaci&oacute;n notificaciones receptor:</strong>
 										<br>
-										<a data-toggle="modal" href="#modalReceptorCivil" title="Ver Receptor" role="img" onClick="receptorCivil('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoic1dCRmw3Mm15TEtaeU5samZQc3FuUldDdGhqZTB1WVlBUmpZcWQyT3VPWmwyeEVrNTRoXC9Td3FTdXlhdkI1YUlyOEhWU1JhdzJwOW82YkhwY0FSN2JXbTBGQlJCekZ4MlVwUjcrdWNVZXJvXC9qaG40VUVnTnM5dVR2Rjh4b2s2TG9oSHFoTEUza3B1MSs2dGZYSTFSNGNkSUhvUGJqOGh6RmJOeVFNU1Jiak5yamlUVHVkSWZXS3RhSXlDNzV6bEoifQ.GlLo-4ONhs5dfBxj2px6GFQy09y-piA2c3COVVuiGEY');"><i class="fa fa-folder fa-2x" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+										<a data-toggle="modal" href="#modalReceptorCivil" title="Ver Receptor" role="img" onClick="receptorCivil('referencia-ficticia-005');"><i class="fa fa-folder fa-2x" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
 									</td>
 								</tr>
 							</tbody>
@@ -181,7 +181,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w1" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9PU01DRCs5Z1NvNHpuTm5aT093ejZrMXB4OXZQT0lLOXU0RU9oWndrdFE2cXpYajg1UzFEaXgzelQ1SExVTjI0c0xaZ1BaWExBYlJRK1B2R29NVFczblRWN0o3YitqQUplNGY5XC8rWmN3QmdJeDFpVWxER2xqU0UyK2tNZ3ZTcTNBPT0ifQ.MQHosYqxtuGpNsPI8kd1oHIV7Q_aEo3YhJ0ljI9xLzI'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-006'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -198,7 +198,7 @@ $(document).ready(function(){
 												<td>22/06/2026 (18/06/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmZHd3VndOMXhpUE9GRm4yVHRiYllvbz0ifQ.pjmAIQAtXp0lL1lZ-Qg_O6OZjK3irYiXcWdUbCyWH3Y');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-007');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -207,7 +207,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w2" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9KUVdtTGwxVVJ5TlhcL1g3QnVXU3pWSGV4a2QyMzRtaVRkXC9STktHTWkraHd0WTBDUnZLXC90Z0MwcENaS0dLeXFvY2s2aWJ2cVgrbWZWQUp4Q2JkTThPVkU2VkE1SUUzOGtmYjJhb3VHN1FYVk90dGhsQkxEbjJESWxsWlFoTytLMnc9PSJ9.9b_ql4RwVF8w7S1oD3YAb-IEq1ItqL8sUiYb01bD1zU'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-008'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -224,7 +224,7 @@ $(document).ready(function(){
 												<td>22/06/2026 (17/06/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmVzl2QXhiYjVvbzcyTnFcL1wvanAyY1wvZz0ifQ.OpKiuPOFV3uqCCqWODIcQAw4CJiibbOJBowt8I0K_jI');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-009');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -233,7 +233,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w3" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9LOERubHkzbzVpRXdKOHd5VExXTCtNa0tKOGx3T1pXSE1zNVIzdFRtRGlDTElPVktBc2xFV3JUM3BoeHl6ZytUOFwvTkJqWGQzZExXUWVXaDJuNndFT3hCXC9jR1p3RDJ3RkpLMlhocnZ2aCtTYUt3clZvRE0zQ2JJMVwvcCtXSWxMN1E9PSJ9.NeA-VYn8ckaUAwZH5PiljH39YyQyHYK-TJRqvWDMFYA'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-010'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -250,7 +250,7 @@ $(document).ready(function(){
 												<td>22/06/2026 (17/06/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmYWEzTXExUlAzXC8xZTM2WWs0cmFlS0U9In0.5sJ_2awAQUYV7ySjm6mbmaOSiO916vmZ9ASxPaXm7tA');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-011');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -259,7 +259,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w4" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9QVUQzSUtBMjU5eTZQOE0rM0FZaTJySFg2SzJuOWlrbmx1SGtRc2o4M2M1MnVnUSs3STdcL1wvZDJrVkdrMWNEazJYZVBEZXFQdTJHcGRmOFwvWkpLTmt6Qmhid2puaGcxQUJsR3Rtc1dIcHRoclBiajNDa24wclBrNVA0SzBoZ29sQ0E9PSJ9._fvQKNS4IYX3V0moZT-_IIl2mWrAGCw5Upk5s9diGgg'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-012'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -276,7 +276,7 @@ $(document).ready(function(){
 												<td>12/06/2026 (09/06/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmWmd2dkJCQTRUUkg1cEs5QzBWOGQwND0ifQ.nXVkD2V6_a_Y0AoaKDduf00iEfCM9IUsDdWobZ00F_c');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-013');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -285,7 +285,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w5" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9IZ2xMeDJvckZpanJcL2tITW16djVwWkNcL0lHSitpdVwvVDFnbWViYlp6Zmx5UUJTdStaSG1aVmpoRzVZWkJRWWhtS3FSM1hCbGZ6bXN6MVwvSENyNlwvMzJWc1Zub2RTbG5ROFk1ZTgxWW9oNEpEQXBcL2tKbjNxUFdRZjNPYldTVGxrdVE9PSJ9.rzhFidfPTPydBSpD13IBQXwrHjLtKEKF2YtlRi62uTU'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-014'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -302,7 +302,7 @@ $(document).ready(function(){
 												<td>12/06/2026 (09/06/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmU1NRRzRqS0NXdmtUVVp3c3FBZnNadz0ifQ.Klv7OOyYXDaecKu8MbEj4P4LwmBUgXZ2lylOAVIP0os');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-015');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -311,7 +311,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w6" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9FMFV6WXpkYlBcL0o4XC9GMTZlM1wvazFXWnpxS3lwY25uaFpzS2FiNVNNaXNPZDN6NFhYdFQxQngxNkNhVkUxb1V2SW1sWVBjZ0VaaWhsa3k1YVliWGZDdCtDNXNoMEExTzR3bUN3QjM3TzRoTDFNZ3FPeVV2dzBsdER0ZEtFdEJ6ZEE9PSJ9.Q1udRHlALrWLLiE7LcoGqYSCq6H-XWeP0abGEba8qyU'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-016'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -328,7 +328,7 @@ $(document).ready(function(){
 												<td>28/05/2026 (25/05/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmZlpVU0laWlhSWDB0OGFYUmEzQTFJQT0ifQ.67wg3fFfLGnd1602TsLvA2jgySBz-QvpWhUvvAwudrg');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-017');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -337,7 +337,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w7" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9EMmVCRUFmb3NCXC8xVGxvcWRYSGtQVUtSXC9TUFRoTW9NbGpvV2NmcVBnNERFQVwvdUM0MXJ3dWlNSG94eEJlZ3RBT0phK1V0eE0xQ0NjVkExb0djSUdhV0dYTUcrNEt2SlNwanpJSFc1SnRNUU96TUozWE8zQ0tQa3BycmR3QWlHNlE9PSJ9.Osgy5pl7y9dqMv4lMrpDN0wADWk6QX-MpY-6UL7Ic04'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-018'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -354,7 +354,7 @@ $(document).ready(function(){
 												<td>28/05/2026 (25/05/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmUkI5aVlaZzBjZnhWNlBkZHJ5Zks5dz0ifQ.t0PAHianYvtPK1solKwulgobjXlK-glfD8gYfPNTjM4');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-019');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -363,7 +363,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p8">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9IWVNIQzB4RzlqRXF3RXhDVUhUbFkyd2Vsc1pHWGpSRUxxK3FiOTh1TGc4aVdhWEZGRVYwWEdTNmdQWUllbk9xMEJTXC9lTlR1K1JsdnVqZDgwNHE0ZVJ4akpcL2lIc090KzM2eXJnTlJBRURYXC9qYWNCcUVZWk1zZHA3Yko4TlliV2c9PSJ9.oEFVB7oNSJ5nVtBYBVaLvPltbKFyn2V-RYHx-ja3nDQ'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-020'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -389,13 +389,13 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w9" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9GelptM2pYZ0xYWDNubEJHRlM1NFBBZzhZR0F2UUVtaGhYSk5VTmxTUFVZTldRZ1wvMjQ3OFVwWUtPZUVsenM1dmtBWDQ0RUtLbXRxeW11OTRDXC9idXNkWFJMcFo4QW51emxJWVR5alB1TTFMIn0.VfZufLRxJqV3dtDi4yRd_4-K8IS3M5nd-YVIDbBwmdo'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-021'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
 														</form>
 														  																<form name="certCivil" action="ADIR_871/civil/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
-																<input type='hidden' name='dtaCert' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTUZSZXhEOXd6UjA2cWJPSzlpcWFBUVwvOGg4cG5hOEtqV241dWJocE45N3M9In0.ImKgVOtX9NTI5QRiZ9wDNhtSbiS9_r-gBJnpONTj1s0'>
+																<input type='hidden' name='dtaCert' value='referencia-ficticia-022'>
 																<a href="#" onClick='$(this).closest("form").submit();' title="Certificado de envio escrito" role="img" style="display: inline-block;">
 																	<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
 																</a>
@@ -420,7 +420,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w10" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9HbDRLZUlQbG9HblNPWWVcL0JuWHNSWEZUb20weWdSSkFyRGpUTkFzV3pyRDFyN3dLWmlDWnhVOXdBVnNQUjJQSnZmdDIxdjRTS0ljOEJpR1JtZnk5anZ2b1BiaW5kV3NlbEZsWXVpSHdXYUlqeUo0UkN5RUNXWm5MWktoNkc0c0p3PT0ifQ.R6YIJnIRFQrKsxGywFCCGiKxXORMgLRXuRIhigTHfxA'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-023'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -437,7 +437,7 @@ $(document).ready(function(){
 												<td>20/04/2026 (06/04/2026)</td>
 												<td>0</td>
 												<td align="center">
-														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoibERBTFMxU01vcStrRHhVVjNiSFZmZUR1TlwvQ1hBNFJOeERqUURvbytXT289In0.oc7sD4Sqgzk5-Ikb-ykhDVxG-DN0mYAQuI0E1Iz9ea0');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-024');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
 												</td>
 											</tr>
 											<tr>
@@ -446,7 +446,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p11">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9DZ1BYNFFtcTM4aFJpWklKcEUzbG1jcURRc3V5MHFmWm16UWgwUHRsbjVFeDl1R29CK0Y1RWRnZzlETjA0ZFN3SEFiRXpHbVM0TFJXK0tVaE50N2VkXC81RnFkRm40ZjFTK1paVE5CZWxaMXFoSDdBc3RFTExJenlXRnk2SEJyK1lnPT0ifQ.sqC5XpPBR3qwJwUlB_fNrOuDXAMB6OF0EjHKCZyUHLc'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-025'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -472,7 +472,7 @@ $(document).ready(function(){
 												</td>
 												<td align="left">
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w12" style="display: inline-block;">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NSwiZXhwIjoxNzg2OTI3NDg1LCJkYXRhIjoiTVFLS3ViaUU2XC93b3V6TEllOWRGXC9FdkpCZmtVM1BGWWRaMTBkTUdjMUVxUGNuQlVDb3UxOHJNcFJBNkVDWERXYVBYeVFxZ1ZzZkoxNXJMWEJGVkl6b1MzRllsOVwvZnFESUVTOUphcTlIZXpJaGdNRGZLWGFtRVZkYzZuXC9kOUJmIn0.o_rfuvQBQMfx_kLBwXwhgcXNcZQWxpQtx9m8IfzG3Z4'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-026'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
 																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
 															</a>
@@ -653,7 +653,7 @@ $(document).ready(function(){
 												<td>5</td>		
 												<td align="center">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="exTraP1">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NiwiZXhwIjoxNzg2OTI3NDg2LCJkYXRhIjoiUFwvbFhxclVHaU1ZUFwvTUJVNlRTZmdjQXVEdFl1RzFtTFg4YjU3MDZwRk9aUktOYmNiaWpRTFBHUnlRN1ZYOEJpQ1ZnXC9xMkY2ZG94OEhIVXdtZDRoaTIySHkzdEV6XC94bCtlUzZsTU52U3crbGZ6NVg5WHJlek1CZ1BUeENWMFwvdk1WOXZVZFBqMkx4bWJOR2xlM0dGaGc9PSJ9._E5BVF3EhlB2rWHl6RNrAOUefJOeNL5Oz05DZW__wlo'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-027'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -690,7 +690,7 @@ $(document).ready(function(){
 												<td align="center">
 						
 														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="exTraW3">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NiwiZXhwIjoxNzg2OTI3NDg2LCJkYXRhIjoiUFwvbFhxclVHaU1ZUFwvTUJVNlRTZmdkRW9OU0tsbGdCb0paV1IwY1hYMmlNUTh5cUI1eWNUVmg4dFdOb1Fxcno3SkJqSWtpSEszVnp2bVFUVGxkR3owTGRcL2h4VEp0NWtEam9pWkxpNEMxYXJaZDBFUHh2a0NTd1o4MnRlMEQ0TGRCOGluSFZUWG04a3dmczl6WWRKZXFnPT0ifQ.xPQIf1L817WtzL2Rd0S_8E9d56B6M8dRs5wMHiSnSwY'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-028'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -711,7 +711,7 @@ $(document).ready(function(){
 												<td>3</td>		
 												<td align="center">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="exTraP4">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NiwiZXhwIjoxNzg2OTI3NDg2LCJkYXRhIjoiUFwvbFhxclVHaU1ZUFwvTUJVNlRTZmdUNnErZG5UaURBWTl6SElWM3cyNjVZS0RYYWJvaXJ0cmYxcmhsVDJ5a3lMS2ZTR290S1lJWURvTWJSWkU5MlhFY1JzWVF1dk1cLzR2VWRoem8xMkw3U0FWeXZWZ1dHMUtwSDY4MmlZMFp0SVwva3h1NUpsYkJMdG1tOVhkV1lucG14SklHRHFoZFNBVHFGVW5OTTA4Yk9uYz0ifQ.TbS24tdBVtVjZPjjqtMLrhPOnrgVwn_onwcKQf9sA7M'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-029'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -732,7 +732,7 @@ $(document).ready(function(){
 												<td>2</td>		
 												<td align="center">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="exTraP5">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NiwiZXhwIjoxNzg2OTI3NDg2LCJkYXRhIjoiUFwvbFhxclVHaU1ZUFwvTUJVNlRTZmdWSlA3ZzErYUIwa3NYdnQ2dEMyS1puZzFHVWpTeGx0T2QxbmQ1SVwvUDJ0d1wvT000SmdPZTd2K3hlMGlzSjNcL1BJdWQxNkJRNGx3KzhxUmFRN08zMFZqWEtOdk02dXR6eTJidDVHTXFvUE5LQXJ3RlhpNURObzN0RmlscThQd1BKRkE9PSJ9.ixJueCHXC_df0qmLy0YePk_cMGcV2Z1wsovqZ455W7c'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-030'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>
@@ -753,7 +753,7 @@ $(document).ready(function(){
 												<td>1</td>		
 												<td align="center">
 														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="exTraP6">
-															<input type='hidden' name='dtaDoc' value='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc4NjkyMzg4NiwiZXhwIjoxNzg2OTI3NDg2LCJkYXRhIjoiUFwvbFhxclVHaU1ZUFwvTUJVNlRTZmdUV3NRdW9nZ3BTR3pZV2JuU3BQdnFPb3RGSkVTN3J0bDFTWlFFYlFcL3hXK0NhTDNXMFpjZ1wvWmFEU2FZXC9IaFV5WkliblFVT3g1Q3dsaFJjSnp3aE9YdmpXMGh4UnhpMUJPUFZrcjVUV3Iyb1B0aFhoTml2ZUplK0RKV2crR09PK3c9PSJ9.d5uT8nQQMc4f7ERvyLAY9om178IQOp_oL6Chr02Chgs'>
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-031'>
 															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
 																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
 															</a>

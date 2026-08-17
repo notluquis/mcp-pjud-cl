@@ -44,6 +44,15 @@ MAPEO = AQUI / "mapeo.local.json"
 IDENTIFICADORES = re.compile(r"\b[A-ZÁÉÍÓÚÑ]{4,}\d{7,8}\b")
 IDENTIFICADOR_FICTICIO = "ESTUDIO00000000"
 
+# Las respuestas traen JWT que la plataforma usa como referencia opaca de causa, cuaderno o
+# documento. Caducan a los 30 minutos, así que no sirven de credencial, pero su carga `data`
+# va cifrada y probablemente codifica identificadores de la misma causa cuyos nombres y RUT
+# ya se anonimizaron. Dejarlos sería incoherente, y además los detectores de secretos los
+# marcan en cada revisión, lo que entrena a ignorar alertas.
+#
+# Los tests no necesitan su contenido: sólo comprueban que la referencia exista.
+JWT = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}")
+
 
 def anonimizar(texto: str, personas: dict[str, str], ruts: dict[str, str]) -> str:
     for real, ficticio in personas.items():
@@ -51,7 +60,16 @@ def anonimizar(texto: str, personas: dict[str, str], ruts: dict[str, str]) -> st
     for real, ficticio in ruts.items():
         texto = texto.replace(real, ficticio)
         texto = texto.replace(real.replace("-", ""), ficticio.replace("-", ""))
-    return IDENTIFICADORES.sub(IDENTIFICADOR_FICTICIO, texto)
+    texto = IDENTIFICADORES.sub(IDENTIFICADOR_FICTICIO, texto)
+
+    # Cada JWT distinto recibe una referencia ficticia distinta, para que las fixtures sigan
+    # distinguiendo un cuaderno de otro.
+    vistos: dict[str, str] = {}
+
+    def _referencia(m: re.Match[str]) -> str:
+        return vistos.setdefault(m.group(0), f"referencia-ficticia-{len(vistos) + 1:03d}")
+
+    return JWT.sub(_referencia, texto)
 
 
 def main() -> int:

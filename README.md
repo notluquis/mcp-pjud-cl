@@ -74,7 +74,7 @@ Sobre forks: GitHub no permite deshabilitarlos en repositorios públicos. Que pu
 
 **No es open source** en sentido estricto: la licencia restringe modificación, distribución y
 uso comercial, así que no cumple la definición de la OSI. El término correcto es
-*source-available*. Ver [FINANCIAMIENTO.md](FINANCIAMIENTO.md).
+*source-available*. Ver [financiamiento](https://mcp-pjud-cl.readthedocs.io/es/latest/financiamiento.html).
 
 **Pero los pull requests sí son bienvenidos.** El [acuerdo de contribución](CLA.md) te da
 permiso para modificar el código con el fin de contribuir, y tú conservas la propiedad de tu
@@ -121,7 +121,7 @@ En `claude_desktop_config.json`:
   "mcpServers": {
     "pjud": {
       "command": "uv",
-      "args": ["--directory", "/ruta/a/mcp-pjud", "run", "mcp-pjud"],
+      "args": ["--directory", "/ruta/a/mcp-pjud-cl", "run", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "tu@correo.cl" }
     }
   }
@@ -158,25 +158,26 @@ El estado detallado de qué está probado contra el sistema real y qué no está
 ## Desarrollo
 
 ```bash
-uv run pytest        # 39 tests, sin red
+uv run pytest        # 43 tests, sin red
 uv run ruff check .
 ```
 
 Los tests corren contra HTML real guardado en `tests/fixtures/`. Ninguno consulta al Poder
 Judicial.
 
-Antes de proponer cambios lee [CONTRIBUTING.md](CONTRIBUTING.md): la licencia no otorga
-derecho a modificar el software, así que **los PR requieren permiso previo**.
+Antes de proponer cambios lee [cómo contribuir](.github/CONTRIBUTING.md). El
+[acuerdo de contribución](CLA.md) te da el permiso para modificar que la licencia por sí sola
+no otorga, y tú conservas la propiedad de tu aporte.
 
 ## Otros documentos
 
-[Cómo contribuir](CONTRIBUTING.md) ·
+[Cómo contribuir](.github/CONTRIBUTING.md) ·
 [Acuerdo de contribución](CLA.md) ·
 [Uso aceptable](ACCEPTABLE_USE.md) ·
-[Financiamiento](FINANCIAMIENTO.md) ·
-[Seguridad](SECURITY.md) ·
-[Soporte](SUPPORT.md) ·
-[Código de conducta](CODE_OF_CONDUCT.md) ·
+[Financiamiento](https://mcp-pjud-cl.readthedocs.io/es/latest/financiamiento.html) ·
+[Seguridad](.github/SECURITY.md) ·
+[Soporte](.github/SUPPORT.md) ·
+[Código de conducta](.github/CODE_OF_CONDUCT.md) ·
 [Cambios](CHANGELOG.md)
 
 ---

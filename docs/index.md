@@ -71,6 +71,7 @@ para-informatica
 herramientas
 cumplimiento
 licencia
+financiamiento
 roadmap
 ```
 

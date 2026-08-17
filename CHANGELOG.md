@@ -27,7 +27,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Testing de mutación con mutmut, mensual y a pedido.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
-  hora inválida.
+  hora inválida. La suite queda en 43 tests.
 
 ### Cambiado
 
@@ -66,7 +66,7 @@ receptor con la fecha de diligencia correcta.
 - Detención total ante 403 y 429, sin reintento.
 - Fallo ruidoso ante estructura desconocida: excepción, nunca lista vacía.
 - Bitácora de peticiones en memoria.
-- 39 tests contra HTML real, sin red.
+- 39 tests contra HTML real, sin red.  <!-- 43 en No publicado -->
 
 ### Decisiones que conviene conocer
 

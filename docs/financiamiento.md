@@ -26,7 +26,7 @@ recibe trato preferente en la revisión de un permiso.
 La [Open Source Initiative](https://opensource.org/osd) define open source con criterios que
 incluyen libertad de redistribución, de modificación y **ausencia de discriminación contra
 campos de actividad**, incluido el comercial. La licencia de este proyecto,
-[PolyForm Strict 1.0.0](LICENSE.md), no cumple ninguno de los tres.
+[PolyForm Strict 1.0.0](https://github.com/notluquis/mcp-pjud-cl/blob/main/LICENSE.md), no cumple ninguno de los tres.
 
 El término correcto es **source-available**: el código está a la vista, se puede auditar, y su
 uso está restringido.
@@ -48,7 +48,7 @@ Así que una donación no cubre costos, financia tiempo. En orden de lo que más
    expedientes. Es donde está el trabajo pendiente.
 2. **Responder cuando la plataforma cambie.** Va a pasar, y cuando pase alguien tiene que
    arreglarlo rápido, porque la gente tiene plazos corriendo.
-3. **Revisión legal.** El [acuerdo de contribución](CLA.md) está redactado contra el texto de
+3. **Revisión legal.** El [acuerdo de contribución](https://github.com/notluquis/mcp-pjud-cl/blob/main/CLA.md) está redactado contra el texto de
    la Ley 17.336 y citándola, pero quien lo escribió no es abogado. Que un abogado chileno de
    propiedad intelectual lo revise cuesta plata y sería un buen uso de una donación.
 

@@ -12,7 +12,7 @@ Solo lectura. Cuatro dependencias. Sin base de datos, sin navegador, sin credenc
 
 ```bash
 git clone https://github.com/notluquis/mcp-pjud-cl
-cd mcp-pjud
+cd mcp-pjud-cl
 uv sync
 ```
 
@@ -40,7 +40,7 @@ configurable para omitirse.
   "mcpServers": {
     "pjud": {
       "command": "uv",
-      "args": ["--directory", "/ruta/a/mcp-pjud", "run", "mcp-pjud"],
+      "args": ["--directory", "/ruta/a/mcp-pjud-cl", "run", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
     }
   }
@@ -52,7 +52,7 @@ El transporte es stdio. No abre puertos ni escucha en la red.
 ### Verificar
 
 ```bash
-uv run pytest        # 39 tests, sin red
+uv run pytest        # 43 tests, sin red
 uv run ruff check .
 ```
 

@@ -3,12 +3,12 @@
 ## Los pull requests son bienvenidos
 
 Se aceptan contribuciones. Lo único que se pide antes es que declares en el pull request que
-aceptas el [acuerdo de contribución](CLA.md).
+aceptas el [acuerdo de contribución](../CLA.md).
 
 Ese acuerdo hace dos cosas, y conviene saber cuáles:
 
 **Te otorga permiso para modificar el código.** La licencia del proyecto es
-[PolyForm Strict 1.0.0](LICENSE.md), que por sí sola no permite modificarlo. La sección 5 del
+[PolyForm Strict 1.0.0](../LICENSE.md), que por sí sola no permite modificarlo. La sección 5 del
 acuerdo te da ese permiso, acotado a preparar y enviar contribuciones. Sin eso, ni siquiera
 podrías clonar y editar legalmente.
 
@@ -19,7 +19,7 @@ de la Ley 17.336. Puedes seguir usando tu propio código donde quieras.
 Está redactado contra el derecho chileno a propósito: un acuerdo que pretendiera *transferir*
 titularidad requeriría instrumento notarial e inscripción en el Registro dentro de 60 días
 (art. 73 de la misma ley), cosa que un clic en GitHub no puede hacer. La explicación completa,
-con los artículos citados, está en la propia [CLA.md](CLA.md).
+con los artículos citados, está en la propia [CLA.md](../CLA.md).
 
 Por qué esta estructura y no simplemente una licencia permisiva: la idea es que se pueda
 contribuir **al** proyecto, no que cualquiera publique su propia versión. La licencia impide
@@ -58,7 +58,7 @@ Estas salen de para qué existe el proyecto, no de gusto personal:
    Este es el error que el proyecto entero existe para evitar.
 
 5. **Sin persistencia por defecto.** Se consulta y se devuelve. Ver
-   [ACCEPTABLE_USE.md](ACCEPTABLE_USE.md) sobre datos de terceros.
+   [ACCEPTABLE_USE.md](../ACCEPTABLE_USE.md) sobre datos de terceros.
 
 ### Todo cambio de lógica deja un test que puede fallar
 
@@ -70,7 +70,7 @@ desarrollo esto detectó que un test central seguía verde con el bug puesto, po
 camino del código tapaba la regresión.
 
 ```bash
-uv run pytest              # 39 tests, sin red
+uv run pytest              # 43 tests, sin red
 uv run ruff check .
 ```
 
@@ -87,7 +87,7 @@ Las fixtures traen nombres y roles de causas **públicas**. Antes de agregar una
 - No agregues causas de familia, penal con imputados individualizados, ni violencia
   intrafamiliar.
 
-Ver [ACCEPTABLE_USE.md](ACCEPTABLE_USE.md).
+Ver [ACCEPTABLE_USE.md](../ACCEPTABLE_USE.md).
 
 ### Idioma
 

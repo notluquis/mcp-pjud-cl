@@ -215,6 +215,14 @@ class Transporte:
             self._esperar()
             try:
                 r = self._http.request(metodo, url, **kw)
+            except httpx.HTTPError:
+                # Una petición que no llegó a respuesta igual salió a la red, y la bitácora
+                # existe para poder acreditar cuánto se consultó. Sin esto los timeouts no
+                # quedaban registrados, o sea el registro subestimaba el tráfico generado
+                # justo en las corridas donde la plataforma iba peor. Se anota con estado 0,
+                # que ningún código HTTP usa.
+                self.bitacora.append((time.time(), url, 0))
+                raise
             finally:
                 # El reloj de recarga arranca cuando la petición termina, no cuando empieza.
                 # Un timeout que no lo moviera regalaría fichas por el tiempo que estuvo

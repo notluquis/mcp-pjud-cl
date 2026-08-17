@@ -163,6 +163,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Las peticiones que mueren por timeout ahora quedan en la bitácora, con estado 0. Una
+  petición sin respuesta igual salió a la red, y sin registrarla el registro subestimaba el
+  tráfico generado justo en las corridas donde la plataforma iba peor, que son las que uno
+  querría poder explicar.
+
 - `actuaciones_receptor` no reenviaba la competencia al parser, así que la historia se leía
   siempre con el panel de civil y el guardia que lo protege era inalcanzable. Medido con
   coverage: nunca se ejecutaba.

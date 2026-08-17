@@ -242,6 +242,16 @@ sobre una tanda larga el tiempo total es prácticamente el mismo.
 Esto descarta de entrada cualquier uso masivo. Si necesitas revisar 200 causas, son unas dos
 horas de reloj, y correr instancias en paralelo para acelerarlo va contra la cláusula CUARTA.
 
+### La bitácora
+
+`cliente.bitacora` guarda una tupla por petición: momento, URL y estado. Es lo que permite
+acreditar cuánto se consultó, que es la contracara del compromiso de no sobrecargar.
+
+Las peticiones que mueren por timeout se anotan con **estado 0**, que ningún código HTTP usa.
+Importa porque una petición sin respuesta igual salió a la red: sin registrarla, el registro
+subestimaría el tráfico justo en las corridas donde la plataforma va peor, que son las que uno
+querría poder explicar.
+
 ### Qué monitorear
 
 - `PjudBloqueado` → revisar si la IP quedó bloqueada **antes** de reintentar nada.

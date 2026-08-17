@@ -691,3 +691,27 @@ def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
         "la segunda tiene que esperar el intervalo completo: el minuto que la primera estuvo "
         f"colgada no se convierte en fichas. Esperas observadas: {dormido}"
     )
+
+
+def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
+    """La bitácora existe para acreditar cuánto se consultó (§8).
+
+    Una petición que no llegó a respuesta igual salió a la red. Sin registrarla, el registro
+    subestima el tráfico generado justo en las corridas donde la plataforma va peor, que son
+    las que uno querría poder explicar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(req):
+        raise httpx.ReadTimeout("la plataforma no respondió", request=req)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(httpx.ReadTimeout):
+        c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
+
+    assert len(c.bitacora) == 1, "la petición que murió por timeout tiene que quedar anotada"
+    _, url, estado = c.bitacora[0]
+    assert url.endswith("buscar_sentencias")
+    assert estado == 0, "se anota con estado 0, que ningún código HTTP usa"

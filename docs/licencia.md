@@ -87,3 +87,6 @@ Se dice porque toda elección de licencia tiene un costo, y ocultarlo sería ven
   asume a cambio de saber quién lo usa.
 - **Los forks no se pueden impedir técnicamente.** GitHub no permite deshabilitarlos en
   repositorios públicos. Lo que ata es la licencia, no una casilla de configuración.
+- **La insignia de OpenSSF Best Practices queda fuera de alcance.** Su criterio obligatorio
+  `floss_license` exige que el software se publique como FLOSS, y esta licencia no lo es. El
+  hallazgo `CII-Best-Practices` de Scorecard queda abierto de forma permanente.

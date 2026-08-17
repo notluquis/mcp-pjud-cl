@@ -156,9 +156,9 @@ Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
 |---|---|---|
 | `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
 | `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
-| `SAST` | Punto ciego de Scorecard | CodeQL **sí** está activo, en el modo gestionado por GitHub. Scorecard busca `codeql-action` en los workflows o la aplicación de escaneo en pull requests fusionados, y el modo gestionado no deja ninguna de las dos huellas |
+| `SAST` | Resuelto | Se pasó de modo gestionado a workflow con `codeql-action` fijado por SHA y consultas `security-extended`, que es una de las dos huellas que Scorecard busca |
 | `Fuzzing` | Cubierto en el fondo, no reconocido | Ver abajo |
-| `CII-Best-Practices` | Pendiente, requiere inscripción | La insignia se obtiene llenando un formulario en bestpractices.dev. Es gratis y manual |
+| `CII-Best-Practices` | **Inalcanzable con esta licencia** | Ver abajo |
 
 Sobre `Code-Review`: en un proyecto de una persona no tiene arreglo técnico, pero para código
 que decide plazos procesales vale preguntarse si conviene un segundo par de ojos antes de
@@ -198,3 +198,26 @@ quizá nunca genere, a cambio de entregar entradas menos legibles.
 
 Son complementarios. Para este parser, la generación estructurada rinde más por hora invertida,
 así que se parte por ahí. OSS-Fuzz queda como paso posterior y no como reemplazo.
+
+### Sobre `CII-Best-Practices`
+
+La insignia de OpenSSF Best Practices **no se puede obtener con la licencia de este proyecto**,
+y conviene dejarlo escrito para no volver a intentarlo.
+
+Entre los criterios obligatorios del nivel `passing` está `floss_license`:
+
+> "The software produced by the project MUST be released as FLOSS"
+
+[PolyForm Strict](licencia.md) no es FLOSS: prohíbe modificar, distribuir y el uso comercial.
+No es un criterio sugerido que se pueda saltar, es un MUST.
+
+Marcarlo como cumplido sería falso, y una insignia es una declaración pública. Así que el
+hallazgo queda abierto de forma permanente mientras la licencia no cambie.
+
+Es el de severidad más baja de los cinco, y la decisión de licencia se tomó por razones que
+pesan más: que nadie publique su propia versión y que todo uso profesional pase por un permiso
+explícito. El costo está anotado en la página de licencia junto a los demás.
+
+La serie Baseline de la misma insignia podría no exigir FLOSS, pero sus niveles
+(`baseline-1/2/3`) no son los que el check de Scorecard puntúa, que son `passing`, `silver` y
+`gold`. O sea tampoco cerraría el hallazgo.

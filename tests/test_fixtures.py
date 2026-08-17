@@ -99,7 +99,19 @@ def test_los_nombres_de_las_fixtures_son_los_ficticios():
     El test de hashes sólo detecta identidades ya vistas. Éste detecta cualquier nombre nuevo
     que se cuele, incluido uno que nunca haya pasado por el anonimizador.
     """
-    permitidos = {"BANCO DE CHILE"}
+    # Cada excepción se agrega de a una y con su motivo. Ensanchar este conjunto es la forma
+    # más fácil de tapar una fuga real, así que lo que entra acá tiene que ser verificable a
+    # simple vista como algo que NO identifica a nadie.
+    #
+    # Las tres últimas son descripciones de trámite del detalle de suprema: la plataforma las
+    # imprime en mayúsculas en la misma clase de celda donde van los nombres, así que el patrón
+    # no puede distinguirlas. Son texto procesal, no identidades.
+    permitidos = {
+        "BANCO DE CHILE",
+        "CONFIRMA SENTENCIA APELADA",
+        "TÉNGASE PRESENTE COMPARECENCIA Y ALEGATOS",
+        "CERTIFICADO DE INGRESO",
+    }
     inesperados = {}
     for archivo in _archivos():
         texto = archivo.read_text(encoding="utf-8")
@@ -130,5 +142,25 @@ def test_sin_jwt_de_la_plataforma():
             encontrados[archivo.name] = len(hallados)
     assert not encontrados, (
         f"JWT de la plataforma en fixtures: {encontrados}. "
+        "Corre: uv run python tests/fixtures/anonimizar.py"
+    )
+
+
+def test_sin_consultas_sql_de_la_plataforma():
+    """El detalle de Cortes de Apelaciones imprime un SELECT dentro de una celda.
+
+    Trae el esquema, la tabla y los parámetros con nombre del sistema del Poder Judicial. No es
+    un dato de este proyecto ni de las partes: son internos de un tercero, y republicarlos acá
+    los deja indexados y permanentes. Es la misma razón por la que los hallazgos de seguridad
+    de la plataforma no se publican en el repositorio.
+    """
+    encontrados = {}
+    for archivo in _archivos():
+        if re.search(
+            r"SELECT\s+[A-Z_0-9,\s]+FROM\s+\w+\.\w+", archivo.read_text(encoding="utf-8"), re.I
+        ):
+            encontrados[archivo.name] = "consulta SQL de la plataforma"
+    assert not encontrados, (
+        f"Consultas internas de la plataforma en fixtures: {encontrados}. "
         "Corre: uv run python tests/fixtures/anonimizar.py"
     )

@@ -30,6 +30,7 @@ from .parser import (
     es_sin_resultados,
     leer_aviso,
     parse_cuadernos,
+    parse_historia,
     parse_resultados,
     siguiente_pagina,
     total_declarado,
@@ -744,7 +745,58 @@ class PjudClient(Transporte):
                 "porque esa lista se leería como 'no hubo actuaciones' cuando lo cierto es "
                 "'no las estoy leyendo'."
             )
-        # `paginas=1` a propósito: de todo el listado sólo se usa la primera causa, así que
+        return self._recorrer_cuadernos(
+            tipo, rol, anio, competencia, tribunal, corte, actuaciones_receptor
+        )
+
+    def historia_causa(
+        self,
+        tipo: str,
+        rol: int,
+        anio: int,
+        competencia: str = "civil",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[Actuacion]:
+        """Todas las actuaciones de la causa, no sólo las del ministro de fe.
+
+        Existe porque cuatro de las seis competencias no tienen receptor: en suprema,
+        apelaciones, laboral y penal la pregunta que da origen a este proyecto no tiene
+        respuesta, y sin esto lo único que quedaba ahí era la búsqueda. La historia dice qué
+        pasó en la causa y cuándo, que es lo que se puede saber en esas cuatro.
+
+        Ojo con la diferencia: acá `fecha_diligencia` viene en nulo salvo en civil y cobranza,
+        porque las demás no publican la fecha doble. Nulo significa que la competencia no
+        informa esa fecha, no que el trámite no se haya practicado.
+        """
+        spec = COMPETENCIAS[self._modulo(competencia)]
+        if spec.historia is None:
+            raise ValueError(
+                f"No está verificado cómo se lee la historia de {competencia!r}. Se rechaza "
+                "antes de consultar en vez de leerla con el mapa de otra competencia, que "
+                "devolvería filas mal alineadas o una lista vacía."
+            )
+        return self._recorrer_cuadernos(
+            tipo, rol, anio, competencia, tribunal, corte, parse_historia
+        )
+
+    def _recorrer_cuadernos(
+        self,
+        tipo: str,
+        rol: int,
+        anio: int,
+        competencia: str,
+        tribunal: int | None,
+        corte: int | None,
+        leer,
+    ) -> list[Actuacion]:
+        """Busca la causa, abre su detalle y recorre TODOS sus cuadernos.
+
+        Lo comparten `actuaciones_receptor` y `historia_causa`, que sólo difieren en qué filas
+        se quedan: duplicar el recorrido para cambiar el filtro es la forma más segura de que
+        uno de los dos se olvide de los cuadernos.
+        """
+        # `paginas=None` a propósito: de todo el listado sólo se usa la primera causa, así que
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
         # contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
         # rendimiento acá.
@@ -761,10 +813,10 @@ class PjudClient(Transporte):
         # aparentemente completa a la que le faltan justo las diligencias del apremio.
         if len(cuadernos) <= 1:
             nombre = cuadernos[0].nombre if cuadernos else ""
-            return actuaciones_receptor(html_, nombre, competencia)
+            return leer(html_, nombre, competencia)
 
         actuaciones = []
         for cuaderno in cuadernos:
             pagina = self.detalle(cuaderno.referencia, competencia)
-            actuaciones.extend(actuaciones_receptor(pagina, cuaderno.nombre, competencia))
+            actuaciones.extend(leer(pagina, cuaderno.nombre, competencia))
         return actuaciones

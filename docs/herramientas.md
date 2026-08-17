@@ -200,6 +200,43 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 ```{include} _generado/obtener_actuaciones_receptor.md
 ```
 
+## `obtener_historia_causa`
+
+Todas las actuaciones de la causa, no sólo las del ministro de fe. Recorre **todos los
+cuadernos**, no sólo el que la plataforma muestra por defecto.
+
+Existe porque cuatro de las seis competencias no tienen receptor: en `suprema`, `apelaciones`,
+`laboral` y `penal` la pregunta que da origen a este proyecto no tiene respuesta, y sin esto lo
+único disponible ahí era la búsqueda.
+
+:::{warning}
+`fecha_diligencia` viene en **nulo** salvo en `civil` y `cobranza`, porque las demás no publican
+la fecha doble. Nulo significa que esa competencia no informa la fecha de diligencia, **no** que
+el trámite no se haya practicado, y **no sirve para computar plazos**.
+:::
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `tipo` | str | Letra del rol |
+| `rol` | int | Número, sin la letra ni el año |
+| `anio` | int | Año, cuatro dígitos |
+| `competencia` | str | Sólo aquellas cuyo panel de historia está medido |
+| `tribunal` | int, opcional | Código del tribunal |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+
+Columnas que sólo publican algunas competencias, y que por eso vienen en nulo en el resto:
+
+| Campo | Dónde aparece |
+|---|---|
+| `foja` | civil |
+| `estado_firma` | cobranza |
+| `estado` | laboral, suprema, apelaciones |
+| `sala` | suprema, apelaciones |
+| `correlativo`, `anio_tramite` | suprema |
+
+```{include} _generado/obtener_historia_causa.md
+```
+
 ## `buscar_jurisprudencia`
 
 Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para

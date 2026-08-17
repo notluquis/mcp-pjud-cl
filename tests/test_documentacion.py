@@ -225,6 +225,11 @@ RUT_DE_EMPRESAS = {
     "97004000-5",  # Banco de Chile, que ya aparece como litigante en las fixtures
 }
 
+#: Un RUT se escribe con puntos casi siempre, y ésa es justamente la forma que aparecería en
+#: la documentación. La primera versión de este guardia sólo reconocía la forma sin puntos, o
+#: sea no habría detectado nada de lo que venía a impedir.
+_RUT_EN_PROSA = re.compile(r"\b(\d{1,3}(?:\.\d{3}){1,2}|\d{7,8})-([\dkK])\b")
+
 
 def test_la_documentacion_no_publica_rut_de_personas_naturales():
     """`tests/test_fixtures.py` sólo revisa las fixtures. La documentación es igual de
@@ -234,18 +239,30 @@ def test_la_documentacion_no_publica_rut_de_personas_naturales():
     Ser figura pública no lo cambia. La excepción de esa ley alcanza a los datos del
     ejercicio de funciones públicas, no a la cédula de identidad.
     """
-    patron = re.compile(r"\b(\d{7,8})-([\dkK])\b")
     #: Los ficticios son dígitos repetidos, igual que en las fixtures.
     ficticio = re.compile(r"^(\d)\1{6,7}$")
 
-    encontrados = [
-        f"{p.relative_to(RAIZ)}: {cuerpo}-{dv}"
-        for p in PROSA
-        for cuerpo, dv in patron.findall(_texto(p))
-        if not ficticio.match(cuerpo) and f"{cuerpo}-{dv}" not in RUT_DE_EMPRESAS
-    ]
+    encontrados = []
+    for p in PROSA:
+        for cuerpo, dv in _RUT_EN_PROSA.findall(_texto(p)):
+            plano = cuerpo.replace(".", "")
+            if ficticio.match(plano) or f"{plano}-{dv}" in RUT_DE_EMPRESAS:
+                continue
+            encontrados.append(f"{p.relative_to(RAIZ)}: {cuerpo}-{dv}")
     assert not encontrados, (
         f"RUT que no son ni ficticios ni de empresa en la documentación: {encontrados}. "
         "Para personas naturales se usa un RUT sintético; para empresas, uno real "
         "declarado en RUT_DE_EMPRESAS."
     )
+
+
+@pytest.mark.parametrize(
+    "escrito",
+    ["16163631-2", "16.163.631-2", "9.876.543-K"],
+)
+def test_el_guardia_de_rut_reconoce_las_dos_formas_de_escribirlo(escrito):
+    """Un RUT casi siempre se escribe con puntos, y ésa es la forma que aparecería en la
+    documentación. La primera versión del guardia sólo miraba la forma sin puntos: pasaba
+    exactamente lo que venía a impedir."""
+    cuerpo, dv = _RUT_EN_PROSA.findall(escrito)[0]
+    assert cuerpo.replace(".", "") + "-" + dv == escrito.replace(".", "")

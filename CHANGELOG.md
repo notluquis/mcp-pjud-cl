@@ -18,6 +18,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- **El servidor MCP se presentaba sin versión.** La especificación exige desde la revisión
+  2026-07-28 implementar `server/discover`, donde viaja `serverInfo` con nombre y versión, y la
+  nuestra iba en su valor por defecto: vacía. Es el mismo descuido que el User-Agent tenía con
+  el Poder Judicial, y ahora sale de la misma fuente única. Se declaran además el título y la
+  dirección de la documentación, que la misma respuesta publica.
+
+- **Las notas de la publicación salían en inglés.** `--generate-notes` usa una plantilla fija
+  de GitHub que imprime "What's Changed" y "by X in Y", sobre un proyecto cuyo idioma es el
+  español de Chile. Ahora se arman desde el tramo del CHANGELOG que corresponde a la etiqueta,
+  y la lista categorizada que GitHub genera se conserva debajo, con sus dos encabezados
+  traducidos. La publicación falla si el CHANGELOG no trae la sección de esa versión, en vez de
+  publicar una release con el cuerpo vacío.
+
 - **La búsqueda por rol no funcionaba en `suprema`, `apelaciones` ni `penal`**, que la 0.2.0
   anuncia como verificadas. Suprema y apelaciones respondían "Por favor ingrese sólo números
   para el Tipo de Búsqueda" y penal devolvía un cuerpo sin listado ni aviso: al formulario le

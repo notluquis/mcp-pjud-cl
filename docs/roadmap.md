@@ -49,10 +49,10 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
 rechaza en vez de adivinar sus parámetros:
 
-- El **detalle** de `suprema`, `apelaciones`, `laboral` y `penal`: `causaSuprema.php`,
-  `causaApelaciones.php`, `causaLaboral.php`, `causaPenal.php`. Sus búsquedas sí están
-  verificadas, que no es lo mismo: por eso las cuatro declaran `historia=None` y pedirles
-  actuaciones se rechaza
+- El **detalle** de `suprema`, `apelaciones` y `penal`: `causaSuprema.php`,
+  `causaApelaciones.php`, `causaPenal.php`. Sus búsquedas sí están verificadas, que no es lo
+  mismo: por eso declaran `historia=None` y pedirles actuaciones se rechaza. El de `laboral`
+  ya se midió y está en 0.8
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
@@ -206,9 +206,15 @@ historia no se hace todavía, porque el único consumidor de `historia` es
 `actuaciones_receptor`, que exige `receptor=True`: una entrada de tabla que nada lee es una
 rama sin test por construcción.
 
+**Detalle medido:** `laboral`.
+
 Faltan `suprema`, `apelaciones` y `penal`. Ojo con el payload: el sitio manda `tokenCaptcha`
 para las cuatro y `token` sólo para civil y cobranza, aunque en laboral se midió que las dos
 formas devuelven lo mismo.
+
+La línea de arriba no es decorativa: `tests/test_documentacion.py` la lee para exigir que una
+competencia con el detalle medido NO siga apareciendo entre las rutas sin ejecutar, y que las
+que faltan sí aparezcan. Las dos afirmaciones ya se habían separado una vez.
 
 
 Verificar la búsqueda no verifica el detalle, y hoy son cosas separadas a propósito:
@@ -220,8 +226,7 @@ identificador del panel de historia, el orden y el nombre de sus columnas, y si 
 actuaciones de ministro de fe. Lo último manda: sin receptor, el detalle de esa competencia no
 responde la pregunta del proyecto por más que sus rutas estén mapeadas.
 
-Rutas mapeadas y sin ejecutar: `causaSuprema.php`, `causaApelaciones.php`, `causaLaboral.php`,
-`causaPenal.php`.
+Rutas mapeadas y sin ejecutar: `causaSuprema.php`, `causaApelaciones.php`, `causaPenal.php`.
 
 ### 0.9: familia
 

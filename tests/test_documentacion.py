@@ -908,6 +908,15 @@ def test_todo_lo_que_declara_una_version_dice_la_misma():
             f"fijada apuntaría a una etiqueta que no existe. Debe decir {etiqueta}"
         )
 
+    # Lo que el servidor publica en `server/discover`, que la especificación de MCP exige
+    # desde la revisión 2026-07-28. Estaba en su valor por defecto, o sea vacío: el servidor se
+    # presentaba ante los clientes sin decir qué versión era.
+    from mcp_pjud.server import mcp
+
+    assert mcp.version == version, (
+        f"el servidor MCP se presenta como versión {mcp.version!r} y el paquete es {version!r}"
+    )
+
     citation = _texto(RAIZ / "CITATION.cff")
     assert f"version: {version}" in citation, (
         f"CITATION.cff atribuye una versión distinta de {version}"
@@ -931,3 +940,68 @@ def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
         f"`pyproject.toml` dice {version} y la última anotada en el registro es "
         f"{publicadas[0]}. Las versiones se anotan al publicarlas, no después."
     )
+
+
+#: Sufijo del modal de detalle por competencia, tal como lo nombra la plataforma.
+_MODAL_DETALLE = {
+    "laboral": "causaLaboral.php",
+    "suprema": "causaSuprema.php",
+    "apelaciones": "causaApelaciones.php",
+    "penal": "causaPenal.php",
+}
+
+
+def test_el_detalle_medido_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
+    """Las dos afirmaciones ya se separaron una vez, y en el mismo commit.
+
+    Al registrar que el detalle de `laboral` estaba medido, la hoja de ruta siguió listando
+    `causaLaboral.php` entre las rutas mapeadas y nunca ejecutadas: dos estados incompatibles
+    sobre la misma verificación, en la misma página.
+
+    El guardia va en las dos direcciones. Una competencia con el detalle medido no puede
+    aparecer entre las rutas sin ejecutar, y una que no se midió tiene que aparecer: si al
+    medir la siguiente alguien la saca de la lista sin anotarla arriba, la página deja de decir
+    que falta y nadie se entera.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    declarados = re.search(r"\*\*Detalle medido:\*\*\s*(.+)", texto)
+    assert declarados, (
+        "la hoja de ruta ya no declara qué detalles están medidos; este guardia lee esa línea"
+    )
+    medidos = set(re.findall(r"`(\w+)`", declarados.group(1)))
+    assert medidos <= set(_MODAL_DETALLE), f"competencia desconocida en la línea: {medidos}"
+
+    sin_ejecutar = texto.split("### Mapeado pero nunca ejecutado", 1)[1].split("###", 1)[0]
+    for competencia, modal in _MODAL_DETALLE.items():
+        if competencia in medidos:
+            assert modal not in sin_ejecutar, (
+                f"el detalle de {competencia} está declarado medido y {modal} sigue entre las "
+                "rutas sin ejecutar"
+            )
+        else:
+            assert modal in sin_ejecutar, (
+                f"el detalle de {competencia} no está medido y {modal} desapareció de las "
+                "rutas sin ejecutar: la página deja de decir que falta"
+            )
+
+
+def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_github():
+    """`--generate-notes` imprime "What's Changed" y "by X in Y", en inglés y sin opción.
+
+    Es la plantilla fija de GitHub, y en un proyecto cuyo idioma es el español de Chile deja la
+    página más visible de la publicación en otro idioma que todo lo demás. Las notas se arman
+    desde el tramo del CHANGELOG que corresponde a la etiqueta.
+
+    El guardia mira las dos cosas: que no se vuelva a la plantilla, y que se siga pasando el
+    archivo. Poner sólo lo primero dejaría pasar una release con el cuerpo vacío.
+    """
+    flujo = _texto(RAIZ / ".github" / "workflows" / "publicar.yml")
+    # Se miran las líneas de comando y no el archivo entero: el comentario que explica por qué
+    # se dejó de usar la plantilla nombra la bandera, y hacía fallar al guardia contra el texto
+    # que documenta la decisión.
+    ordenes = "\n".join(linea for linea in flujo.splitlines() if not linea.lstrip().startswith("#"))
+    assert "--generate-notes" not in ordenes, (
+        "el flujo de publicación volvió a la plantilla de GitHub, que es fija y viene en inglés"
+    )
+    assert "--notes-file" in flujo, "la publicación tiene que pasar las notas armadas"
+    assert "CHANGELOG.md" in flujo, "las notas salen del CHANGELOG, que es la fuente única"

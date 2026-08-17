@@ -18,6 +18,7 @@ from .client import (
     MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
+    VERSION,
     PjudClient,
 )
 from .juris import (
@@ -108,7 +109,23 @@ SOLO_LECTURA = ToolAnnotations(
     open_world_hint=True,
 )
 
-mcp = MCPServer("mcp-pjud", instructions=DIRECTIVA)
+#: La identidad que el servidor publica en `server/discover`, que la especificación de MCP
+#: exige implementar desde la revisión 2026-07-28. Ahí viaja `serverInfo` con nombre y versión.
+#:
+#: La versión estaba en su valor por defecto, o sea vacía: el servidor se presentaba ante los
+#: clientes MCP sin decir qué versión era. Es el mismo descuido que el User-Agent tenía con el
+#: Poder Judicial, y sale de la misma fuente única para que no vuelva a separarse.
+#:
+#: La propia especificación advierte que estos datos son para mostrar, registrar y depurar, y
+#: que un cliente no debe usarlos para decidir nada de seguridad. Acá sirven para que quien
+#: reporte un problema pueda decir contra qué versión lo vio.
+mcp = MCPServer(
+    "mcp-pjud",
+    title="Consulta de causas del Poder Judicial de Chile",
+    version=VERSION,
+    website_url="https://mcp-pjud-cl.readthedocs.io",
+    instructions=DIRECTIVA,
+)
 
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")
 

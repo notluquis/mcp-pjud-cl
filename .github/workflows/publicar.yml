@@ -58,6 +58,46 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" > sbom.spdx.json
 
+      # Las notas se arman acá en vez de con `--generate-notes` porque esa plantilla es
+      # fija y viene en inglés: imprime "What's Changed" y "by X in Y" sobre un proyecto
+      # cuyo idioma es el español de Chile, incluida la documentación publicada.
+      #
+      # Se conserva la intención de `.github/release.yml`, que sigue categorizando: el
+      # tramo del CHANGELOG dice POR QUÉ importa el cambio y la lista generada dice QUÉ
+      # cambió, con sus enlaces. Lo único que se hace es ponerlas en ese orden y traducir
+      # los dos encabezados que GitHub no deja configurar.
+      - name: Armar las notas de la versión
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # `index($0, v) == 1` y no una expresión regular: los corchetes de "## [0.2.0]"
+          # se leerían como una clase de caracteres y el tramo saldría vacío.
+          awk -v v="## [$VERSION]" '
+            index($0, v) == 1 { encontrado = 1; next }
+            encontrado && /^## \[/ { exit }
+            encontrado { print }
+          ' CHANGELOG.md > notas.md
+
+          # Sin esto, un CHANGELOG sin la sección de esta versión publicaría una release
+          # con el cuerpo vacío y nadie se enteraría hasta leerla.
+          if [ ! -s notas.md ]; then
+            echo "CHANGELOG.md no tiene una sección '## [$VERSION]'." >&2
+            exit 1
+          fi
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$GITHUB_REF_NAME" --jq .body > generadas.md
+
+          {
+            echo
+            echo "## Qué cambió"
+            sed -e "/^## What's Changed$/d" \
+                -e "s/^\*\*Full Changelog\*\*/**Comparación completa**/" generadas.md
+          } >> notas.md
+
       # `gh release` viene en el runner. Una acción de terceros para esto sería
       # superficie de cadena de suministro sin ganancia.
       - name: Crear la versión
@@ -66,5 +106,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-file notas.md \
             dist/* sbom.spdx.json

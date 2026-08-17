@@ -303,7 +303,9 @@ def test_recorre_todos_los_cuadernos(monkeypatch):
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    acts = c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    # El listado es la fixture real de civil, cuyo rol es E-468-2026: se pide ése, porque
+    # ahora la causa que se abre tiene que corresponder a la pedida.
+    acts = c.actuaciones_receptor("E", 468, 2026, tribunal=162)
     cuadernos = {a.cuaderno for a in acts}
     assert cuadernos == {"1 - Principal", "2 - Apremio Ejecutivo Obligación de Dar"}
     assert any("EMBARGO" in a.desc_tramite for a in acts)
@@ -607,11 +609,14 @@ def test_un_tope_de_paginas_invalido_no_devuelve_lista_vacia(paginas):
 
 
 def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
-    """De todo el listado sólo se usa la primera causa.
+    """El listado se pide UNA vez, aunque declare más páginas.
 
-    Recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
-    contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
-    rendimiento acá.
+    Recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos contra
+    la plataforma para descartarlas. El ritmo de consulta no es un parámetro de rendimiento.
+
+    El título de antes decía "sólo se usa la primera causa", y esa parte dejó de ser cierta a
+    propósito: tomar la primera entregaba la historia de otra causa cuando el rol se repite
+    entre libros. Lo que este test cuida es la cantidad de peticiones, no cuál se elige.
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
@@ -628,7 +633,9 @@ def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    # Se pide el rol que la primera fila sintética declara, para que la elección sea
+    # inequívoca: lo que se mide acá es cuántas veces se pide el listado.
+    c.actuaciones_receptor("C", 9001, 2026, tribunal=162)
     listados = [u for u in peticiones if "consultaRit" in u]
     assert len(listados) == 1, "el listado debe pedirse una sola vez"
 
@@ -676,6 +683,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
     inventada = Competencia(
         99,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        rol_con_libro=False,
         campos_rit={},
         historia=None,
         receptor=True,
@@ -1039,9 +1047,9 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
         return c, pedidos
 
     c, pedidos_receptor = cliente()
-    del_receptor = c.actuaciones_receptor("C", 1156, 2026, tribunal=162)
+    del_receptor = c.actuaciones_receptor("C", 9001, 2026, tribunal=162)
     c, pedidos_historia = cliente()
-    de_historia = c.historia_causa("C", 1156, 2026, tribunal=162)
+    de_historia = c.historia_causa("C", 9001, 2026, tribunal=162)
 
     assert pedidos_receptor == pedidos_historia, (
         "las dos lecturas tienen que hacer exactamente las mismas peticiones"
@@ -1064,3 +1072,78 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
         f"se esperaban cuatro peticiones (búsqueda, detalle y un cuaderno cada uno) y "
         f"salieron {len(pedidos_historia)}"
     )
+
+
+def _cliente_apelaciones(monkeypatch) -> tuple[PjudClient, list[str]]:
+    """Cliente que responde con el listado REAL de apelaciones, donde el rol se repite."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / "busqueda_rit_apelaciones.html").read_text(encoding="utf-8")
+    detalle = (FIXTURES / "detalle_apelaciones.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(peticion.content.decode("utf-8"))
+        return httpx.Response(200, text=listado if len(pedidos) == 1 else detalle)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+    return c, pedidos
+
+
+def test_un_rol_que_existe_en_varios_libros_no_se_resuelve_eligiendo_el_primero(monkeypatch):
+    """En Cortes de Apelaciones el número de rol NO identifica una causa.
+
+    La fixture es una respuesta real: 9999-2019 son un Exhorto, una Civil y una Protección, con
+    referencias distintas y por lo tanto historias distintas. Abrir la primera entrega las
+    actuaciones de otra causa como si fueran las pedidas.
+
+    Es peor que el falso negativo que este proyecto existe para evitar. Una lista vacía se nota;
+    una historia ajena viene con folios, fechas y trámites que se ven perfectamente bien, y
+    alguien computaría un plazo contra una causa que no es la suya. Por eso se levanta.
+    """
+    c, _ = _cliente_apelaciones(monkeypatch)
+    with pytest.raises(ValueError, match="ninguna corresponde sin ambigüedad"):
+        c.historia_causa("", 9999, 2019, competencia="apelaciones", corte=46)
+
+
+def test_el_libro_en_tipo_desambigua_la_causa_de_apelaciones(monkeypatch):
+    """Y con el libro indicado sí se resuelve, sin preguntar nada más."""
+    c, _ = _cliente_apelaciones(monkeypatch)
+    actuaciones = c.historia_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
+    assert actuaciones, "con el libro indicado la causa se resuelve"
+
+
+def test_el_mensaje_de_ambiguedad_nombra_los_libros_encontrados(monkeypatch):
+    """Un error que no dice cómo salir del problema obliga a leer el código.
+
+    Acá la salida existe y es concreta: indicar el libro en `tipo`. El mensaje tiene que traer
+    los que la plataforma devolvió, o quien consulta no sabe cuáles puede pedir.
+    """
+    c, _ = _cliente_apelaciones(monkeypatch)
+    with pytest.raises(ValueError, match="ambigüedad") as fallo:
+        c.historia_causa("", 9999, 2019, competencia="apelaciones", corte=46)
+    for libro in ("Exhorto", "Civil", "Protección"):
+        assert libro in str(fallo.value), f"el mensaje no nombra el libro {libro!r}"
+
+
+def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):
+    """El atajo de devolver la única coincidencia dejaba el riesgo intacto.
+
+    `buscar_por_rit` no filtra apelaciones por `tipo`, así que pedir un libro y recibir una
+    sola fila de OTRO libro es un caso real: con el atajo se abría igual, sin comparar nada, y
+    entregaba la historia de una causa distinta. Que haya un solo resultado no prueba que sea
+    el pedido.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    completo = (FIXTURES / "busqueda_rit_apelaciones.html").read_text(encoding="utf-8")
+    # Se recorta el listado a la fila del Exhorto: una sola coincidencia, de otro libro.
+    corte = completo.index("Civil-9999-2019")
+    solo_exhorto = (
+        completo[: completo.rindex("<tr", 0, corte)]
+        + completo[completo.index("Total de registros") - 40 :]
+    )
+
+    c, _ = _capturando(solo_exhorto)
+    with pytest.raises(ValueError, match="ambigüedad"):
+        c.historia_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)

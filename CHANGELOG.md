@@ -16,6 +16,31 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- **Se abría siempre la primera causa del listado, y en Cortes de Apelaciones eso entrega la
+  historia de otra.** El mismo número de rol y año existen en varios libros a la vez: una
+  respuesta real trae `Exhorto-1504-2019`, `Civil-1504-2019` y `Protección-1504-2019`, con
+  referencias y por lo tanto historias distintas.
+
+  Es peor que el falso negativo que este proyecto existe para evitar. Una lista vacía se nota;
+  una historia ajena viene con folios, fechas y trámites que se ven perfectamente bien, y
+  alguien computaría un plazo contra una causa que no es la suya. Ahora se filtra por el rol
+  pedido y, si queda ambiguo, se levanta diciendo qué libros se encontraron.
+
+  El dato de la ambigüedad ya estaba medido y con test propio desde que se mapeó apelaciones.
+  El error fue construir encima sin conectar las dos cosas.
+
+  Y el primer arreglo cerró sólo la mitad: devolvía la única coincidencia sin compararla. Como
+  la búsqueda de apelaciones no filtra por `tipo`, pedir un libro y recibir una sola fila de
+  otro abría la equivocada igual. Ahora se compara siempre, haya una o varias.
+
+- **El esquema MCP seguía anunciando "Letra del rol".** La referencia ya explicaba que en
+  apelaciones va el libro, pero lo que el modelo lee es el esquema: con esa descripción mandaba
+  una letra, la desambiguación fallaba y el error parecía de la plataforma. El texto sale ahora
+  de la tabla de competencias, y la bandera que lo decide se compara contra los listados reales
+  para que marcarla mal no pase inadvertido.
+
 ### Agregado
 
 - **Herramienta `obtener_historia_causa`**: todas las actuaciones de la causa, no sólo las del

@@ -215,9 +215,19 @@ la fecha doble. Nulo significa que esa competencia no informa la fecha de dilige
 el trámite no se haya practicado, y **no sirve para computar plazos**.
 :::
 
+:::{important} En Cortes de Apelaciones el número de rol NO identifica una causa
+El mismo número y año existen en varios libros a la vez. Una respuesta real devolvió
+`Exhorto-1504-2019`, `Civil-1504-2019` y `Protección-1504-2019`: tres causas distintas, con
+historias distintas.
+
+Ahí hay que indicar el libro en `tipo` (por ejemplo `"Protección"`). Si la búsqueda queda
+ambigua, la herramienta **falla y dice cuáles encontró**, en vez de abrir una: entregar la
+historia de otra causa se vería perfectamente bien y llevaría a computar un plazo ajeno.
+:::
+
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `tipo` | str | Letra del rol |
+| `tipo` | str | Letra del rol, o el **libro** en Cortes de Apelaciones |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
 | `competencia` | str | Sólo aquellas cuyo panel de historia está medido |

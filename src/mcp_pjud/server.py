@@ -145,7 +145,18 @@ def _cliente() -> PjudClient:
     return PjudClient(_contacto())
 
 
-Tipo = Annotated[str, Field(description="Letra del rol. En civil: C, V, E, A, F o I.")]
+#: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
+#: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
+_CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
+Tipo = Annotated[
+    str,
+    Field(
+        description="Letra del rol. En civil: C, V, E, A, F o I. En "
+        f"{', '.join(_CON_LIBRO)} va el LIBRO en vez de una letra (por ejemplo 'Protección' "
+        "o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la "
+        "consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada."
+    ),
+]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
 Anio = Annotated[int, Field(description="Año del rol, cuatro dígitos.", ge=1900, le=2100)]
 #: Lo que el modelo ve. Son las verificadas y no las que existen: anunciar una que el

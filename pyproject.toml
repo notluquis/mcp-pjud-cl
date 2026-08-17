@@ -35,7 +35,13 @@ Cambios = "https://github.com/notluquis/mcp-pjud-cl/blob/main/CHANGELOG.md"
 mcp-pjud = "mcp_pjud.server:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff>=0.9", "mutmut>=3.2", "zizmor>=1.29"]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+    "mutmut>=3.2",
+    "zizmor>=1.29",
+    "hypothesis>=6.165.10",
+]
 docs = [
     "sphinx>=8.1",
     "myst-parser>=4.0",

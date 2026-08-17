@@ -25,6 +25,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   runner con harden-runner. Esto último deja verificable la promesa de que CI nunca consulta al
   Poder Judicial.
 - Testing de mutación con mutmut, mensual y a pedido.
+- Pruebas basadas en propiedades con Hypothesis sobre el parser de fechas. La invariante
+  central es que nunca devuelva una fecha que no venga en la entrada: una fecha de diligencia
+  inventada se computa como plazo, y eso es peor que no devolver ninguna.
 - CodeQL, OpenSSF Scorecard y revisión de dependencias en pull requests.
 - Período de enfriamiento en Dependabot: una versión recién publicada ya no llega como pull
   request el mismo día, que es la ventana que aprovechan los ataques de cadena de suministro.
@@ -38,7 +41,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Página de ejemplos con casos resueltos de punta a punta.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
-  hora inválida. La suite queda en 43 tests.
+  hora inválida. Con las de propiedades, la suite queda en 49 tests.
 
 ### Cambiado
 

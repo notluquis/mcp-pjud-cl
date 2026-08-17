@@ -64,6 +64,20 @@ RAFAGA_MAXIMA = 4
 SEGUNDOS_BUSQUEDA_MEDIDOS = 47.8
 SEGUNDOS_PAGINA_MEDIDOS = 4.3
 
+#: El PEOR caso medido, que es el número que de verdad manda para el timeout. La cifra de
+#: arriba era una sola muestra, y tomarla por techo costó tres diagnósticos equivocados
+#: seguidos sobre las mismas tres consultas: primero "la plataforma está caída", después
+#: "esas consultas no terminan", y recién a la tercera, midiendo con paciencia de 300
+#: segundos, aparecieron en 81,2 s, 102,0 s y 38,7 s.
+#:
+#: Y la lección se repitió el mismo día: esta constante se puso en 115,6 s con la primera
+#: consulta al buscador de Cortes de Apelaciones, y la segunda tardó 177,0 s. O sea la muestra
+#: nueva tampoco era el techo. Por eso `ESPERA_MAXIMA` no se calcula pegado a este número.
+#:
+#: La lección no es el número: es que una muestra no es un techo. Si mañana aparece una más
+#: lenta, sube esta constante en vez de concluir que la consulta no funciona.
+SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 177.0
+
 #: Cuánto se espera una respuesta antes de darla por perdida.
 #:
 #: Medido, y por eso es tan alto: una búsqueda del buscador de fallos por rol y año tardó
@@ -76,11 +90,19 @@ SEGUNDOS_PAGINA_MEDIDOS = 4.3
 #: servidor igual hizo el trabajo, y quien consulta se queda sin el dato y con un diagnóstico
 #: equivocado.
 #:
+#: Con los 90 que vinieron después pasó lo mismo en chico y costó más caro, porque el error
+#: era más creíble: tres citas de Corte Suprema fallaban SIEMPRE, en todas las corridas, y esa
+#: consistencia se leyó como "esas consultas no terminan". Terminaban en 81, 102 y 39
+#: segundos. La de 102 era la única que el tope mataba, y con ella se dieron por perdidas las
+#: tres. El valor de ahora es el doble del peor medido, `SEGUNDOS_BUSQUEDA_PEOR_MEDIDO`.
+#:
 #: Lo que cuesta: `_req` sostiene el turno durante toda la petición, así que una colgada frena
-#: al resto del proceso hasta noventa segundos. Se acepta a cambio de no soltar el turno antes
-#: de clasificar la respuesta, que es lo que permitía a una segunda llamada consultar después
-#: de que la primera ya recibió un bloqueo.
-ESPERA_MAXIMA = 90.0
+#: al resto del proceso hasta cuatro minutos. Se acepta por dos razones. La primera es no
+#: soltar el turno antes de clasificar la respuesta, que es lo que permitía a una segunda
+#: llamada consultar después de que la primera ya recibió un bloqueo. La segunda es que en
+#: este proyecto esperar de más es barato y cortar de menos es caro: una espera larga molesta,
+#: y un falso "no se encontró" se lee como que la causa no existe.
+ESPERA_MAXIMA = 240.0
 
 #: El balde es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en cada
 #: llamada de herramienta, así que un contador por instancia se reinicia solo y deja pasar la
@@ -126,11 +148,16 @@ PAGINAS_MAXIMAS = 10
 #: listado vuelve vacío. Además exige `radio-groupPenal` (1 por RIT, 2 por RUC) y el código de
 #: tribunal, que se pide a `combosJSON/leeTrib.php` por POST y en la raíz, no bajo el prefijo.
 #:
-#: `suprema` y `apelaciones` siguen fuera. Su validación se pasa agregando `conTipoBus` (0 es
-#: "Recurso Corte Suprema"), pero entonces el servidor responde con el cuerpo VACÍO, sin aviso
-#: y sin listado. Lo que falta es el código de libro en `conTipoCausa`, cuyo combo no está en
-#: el JavaScript de `consultaUnificada.php`.
-MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal"}
+#: `suprema` y `apelaciones` entraron el 17 de agosto de 2026, y lo que las bloqueaba no era
+#: ningún parámetro exótico: faltaba `radio-group`, el radio RIT/RUC del formulario. Las otras
+#: cuatro competencias lo toleran ausente, así que el hueco no se veía. Se dan por verificadas
+#: sus CUATRO búsquedas, medidas una por una, no sólo la de rol.
+#:
+#: Verificar la búsqueda no verifica el detalle: las dos tienen `historia=None` en
+#: `parser.COMPETENCIAS`, así que pedirles actuaciones se rechaza en vez de adivinar el panel.
+#: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
+#: actuaciones no vivían donde el código creía.
+MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
 
 
 class ResultadosTruncados(Exception):
@@ -344,6 +371,18 @@ class PjudClient(Transporte):
                     f"{total}. La paginación no está avanzando."
                 )
 
+            if len(acumuladas) == total:
+                # El total declarado manda por sobre la navegación, y no es una optimización:
+                # en suprema y en apelaciones el listado ofrece "siguiente" AUNQUE esté
+                # completo. Medido sobre sus dos respuestas reales, de 1 de 1 y 3 de 3, las
+                # dos con enlace. Seguirlo pide una página que no existe y termina en
+                # `EstructuraInesperada` por acumular más de lo declarado o por no avanzar,
+                # o sea una búsqueda completa fallando.
+                #
+                # Civil no lo hace, y por eso el hueco sobrevivió hasta que entraron esas dos
+                # competencias.
+                return acumuladas
+
             token = siguiente_pagina(html_)
 
             if token is None:
@@ -440,6 +479,32 @@ class PjudClient(Transporte):
             )
         return nombre
 
+    def _acotacion(self, modulo: str, tribunal: int | None, corte: int | None) -> None:
+        """Verifica que la búsqueda venga acotada como la plataforma lo exige.
+
+        Comparte las tres búsquedas que lo exigen (nombre, RUT de persona jurídica y fecha),
+        porque el requisito es de la competencia y no de la búsqueda: se midió el mismo aviso,
+        "Por favor seleccione una Corte para la búsqueda", en las tres de apelaciones.
+
+        `buscar_por_rit` NO llama acá, y es a propósito, no un olvido: la búsqueda por rol es
+        la única que la plataforma acepta sin acotar en ninguna competencia. Medido con
+        `conCorte=0`, suprema devolvió su causa y apelaciones devolvió 31. Agregar la llamada
+        "por consistencia" rompería las dos: pasarían a exigir un dato que ahí no hace falta,
+        y el rechazo saldría de este cliente sin que la plataforma se entere.
+        """
+        exige = COMPETENCIAS[modulo].acota_por
+        if exige == "tribunal" and tribunal is None:
+            raise ValueError(
+                f"En {modulo} esta búsqueda exige tribunal. Es una limitación de la "
+                "plataforma, no de este cliente: no permite buscar en todos los tribunales "
+                "a la vez."
+            )
+        if exige == "corte" and corte is None:
+            raise ValueError(
+                f"En {modulo} esta búsqueda exige corte. La plataforma responde 'Por favor "
+                "seleccione una Corte para la búsqueda' y no entrega resultados."
+            )
+
     def buscar_por_rit(
         self,
         tipo: str,
@@ -470,6 +535,16 @@ class PjudClient(Transporte):
             "conCorte": str(corte or 0),
             "conTribunal": str(tribunal or 0),
             "conCaratulado": "",
+            # El radio RIT/RUC del formulario, y el campo que faltaba para que suprema y
+            # apelaciones respondieran. Su PHP se ramifica en él para saber por cuál de los dos
+            # se está buscando, y sin el campo revienta: HTTP 200 con el cuerpo VACÍO, sin
+            # aviso. Civil, laboral, cobranza y penal lo toleraban ausente, así que el hueco
+            # quedó tapado hasta que se agregaron las dos competencias que no lo toleran.
+            #
+            # El 1 es "por RIT". El otro valor de este formulario es 2, "por RUC", que no se
+            # usa acá. Ojo con `buscar_por_nombre`: manda un `radio-group` con "N", que es OTRO
+            # formulario y otro dominio de valores, no una inconsistencia.
+            "radio-group": "1",
         }
         if paginas is None:
             return self._primera_pagina(ruta, campos, competencia)
@@ -499,9 +574,9 @@ class PjudClient(Transporte):
         para ese mínimo: se comprobó que "apellido paterno + año" es rechazado mientras
         que "paterno + materno" es aceptado.
 
-        El tribunal es obligatorio acá, a diferencia de la búsqueda por rol. Es una
-        limitación del sitio, no de este cliente: no se puede buscar a alguien sin saber
-        en qué tribunal está su causa.
+        Además hay que acotar la búsqueda, y con qué depende de la competencia: tribunal en
+        las cuatro de primera instancia, corte en apelaciones, nada en suprema. Lo resuelve
+        `_acotacion` con la tabla de `parser.COMPETENCIAS`.
         """
         modulo = self._modulo(competencia)
         if sum(1 for x in (nombre, apellido_paterno, apellido_materno) if x.strip()) < 2:
@@ -509,11 +584,7 @@ class PjudClient(Transporte):
                 "La búsqueda por nombre exige al menos dos de estos tres campos: nombre, "
                 "apellido paterno, apellido materno. El año no cuenta para ese mínimo."
             )
-        if tribunal is None:
-            raise ValueError(
-                "La búsqueda por nombre exige tribunal. La plataforma no permite buscar "
-                "por nombre en todos los tribunales a la vez."
-            )
+        self._acotacion(modulo, tribunal, corte)
         return self._paginado(
             f"{modulo}/consultaNombre{modulo.capitalize()}.php",
             {
@@ -550,8 +621,7 @@ class PjudClient(Transporte):
         modulo = self._modulo(competencia)
         if not str(digito_verificador).strip():
             raise ValueError("Falta el dígito verificador del RUT.")
-        if tribunal is None:
-            raise ValueError("La búsqueda por RUT de persona jurídica exige tribunal.")
+        self._acotacion(modulo, tribunal, corte)
         return self._paginado(
             f"{modulo}/consultaJuridica{modulo.capitalize()}.php",
             {
@@ -583,8 +653,7 @@ class PjudClient(Transporte):
         modulo = self._modulo(competencia)
         if not desde.strip() or not hasta.strip():
             raise ValueError("La búsqueda por fecha exige fecha inicial y fecha final.")
-        if tribunal is None:
-            raise ValueError("La búsqueda por fecha exige tribunal.")
+        self._acotacion(modulo, tribunal, corte)
         return self._paginado(
             f"{modulo}/consultaFecha{modulo.capitalize()}.php",
             {

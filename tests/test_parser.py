@@ -434,3 +434,76 @@ def test_el_cero_renderizado_como_fecha_no_se_devuelve_como_fecha(centinela):
     assert _fecha(centinela) is None
     # Y una fecha real del mismo entorno sigue funcionando.
     assert _fecha("31/03/2026") == date(2026, 3, 31)
+
+
+SUPREMA = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
+APELACIONES = (FIXTURES / "busqueda_rit_apelaciones.html").read_text(encoding="utf-8")
+
+
+def test_el_listado_de_suprema_se_lee_con_los_indices_declarados():
+    """Suprema pone el tipo de recurso donde las demás ponen el tribunal.
+
+    Es la segunda celda en las dos, así que un mapa corrido no revienta: devuelve
+    "(Civil) Apelación Protección" en el campo del tribunal y "Corte Suprema" en el del tipo
+    de recurso. Las dos cosas se ven plausibles y ninguna es correcta.
+    """
+    (causa,) = parse_resultados(SUPREMA, "suprema")
+    assert causa.rol == "999999-2020"
+    assert causa.tipo_recurso == "(Civil) Apelación Protección"
+    assert causa.tribunal == "Corte Suprema"
+    assert causa.fecha_ingreso == "12/11/2020"
+    assert causa.estado == "Fallada"
+    assert causa.competencia == "suprema"
+    # Suprema no publica ubicación: es la diferencia con apelaciones.
+    assert causa.ubicacion is None
+
+
+def test_en_apelaciones_el_rol_lleva_el_libro_y_sin_el_no_identifica_la_causa():
+    """El mismo número de rol y año son TRES causas distintas, una por libro.
+
+    Medido sobre este listado: 9999-2019 devuelve un Exhorto, una Civil y una Protección, con
+    caratulados y fechas distintos. O sea "rol 1504-2019 de la Corte de Concepción" no
+    identifica nada por sí solo, y verificar una cita por número y año sin comparar el libro y
+    el caratulado puede dar por confirmada una causa que no es la citada.
+    """
+    causas = parse_resultados(APELACIONES, "apelaciones")
+    assert [c.rol for c in causas] == [
+        "Exhorto-9999-2019",
+        "Civil-9999-2019",
+        "Protección-9999-2019",
+    ]
+    assert len({c.caratulado for c in causas}) == 3, "tres libros, tres causas distintas"
+    assert all(c.tribunal == "C.A. de Concepción" for c in causas)
+    # La ubicación es la columna que sólo apelaciones publica, y dice dónde está el expediente.
+    assert [c.ubicacion for c in causas] == [
+        "Corte apelaciones",
+        "Primera Instancia",
+        "Corte apelaciones",
+    ]
+    assert all(c.tipo_recurso is None for c in causas)
+
+
+def test_leer_apelaciones_con_el_mapa_de_suprema_no_revienta_y_miente():
+    """La dirección peligrosa es la del listado ancho leído con el mapa angosto.
+
+    Apelaciones trae ocho celdas y suprema declara hasta la sexta, así que el mapa de suprema
+    entra sin faltar ninguna celda: no hay error, y "C.A. de Concepción" sale en el campo del
+    tipo de recurso mientras el caratulado sale en el del tribunal. Todo se ve plausible.
+
+    Al revés sí revienta, y eso es lo correcto: suprema trae siete celdas y apelaciones declara
+    hasta la séptima, o sea necesita ocho. Que una dirección falle ruidosamente y la otra no es
+    exactamente por qué el contraste de abajo tiene que existir.
+    """
+    propio = parse_resultados(APELACIONES, "apelaciones")[0]
+    ajeno = parse_resultados(APELACIONES, "suprema")[0]
+    assert propio.tribunal == "C.A. de Concepción"
+    assert ajeno.tribunal != propio.tribunal, (
+        "los mapas de suprema y apelaciones tienen que producir lecturas distintas, o estos "
+        "tests no prueban que los índices importen"
+    )
+    assert ajeno.tipo_recurso == "C.A. de Concepción", (
+        "con el mapa de suprema, la corte cae en el campo del tipo de recurso"
+    )
+
+    with pytest.raises(EstructuraInesperada, match="celdas"):
+        parse_resultados(SUPREMA, "apelaciones")

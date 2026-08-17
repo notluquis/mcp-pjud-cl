@@ -13,7 +13,11 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Búsqueda de causas en **laboral** | Una causa real, columnas confirmadas, con fixture propia |
 | Búsqueda de causas en **cobranza** | Ídem, y publica RUC que civil no tiene |
 | El detalle de cobranza existe y sus columnas son otras | `historiaCob`, `diligenciaCob`, `litigantesCob`, `deudaCob`, `liquidacionCob`. Trae `Estado Firma` y no trae `Foja` ni `Georref.` |
-| Una búsqueda del buscador de fallos tarda 47,8 s | Contra 4,3 s de la página del mismo host. Es Solr con facetas sobre más de un millón de documentos |
+| Una búsqueda del buscador de fallos tarda 47,8 s, y hasta 177,0 s | Contra 4,3 s de la página del mismo host. Es Solr con facetas sobre más de un millón de documentos. Los 47,8 s eran una sola muestra, y tomarla por techo dejó el timeout en 90 s: con eso, tres citas que respondían en 81, 102 y 39 segundos se daban por perdidas |
+| Búsqueda de causas en **suprema** y **Cortes de Apelaciones** | Las cuatro búsquedas de cada una. Lo que las bloqueaba era `radio-group`, el radio RIT/RUC del formulario, que las otras cuatro competencias toleran ausente |
+| Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
+| Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
+| Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
 | Búsqueda por RIT en civil | E-468-2026 y C-1156-2026 |
@@ -42,16 +46,23 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 
 ### Mapeado pero nunca ejecutado
 
-Las rutas se extrajeron del código de la plataforma. **No se probó ninguna.** El cliente las
+Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
 rechaza en vez de adivinar sus parámetros:
 
-- `consultaNombre*.php`, `consultaJuridica*.php`, `consultaFecha*.php` para todas las
-  competencias
-- Todo lo de `apelaciones`, `suprema`, `laboral`, `penal`, `cobranza`, `familia`
+- El **detalle** de `suprema`, `apelaciones`, `laboral` y `penal`: `causaSuprema.php`,
+  `causaApelaciones.php`, `causaLaboral.php`, `causaPenal.php`. Sus búsquedas sí están
+  verificadas, que no es lo mismo: por eso las cuatro declaran `historia=None` y pedirles
+  actuaciones se rechaza
+- `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
+- `diligenciaCob`, el panel donde cobranza guarda de verdad sus diligencias
 - `receptorCivil.php`, que devuelve la tabla de **retiro** de documentos, no la de
   actuaciones. Se ejecutó una vez y se descartó por no ser lo que se buscaba
+
+Las cuatro búsquedas (`consultaRit*`, `consultaNombre*`, `consultaJuridica*` y
+`consultaFecha*`) salieron de esta lista: están verificadas en las seis competencias que el
+servidor expone.
 
 ### Sin cubrir del todo
 
@@ -95,27 +106,53 @@ total. La respuesta correcta es devolver el listado para que el usuario elija cu
 Existe `buscar_jurisprudencia` contra el buscador de Corte Suprema. Lo que falta está en la
 sección de jurisprudencia, más abajo.
 
-### 0.4: cobranza y laboral — búsqueda hecha, actuaciones pendientes
+### 0.4: las seis competencias buscables — hecho
 
-Las dos búsquedas quedaron verificadas con fixtures propias. Lo que falta es lo que da valor:
+Las cuatro búsquedas (`consultaRit*`, `consultaNombre*`, `consultaJuridica*` y
+`consultaFecha*`) están verificadas en las seis competencias que el servidor expone, cada una
+con su fixture real anonimizada.
 
-- **`historiaCob`**: el panel existe y sus columnas son otras. Trae `Estado Firma` y no trae
-  `Foja` ni `Georref.`, así que `COLUMNAS` y la lista blanca de encabezados del parser tienen
-  que moverse a la tabla de competencias junto con el sufijo del panel. Sin eso cobranza no
-  entrega actuaciones de ministro de fe, que es la única razón por la que se eligió primero.
-- **Laboral no tiene receptor.** En todo el sitio sólo existen `receptorCivil` y
-  `receptorCobranza`, así que ahí la pregunta que da sentido al proyecto no tiene respuesta.
-  Queda declarado en la tabla y se rechaza antes de gastar una petición.
+Lo que las bloqueaba resultó ser un solo campo, y conviene dejar escrito el diagnóstico
+equivocado porque era plausible y costó dos intentos: se creyó que sobraban los campos que el
+sitio deshabilita (`conTipoCausa`, `conCorte`, `conTribunal`), y que faltaba un código de libro
+en `conTipoCausa`. **Las dos cosas eran falsas.** El combo de libros existe
+(`json/cmbTipos.php`) y devuelve cero bytes para suprema, y la búsqueda anda igual con o sin
+los campos deshabilitados. Faltaba `radio-group`, el radio RIT/RUC del formulario, en el que su
+PHP se ramifica para saber por cuál de los dos se busca. Las otras cuatro competencias lo
+toleran ausente.
 
-Las otras tres competencias se midieron y el diagnóstico está, leído de su propio JavaScript:
+Se encontró bisectando desde el juego de campos que fallaba, no leyendo más JavaScript.
 
-| Competencia | Por qué falla | Corrección conocida |
-|---|---|---|
-| `suprema` | El sitio deja `conTipoCausa` **deshabilitado**, y jQuery no serializa campos deshabilitados: no se manda. Mandarlo vacío hace que el servidor lo parsee como número | Omitir el campo |
-| `apelaciones` | Mismo caso | Omitir el campo |
-| `penal` | Tiene un control propio, `radio-groupPenal`, con 1 para buscar por RIT y 2 por RUC | Agregar ese campo |
+**Lo que sigue pendiente es lo que da valor**, y es más chico de lo que parecía:
 
-Ninguna de las tres correcciones está verificada contra el sistema real todavía.
+- **`diligenciaCob`**: cobranza tiene ministro de fe pero sus diligencias NO viven en la tabla
+  de Historia. `historiaCob` trae `Actuación`, `Resolución` y `Escrito`, nunca "Actuación
+  Receptor". Las diligencias están en un panel aparte con estructura propia (`Estado
+  Diligencia`, `Tipo Diligencia`, `Destinatario`, `Responsable`). Hoy `actuaciones_receptor`
+  rechaza cobranza en vez de devolver una lista vacía, que es lo correcto mientras el panel no
+  esté medido.
+
+  **Medido, y la respuesta es que hoy no sirve.** De cinco causas de cobranza, sólo una trae
+  filas en ese panel, y sus tres diligencias traen `31/12/1969` en la columna de fecha: el
+  epoch, o sea el valor cero renderizado. Ninguna trae la fecha doble que este proyecto lee en
+  civil. Construir sobre eso entregaría actuaciones sin la fecha que corre los plazos, que es
+  peor que no entregarlas. Queda a la espera de encontrar una causa donde el panel sí publique
+  fechas.
+
+- **Las notificaciones son otra fuente de fechas, y no son uniformes.** Buscando lo anterior
+  apareció que cobranza publica `notificacionCob` con DOS columnas de fecha, `Fec.Not.` y
+  `Fec.Tram.`, que difieren: las notificaciones por correo electrónico coinciden y las por
+  carta van con un día de diferencia. Civil publica otra cosa: el panel se llama
+  `notificacionesCiv`, tiene ocho columnas y **una sola** fecha.
+
+  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia. Y
+  las dos causas civiles disponibles traen cero filas, así que no hay con qué validar el
+  parseo de civil. Exponerlo ahora sería adivinar. Lo bueno es que no cuesta peticiones: los
+  dos paneles ya vienen en la respuesta del detalle que el cliente pide.
+
+- **Laboral, penal, suprema y apelaciones no tienen receptor.** En todo el sitio sólo existen
+  `receptorCivil` y `receptorCobranza`. Queda declarado en la tabla y se rechaza antes de
+  gastar una petición.
 
 ### 0.5: el resto del detalle de causa
 
@@ -152,17 +189,25 @@ mide antes de exponerlo.
 disco. Eso cambia el perfil de retención y entra de lleno en la Ley 21.719. Probablemente
 requiera consentimiento explícito por llamada, y ruta de destino elegida por el usuario.
 
-### 0.8: laboral y apelaciones
+### 0.8: el detalle de las competencias ya buscables
 
-Las dos competencias que siguen en volumen de uso real.
+Verificar la búsqueda no verifica el detalle, y hoy son cosas separadas a propósito:
+`suprema`, `apelaciones`, `laboral` y `penal` declaran `historia=None`, así que pedirles
+actuaciones se rechaza en vez de adivinar el panel.
 
-### 0.9: competencias restantes
+Para cada una hay que confirmar lo mismo que se confirmó en civil y en cobranza: el
+identificador del panel de historia, el orden y el nombre de sus columnas, y si expone
+actuaciones de ministro de fe. Lo último manda: sin receptor, el detalle de esa competencia no
+responde la pregunta del proyecto por más que sus rutas estén mapeadas.
 
-Laboral, apelaciones, suprema, penal y familia. Ninguna sondeada. Antes de cada una hay que
-confirmar lo mismo que se confirmó en cobranza: el identificador del panel de historia, el
-orden y nombre de las columnas, y si esa competencia expone actuaciones de ministro de fe.
+Rutas mapeadas y sin ejecutar: `causaSuprema.php`, `causaApelaciones.php`, `causaLaboral.php`,
+`causaPenal.php`.
 
-Sin esto último, la competencia no vale el esfuerzo por más que sus rutas estén mapeadas.
+### 0.9: familia
+
+La única competencia que no se expone, y no por falta de medición: la propia plataforma
+responde que las causas de familia son reservadas y sólo se llega a ellas por Clave Única,
+desde "Mis Causas". Queda fuera de alcance mientras eso siga así.
 
 ### Sin versión asignada
 

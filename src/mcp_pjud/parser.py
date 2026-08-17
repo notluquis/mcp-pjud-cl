@@ -402,6 +402,19 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Con qué hay que acotar las búsquedas por nombre, por RUT y por fecha: `"tribunal"`,
+    #: `"corte"` o `None` si la competencia no exige ninguna de las dos.
+    #:
+    #: No es una preferencia de este cliente: es una exigencia de la plataforma, distinta según
+    #: la competencia, y medida una por una. En apelaciones responde con el aviso "Por favor
+    #: seleccione una Corte para la búsqueda" en las tres búsquedas; en suprema las tres andan
+    #: sin corte ni tribunal; en las cuatro de primera instancia el tribunal es obligatorio.
+    #:
+    #: Va acá y no en tres validaciones sueltas porque el cliente exigía tribunal siempre, y
+    #: con eso habría rechazado por su cuenta consultas que la plataforma acepta. Rechazar de
+    #: más es más difícil de notar que rechazar de menos: no gasta una petición, no deja rastro
+    #: y se ve igual que "no hay causas".
+    acota_por: str | None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -419,6 +432,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=None,
         receptor=False,
         receptor_en_historia=False,
+        acota_por=None,
     ),
     "apelaciones": Competencia(
         2,
@@ -433,6 +447,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=None,
         receptor=False,
         receptor_en_historia=False,
+        acota_por="corte",
     ),
     "civil": Competencia(
         3,
@@ -440,6 +455,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=HISTORIA_CIVIL,
         receptor=True,
         receptor_en_historia=True,
+        acota_por="tribunal",
     ),
     "laboral": Competencia(
         4,
@@ -447,6 +463,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=None,
         receptor=False,
         receptor_en_historia=False,
+        acota_por="tribunal",
     ),
     "penal": Competencia(
         5,
@@ -454,6 +471,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=None,
         receptor=False,
         receptor_en_historia=False,
+        acota_por="tribunal",
     ),
     "cobranza": Competencia(
         6,
@@ -461,6 +479,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         historia=HISTORIA_COBRANZA,
         receptor=True,
         receptor_en_historia=False,
+        acota_por="tribunal",
     ),
 }
 

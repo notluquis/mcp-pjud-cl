@@ -1,0 +1,68 @@
+name: codeql
+
+# Configuración avanzada, en reemplazo del modo gestionado por GitHub. Se cambió para poder
+# usar el conjunto de consultas `security-extended` y para dejar el análisis fijado por SHA
+# como el resto de los workflows.
+#
+# Las dos configuraciones no pueden coexistir: mientras exista este archivo, el modo
+# gestionado tiene que quedar deshabilitado en Settings. Si alguien lo reactiva, este
+# workflow falla con "CodeQL analyses from advanced configurations cannot be processed when
+# the default setup is enabled".
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 5 * * 2"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analizar:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      security-events: write
+      # Necesario para descargar los paquetes de consultas de CodeQL.
+      packages: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # `build-mode: none` porque ninguno de los dos requiere compilación. Sin esto,
+          # CodeQL intentaría autobuild y perdería tiempo en un paso que no aplica.
+          - language: python
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # security-extended agrega consultas de precisión y severidad menores sobre las de
+      # `default`. Cubre más a costa de más falsos positivos, intercambio razonable en un
+      # proyecto chico donde revisar un hallazgo dudoso cuesta poco.
+      - name: Inicializar CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Analizar
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: "/language:${{ matrix.language }}"

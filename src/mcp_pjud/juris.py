@@ -39,7 +39,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from .client import INTERVALO_MINIMO, Transporte
-from .parser import EstructuraInesperada
+from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
@@ -89,6 +89,9 @@ BUSCADORES: Mapping[str, Buscador] = {
             "condicion_publicacion": "gls_condicion_publicacion_s",
             "anonimizada": "sit_fallo_anonimizado_i",
             "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
         },
     ),
     "apelaciones": Buscador(
@@ -105,6 +108,9 @@ BUSCADORES: Mapping[str, Buscador] = {
             "condicion_publicacion": "gls_condicion_publicacion_s",
             "anonimizada": "sit_fallo_anonimizado_i",
             "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
         },
     ),
     "laborales": Buscador(
@@ -119,6 +125,9 @@ BUSCADORES: Mapping[str, Buscador] = {
             "condicion_publicacion": "gls_condicion_publicacion_s",
             "anonimizada": "sit_fallo_anonimizado_i",
             "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
         },
     ),
 }
@@ -178,6 +187,40 @@ class Sentencia(BaseModel):
     )
     anonimizada: bool = Field(description="Si el texto publicado viene anonimizado.")
     url: str = Field(description="Enlace permanente a la sentencia en el buscador.")
+    palabras: int | None = Field(
+        default=None, description="Extensión del fallo en palabras, según el buscador."
+    )
+    paginas: int | None = Field(default=None, description="Extensión en páginas.")
+    texto_preview: str = Field(
+        default="",
+        description="Primeras líneas del fallo, tal como el buscador las entrega para la "
+        "lista de resultados. Sirve para decidir si vale pedir el texto completo, que es dos "
+        "órdenes de magnitud más grande.",
+    )
+
+
+class TextoSentencia(BaseModel):
+    """El texto completo de una sentencia.
+
+    Va en un modelo aparte y se pide de una en una a propósito: una sentencia de trece
+    páginas son unos veinticinco mil caracteres, así que devolver diez con la búsqueda serían
+    doscientos cincuenta mil. El costo no es sólo de tamaño: el texto trae nombres y cédulas
+    de las personas que fueron parte, y pedirlo tiene que ser una decisión explícita y no el
+    efecto colateral de una búsqueda.
+    """
+
+    rol: str
+    anonimizada: bool = Field(
+        description="Si lo que se entrega es la versión anonimizada. Cuando es verdadero, los "
+        "datos de las personas naturales vienen suprimidos por el propio tribunal."
+    )
+    fuente: str = Field(
+        description="Cuál de los dos campos del buscador se entregó: `texto_sentencia` o "
+        "`texto_sentencia_anon`. Se dice para que quien lo lea sepa qué está leyendo."
+    )
+    palabras: int | None = None
+    paginas: int | None = None
+    texto: str
 
 
 class ResultadoJurisprudencia(BaseModel):
@@ -308,6 +351,9 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
             condicion_publicacion=leer(d, "condicion_publicacion"),
             anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
             url=leer(d, "url"),
+            palabras=d.get("sent__word_count_i"),
+            paginas=d.get("sent__npages_i"),
+            texto_preview=leer(d, "texto_preview"),
         )
         for d in respuesta["docs"]
     ]
@@ -340,6 +386,9 @@ class JurisClient(Transporte):
         #: resultados de la fuente equivocada, o un error de estructura. Cuando había un solo
         #: buscador expuesto era inofensivo; deja de serlo con el segundo.
         self._buscador_de_la_sesion: str | None = None
+        #: Cuerpo de la última respuesta. Lo guarda para que `texto` pueda releer el campo
+        #: del fallo completo sin repetir la petición.
+        self._ultima_respuesta: str | None = None
 
     def __enter__(self) -> JurisClient:
         return self
@@ -413,7 +462,7 @@ class JurisClient(Transporte):
         if not self._token or self._buscador_de_la_sesion != buscador.lower():
             self.abrir_sesion(buscador)
 
-        r = self._req(
+        self._ultima_respuesta = self._req(
             "POST",
             f"{BASE}/busqueda/buscar_sentencias",
             files={
@@ -429,8 +478,57 @@ class JurisClient(Transporte):
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
+        ).text
+        return parse_sentencias(self._ultima_respuesta, buscador)
+
+    def texto(self, *, rol: int, anio: int, buscador: str = "suprema") -> TextoSentencia:
+        """El texto completo de una sentencia, de una en una.
+
+        Se resuelve con la misma búsqueda por rol y año: el buscador ya devuelve el texto en
+        la respuesta del listado, así que no hace falta una petición aparte. Lo que cambia
+        respecto de `buscar` es qué se entrega, no cuántas veces se consulta.
+
+        Cuando el fallo está anonimizado, lo publicado es la versión con los datos de las
+        personas naturales suprimidos por el propio tribunal, y se dice cuál de los dos
+        campos se entregó.
+        """
+        r = self.buscar(rol=rol, anio=anio, filas=1, buscador=buscador)
+        if not r.sentencias:
+            if r.ocultas:
+                raise PlataformaRechaza(
+                    f"La sentencia {rol}-{anio} existe en el índice pero no se entrega a una "
+                    f"consulta anónima: {r.ocultas} coincidencia(s) reservada(s). No es que no "
+                    "exista, es que no se publica."
+                )
+            raise EstructuraInesperada(
+                f"No hay ninguna sentencia {rol}-{anio} en el buscador de {buscador}, ni "
+                "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
+            )
+
+        # El texto viene en la misma respuesta del listado, así que no hace falta otra
+        # petición: se relee el cuerpo que `buscar` acaba de traer. `Sentencia` no lo lleva a
+        # propósito, para que una búsqueda no arrastre veinticinco mil caracteres por fila.
+        campos = BUSCADORES[buscador.lower()].campos
+        docs = json.loads(self._ultima_respuesta or "{}").get("response", {}).get("docs", [])
+        crudo = docs[0] if docs else {}
+        s = r.sentencias[0]
+        anon = s.anonimizada
+        clave = campos["texto_anonimizado"] if anon else campos["texto"]
+        texto = str(crudo.get(clave, "") or "")
+        if not texto:
+            raise EstructuraInesperada(
+                f"La sentencia {rol}-{anio} llegó sin el campo {clave!r}, que es donde el "
+                "buscador publica su texto. Devolver una cadena vacía se leería como una "
+                "sentencia sin contenido."
+            )
+        return TextoSentencia(
+            rol=s.rol,
+            anonimizada=anon,
+            fuente=clave,
+            palabras=s.palabras,
+            paginas=s.paginas,
+            texto=texto,
         )
-        return parse_sentencias(r.text, buscador)
 
     def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
         """El buscador responde JSON. Un cuerpo con verificación en vez de resultados es un

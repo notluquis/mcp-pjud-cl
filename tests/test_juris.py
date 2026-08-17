@@ -12,7 +12,7 @@ from mcp_pjud.juris import (
     JurisClient,
     parse_sentencias,
 )
-from mcp_pjud.parser import EstructuraInesperada
+from mcp_pjud.parser import EstructuraInesperada, PlataformaRechaza
 
 FIXTURES = Path(__file__).parent / "fixtures"
 AMPLIA = (FIXTURES / "juris_busqueda_amplia.json").read_text(encoding="utf-8")
@@ -199,3 +199,94 @@ def test_una_sentencia_sin_lo_que_la_identifica_se_levanta(campo):
     del d["response"]["docs"][0][campo]
     with pytest.raises(EstructuraInesperada, match=campo):
         parse_sentencias(json.dumps(d))
+
+
+# -- el texto completo, que se pide aparte ----------------------------------------
+
+
+def _con_respuesta(cuerpo: str) -> JurisClient:
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=cuerpo))
+    )
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    return c
+
+
+def _con_texto(texto: str, anonimizada: int = 0, anon: str = "ANONIMIZADO") -> str:
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["texto_sentencia"] = texto
+    d["response"]["docs"][0]["texto_sentencia_anon"] = anon
+    d["response"]["docs"][0]["sit_fallo_anonimizado_i"] = anonimizada
+    d["response"]["docs"][0]["sent__word_count_i"] = 3881
+    d["response"]["docs"][0]["sent__npages_i"] = 13
+    return json.dumps(d, ensure_ascii=False)
+
+
+def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
+    """Una sentencia de trece páginas son unos 25.000 caracteres, medido. Diez por búsqueda
+    serían 250.000, así que `Sentencia` lleva el preview y no el fallo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto("X" * 25473))
+    s = c.buscar(rol=34546, anio=2025).sentencias[0]
+    assert "texto" not in s.model_dump(), "el texto completo no puede viajar en cada fila"
+    # La extensión sí viaja: es lo que permite decidir si pedir el resto.
+    assert s.palabras == 3881
+    assert s.paginas == 13
+
+
+def test_el_texto_completo_dice_de_cual_de_los_dos_campos_salio(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto("Santiago, a catorce de agosto."))
+    t = c.texto(rol=34546, anio=2025)
+    assert t.anonimizada is False
+    assert t.fuente == "texto_sentencia"
+    assert t.texto.startswith("Santiago")
+    assert (t.palabras, t.paginas) == (3881, 13)
+
+
+def test_un_fallo_anonimizado_entrega_la_version_anonimizada(monkeypatch):
+    """Cuando el tribunal anonimizó el fallo, lo publicado es la otra columna. Entregar la
+    primera devolvería el marcador `ANONIMIZADO` como si fuera el texto."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(
+        _con_texto("ANONIMIZADO", anonimizada=1, anon="Santiago, a catorce. NOMBRE SUPRIMIDO.")
+    )
+    t = c.texto(rol=34546, anio=2025)
+    assert t.anonimizada is True
+    assert t.fuente == "texto_sentencia_anon"
+    assert "SUPRIMIDO" in t.texto
+
+
+def test_pedir_el_texto_de_una_sentencia_reservada_no_devuelve_vacio(monkeypatch):
+    """`ocultas` mayor que cero significa que existe y no se publica. Devolver una cadena
+    vacía se leería como una sentencia sin contenido."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 1
+    c = _con_respuesta(json.dumps(d))
+    with pytest.raises(PlataformaRechaza, match="reservada"):
+        c.texto(rol=34546, anio=2025)
+
+
+def test_pedir_el_texto_de_una_sentencia_inexistente_se_distingue_de_una_reservada(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 0
+    c = _con_respuesta(json.dumps(d))
+    with pytest.raises(EstructuraInesperada, match="reservada"):
+        c.texto(rol=34546, anio=2025)
+
+
+def test_una_sentencia_sin_el_campo_de_texto_se_levanta(monkeypatch):
+    """Devolver una cadena vacía se leería como una sentencia sin contenido, y una sentencia
+    sin contenido no existe: si el campo falta, el buscador cambió."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_texto(""))
+    with pytest.raises(EstructuraInesperada, match="texto_sentencia"):
+        c.texto(rol=34546, anio=2025)

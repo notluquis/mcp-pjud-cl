@@ -166,10 +166,11 @@ Sin esto último, la competencia no vale el esfuerzo por más que sus rutas est�
 
 ### Sin versión asignada
 
-**Detección de cambios entre consultas.** Avisar cuando aparece una actuación nueva. Sigue
-siendo solo lectura, pero **implica persistencia**, y eso cambia todo el perfil de datos
-personales. No se toca hasta que las fases anteriores estén estables y haya una respuesta
-clara sobre retención bajo la Ley 21.719.
+**Detección de cambios entre consultas: descartada.** Avisar cuando aparece una actuación
+nueva implica persistir datos de terceros, y eso cambia todo el perfil del proyecto bajo la
+Ley 21.719. El titular la descartó el 17 de agosto de 2026. Queda anotada como decisión y no
+como pendiente, porque es la función que alguien va a pedir mirando lo que vende la
+competencia.
 
 **Búsqueda de cartera por identificador de abogado.** El campo `Institución` de los listados
 permite reconstruir la cartera completa de un abogado. Técnicamente es directo.
@@ -276,10 +277,16 @@ del proyecto entero.
 
 ### Lo que falta decidir
 
-- **Texto completo.** La respuesta trae `texto_sentencia` entero, y una búsqueda de diez
-  sentencias serían megabytes con nombres y cédulas de personas naturales. Hoy se devuelve
-  metadatos y el enlace permanente. Traer el texto es una decisión de datos personales, no de
-  comodidad, y va junto con la de descargar PDF.
+- **Texto completo: hecho**, con la forma que la decisión exigía. Está en
+  `obtener_texto_sentencia`, aparte de la búsqueda y de a una sentencia por llamada. La razón
+  es medible: una sentencia de trece páginas son 25.473 caracteres, así que devolver diez con
+  cada búsqueda serían 250.000. La búsqueda entrega `texto_preview` y la extensión en palabras
+  y páginas, que suele bastar para decidir si vale pedir el resto.
+
+  Sobre los datos personales: la respuesta declara `anonimizada` y `fuente`, o sea si lo
+  entregado es la versión con los datos suprimidos por el tribunal y de cuál de los dos campos
+  salió. Y si la sentencia existe pero está reservada, se levanta en vez de devolver un texto
+  vacío que se leería como una sentencia sin contenido.
 - **Paginación.** El buscador pagina por desplazamiento numérico, no por identificador opaco
   como la consulta de causas, así que es más simple. Falta el mismo guardia de truncación.
 - **Una cuenta.** Con credenciales del Poder Judicial se verían más sentencias. Queda fuera:

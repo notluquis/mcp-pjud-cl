@@ -18,6 +18,22 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Herramienta `obtener_texto_sentencia`: el texto completo de un fallo, de a uno por llamada.
+
+  Está separada de la búsqueda por una razón medida: una sentencia de trece páginas son 25.473
+  caracteres, así que devolver diez con cada búsqueda serían 250.000. La búsqueda entrega
+  `texto_preview` y la extensión en palabras y páginas, que suele bastar para decidir.
+
+  Declara `anonimizada` y `fuente`: si lo entregado es la versión con los datos de las personas
+  naturales suprimidos por el propio tribunal, y de cuál de los dos campos del buscador salió.
+  Y si la sentencia existe pero está reservada para consultas anónimas, levanta en vez de
+  devolver un texto vacío que se leería como una sentencia sin contenido.
+
+- Buscadores de **Corte de Apelaciones** y **Laborales** en el buscador de fallos, con sus
+  campos leídos de `parametros_buscador`. Confirman la premisa de la tabla: Apelaciones
+  identifica sus sentencias con `rol_era_ape_s` donde Suprema usa `rol_era_sup_s`. En Laborales
+  el origen es un juzgado y no una corte.
+
 - Búsquedas en **laboral** y **cobranza**, verificadas contra el sistema real y con fixtures
   propias. Cobranza publica RUC, que civil no tiene; laboral publica estado de causa.
 

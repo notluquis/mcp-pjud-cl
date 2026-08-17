@@ -212,6 +212,38 @@ Los siete restantes se rechazan en vez de adivinar sus campos.
 ```{include} _generado/buscar_jurisprudencia.md
 ```
 
+## `obtener_texto_sentencia`
+
+El texto completo de una sentencia, de una en una.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `rol` | int | Rol de la sentencia, sin el año |
+| `anio` | int | Año del rol |
+| `buscador` | str | `suprema`, `apelaciones` o `laborales` |
+
+Está separado de la búsqueda a propósito, y la razón es de tamaño: **una sentencia de trece
+páginas son unos 25.000 caracteres**, medido. Devolver diez con cada búsqueda serían 250.000.
+La búsqueda entrega `texto_preview`, más la extensión en palabras y páginas, que suele bastar
+para decidir si vale pedir el resto.
+
+:::{warning}
+El texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado
+también sus cédulas.
+
+`anonimizada` dice si lo entregado es la versión con los datos suprimidos por el propio
+tribunal, y `fuente` dice cuál de los dos campos del buscador se leyó (`texto_sentencia` o
+`texto_sentencia_anon`). Se informan las dos cosas para que quien lea sepa qué está leyendo.
+:::
+
+### Campos de la respuesta
+
+`rol`, `anonimizada`, `fuente`, `palabras`, `paginas` y `texto`.
+
+Si la sentencia existe en el índice pero está reservada para consultas anónimas, se levanta
+`PlataformaRechaza` con el número de coincidencias reservadas, en vez de devolver un texto
+vacío. Distinguir "existe y no se publica" de "no existe" es el punto.
+
 ## Errores
 
 | Excepción | Qué significa | Qué hacer |

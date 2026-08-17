@@ -597,9 +597,16 @@ cuenta en días corridos y en hábiles, dejando la calificación jurídica a qui
 decisión queda abierta y es de las que conviene discutir antes de escribir código.
 
 Fuente del calendario: está por decidir. Boostr lo ofrece pero es un tercero de pago. Los
-feriados chilenos están fijados por ley, con la [Ley 2.977](https://www.bcn.cl/leychile) de
-1915 como norma base y las posteriores que la modifican, o sea el dato es público y cabe en el
-paquete sin depender de nadie.
+feriados chilenos están fijados por ley, o sea el dato es público y cabe en el paquete sin
+depender de nadie. La norma base es la
+[Ley 2.977](https://www.bcn.cl/leychile/navegar?idNorma=23530) de 1915, más las posteriores
+que la modifican; verificado el 17 de agosto de 2026.
+
+Ese "verificado" es lo único que se puede ofrecer acá, y conviene decir por qué: la suite no
+consulta la red por diseño, así que **ninguna cita legal de esta documentación puede
+comprobarse en CI**. Lo que sí se comprueba es que venga con enlace y con la fecha en que
+alguien la miró, que es lo que permite a quien lea juzgar si sigue vigente. Vale para todas las
+leyes que este proyecto cita, que están en una tabla única en la página de cumplimiento.
 
 #### Del mismo catálogo: qué más sirve y qué se rechaza
 

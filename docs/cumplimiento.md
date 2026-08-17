@@ -4,6 +4,23 @@ Esta página existe porque el contexto regulatorio de esta herramienta cambió h
 semanas y define varias decisiones de diseño. Todo lo que sigue está verificado contra fuente,
 con la fecha de verificación indicada.
 
+## Normas que este proyecto cita
+
+Tabla única: cualquier otra página que nombre una de estas leyes se refiere a esta entrada, y
+un test verifica que no se cite ninguna que no esté acá. La suite no consulta la red por
+diseño, así que una cita legal no se puede comprobar en CI; lo que sí se puede exigir es que
+traiga su fuente y la fecha en que alguien la miró.
+
+| Norma | De qué trata | Dónde pesa acá |
+|---|---|---|
+| [Ley 21.719](https://www.bcn.cl/leychile/navegar?idNorma=1209272) | Protección de datos personales. Vigencia 1 de diciembre de 2026 | Por qué no se persiste nada de terceros y por qué las fixtures van anonimizadas |
+| [Ley 20.886](https://www.bcn.cl/leychile/navegar?idNorma=1085055) | Tramitación electrónica | Su art. 9 inc. 3 es el que vuelve relevante la georreferencia de una actuación |
+| [Ley 17.336](https://www.bcn.cl/leychile/navegar?idNorma=28933) | Propiedad intelectual | La licencia y el acuerdo de contribución se redactaron contra ella |
+| [Ley 19.799](https://www.bcn.cl/leychile/navegar?idNorma=196640) | Documentos y firma electrónica | Aceptación del acuerdo de contribución |
+| [Ley 2.977](https://www.bcn.cl/leychile/navegar?idNorma=23530) | Días feriados, de 1915 | Norma base del calendario de días inhábiles, que la hoja de ruta discute |
+
+Verificado el 17 de agosto de 2026.
+
 ## El antecedente de julio de 2026
 
 Entre el 25 y el 28 de julio de 2026, un abogado ingresó **38.477 escritos automatizados** a

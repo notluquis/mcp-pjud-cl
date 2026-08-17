@@ -48,6 +48,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Documentación consumible por agentes: cada página se publica también en Markdown
   (`uso.html.md`, etc.), más `llms.txt` y `llms-full.txt`, vía la extensión `sphinx-llm`.
 - Página de ejemplos con casos resueltos de punta a punta.
+- Instalación sin clonar, con `uvx --from git+...`. Verificado levantando el servidor y
+  listando sus herramientas por stdio. Habilita el comando de una línea para Claude Code y
+  los botones de un clic para Cursor y VS Code.
 - Cuatro tests nacidos de mutantes que sobrevivieron: el respaldo cuando `Fec. Trámite` viene
   sin paréntesis y la fecha sale de la descripción, la detección de documento adjunto, y la
   hora inválida. Con las de propiedades, la suite queda en 50 tests.

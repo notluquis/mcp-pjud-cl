@@ -105,27 +105,59 @@ Ambas anotadas como `readOnlyHint` y `destructiveHint: false` en el protocolo.
 
 ## Uso
 
+> **Antes de instalar:** la licencia permite ejecutar el software con fines **no comerciales**.
+> Si vas a usarlo en el ejercicio profesional remunerado necesitas
+> [pedir permiso](https://github.com/notluquis/mcp-pjud-cl/issues/new/choose), que es gratis.
+> Un botón de un clic no reemplaza leer esa parte.
+
+No hace falta clonar el repositorio: `uvx` lo descarga y ejecuta. Requiere
+[uv](https://docs.astral.sh/uv/) y Python 3.13 o superior.
+
+**En todos los casos, reemplaza `tu@correo.cl` por tu correo real.** Ese dato viaja en el
+`User-Agent` para que el Poder Judicial pueda identificar a quien consulta, y sin él el
+servidor no arranca.
+
+### Claude Code
+
 ```bash
-uv sync
-export MCP_PJUD_CONTACTO="tu@correo.cl"   # obligatorio
-uv run mcp-pjud
+claude mcp add pjud -e MCP_PJUD_CONTACTO=tu@correo.cl \
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
 ```
 
-El contacto viaja en el `User-Agent` para que el Poder Judicial pueda identificar a quien
-consulta. Sin esa variable el servidor no opera.
+### Cursor y VS Code
 
-En `claude_desktop_config.json`:
+[![Instalar en Cursor](https://img.shields.io/badge/Cursor-instalar-000?logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=pjud&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL25vdGx1cXVpcy9tY3AtcGp1ZC1jbCIsIm1jcC1wanVkIl0sImVudiI6eyJNQ1BfUEpVRF9DT05UQUNUTyI6InR1QGNvcnJlby5jbCJ9fQ%3D%3D)
+[![Instalar en VS Code](https://img.shields.io/badge/VS_Code-instalar-0098FF?logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=pjud&config=%7B%22name%22%3A%22pjud%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22git%2Bhttps%3A//github.com/notluquis/mcp-pjud-cl%22%2C%22mcp-pjud%22%5D%2C%22env%22%3A%7B%22MCP_PJUD_CONTACTO%22%3A%22tu%40correo.cl%22%7D%7D)
+
+Los botones dejan `tu@correo.cl` como marcador. Edítalo en la configuración del editor
+después de instalar, o el servidor va a fallar con un mensaje que te lo recuerda.
+
+### Claude Desktop, Codex y cualquier otro cliente
+
+En `claude_desktop_config.json`, `~/.codex/config.toml` o el equivalente:
 
 ```json
 {
   "mcpServers": {
     "pjud": {
-      "command": "uv",
-      "args": ["--directory", "/ruta/a/mcp-pjud-cl", "run", "mcp-pjud"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "tu@correo.cl" }
     }
   }
 }
+```
+
+El transporte es stdio. No abre puertos ni escucha en la red.
+
+### Desde un clon, para desarrollar
+
+```bash
+git clone https://github.com/notluquis/mcp-pjud-cl
+cd mcp-pjud-cl
+uv sync
+export MCP_PJUD_CONTACTO="tu@correo.cl"
+uv run mcp-pjud
 ```
 
 ## Uso responsable

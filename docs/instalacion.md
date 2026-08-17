@@ -10,44 +10,66 @@ Solo lectura. Cuatro dependencias. Sin base de datos, sin navegador, sin credenc
 
 ## Instalación
 
-```bash
-git clone https://github.com/notluquis/mcp-pjud-cl
-cd mcp-pjud-cl
-uv sync
-```
+No hace falta clonar el repositorio: `uvx` lo descarga y lo ejecuta. Requiere
+[uv](https://docs.astral.sh/uv/) y Python 3.13 o superior.
 
-Requiere Python 3.13 o superior y [uv](https://docs.astral.sh/uv/).
-
-### Variable obligatoria
+### La variable de contacto es obligatoria
 
 ```bash
-export MCP_PJUD_CONTACTO="informatica@estudio.cl"
+MCP_PJUD_CONTACTO="informatica@estudio.cl"
 ```
 
-Sin ella el servidor **no opera**. Ese correo viaja en el `User-Agent` de cada petición:
+Sin ella el servidor **no arranca**. Ese correo viaja en el `User-Agent` de cada petición:
 
 ```
 User-Agent: mcp-pjud/0.1 (+contacto: informatica@estudio.cl)
 ```
 
-Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No es
-configurable para omitirse.
+Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No hay
+forma de omitirlo.
 
-### Conectarlo a Claude Desktop
+### Claude Code
+
+```bash
+claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
+  -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl mcp-pjud
+```
+
+### Claude Desktop, Codex, Cursor, VS Code
 
 ```json
 {
   "mcpServers": {
     "pjud": {
-      "command": "uv",
-      "args": ["--directory", "/ruta/a/mcp-pjud-cl", "run", "mcp-pjud"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
     }
   }
 }
 ```
 
+El [README](https://github.com/notluquis/mcp-pjud-cl#uso) trae además botones de instalación
+de un clic para Cursor y VS Code. Dejan el correo como marcador y hay que editarlo.
+
 El transporte es stdio. No abre puertos ni escucha en la red.
+
+### Fijar una versión
+
+`uvx --from git+...` toma la rama principal. Para fijar una versión concreta, que es lo
+razonable en un entorno de trabajo:
+
+```
+"args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.1.0", "mcp-pjud"]
+```
+
+### Desde un clon, para desarrollar
+
+```bash
+git clone https://github.com/notluquis/mcp-pjud-cl
+cd mcp-pjud-cl
+uv sync --all-groups
+```
 
 ### Verificar
 

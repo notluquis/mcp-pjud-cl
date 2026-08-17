@@ -140,10 +140,15 @@ def test_ninguna_pagina_cita_un_intervalo_distinto_del_real():
 #: porque el barrido tiene un agujero: una página con las DOS cifras viejas no contiene
 #: ninguna de las nuevas, así que "buscar quién las menciona" la deja fuera justo cuando está
 #: mal. Si una página nueva cita la medición, se agrega acá.
+#: Páginas que citan la medición del buscador de fallos y se escriben a mano.
+#:
+#: El registro de cambios NO está: es un histórico, y una entrada vieja que cita la medición de
+#: su versión no está desactualizada, está fechada. Exigirle la cifra vigente obligaría a
+#: reescribir el pasado cada vez que se vuelve a medir. Mismo criterio que con las cifras de
+#: latencia.
 PAGINAS_CON_LA_MEDICION = (
     "docs/herramientas.md",
     "docs/roadmap.md",
-    "CHANGELOG.md",
 )
 
 
@@ -1193,3 +1198,41 @@ def test_el_esquema_dice_donde_el_rol_lleva_libro(expuestas):
             assert competencia in descripcion, (
                 f"el esquema del parámetro `tipo` no dice que en {competencia} va el libro"
             )
+
+
+def test_las_entradas_del_registro_de_cambios_son_breves():
+    """El registro dice QUÉ cambió, no cómo se encontró.
+
+    Se degradó solo: las entradas pasaron a ser párrafos, una versión llegó a 333 líneas con 67
+    viñetas, y varias repetían lo que la sección de al lado ya decía. Un dato repetido es un
+    dato que va a quedar viejo, y un registro que hay que leer entero deja de servir para lo
+    único que sirve: decidir si conviene actualizar.
+
+    El límite es mecánico a propósito. No mide calidad, mide que nadie vuelva a escribir un
+    ensayo donde va una línea: lo que no cabe se cuenta en el PR, que es donde se busca.
+    """
+    LARGO_MAXIMO = 4
+
+    lineas = _texto(RAIZ / "CHANGELOG.md").splitlines()
+    largas: dict[str, int] = {}
+    actual: list[str] = []
+
+    def cerrar() -> None:
+        if len(actual) > LARGO_MAXIMO:
+            largas[actual[0].strip()[:60]] = len(actual)
+
+    for linea in lineas:
+        if linea.startswith("- "):
+            cerrar()
+            actual = [linea]
+        elif actual and linea.startswith("  "):
+            actual.append(linea)
+        else:
+            cerrar()
+            actual = []
+    cerrar()
+
+    assert not largas, (
+        f"Entradas del registro de cambios más largas de {LARGO_MAXIMO} líneas: {largas}. "
+        "Lo que no cabe va en el pull request."
+    )

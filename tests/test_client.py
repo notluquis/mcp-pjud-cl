@@ -258,3 +258,95 @@ def test_un_aviso_de_validacion_no_se_confunde_con_un_bloqueo(monkeypatch):
     c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")  # no debe levantar
     with pytest.raises(PlataformaRechaza, match="Rol"):
         parse_resultados(cuerpo)
+
+
+# -- paginación ------------------------------------------------------------------
+#
+# La plataforma pagina con un identificador opaco, no con un número: el control de
+# "siguiente" trae el token de la página que viene. Medido: 251 resultados llegaron en
+# tres páginas de 100, 100 y 51, sin solapamiento.
+
+
+PAGINADA = (FIXTURES / "busqueda_paginada.html").read_text(encoding="utf-8")
+
+
+def test_detecta_el_token_de_la_pagina_siguiente():
+    from mcp_pjud.parser import siguiente_pagina, total_declarado
+
+    assert siguiente_pagina(PAGINADA)
+    # El fixture se recortó a tres causas, así que declara el total del escenario
+    # del test y no el de la búsqueda original. Un fixture que declare más de lo
+    # que trae dispara el guardia de lista parcial, y con razón.
+    assert total_declarado(PAGINADA) == 7
+
+
+def test_ultima_pagina_no_tiene_siguiente():
+    from mcp_pjud.parser import siguiente_pagina
+
+    sin_control = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    assert siguiente_pagina(sin_control) is None
+
+
+def test_recorre_las_paginas_y_acumula(monkeypatch):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    ultima = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    entregadas = []
+
+    def transporte(req: httpx.Request) -> httpx.Response:
+        entregadas.append("pagina=" in req.content.decode())
+        # Dos páginas con control de siguiente, y una final sin él.
+        return httpx.Response(200, text=PAGINADA if len(entregadas) < 3 else ultima)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    causas = c.buscar_por_rit("C", 1156, 2026)
+    # 3 + 3 de las paginadas, más 1 de la última.
+    assert len(causas) == 7
+    # La primera petición va sin token; las siguientes lo llevan.
+    assert entregadas == [False, True, True]
+
+
+def test_el_tope_de_paginas_levanta_en_vez_de_recortar(monkeypatch):
+    """Una lista recortada en silencio se leería como "no hay más resultados"."""
+    from mcp_pjud.client import ResultadosTruncados
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = PjudClient("test@example.cl")
+    # Siempre hay una página más: sin tope, esto no terminaría nunca.
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=PAGINADA))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(ResultadosTruncados, match="tope de 3 páginas"):
+        c.buscar_por_rit("C", 1156, 2026, paginas=3)
+    assert c.truncado is True
+
+
+def test_lista_parcial_levanta_en_vez_de_pasar_por_completa(monkeypatch):
+    """El control de "siguiente" puede desaparecer porque se acabaron las páginas, o
+    porque la respuesta vino truncada. La plataforma declara el total, así que se
+    comprueba en vez de confiar."""
+    from mcp_pjud.parser import EstructuraInesperada
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    # Declara 7 pero trae 3 y no ofrece página siguiente.
+    truncada = PAGINADA.replace("paginaFecSig(", "paginaFecNoExiste(")
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=truncada))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="declaró 7 resultados"):
+        c.buscar_por_rit("C", 1156, 2026)
+
+
+@pytest.mark.parametrize("paginas", [0, -1])
+def test_un_tope_de_paginas_invalido_no_devuelve_lista_vacia(paginas):
+    """Un error de configuración no debe disfrazarse de "no hay causas"."""
+    c = _sin_red()
+    with pytest.raises(ValueError, match="1 o más"):
+        c.buscar_por_rit("C", 1156, 2026, paginas=paginas)

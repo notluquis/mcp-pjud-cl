@@ -19,11 +19,14 @@ import httpx
 from .parser import (
     Actuacion,
     CausaEncontrada,
+    EstructuraInesperada,
     actuaciones_receptor,
     es_aviso_de_captcha,
     leer_aviso,
     parse_cuadernos,
     parse_resultados,
+    siguiente_pagina,
+    total_declarado,
 )
 
 BASE = "https://oficinajudicialvirtual.pjud.cl"
@@ -45,9 +48,27 @@ COMPETENCIAS = {
     "familia": 7,
 }
 
+#: Cuántas páginas de resultados se recorren como máximo. La plataforma devuelve 100 por
+#: página, así que el valor por defecto cubre mil causas: más que cualquier consulta
+#: razonable, y bajo el intervalo de 5 segundos son unos 50 segundos.
+#:
+#: Existe para que una búsqueda demasiado amplia no se convierta en un barrido. Cuando el
+#: tope se alcanza, el cliente lo dice en la bitácora en vez de devolver una lista recortada
+#: en silencio, que se leería como "no hay más".
+PAGINAS_MAXIMAS = 10
+
 #: Rutas verificadas. Las demás competencias existen en el sitio pero no están probadas
 #: acá, así que se rechazan en vez de adivinar.
 MODULOS = {"civil": "civil"}
+
+
+class ResultadosTruncados(Exception):
+    """La búsqueda excedió el tope de páginas.
+
+    Se levanta en vez de devolver la lista parcial, porque una lista recortada en silencio
+    se lee como "no hay más resultados", y en este proyecto un falso negativo es el error
+    que se busca evitar.
+    """
 
 
 class PjudBloqueado(Exception):
@@ -85,6 +106,7 @@ class PjudClient:
         self._adir: str | None = None
         self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
+        self.truncado = False
 
     def __enter__(self) -> PjudClient:
         return self
@@ -127,6 +149,51 @@ class PjudClient:
 
         r.raise_for_status()
         return r
+
+    def _paginado(self, ruta: str, data: dict[str, str], paginas: int) -> list[CausaEncontrada]:
+        """Recorre las páginas de un listado hasta agotarlo o hasta el tope.
+
+        La plataforma pagina con un identificador opaco, no con un número de página: el
+        control de "siguiente" trae el token de la página que viene.
+        """
+        if paginas < 1:
+            # Con cero o menos, el bucle no corre y se devolvería una lista vacía
+            # indistinguible de una búsqueda sin resultados. Un error de configuración no
+            # debe disfrazarse de "no hay causas".
+            raise ValueError(f"El tope de páginas debe ser 1 o más, se recibió {paginas}.")
+
+        acumuladas: list[CausaEncontrada] = []
+        token: str | None = None
+        total: int | None = None
+        for numero in range(1, paginas + 1):
+            html_ = self._ajax(ruta, data if token is None else {**data, "pagina": token})
+            acumuladas.extend(parse_resultados(html_))
+            if total is None:
+                total = total_declarado(html_)
+            token = siguiente_pagina(html_)
+            if token is None:
+                # El control de "siguiente" puede faltar porque de verdad se acabaron las
+                # páginas, o porque la respuesta vino truncada o el HTML cambió. La
+                # plataforma declara el total, así que se comprueba en vez de confiar.
+                if total is not None and len(acumuladas) != total:
+                    raise EstructuraInesperada(
+                        f"La plataforma declaró {total} resultados y se recuperaron "
+                        f"{len(acumuladas)}. El control de página siguiente desapareció "
+                        "antes de tiempo: la respuesta puede venir truncada o su estructura "
+                        "cambió. No se devuelve la lista parcial porque se leería como "
+                        "completa."
+                    )
+                return acumuladas
+            if numero == paginas:
+                total = total_declarado(html_)
+                self.truncado = True
+                raise ResultadosTruncados(
+                    f"La búsqueda devolvió más de {len(acumuladas)} causas"
+                    + (f" de {total} declaradas" if total else "")
+                    + f" y se alcanzó el tope de {paginas} páginas. Acota la búsqueda: "
+                    "un listado recortado en silencio se leería como si no hubiera más."
+                )
+        return acumuladas
 
     def _ajax(self, ruta: str, data: dict[str, str]) -> str:
         return self._req(
@@ -188,6 +255,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por rol. `tipo` es la letra del rol: C, V, E, A, F o I en civil.
 
@@ -200,7 +268,7 @@ class PjudClient:
         # resultados: la misma consulta devolvió dos causas sin él y una con él.
         if not rol or not anio:
             raise ValueError("La búsqueda por rol exige número de rol y año.")
-        html_ = self._ajax(
+        return self._paginado(
             f"{modulo}/consultaRit{modulo.capitalize()}.php",
             {
                 "conTipoCausa": tipo.upper(),
@@ -211,8 +279,8 @@ class PjudClient:
                 "conTribunal": str(tribunal or 0),
                 "conCaratulado": "",
             },
+            paginas,
         )
-        return parse_resultados(html_)
 
     # -- búsquedas ---------------------------------------------------------------
     #
@@ -230,6 +298,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por nombre de litigante.
 
@@ -252,7 +321,7 @@ class PjudClient:
                 "La búsqueda por nombre exige tribunal. La plataforma no permite buscar "
                 "por nombre en todos los tribunales a la vez."
             )
-        html_ = self._ajax(
+        return self._paginado(
             f"{modulo}/consultaNombre{modulo.capitalize()}.php",
             {
                 "radio-group": "N",
@@ -266,8 +335,8 @@ class PjudClient:
                 "nomTribunal": str(tribunal),
                 "corteNom": str(corte or 0),
             },
+            paginas,
         )
-        return parse_resultados(html_)
 
     def buscar_por_rut_juridica(
         self,
@@ -277,6 +346,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas de una persona jurídica por su RUT.
 
@@ -288,7 +358,7 @@ class PjudClient:
             raise ValueError("Falta el dígito verificador del RUT.")
         if tribunal is None:
             raise ValueError("La búsqueda por RUT de persona jurídica exige tribunal.")
-        html_ = self._ajax(
+        return self._paginado(
             f"{modulo}/consultaJuridica{modulo.capitalize()}.php",
             {
                 "rutJur": str(rut),
@@ -298,8 +368,8 @@ class PjudClient:
                 "jurTribunal": str(tribunal),
                 "corteJur": str(corte or 0),
             },
+            paginas,
         )
-        return parse_resultados(html_)
 
     def buscar_por_fecha(
         self,
@@ -308,6 +378,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas ingresadas en un rango de fechas, en formato DD/MM/AAAA.
 
@@ -319,7 +390,7 @@ class PjudClient:
             raise ValueError("La búsqueda por fecha exige fecha inicial y fecha final.")
         if tribunal is None:
             raise ValueError("La búsqueda por fecha exige tribunal.")
-        html_ = self._ajax(
+        return self._paginado(
             f"{modulo}/consultaFecha{modulo.capitalize()}.php",
             {
                 "fecDesde": desde,
@@ -328,8 +399,8 @@ class PjudClient:
                 "fecTribunal": str(tribunal),
                 "corteFec": str(corte or 0),
             },
+            paginas,
         )
-        return parse_resultados(html_)
 
     def detalle(self, referencia: str, competencia: str = "civil") -> str:
         """Devuelve el HTML del detalle de una causa a partir de su referencia opaca."""

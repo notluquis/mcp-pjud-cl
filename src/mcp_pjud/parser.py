@@ -279,6 +279,27 @@ def revisar_aviso(html_respuesta: str) -> None:
         raise PlataformaRechaza(mensaje)
 
 
+#: El control de "página siguiente" del listado. El argumento es un identificador opaco,
+#: no un número: la plataforma pagina por token y no por índice.
+_SIGUIENTE = re.compile(r"pagina\w*Sig\('([^']+)'")
+
+#: Cuántos resultados devuelve la plataforma por página. Medido: una búsqueda de 251
+#: resultados vino en tres páginas de 100, 100 y 51, sin solapamiento entre ellas.
+POR_PAGINA = 100
+
+
+def siguiente_pagina(html_busqueda: str) -> str | None:
+    """Identificador de la página siguiente, o None si es la última."""
+    m = _SIGUIENTE.search(html_busqueda)
+    return m.group(1) if m else None
+
+
+def total_declarado(html_busqueda: str) -> int | None:
+    """Cuántos resultados dice la plataforma que hay en total."""
+    m = re.search(r"Total de registros:\s*<b>(\d+)</b>", html_busqueda)
+    return int(m.group(1)) if m else None
+
+
 def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
     """Extrae las filas del listado de una búsqueda de causas.
 

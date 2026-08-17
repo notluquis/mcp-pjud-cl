@@ -27,8 +27,15 @@ from pydantic import BaseModel, Field
 TRAMITE_RECEPTOR = "actuación receptor"
 
 COLUMNAS = [
-    "folio", "doc", "anexo", "etapa", "tramite",
-    "desc_tramite", "fec_tramite", "foja", "georref",
+    "folio",
+    "doc",
+    "anexo",
+    "etapa",
+    "tramite",
+    "desc_tramite",
+    "fec_tramite",
+    "foja",
+    "georref",
 ]
 
 # La plataforma devuelve sus avisos de validación como una llamada a swal() dentro de un
@@ -132,9 +139,7 @@ def parse_historia(html_detalle: str, cuaderno: str = "") -> list[Actuacion]:
     if not tablas:
         raise EstructuraInesperada("El panel 'historiaCiv' no contiene ninguna tabla.")
 
-    encabezados = [
-        " ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")
-    ]
+    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
     for esperado in ("folio", "desc. trámite", "fec. trámite", "georref."):
         if not any(esperado in h for h in encabezados):
             raise EstructuraInesperada(
@@ -307,9 +312,7 @@ def siguiente_pagina(html_busqueda: str) -> str | None:
 #: La versión anterior sólo reconocía `<b>7</b>` exacto. Con `1.234` devolvía None, y como el
 #: guardia de completitud se saltaba cuando el total era desconocido, se desactivaba solo
 #: justo a partir de mil registros, que es donde más falta hace.
-_TOTAL = re.compile(
-    r"Total\s+de\s+registros:\s*(?:&nbsp;|\s)*<b[^>]*>\s*([\d.,]+)\s*</b>", re.I
-)
+_TOTAL = re.compile(r"Total\s+de\s+registros:\s*(?:&nbsp;|\s)*<b[^>]*>\s*([\d.,]+)\s*</b>", re.I)
 
 
 def total_declarado(html_busqueda: str) -> int | None:
@@ -335,7 +338,7 @@ def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
         enlaces = fila.xpath('.//a[contains(@onclick, "detalleCausa")]/@onclick')
         if not enlaces:
             continue
-        ref = re.search(r"detalleCausa\w*\('([^']+)'\)", enlaces[0])
+        ref = re.search(r"detalleCausa\w*\('([^']+)'\)", str(enlaces[0]))
         celdas = [" ".join(td.text_content().split()) for td in fila.xpath("./td")]
         if not ref or len(celdas) < 5:
             continue

@@ -47,9 +47,17 @@ INTERVALO_MINIMO = 5.0
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
-#: Motivo del bloqueo, si el portal ya nos rechazó. También es del proceso, y a propósito
-#: no se limpia: la detención total significa que no se vuelve a consultar hasta que una
-#: persona revise si la IP quedó restringida y reinicie el servidor.
+#: Motivo del bloqueo, si el Poder Judicial ya nos rechazó. Es del proceso y a propósito no
+#: se limpia: la detención total significa que no se vuelve a consultar hasta que una persona
+#: revise si la IP quedó restringida y reinicie el servidor.
+#:
+#: Se evaluó llevarlo por host, con el argumento de que un bloqueo consultando jurisprudencia
+#: no debería dejar sin consulta de causas a quien tiene un plazo corriendo. Se descartó al
+#: medir quién bloquea: los dos hosts responden con la cookie `TS<hex>` de F5 BIG-IP, o sea
+#: están detrás del mismo cortafuegos, y el 403 llega antes de la aplicación. Seguir
+#: consultando el otro host después de un rechazo es exactamente lo que convierte un bloqueo
+#: temporal en una IP baneada, que es el riesgo que la regla de detención total existe para
+#: evitar. Ante la duda, la respuesta correcta es parar y avisar.
 _BLOQUEADO: str | None = None
 
 COMPETENCIAS = {
@@ -100,7 +108,15 @@ class PjudBloqueado(Exception):
     """
 
 
-class PjudClient:
+class Transporte:
+    """Cadena HTTP compartida: ritmo, detención y bitácora.
+
+    Los dos sistemas del Poder Judicial que este servidor consulta tienen sesiones muy
+    distintas (la Oficina Judicial Virtual deriva un prefijo de rutas; el buscador de
+    fallos usa un token CSRF de Laravel), pero le deben el mismo trato a la institución.
+    Lo que se comparte es el trato, no la sesión.
+    """
+
     def __init__(self, contacto: str, intervalo: float = INTERVALO_MINIMO) -> None:
         if intervalo < INTERVALO_MINIMO:
             raise ValueError(
@@ -116,11 +132,9 @@ class PjudClient:
             follow_redirects=True,
             timeout=30.0,
         )
-        self._adir: str | None = None
-        self._token: str | None = None
         self.bitacora: list[tuple[float, str, int]] = []
 
-    def __enter__(self) -> PjudClient:
+    def __enter__(self):
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -129,7 +143,9 @@ class PjudClient:
     def cerrar(self) -> None:
         self._http.close()
 
-    # -- transporte -------------------------------------------------------------
+    def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
+        """Bloqueo que llega con HTTP 200 en el cuerpo. Cada sistema lo dice a su modo."""
+        return None
 
     def _esperar(self) -> None:
         pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
@@ -157,17 +173,18 @@ class PjudClient:
 
             if r.status_code in (403, 429):
                 _BLOQUEADO = (
-                    f"El Poder Judicial respondió {r.status_code} a {url}. "
-                    "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
-                    "bloqueada antes de volver a consultar."
+                    f"El Poder Judicial respondió {r.status_code} a {url}. Detención total "
+                    "del proceso, incluidas las consultas al otro sistema: los dos están "
+                    "detrás del mismo cortafuegos. No se reintenta ni se evade. Revisar si "
+                    "la IP quedó bloqueada, y reiniciar el servidor sólo después de eso."
                 )
                 raise PjudBloqueado(_BLOQUEADO)
 
-            # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
-            # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y
-            # el usuario reintentaría, que es justo lo que la detención total prohíbe.
-            aviso = leer_aviso(r.text)
-            if aviso and es_aviso_de_captcha(aviso):
+            # Un bloqueo puede llegar como aviso dentro de una respuesta 200, no como un
+            # código de error. Sin esto quedaría clasificado como "corrige los parámetros"
+            # y el usuario reintentaría, que es justo lo que la detención total prohíbe.
+            aviso = self._bloqueo_encubierto(r)
+            if aviso:
                 _BLOQUEADO = (
                     f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
                     "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
@@ -177,6 +194,22 @@ class PjudClient:
 
         r.raise_for_status()
         return r
+
+
+class PjudClient(Transporte):
+    """Consulta pública de causas de la Oficina Judicial Virtual."""
+
+    def __init__(self, contacto: str, intervalo: float = INTERVALO_MINIMO) -> None:
+        super().__init__(contacto, intervalo)
+        self._adir: str | None = None
+        self._token: str | None = None
+
+    def __enter__(self) -> PjudClient:
+        return self
+
+    def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
+        aviso = leer_aviso(r.text)
+        return aviso if aviso and es_aviso_de_captcha(aviso) else None
 
     def _primera_pagina(self, ruta: str, data: dict[str, str]) -> list[CausaEncontrada]:
         """Una sola página, sin comprobar completitud.
@@ -221,15 +254,15 @@ class PjudClient:
 
             if numero == 1:
                 total = total_declarado(html_)
-                if total is None:
-                    # Ambos listados que devuelve la plataforma traen este dato, así que su
-                    # ausencia es señal de que la estructura cambió. Antes se seguía sin
-                    # comprobar nada, o sea el guardia se apagaba solo.
-                    raise EstructuraInesperada(
-                        "El listado no declara el total de registros. Sin ese dato no se "
-                        "puede comprobar que el recorrido devolvió todo, y una lista "
-                        "incompleta se leería como completa."
-                    )
+            if total is None:
+                # Ambos listados que devuelve la plataforma traen este dato, así que su
+                # ausencia es señal de que la estructura cambió. Antes se seguía sin
+                # comprobar nada, o sea el guardia se apagaba solo.
+                raise EstructuraInesperada(
+                    "El listado no declara el total de registros. Sin ese dato no se "
+                    "puede comprobar que el recorrido devolvió todo, y una lista "
+                    "incompleta se leería como completa."
+                )
 
             if len(acumuladas) > total:
                 # Más de lo declarado sólo puede venir de páginas repetidas.
@@ -283,7 +316,15 @@ class PjudClient:
     def _prefijo(self) -> str:
         if self._adir is None:
             self.abrir_sesion()
-        assert self._adir is not None
+        if self._adir is None:
+            # No es un assert a propósito: bajo `python -O` los assert desaparecen, y este
+            # guardia protege justo el caso en que se consultarían rutas sin prefijo, que
+            # devuelven vacío en vez de fallar.
+            raise PjudBloqueado(
+                "No se pudo derivar el prefijo de rutas tras abrir sesión. Detención: "
+                "consultar sin prefijo devuelve respuestas vacías indistinguibles de "
+                "'no hay causas'."
+            )
         return self._adir
 
     def abrir_sesion(self) -> None:
@@ -370,7 +411,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas por nombre de litigante.
 
@@ -418,7 +459,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas de una persona jurídica por su RUT.
 
@@ -450,7 +491,7 @@ class PjudClient:
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-        paginas: int | None = PAGINAS_MAXIMAS,
+        paginas: int = PAGINAS_MAXIMAS,
     ) -> list[CausaEncontrada]:
         """Busca causas ingresadas en un rango de fechas, en formato DD/MM/AAAA.
 

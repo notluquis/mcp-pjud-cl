@@ -13,12 +13,21 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from .client import COMPETENCIAS, PjudClient
+from .client import COMPETENCIAS, INTERVALO_MINIMO, PAGINAS_MAXIMAS, PjudClient
+from .juris import (
+    FECHA_MEDICION,
+    FILAS_MAXIMAS,
+    INDEXADAS_MEDIDAS,
+    VISIBLES_MEDIDAS,
+    JurisClient,
+    ResultadoJurisprudencia,
+    miles,
+)
 from .parser import Actuacion, CausaEncontrada
 
 # La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
 # servidor la recibe antes de llamar cualquier herramienta.
-DIRECTIVA = """\
+DIRECTIVA = f"""\
 Consulta pública de causas del Poder Judicial de Chile. Solo lectura: este servidor no
 puede ingresar escritos ni modificar nada, y no existe código para hacerlo.
 
@@ -43,6 +52,21 @@ Si una búsqueda excede el tope de páginas, la herramienta falla en vez de devo
 lista recortada. Ese error significa "hay más resultados de los que caben", no "no hay
 resultados": acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada.
 
+Sobre jurisprudencia: `buscar_jurisprudencia` consulta el Buscador Unificado de Fallos.
+Su resultado trae `ocultas`, que es cuántas coincidencias existen y NO se entregan a una
+consulta anónima. Si `ocultas` es mayor que cero, la lista es un subconjunto y hay que
+decirlo: NO se puede afirmar que algo no existe porque no aparezca.
+Medido el {FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles
+de {miles(INDEXADAS_MEDIDAS)} indexadas.
+
+Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o estar
+fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
+como verificada si la búsqueda no la devolvió.
+
+Cada petición a la plataforma respeta un intervalo mínimo de {INTERVALO_MINIMO:.0f} segundos,
+que implementa la prohibición de sobrecargarla. Una consulta de actuaciones son
+varias peticiones encadenadas, así que tarda. No es un error ni algo que convenga paralelizar.
+
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
 expediente.
 """
@@ -60,21 +84,23 @@ mcp = MCPServer("mcp-pjud", instructions=DIRECTIVA)
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")
 
 
-def _cliente() -> PjudClient:
+def _contacto() -> str:
     if not _CONTACTO:
         raise ValueError(
             "Falta la variable de entorno MCP_PJUD_CONTACTO. El Poder Judicial debe "
             "poder identificar y contactar a quien consulta; sin eso el servidor no opera."
         )
-    return PjudClient(_CONTACTO)
+    return _CONTACTO
+
+
+def _cliente() -> PjudClient:
+    return PjudClient(_contacto())
 
 
 Tipo = Annotated[str, Field(description="Letra del rol. En civil: C, V, E, A, F o I.")]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
 Anio = Annotated[int, Field(description="Año del rol, cuatro dígitos.", ge=1900, le=2100)]
-Competencia = Annotated[
-    str, Field(description=f"Una de: {', '.join(sorted(COMPETENCIAS))}.")
-]
+Competencia = Annotated[str, Field(description=f"Una de: {', '.join(sorted(COMPETENCIAS))}.")]
 Tribunal = Annotated[
     int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
 ]
@@ -109,7 +135,7 @@ def buscar_causa_por_rit(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
     with _cliente() as c:
@@ -128,7 +154,7 @@ def buscar_causa_por_nombre(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por nombre de litigante.
 
@@ -153,7 +179,7 @@ def buscar_causa_por_rut_juridica(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas de una persona jurídica por su RUT.
 
@@ -185,6 +211,47 @@ def obtener_actuaciones_receptor(
     """
     with _cliente() as c:
         return c.actuaciones_receptor(tipo, rol, anio, competencia, tribunal, corte)
+
+
+@mcp.tool(
+    title="Buscar jurisprudencia",
+    annotations=SOLO_LECTURA,
+)
+def buscar_jurisprudencia(
+    rol: Annotated[
+        int | None, Field(description="Rol ante la Corte Suprema, sin el año.", ge=1)
+    ] = None,
+    anio: Annotated[int | None, Field(description="Año del rol.", ge=1900, le=2100)] = None,
+    todas: Annotated[
+        str, Field(description="Texto libre: deben aparecer todas estas palabras.")
+    ] = "",
+    literal: Annotated[str, Field(description="Frase exacta.")] = "",
+    excluir: Annotated[str, Field(description="Palabras que NO deben aparecer.")] = "",
+    desde: Annotated[str, Field(description="Fecha inicial, DD/MM/AAAA.")] = "",
+    hasta: Annotated[str, Field(description="Fecha final, DD/MM/AAAA.")] = "",
+    filas: Annotated[
+        int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
+    ] = 10,
+) -> ResultadoJurisprudencia:
+    """Busca sentencias de la Corte Suprema en el Buscador Unificado de Fallos.
+
+    Sirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve
+    la sentencia con su caratulado, sala, fecha y enlace permanente.
+
+    El resultado trae `ocultas`. Si es mayor que cero, la lista es un subconjunto de lo
+    que hay indexado y no se puede afirmar que falte lo que no aparece.
+    """
+    with JurisClient(_contacto()) as c:
+        return c.buscar(
+            rol=rol,
+            anio=anio,
+            todas=todas,
+            literal=literal,
+            excluir=excluir,
+            desde=desde,
+            hasta=hasta,
+            filas=filas,
+        )
 
 
 def main() -> None:

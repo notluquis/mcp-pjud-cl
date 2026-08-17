@@ -18,6 +18,24 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Herramienta `buscar_jurisprudencia`: sentencias de la Corte Suprema desde el Buscador
+  Unificado de Fallos. Sirve para verificar que una cita existe antes de usarla.
+
+  Su resultado declara **`ocultas`**, que es cuántas coincidencias existen y no se entregan a
+  una consulta anónima. Medido el 16 de agosto de 2026, sin filtros: 300.005 visibles de
+  1.223.925 coincidencias declaradas. El propio sitio dejó de avisarlo (los dos mensajes siguen comentados en su JavaScript), y un listado
+  que no diga cuánto falta se lee como el universo completo.
+
+  Sólo el buscador de Corte Suprema está verificado: cada uno de los otros nueve declara sus
+  propios campos.
+
+- Chequeo de tipos con `ty` y verificación de formato en CI. El primero encontró que tres de
+  las cuatro búsquedas declaraban aceptar `paginas=None` y reventaban con `TypeError`, porque
+  sólo la búsqueda por rol implementaba esa rama.
+
+- Reglas `S` (seguridad) y `DTZ` (fechas sin zona horaria) en el linter. La segunda importa
+  acá: las fechas deciden plazos procesales.
+
 - Paginación en las cuatro búsquedas. La plataforma pagina por identificador opaco y no por
   número, con 100 resultados por página. Hay un tope de 10 páginas que levanta excepción en
   vez de devolver la lista recortada, porque un listado truncado en silencio se leería como
@@ -89,6 +107,28 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   alguien tiene que poder encontrar sin pasar por el sitio de documentación.
 
 ### Corregido
+
+- El intervalo entre peticiones se reiniciaba solo. `server.py` abre un cliente nuevo en cada
+  llamada de herramienta y la marca de tiempo vivía en la instancia, así que la primera
+  petición de cada herramienta salía sin esperar: dos herramientas seguidas golpeaban el
+  portal sin intervalo alguno. La marca pasa a ser del proceso, bajo un lock que cubre toda la
+  petición.
+
+- La detención tras un bloqueo no alcanzaba a las llamadas en cola. El turno se soltaba antes
+  de clasificar la respuesta, así que una segunda llamada concurrente esperaba sus cinco
+  segundos y consultaba igual cuando la primera ya había recibido el 403. Era reintentar por
+  la puerta de al lado.
+
+- La detención sigue siendo del proceso entero, y ahora está medido por qué. Se evaluó
+  llevarla por host, para que un bloqueo consultando jurisprudencia no dejara sin consulta de
+  causas a quien tiene un plazo corriendo. Se descartó al mirar quién bloquea: los dos hosts
+  responden con la cookie `TS<hex>` de F5 BIG-IP, o sea están detrás del mismo cortafuegos y
+  el 403 llega antes de la aplicación. Seguir consultando el otro es lo que convierte un
+  bloqueo temporal en una IP baneada.
+
+- Un `assert` acotaba un tipo en código de producción. Bajo `python -O` los `assert`
+  desaparecen, y ése protegía justo el caso en que se consultarían rutas sin prefijo, que
+  devuelven vacío en vez de fallar.
 
 - Un aviso de captcha de la plataforma quedaba clasificado como error de parámetros, o sea
   invitaba a reintentar, que es justo lo que la regla de detención total prohíbe. Ahora se

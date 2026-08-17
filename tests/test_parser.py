@@ -53,9 +53,7 @@ def test_extrae_la_hora_desde_la_descripcion():
 
 def test_conserva_la_descripcion_literal():
     folio10 = next(a for a in actuaciones_receptor(DETALLE) if a.folio == "10")
-    assert folio10.desc_tramite == (
-        "NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:17/06/2026 14:25"
-    )
+    assert folio10.desc_tramite == ("NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:17/06/2026 14:25")
 
 
 def test_cubre_los_cuatro_tipos_de_diligencia():
@@ -119,9 +117,7 @@ def test_la_actuacion_recuerda_su_cuaderno():
 
 
 def test_embargo_del_apremio_trae_fecha_de_diligencia_propia():
-    embargo = next(
-        a for a in actuaciones_receptor(C1156_APREMIO) if "EMBARGO" in a.desc_tramite
-    )
+    embargo = next(a for a in actuaciones_receptor(C1156_APREMIO) if "EMBARGO" in a.desc_tramite)
     assert embargo.fecha_diligencia == date(2026, 3, 31)
     assert embargo.hora_diligencia == time(10, 34)
 

@@ -19,6 +19,11 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Los cuatro tipos de diligencia documentados | Presentes en E-468-2026 |
 | Georreferencia presente | Todas las actuaciones de ambas causas |
 | El filtro de la plataforma es por User-Agent y no por huella TLS | Tres clientes, mismo handshake, distinto header |
+| Búsqueda de jurisprudencia en Corte Suprema | `buscar_sentencias` respondió 200 con JSON de Solr |
+| Verificación de una cita por rol y año | Rol y año existentes → exactamente una sentencia, con sala, fecha y enlace |
+| El buscador de fallos entrega menos de lo que indexa | 300.005 visibles de 1.223.925, medido sin filtros |
+| Su reCAPTCHA no bloquea la búsqueda | Sesión anónima sin token → 200 con resultados reales |
+| El tope real de filas por página es 250 | Se pidieron 250 y entregó 250, pese a que su configuración declara `10-20-50` |
 
 ### Verificado sólo contra fixtures
 
@@ -70,21 +75,22 @@ Las tres, no dos de tres:
 
 ## Hoja de ruta
 
-### 0.2: paginación y varias causas
+### 0.2: paginación y varias causas — hecho
 
-El caso "busco por nombre y salen doce causas" hoy no funciona. Se procesa la primera.
+Los controles de paginación se parsean, el listado se recorre entero y existen las búsquedas
+por nombre y por RUT de persona jurídica. El recorrido levanta `ResultadosTruncados` al llegar
+al tope en vez de devolver una lista recortada.
 
-- Parsear los controles de paginación
-- Devolver todas las causas del listado
-- Decidir qué hacer cuando una búsqueda devuelve muchas: ¿traer actuaciones de todas, con lo
-  que eso implica en tiempo bajo el intervalo de 5 segundos?
-- Herramienta `buscar_causa_por_nombre`, que es la que un abogado realmente usa cuando no
-  recuerda el rol
+Quedó decidido lo que estaba en duda: **no se encadenan las actuaciones de todas las causas de
+un listado**. Doce causas por cinco peticiones por cinco segundos son cinco minutos, y la
+respuesta correcta es devolver el listado para que el usuario elija cuál abrir.
 
-**Riesgo conocido:** doce causas × 5 peticiones × 5 segundos = cinco minutos. Puede que la
-respuesta correcta sea devolver el listado y que el usuario elija, en vez de encadenar todo.
+### 0.3: jurisprudencia — hecho parcialmente
 
-### 0.3: cobranza laboral y previsional
+Existe `buscar_jurisprudencia` contra el buscador de Corte Suprema. Lo que falta está en la
+sección de jurisprudencia, más abajo.
+
+### 0.4: cobranza laboral y previsional
 
 La primera competencia nueva, y la elegida a propósito: `receptorCobranza.php` existe, o sea
 que también tiene actuaciones de ministro de fe, que es donde está el valor.
@@ -93,7 +99,7 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 - Parser propio si difiere
 - Ampliar `MODULOS` sólo después de verificar, nunca antes
 
-### 0.4: exhortos y documentos
+### 0.5: exhortos y documentos
 
 - `detalleExhortos.php`: seguimiento de exhorto de origen a destino
 - `causaOrigenCivil.php`
@@ -103,11 +109,11 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 disco. Eso cambia el perfil de retención y entra de lleno en la Ley 21.719. Probablemente
 requiera consentimiento explícito por llamada, y ruta de destino elegida por el usuario.
 
-### 0.5: laboral y apelaciones
+### 0.6: laboral y apelaciones
 
 Las dos competencias que siguen en volumen de uso real.
 
-### 0.6: competencias restantes
+### 0.7: competencias restantes
 
 Laboral, apelaciones, suprema, penal y familia. Ninguna sondeada. Antes de cada una hay que
 confirmar lo mismo que se confirmó en cobranza: el identificador del panel de historia, el
@@ -128,8 +134,97 @@ permite reconstruir la cartera completa de un abogado. Técnicamente es directo.
 proyecto rechaza, aunque el dato sea público. Si se implementa, será con un caso de uso
 justificado y no "porque se puede".
 
-**Jurisprudencia.** Descartada de forma permanente por el bloqueo nominal de `juris.pjud.cl`.
-Sólo reviviría por Ley 20.285 o fuente licenciada.
+**Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los diez
+buscadores que ofrece `juris.pjud.cl` sólo Corte Suprema está verificado, y cada uno declara
+sus propios campos.
+
+## Jurisprudencia: qué hay mapeado y qué falta
+
+El Buscador Unificado de Fallos no es una aplicación de una sola página como se creyó al
+principio: es PHP con Laravel y componentes Vue encima, y su búsqueda devuelve JSON de Apache
+Solr. Eso lo hace bastante más fácil de consumir que la consulta de causas, que entrega HTML.
+
+### Los diez buscadores
+
+Sólo el primero está verificado. **Cada buscador declara sus propios campos**, y esa es la
+razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
+Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería
+campos vacíos en vez de un error, que es exactamente el falso negativo que el proyecto evita.
+
+| Buscador | Estado |
+|---|---|
+| Corte Suprema | **Verificado.** `id_buscador` 528 |
+| Corte de Apelaciones | Mapeado, sin ejecutar |
+| Civiles | Mapeado, sin ejecutar |
+| Laborales | Mapeado, sin ejecutar |
+| Penales | Mapeado, sin ejecutar |
+| Familia | Mapeado, sin ejecutar |
+| Cobranza | Mapeado, sin ejecutar |
+| Compendio Extranjería | Mapeado, sin ejecutar |
+| Líneas Jurisprudenciales | Mapeado, sin ejecutar |
+| Salud CS | Mapeado, sin ejecutar |
+
+El identificador de cada buscador se deriva de su propia página, no se hardcodea. Verificar uno
+nuevo es sobre todo comprobar qué campos declara su `parametros_buscador`.
+
+### Endpoints del buscador, mapeados y sin ejecutar
+
+| Ruta | Qué haría |
+|---|---|
+| `/busqueda/documentos` | Descargar el documento de la sentencia |
+| `/busqueda/imprimir` | Versión imprimible |
+| `/busqueda/arbol_json` | Índice temático: materias y submaterias |
+| `/busqueda/listar_ids_relacionados` | Sentencias relacionadas con una dada |
+| `/busqueda/get_suggester_results` | Sugerencias de términos |
+| `/busqueda/busqueda_por_texto_autocompletable` | Autocompletado |
+| `/busqueda/listar_georeferencia` | Georreferencia de la sentencia |
+| `/detalle_sentencia/terminos_juridicos` | Glosario de términos |
+
+Tres rutas más existen y **no se van a implementar**: `sentencias_guardadas` y `cambiar_clave`
+escriben en una cuenta de usuario, y `mail_compartir_sentencia` envía correo desde la
+infraestructura del Poder Judicial. Que el buscador sea de lectura no las vuelve inofensivas, y
+el job de CI que verifica que no exista código de escritura busca esos tres nombres.
+
+### Lo que el buscador no muestra, y que es el hallazgo que importa
+
+Una consulta anónima recibe bastante menos de lo que hay indexado. Medido el 16 de agosto de
+2026 sobre Corte Suprema, sin filtros:
+
+| | |
+|---|---|
+| Visibles para una consulta anónima | 300.005 |
+| Coincidencias que declara, antes de su filtro de publicación | 1.223.925 |
+
+La propia respuesta desglosa **todas** las coincidencias por condición de publicación
+(`Excluido salud` 829.079, `Publicable` 232.021, `Anonimizadas` 20.924, `Reservado
+restringido` 6.677, entre otras), y ese desglose suma el total, no la diferencia. O sea
+incluye a las visibles: no dice cuáles faltan, porque el buscador no publica su regla de
+visibilidad.
+
+Lo notable es que **el sitio dejó de decirlo**. Los dos mensajes que avisaban de esa diferencia
+siguen en su JavaScript, comentados: uno agregaba "sentencias ocultas por limitaciones de
+visualización del perfil de usuario" y el otro decía "sus permisos de usuario no permiten la
+visualización de esta(s) sentencia(s)".
+
+Esa segunda cifra no es el tamaño del índice: el Poder Judicial habla públicamente de más de
+un millón y medio de sentencias, y la diferencia no está explicada. Se registra como lo que
+es, una cifra medida en una respuesta, y no como el universo.
+
+Por eso `buscar_jurisprudencia` no devuelve una lista pelada sino un resultado con `ocultas` y
+`condiciones_de_publicacion` como campos. Un listado que no diga cuánto falta se lee como el universo
+completo, que es el mismo defecto que el ebook de la Oficina Judicial Virtual y la razón de ser
+del proyecto entero.
+
+### Lo que falta decidir
+
+- **Texto completo.** La respuesta trae `texto_sentencia` entero, y una búsqueda de diez
+  sentencias serían megabytes con nombres y cédulas de personas naturales. Hoy se devuelve
+  metadatos y el enlace permanente. Traer el texto es una decisión de datos personales, no de
+  comodidad, y va junto con la de descargar PDF.
+- **Paginación.** El buscador pagina por desplazamiento numérico, no por identificador opaco
+  como la consulta de causas, así que es más simple. Falta el mismo guardia de truncación.
+- **Una cuenta.** Con credenciales del Poder Judicial se verían más sentencias. Queda fuera:
+  este proyecto consulta lo que es público sin identificarse como funcionario.
 
 ## Sobre los identificadores de causa en esta documentación
 
@@ -200,8 +295,69 @@ No es pesimismo, es planificación:
 - **Pueden activar la validación del captcha.** Hoy la consulta funciona sin ella. Si se
   activa, la cadena se cae entera y no se va a evadir: el proyecto se detiene y se busca la
   vía institucional.
+
+  Esto no es una hipótesis. Tras el colapso de julio de 2026, el Comité de Jueces Civiles
+  pidió a la Corte Suprema, por escrito, "medidas tecnológicas adecuadas y urgentes para
+  evitar el ingreso masivo de escritos (tales como el uso de un Captcha) **y la extracción
+  masiva de datos**". Lo segundo nombra directamente a herramientas de esta clase.
+
+  Vale la pena decir en qué se distingue este proyecto de lo que esa frase describe: una
+  petición cada cinco segundos, una causa a la vez, sin persistencia y sin barrido. No es
+  extracción masiva por diseño, y el intervalo está verificado por un job de CI. Si aun así
+  la institución decide cerrar la consulta automatizada, la respuesta es acatar.
 - **Puede publicarse la Política de IA del Poder Judicial.** Si define algo incompatible, este
   proyecto se ajusta o se retira.
+
+## Qué más existe
+
+Revisado el 17 de agosto de 2026. Se anota para no re-descubrirlo, y porque si algo de esto
+cubre tu caso mejor, conviene que lo uses en vez de esto.
+
+### Servidores MCP jurídicos
+
+| Proyecto | Jurisdicción |
+|---|---|
+| [`mcp-legal-ar`](https://github.com/Probanza-ar/mcp-legal-ar) | Argentina. 14 conectores, 203 herramientas, jurisprudencia de la Corte Suprema desde 1863 |
+| [`brlaw_mcp_server`](https://glama.ai/mcp/servers/pdmtt/brlaw_mcp_server) | Brasil |
+| Entscheidsuche | Suiza |
+| Varios | España (CENDOJ) y Colombia |
+| [`mcp-dev-latam`](https://github.com/codespar/mcp-dev-latam) | Incluye Chile, pero para comercio y no para tribunales |
+
+**Para Chile no hay ninguno.** Argentina es el ecosistema más maduro de la región y sirve de
+referencia de hacia dónde puede ir esto.
+
+### Herramientas chilenas que tocan lo mismo
+
+| Proyecto | Qué hace | Diferencia |
+|---|---|---|
+| [CausAlerta](https://causalerta.cl/) | SaaS de seguimiento con alertas diarias y calendario de plazos. Desde 6.500 pesos al mes | De pago y cerrado. Su sitio no documenta de dónde saca los datos ni si distingue las dos fechas: **no se puede afirmar que no lo haga** |
+| [API de Boostr](https://boostr.cl/poder-judicial) | API REST de consulta de causas | Su demo busca por RUT y persona. No documenta actuaciones de receptor |
+| [`automatizador-legal`](https://github.com/ghurtadoarevalo/automatizador-legal) | Programación de sala con FastAPI y Playwright, "extraer audiencias masivamente" | Sin licencia. Es audiencias, no actuaciones |
+| [`webscrapthings`](https://github.com/pepelisto/webscrapthings) | Bots de ParalegApp que vigilan actualizaciones de causas | Sin licencia, sin mantención desde 2025 |
+| [LemonTech](https://blog.lemontech.com/) y el resto del gremio | Gestión legal completa | Otro producto: esto es una pieza, no una suite |
+
+Lo que ninguna de las públicas documenta es la distinción entre fecha de registro y fecha de
+diligencia del ministro de fe, que es lo único que este proyecto reclama como propio. Dicho
+con precisión: **que no lo documenten no prueba que no lo hagan**, y las de pago no publican
+su esquema. La afirmación defendible es que no hay una fuente pública donde verificarlo.
+
+Una comprobación que se intentó y **no** sirvió: buscar en el código de GitHub los nombres de
+los endpoints de la plataforma. La consulta de control (`oficinajudicialvirtual.pjud.cl`)
+devolvió cero, o sea el buscador no indexa bien cadenas con puntos, así que los ceros de las
+demás consultas no significan nada. Queda anotado para que nadie lo repita creyendo que mide
+algo.
+
+### El contexto gremial
+
+Tras el colapso de julio de 2026, la Asociación Gremial Legaltech Chile (Altech A.G.,
+21 empresas) respondió al Comité de Jueces rechazando prohibir la IA y pidiendo regular:
+sostuvo que "la automatización no implica necesariamente el uso de inteligencia artificial" y
+que hay que distinguir "entre inteligencia artificial, automatización de procesos,
+robotización y otras herramientas tecnológicas", examinando los antecedentes específicos en
+vez de juzgar por volumen.
+
+Esa distinción es la misma que estructura este proyecto, con una diferencia que conviene no
+perder: el debate público es sobre **ingresar** escritos. Acá no se ingresa nada.
 
 ## Cómo influir en esto
 

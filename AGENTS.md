@@ -24,6 +24,10 @@ rechaza valores menores y hay un job de CI que verifica que la constante no camb
 evasión, sin impersonación de fingerprint TLS. Si el sistema bloquea, la respuesta correcta es
 parar y avisar.
 
+Total significa del proceso, no del host que rechazó. Se evaluó acotarla por host cuando entró
+el buscador de fallos y se descartó al medir: los dos responden con la cookie `TS<hex>` de F5
+BIG-IP, o sea comparten cortafuegos y el 403 llega antes de la aplicación.
+
 **4. Fallo ruidoso, nunca lista vacía.** Si el parser no encuentra lo que espera, levanta
 `EstructuraInesperada`. Una lista vacía se lee como "no hubo actuaciones", y así se pierden
 plazos. Este es el error que el proyecto entero existe para evitar.
@@ -57,10 +61,11 @@ requerimiento de pago y el embargo.
 ```
 src/mcp_pjud/
   server.py    Herramientas MCP, anotaciones, directiva operativa
-  client.py    Cadena HTTP, control de ritmo, detención
+  client.py    `Transporte` (ritmo, detención, bitácora) y la consulta de causas
+  juris.py     Buscador de fallos. Comparte el transporte, no la sesión
   parser.py    Extracción de tablas. Sin red: se prueba offline
 tests/
-  fixtures/    HTML real anonimizado. Ningún test consulta al Poder Judicial
+  fixtures/    Respuestas reales anonimizadas. Ningún test consulta al Poder Judicial
 docs/          Documentación publicada en Read the Docs
 ```
 
@@ -69,7 +74,8 @@ docs/          Documentación publicada en Read the Docs
 ```bash
 uv sync --all-groups
 uv run pytest              # sin red
-uv run ruff check .
+uv run ruff check . && uv run ruff format --check .
+uv run ty check            # sin chequeador de tipos pasaban firmas que reventaban
 uv run sphinx-build -b html docs docs/_build/html
 uv run zizmor .github/workflows/ .github/dependabot.yml
 uv run mutmut run          # testing de mutación, lento
@@ -94,6 +100,24 @@ siguiente sobra. Los que valen son los que registran una decisión o una trampa.
 
 **Prosa:** sin guiones largos. Usa comas, paréntesis o dos puntos.
 
+**Documentación:** `docs/` sigue [Diátaxis](https://diataxis.fr/), que separa cuatro cosas que
+se suelen mezclar. Antes de escribir una página nueva, decide cuál es y ponla donde va:
+
+| Tipo | Sirve para | Acá |
+|---|---|---|
+| Cómo se hace | resolver una tarea concreta | `instalacion`, `ejemplos` |
+| Referencia | consultar un dato exacto | `herramientas` |
+| Explicación | entender por qué | `uso`, `cumplimiento`, `licencia`, `roadmap` |
+| Tutorial | aprender haciendo | no hay, y no hace falta |
+
+Mezclarlas es lo que produce una página que no sirve para nada: una referencia con opiniones
+no se puede consultar rápido, y una explicación con tablas de parámetros no se puede leer.
+
+**Un dato repetido es un dato que va a quedar viejo.** Las cifras medidas, el intervalo mínimo
+y los topes viven en el código y se interpolan donde se pueda. Donde no se puede, porque la
+prosa se escribe a mano, `tests/test_documentacion.py` compara cada dato repetido contra su
+única fuente. Si agregas una afirmación verificable a la documentación, agrégale el test.
+
 **Commits:** [Conventional Commits](https://www.conventionalcommits.org/es/) en español.
 
 ## Licencia y contribuciones
@@ -112,6 +136,9 @@ No lo aceptes en su nombre.
   identificable pasa.
 - Agregar competencias sin verificarlas contra el sistema real. Sólo civil está verificada; las
   demás se rechazan a propósito en vez de adivinar sus parámetros.
-- Ampliar el alcance a `juris.pjud.cl`. Ese host rechaza nominalmente a los agentes de esta
-  clase en su robots.txt.
+- Levantar un segundo servidor MCP para jurisprudencia. Serían dos procesos con dos
+  semáforos, o sea el doble de peticiones contra la misma institución, y `ACCEPTABLE_USE.md`
+  prohíbe correr instancias en paralelo. Por eso `juris.py` comparte el transporte.
+- Agregar buscadores de `juris.pjud.cl` sin verificarlos. Cada uno declara sus propios campos
+  Solr: sólo Corte Suprema está medido.
 - Presentar la salida como información oficial del Poder Judicial.

@@ -41,8 +41,7 @@ def test_sin_rut_reales():
             if not _FICTICIO.match(cuerpo):
                 encontrados.setdefault(archivo.name, set()).add(f"{cuerpo}-{dv}")
     assert not encontrados, (
-        f"RUT reales en fixtures: {encontrados}. "
-        "Corre: uv run python tests/fixtures/anonimizar.py"
+        f"RUT reales en fixtures: {encontrados}. Corre: uv run python tests/fixtures/anonimizar.py"
     )
 
 

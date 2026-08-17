@@ -44,6 +44,7 @@ def _fechas_de(texto: str) -> set[date]:
             continue
     return encontradas
 
+
 PLANTILLA = """<div id="historiaCiv"><table>
   <thead><tr><th>Folio</th><th>Doc.</th><th>Anexo</th><th>Etapa</th>
   <th>Tr&aacute;mite</th><th>Desc. Tr&aacute;mite</th><th>Fec. Tr&aacute;mite</th>

@@ -13,13 +13,21 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from .client import COMPETENCIAS, PjudClient
-from .juris import JurisClient, ResultadoJurisprudencia
+from .client import COMPETENCIAS, INTERVALO_MINIMO, PAGINAS_MAXIMAS, PjudClient
+from .juris import (
+    FECHA_MEDICION,
+    FILAS_MAXIMAS,
+    INDEXADAS_MEDIDAS,
+    VISIBLES_MEDIDAS,
+    JurisClient,
+    ResultadoJurisprudencia,
+    miles,
+)
 from .parser import Actuacion, CausaEncontrada
 
 # La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
 # servidor la recibe antes de llamar cualquier herramienta.
-DIRECTIVA = """\
+DIRECTIVA = f"""\
 Consulta pública de causas del Poder Judicial de Chile. Solo lectura: este servidor no
 puede ingresar escritos ni modificar nada, y no existe código para hacerlo.
 
@@ -47,12 +55,17 @@ resultados": acotar la búsqueda o subir `paginas`, nunca informar que no se enc
 Sobre jurisprudencia: `buscar_jurisprudencia` consulta el Buscador Unificado de Fallos.
 Su resultado trae `ocultas`, que es cuántas coincidencias existen y NO se entregan a una
 consulta anónima. Si `ocultas` es mayor que cero, la lista es un subconjunto y hay que
-decirlo: NO se puede afirmar que algo no existe porque no aparezca. Medido el 16-08-2026
-sin filtros: 300.005 visibles de 1.223.925 indexadas.
+decirlo: NO se puede afirmar que algo no existe porque no aparezca.
+Medido el {FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles
+de {miles(INDEXADAS_MEDIDAS)} indexadas.
 
 Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o estar
 fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
 como verificada si la búsqueda no la devolvió.
+
+Cada petición a la plataforma respeta un intervalo mínimo de {INTERVALO_MINIMO:.0f} segundos,
+que implementa la prohibición de sobrecargarla. Una consulta de actuaciones son
+varias peticiones encadenadas, así que tarda. No es un error ni algo que convenga paralelizar.
 
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
 expediente.
@@ -122,7 +135,7 @@ def buscar_causa_por_rit(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
     with _cliente() as c:
@@ -141,7 +154,7 @@ def buscar_causa_por_nombre(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por nombre de litigante.
 
@@ -166,7 +179,7 @@ def buscar_causa_por_rut_juridica(
     competencia: Competencia = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-    paginas: Paginas = 10,
+    paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas de una persona jurídica por su RUT.
 
@@ -216,7 +229,9 @@ def buscar_jurisprudencia(
     excluir: Annotated[str, Field(description="Palabras que NO deben aparecer.")] = "",
     desde: Annotated[str, Field(description="Fecha inicial, DD/MM/AAAA.")] = "",
     hasta: Annotated[str, Field(description="Fecha final, DD/MM/AAAA.")] = "",
-    filas: Annotated[int, Field(description="Cuántas sentencias traer.", ge=1, le=250)] = 10,
+    filas: Annotated[
+        int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
+    ] = 10,
 ) -> ResultadoJurisprudencia:
     """Busca sentencias de la Corte Suprema en el Buscador Unificado de Fallos.
 

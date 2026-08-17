@@ -52,6 +52,19 @@ FILAS_MAXIMAS = 250
 
 ORDENES = ("recientes", "antiguos", "rol", "rel")
 
+#: Medido sobre el buscador de Corte Suprema, sin filtros. Estas cifras se citan en la
+#: directiva del servidor y en tres páginas de documentación. Viven acá para que haya una sola
+#: fuente: `tests/test_documentacion.py` verifica que nadie quede con la cifra vieja, porque
+#: una documentación desactualizada se lee con la misma confianza que una al día.
+FECHA_MEDICION = "16 de agosto de 2026"
+VISIBLES_MEDIDAS = 300_005
+INDEXADAS_MEDIDAS = 1_223_925
+
+
+def miles(n: int) -> str:
+    """Formatea con el separador de miles chileno."""
+    return f"{n:,}".replace(",", ".")
+
 
 class Sentencia(BaseModel):
     """Una sentencia del buscador de fallos.

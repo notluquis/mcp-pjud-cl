@@ -96,6 +96,24 @@ siguiente sobra. Los que valen son los que registran una decisión o una trampa.
 
 **Prosa:** sin guiones largos. Usa comas, paréntesis o dos puntos.
 
+**Documentación:** `docs/` sigue [Diátaxis](https://diataxis.fr/), que separa cuatro cosas que
+se suelen mezclar. Antes de escribir una página nueva, decide cuál es y ponla donde va:
+
+| Tipo | Sirve para | Acá |
+|---|---|---|
+| Cómo se hace | resolver una tarea concreta | `instalacion`, `ejemplos` |
+| Referencia | consultar un dato exacto | `herramientas` |
+| Explicación | entender por qué | `uso`, `cumplimiento`, `licencia`, `roadmap` |
+| Tutorial | aprender haciendo | no hay, y no hace falta |
+
+Mezclarlas es lo que produce una página que no sirve para nada: una referencia con opiniones
+no se puede consultar rápido, y una explicación con tablas de parámetros no se puede leer.
+
+**Un dato repetido es un dato que va a quedar viejo.** Las cifras medidas, el intervalo mínimo
+y los topes viven en el código y se interpolan donde se pueda. Donde no se puede, porque la
+prosa se escribe a mano, `tests/test_documentacion.py` compara cada dato repetido contra su
+única fuente. Si agregas una afirmación verificable a la documentación, agrégale el test.
+
 **Commits:** [Conventional Commits](https://www.conventionalcommits.org/es/) en español.
 
 ## Licencia y contribuciones

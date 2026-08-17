@@ -47,12 +47,15 @@ permite **ejecutar** el software con fines no comerciales.
 tus propias causas. Se pide en un issue y **se otorga caso a caso, sin costo**. El razonamiento
 completo está en {doc}`licencia`.
 
+La documentación sigue [Diátaxis](https://diataxis.fr/): **cómo se hace** para resolver una
+tarea, **referencia** para consultar un dato exacto, y **explicación** para entender por qué.
+Si buscas la respuesta a "¿ya corre el plazo?", empieza por {doc}`ejemplos`.
+
 ```{toctree}
 :maxdepth: 2
-:caption: Guías
+:caption: Cómo se hace
 :hidden:
 
-uso
 instalacion
 ejemplos
 ```
@@ -63,6 +66,14 @@ ejemplos
 :hidden:
 
 herramientas
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Explicación
+:hidden:
+
+uso
 cumplimiento
 licencia
 roadmap

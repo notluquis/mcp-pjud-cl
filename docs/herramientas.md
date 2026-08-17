@@ -35,6 +35,7 @@ Busca causas por rol en la consulta pública.
 | `competencia` | str | Sólo `civil` está verificada |
 | `tribunal` | int, opcional | Código del tribunal. Omitir para buscar en todos |
 | `corte` | int, opcional | **Omitir salvo certeza** |
+| `paginas` | int | Cuántas páginas recorrer como máximo. Al excederlo levanta excepción en vez de recortar |
 
 :::{warning}
 `corte` no tiene valor por defecto a propósito. Fijarla produce **falsos negativos**: en una
@@ -57,6 +58,17 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 - Exige **indicar el tribunal**. No se puede buscar por nombre en todos los tribunales a la
   vez, y eso limita su utilidad: hay que saber dónde está la causa.
 
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `apellido_paterno` | str | Apellido paterno del litigante |
+| `apellido_materno` | str | Apellido materno |
+| `nombre` | str | Nombres |
+| `anio` | int, opcional | Año de ingreso. **No cuenta** para el mínimo de dos campos |
+| `competencia` | str | Sólo `civil` está verificada |
+| `tribunal` | int | Obligatorio acá |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+| `paginas` | int | Tope de páginas a recorrer |
+
 ## `buscar_causa_por_rut_juridica`
 
 Busca causas de una persona jurídica por su RUT. Es la **única vía para empresas**, que no
@@ -64,13 +76,26 @@ tienen Clave Única y por lo tanto no aparecen en "Mis Causas".
 
 Exige el dígito verificador y el tribunal.
 
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `rut` | int | RUT sin dígito verificador ni puntos |
+| `digito_verificador` | str | Dígito verificador: 0-9 o K |
+| `anio` | int, opcional | Año de ingreso |
+| `competencia` | str | Sólo `civil` está verificada |
+| `tribunal` | int | Obligatorio acá |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+| `paginas` | int | Tope de páginas a recorrer |
+
 ## `obtener_actuaciones_receptor`
 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
 proyecto.
 
-Mismos parámetros que la anterior. Internamente encadena búsqueda, detalle y un pase por cada
-cuaderno, porque la plataforma no direcciona el detalle por rol.
+Toma `tipo`, `rol`, `anio`, `competencia`, `tribunal` y `corte`, con el mismo significado que
+en `buscar_causa_por_rit`. No toma `paginas`: de la búsqueda sólo usa la primera causa.
+
+Internamente encadena búsqueda, detalle y un pase por cada cuaderno, porque la plataforma no
+direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, así que tarda.
 
 ### Campos de la respuesta
 

@@ -45,6 +45,25 @@ Civil de Santiago que sí existía.
 Devuelve una lista de causas con `rol`, `fecha_ingreso`, `caratulado`, `tribunal` y una
 `referencia` opaca que caduca a los 30 minutos.
 
+## `buscar_causa_por_nombre`
+
+Busca causas por nombre de litigante.
+
+Reglas de la plataforma, medidas probando cada combinación contra el sistema real:
+
+- Exige **al menos dos de los tres campos de nombre** (nombre, apellido paterno, apellido
+  materno). El **año no cuenta** para ese mínimo: `paterno + año` es rechazado, `paterno +
+  materno` es aceptado.
+- Exige **indicar el tribunal**. No se puede buscar por nombre en todos los tribunales a la
+  vez, y eso limita su utilidad: hay que saber dónde está la causa.
+
+## `buscar_causa_por_rut_juridica`
+
+Busca causas de una persona jurídica por su RUT. Es la **única vía para empresas**, que no
+tienen Clave Única y por lo tanto no aparecen en "Mis Causas".
+
+Exige el dígito verificador y el tribunal.
+
 ## `obtener_actuaciones_receptor`
 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
@@ -94,6 +113,8 @@ cuaderno, porque la plataforma no direcciona el detalle por rol.
 | Excepción | Qué significa | Qué hacer |
 |---|---|---|
 | `PjudBloqueado` | 403 o 429, o no se pudo derivar el prefijo de rutas | **Detenerse.** Revisar si la IP quedó bloqueada antes de reintentar nada |
+| `PlataformaRechaza` | La plataforma rechazó la consulta por sus propias reglas | El mensaje es el suyo, textual. Corregir los parámetros |
+| `ValueError` sobre campos | Faltan campos que la plataforma exige | Se detecta antes de consultar, sin gastar una petición |
 | `EstructuraInesperada` | El HTML no tiene la forma esperada | La plataforma cambió. Reportar con la plantilla correspondiente |
 | `ValueError` | Competencia no implementada, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
 

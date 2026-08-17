@@ -31,11 +31,23 @@ COLUMNAS = [
     "desc_tramite", "fec_tramite", "foja", "georref",
 ]
 
+# La plataforma devuelve sus avisos de validación como una llamada a swal() dentro de un
+# <script>, con HTTP 200. Ej: swal("","Por favor ingresar Rol para la búsqueda","warning")
+_AVISO = re.compile(r'swal\(\s*"[^"]*"\s*,\s*"([^"]+)"')
+
 _FECHA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 # "22/06/2026 (18/06/2026)" -> registro y, entre paréntesis, diligencia.
 _FEC_TRAMITE = re.compile(r"(\d{2}/\d{2}/\d{4})(?:\s*\(\s*(\d{2}/\d{2}/\d{4})\s*\))?")
 # "...Diligencia:18/06/2026 09:00": la hora es opcional.
 _DILIGENCIA = re.compile(r"Diligencia:\s*(\d{2}/\d{2}/\d{4})(?:\s+(\d{1,2}):(\d{2}))?", re.I)
+
+
+class PlataformaRechaza(Exception):
+    """La Oficina Judicial Virtual rechazó la consulta por sus propias reglas.
+
+    Responde con un `<script>swal(...)` en vez de un código de error, así que sin esto el
+    aviso llegaría al usuario disfrazado de resultado o de estructura rota.
+    """
 
 
 class EstructuraInesperada(Exception):
@@ -237,12 +249,43 @@ class CausaEncontrada(BaseModel):
     )
 
 
+#: Palabras que, dentro de un aviso de la plataforma, significan que se interpuso una
+#: verificación y no que falte un campo. Distinguirlas importa: un aviso de validación se
+#: corrige y se reintenta, uno de captcha exige detención total.
+_SENAL_CAPTCHA = ("captcha", "recaptcha", "no soy un robot", "verificaci")
+
+
+def leer_aviso(html_respuesta: str) -> str | None:
+    """Devuelve el aviso de la plataforma, si la respuesta es uno."""
+    m = _AVISO.search(html_respuesta)
+    if not m:
+        return None
+    # El aviso viene con las tildes escapadas al estilo de JavaScript.
+    return m.group(1).encode("utf-8").decode("unicode_escape")
+
+
+def es_aviso_de_captcha(mensaje: str) -> bool:
+    return any(s in mensaje.lower() for s in _SENAL_CAPTCHA)
+
+
+def revisar_aviso(html_respuesta: str) -> None:
+    """Levanta si la respuesta es un aviso de validación de la plataforma.
+
+    No distingue el captcha: eso lo hace el cliente, donde viven las demás reglas de
+    detención total. Acá sólo se traduce el aviso a una excepción.
+    """
+    mensaje = leer_aviso(html_respuesta)
+    if mensaje:
+        raise PlataformaRechaza(mensaje)
+
+
 def parse_resultados(html_busqueda: str) -> list[CausaEncontrada]:
     """Extrae las filas del listado de una búsqueda de causas.
 
     Cada fila trae un identificador opaco en el onClick; sin él no se puede pedir el
     detalle, porque la Oficina Judicial Virtual no direcciona el detalle por rol.
     """
+    revisar_aviso(html_busqueda)
     doc = html.fromstring(f"<table>{html_busqueda}</table>")
     etree.strip_elements(doc, etree.Comment, with_tail=False)
 

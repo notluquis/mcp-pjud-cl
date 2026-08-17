@@ -154,3 +154,107 @@ def test_listado_irreconocible_levanta_excepcion():
     """Ni filas ni el mensaje conocido: hay que enterarse, no devolver vacío."""
     with pytest.raises(EstructuraInesperada):
         parse_resultados("<tr><td>algo totalmente distinto</td></tr>")
+
+
+# -- validación de campos, medida contra el sistema real -------------------------
+#
+# La plataforma no responde con un código de error cuando faltan campos: devuelve HTTP 200
+# con un aviso dentro de un <script>. Validar antes evita gastar una petición y evita que
+# ese aviso llegue disfrazado de resultado.
+
+
+def _sin_red() -> PjudClient:
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: pytest.fail("no debía consultar"))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+    return c
+
+
+def test_rit_exige_rol_y_anio():
+    c = _sin_red()
+    with pytest.raises(ValueError, match="rol y año"):
+        c.buscar_por_rit("C", 0, 2026)
+    with pytest.raises(ValueError, match="rol y año"):
+        c.buscar_por_rit("C", 1156, 0)
+
+
+def test_nombre_exige_dos_campos_de_nombre():
+    """El año no cuenta para el mínimo de dos.
+
+    Medido: "apellido paterno + año" es rechazado por la plataforma, "paterno + materno"
+    es aceptado.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="al menos dos"):
+        c.buscar_por_nombre(apellido_paterno="PEREZ", tribunal=162)
+    with pytest.raises(ValueError, match="al menos dos"):
+        c.buscar_por_nombre(apellido_paterno="PEREZ", anio=2026, tribunal=162)
+
+
+def test_nombre_exige_tribunal():
+    """Limitación del sitio, no del cliente: no se puede buscar por nombre en todos los
+    tribunales a la vez."""
+    c = _sin_red()
+    with pytest.raises(ValueError, match="tribunal"):
+        c.buscar_por_nombre(nombre="JUAN", apellido_paterno="PEREZ")
+
+
+def test_juridica_exige_digito_verificador_y_tribunal():
+    c = _sin_red()
+    with pytest.raises(ValueError, match="dígito verificador"):
+        c.buscar_por_rut_juridica(76406172, "", tribunal=163)
+    with pytest.raises(ValueError, match="tribunal"):
+        c.buscar_por_rut_juridica(76406172, "1")
+
+
+def test_fecha_exige_rango_completo_y_tribunal():
+    c = _sin_red()
+    with pytest.raises(ValueError, match="fecha inicial y fecha final"):
+        c.buscar_por_fecha("04/03/2026", "", tribunal=162)
+    with pytest.raises(ValueError, match="tribunal"):
+        c.buscar_por_fecha("04/03/2026", "04/03/2026")
+
+
+def test_el_aviso_de_la_plataforma_no_se_devuelve_como_resultado():
+    """Sin esto, el aviso llegaría al usuario como estructura rota o como lista vacía."""
+    from mcp_pjud.parser import PlataformaRechaza
+
+    aviso = '<script>swal("","Por favor ingresar Rol para la b\\\\u00fasqueda","warning");</script>'
+    with pytest.raises(PlataformaRechaza, match="Rol"):
+        parse_resultados(aviso)
+
+
+@pytest.mark.parametrize(
+    "aviso",
+    [
+        "Por favor complete el captcha para continuar",
+        "Error de reCAPTCHA, intente nuevamente",
+        "Marque la casilla No soy un robot",
+        "Falló la verificación de seguridad",
+    ],
+)
+def test_un_aviso_de_captcha_detiene_en_vez_de_pedir_corregir(aviso, monkeypatch):
+    """Un captcha llega como aviso con HTTP 200, no como código de error.
+
+    Sin distinguirlo quedaría clasificado como "corrige los parámetros", el usuario
+    reintentaría, y eso es justo lo que la regla de detención total prohíbe.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    cuerpo = f'<script>swal("","{aviso}","warning");</script>'
+    c = _cliente(httpx.Response(200, text=cuerpo))
+    with pytest.raises(PjudBloqueado, match="Detención total"):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+
+
+def test_un_aviso_de_validacion_no_se_confunde_con_un_bloqueo(monkeypatch):
+    """El otro lado del mismo guardia: faltar un campo no es un bloqueo."""
+    from mcp_pjud.parser import PlataformaRechaza
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    cuerpo = '<script>swal("","Por favor ingresar Rol para la búsqueda","warning");</script>'
+    c = _cliente(httpx.Response(200, text=cuerpo))
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")  # no debe levantar
+    with pytest.raises(PlataformaRechaza, match="Rol"):
+        parse_resultados(cuerpo)

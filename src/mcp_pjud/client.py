@@ -19,6 +19,7 @@ import httpx
 from .parser import (
     Actuacion,
     CausaEncontrada,
+    EstructuraInesperada,
     actuaciones_receptor,
     es_aviso_de_captcha,
     leer_aviso,
@@ -155,13 +156,33 @@ class PjudClient:
         La plataforma pagina con un identificador opaco, no con un número de página: el
         control de "siguiente" trae el token de la página que viene.
         """
+        if paginas < 1:
+            # Con cero o menos, el bucle no corre y se devolvería una lista vacía
+            # indistinguible de una búsqueda sin resultados. Un error de configuración no
+            # debe disfrazarse de "no hay causas".
+            raise ValueError(f"El tope de páginas debe ser 1 o más, se recibió {paginas}.")
+
         acumuladas: list[CausaEncontrada] = []
         token: str | None = None
+        total: int | None = None
         for numero in range(1, paginas + 1):
             html_ = self._ajax(ruta, data if token is None else {**data, "pagina": token})
             acumuladas.extend(parse_resultados(html_))
+            if total is None:
+                total = total_declarado(html_)
             token = siguiente_pagina(html_)
             if token is None:
+                # El control de "siguiente" puede faltar porque de verdad se acabaron las
+                # páginas, o porque la respuesta vino truncada o el HTML cambió. La
+                # plataforma declara el total, así que se comprueba en vez de confiar.
+                if total is not None and len(acumuladas) != total:
+                    raise EstructuraInesperada(
+                        f"La plataforma declaró {total} resultados y se recuperaron "
+                        f"{len(acumuladas)}. El control de página siguiente desapareció "
+                        "antes de tiempo: la respuesta puede venir truncada o su estructura "
+                        "cambió. No se devuelve la lista parcial porque se leería como "
+                        "completa."
+                    )
                 return acumuladas
             if numero == paginas:
                 total = total_declarado(html_)

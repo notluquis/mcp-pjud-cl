@@ -107,9 +107,10 @@ def test_parse_resultados_extrae_la_causa_y_su_referencia():
     assert c.rol == "E-468-2026"
     assert c.tribunal == "3º Juzgado Civil de Concepción"
     assert c.caratulado.startswith("BANCO DE CHILE")
-    # Sólo que exista. Antes se comprobaba el largo, que ataba el test al tamaño de los
-    # identificadores reales de la plataforma y se cayó al anonimizarlos.
-    assert c.referencia
+    # Valor exacto, no sólo que exista. Una extracción truncada o del enlace equivocado
+    # devolvería algo no vacío que igual se enviaría como dtaCausa, y el test pasaría sin
+    # proteger lo que su nombre anuncia. La fixture trae una referencia ficticia estable.
+    assert c.referencia == "referencia-ficticia-001"
 
 
 def test_recorre_todos_los_cuadernos(monkeypatch):

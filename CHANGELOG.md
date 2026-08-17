@@ -18,6 +18,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Paginación en las cuatro búsquedas. La plataforma pagina por identificador opaco y no por
+  número, con 100 resultados por página. Hay un tope de 10 páginas que levanta excepción en
+  vez de devolver la lista recortada, porque un listado truncado en silencio se leería como
+  "no hay más".
+
 - Herramientas `buscar_causa_por_nombre` y `buscar_causa_por_rut_juridica`. La segunda es la
   única vía para empresas, que no tienen Clave Única y por lo tanto no aparecen en
   "Mis Causas".

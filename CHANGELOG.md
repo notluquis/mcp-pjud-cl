@@ -85,6 +85,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Un aviso de captcha de la plataforma quedaba clasificado como error de parámetros, o sea
+  invitaba a reintentar, que es justo lo que la regla de detención total prohíbe. Ahora se
+  distingue y levanta `PjudBloqueado`.
+
 - Las fixtures traían 87 JWT de la plataforma. Caducan a los 30 minutos y no sirven de
   credencial, pero su carga va cifrada y probablemente codifica identificadores de la misma
   causa cuyos nombres y RUT ya se habían anonimizado, así que dejarlos era incoherente.

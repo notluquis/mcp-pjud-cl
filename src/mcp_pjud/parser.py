@@ -249,12 +249,33 @@ class CausaEncontrada(BaseModel):
     )
 
 
-def revisar_aviso(html_respuesta: str) -> None:
-    """Levanta si la respuesta es un aviso de validación de la plataforma."""
+#: Palabras que, dentro de un aviso de la plataforma, significan que se interpuso una
+#: verificación y no que falte un campo. Distinguirlas importa: un aviso de validación se
+#: corrige y se reintenta, uno de captcha exige detención total.
+_SENAL_CAPTCHA = ("captcha", "recaptcha", "no soy un robot", "verificaci")
+
+
+def leer_aviso(html_respuesta: str) -> str | None:
+    """Devuelve el aviso de la plataforma, si la respuesta es uno."""
     m = _AVISO.search(html_respuesta)
-    if m:
-        # El aviso viene con las tildes escapadas al estilo de JavaScript.
-        mensaje = m.group(1).encode("utf-8").decode("unicode_escape")
+    if not m:
+        return None
+    # El aviso viene con las tildes escapadas al estilo de JavaScript.
+    return m.group(1).encode("utf-8").decode("unicode_escape")
+
+
+def es_aviso_de_captcha(mensaje: str) -> bool:
+    return any(s in mensaje.lower() for s in _SENAL_CAPTCHA)
+
+
+def revisar_aviso(html_respuesta: str) -> None:
+    """Levanta si la respuesta es un aviso de validación de la plataforma.
+
+    No distingue el captcha: eso lo hace el cliente, donde viven las demás reglas de
+    detención total. Acá sólo se traduce el aviso a una excepción.
+    """
+    mensaje = leer_aviso(html_respuesta)
+    if mensaje:
         raise PlataformaRechaza(mensaje)
 
 

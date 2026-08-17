@@ -224,3 +224,37 @@ def test_el_aviso_de_la_plataforma_no_se_devuelve_como_resultado():
     aviso = '<script>swal("","Por favor ingresar Rol para la b\\\\u00fasqueda","warning");</script>'
     with pytest.raises(PlataformaRechaza, match="Rol"):
         parse_resultados(aviso)
+
+
+@pytest.mark.parametrize(
+    "aviso",
+    [
+        "Por favor complete el captcha para continuar",
+        "Error de reCAPTCHA, intente nuevamente",
+        "Marque la casilla No soy un robot",
+        "Falló la verificación de seguridad",
+    ],
+)
+def test_un_aviso_de_captcha_detiene_en_vez_de_pedir_corregir(aviso, monkeypatch):
+    """Un captcha llega como aviso con HTTP 200, no como código de error.
+
+    Sin distinguirlo quedaría clasificado como "corrige los parámetros", el usuario
+    reintentaría, y eso es justo lo que la regla de detención total prohíbe.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    cuerpo = f'<script>swal("","{aviso}","warning");</script>'
+    c = _cliente(httpx.Response(200, text=cuerpo))
+    with pytest.raises(PjudBloqueado, match="Detención total"):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+
+
+def test_un_aviso_de_validacion_no_se_confunde_con_un_bloqueo(monkeypatch):
+    """El otro lado del mismo guardia: faltar un campo no es un bloqueo."""
+    from mcp_pjud.parser import PlataformaRechaza
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    cuerpo = '<script>swal("","Por favor ingresar Rol para la búsqueda","warning");</script>'
+    c = _cliente(httpx.Response(200, text=cuerpo))
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")  # no debe levantar
+    with pytest.raises(PlataformaRechaza, match="Rol"):
+        parse_resultados(cuerpo)

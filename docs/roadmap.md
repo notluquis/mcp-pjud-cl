@@ -91,7 +91,6 @@ respuesta correcta sea devolver el listado y que el usuario elija, en vez de enc
 La primera competencia nueva, y la elegida a propósito: `receptorCobranza.php` existe, o sea
 que también tiene actuaciones de ministro de fe, que es donde está el valor.
 
-- Fixture de una causa real (`C-208-2019` del Juzgado de Cobranza de Concepción es candidata)
 - Verificar si el formato de fecha doble es el mismo
 - Parser propio si difiere
 - Ampliar `MODULOS` sólo después de verificar, nunca antes
@@ -110,6 +109,14 @@ requiera consentimiento explícito por llamada, y ruta de destino elegida por el
 
 Las dos competencias que siguen en volumen de uso real.
 
+### 0.6: competencias restantes
+
+Laboral, apelaciones, suprema, penal y familia. Ninguna sondeada. Antes de cada una hay que
+confirmar lo mismo que se confirmó en cobranza: el identificador del panel de historia, el
+orden y nombre de las columnas, y si esa competencia expone actuaciones de ministro de fe.
+
+Sin esto último, la competencia no vale el esfuerzo por más que sus rutas estén mapeadas.
+
 ### Sin versión asignada
 
 **Detección de cambios entre consultas.** Avisar cuando aparece una actuación nueva. Sigue
@@ -125,6 +132,65 @@ justificado y no "porque se puede".
 
 **Jurisprudencia.** Descartada de forma permanente por el bloqueo nominal de `juris.pjud.cl`.
 Sólo reviviría por Ley 20.285 o fuente licenciada.
+
+## Sobre los identificadores de causa en esta documentación
+
+Las fixtures van anonimizadas: sin nombres, sin RUT, sin los identificadores opacos de la
+plataforma. Pero **los roles de causa que aparecen en los ejemplos siguen siendo
+identificadores directos**: con un rol y un tribunal, una sola consulta devuelve el nombre
+completo de las partes.
+
+O sea la anonimización de las fixtures se deshace si se publica el rol al que corresponden.
+
+Criterio adoptado:
+
+- Los roles del caso propio del autor se conservan, porque el ejemplo trabajado es lo que hace
+  entendible el proyecto y la decisión es suya.
+- **Los roles de causas de terceros no se publican.** Una causa que aparece sólo porque se
+  eligió para un sondeo no debe arrastrar a sus partes a un repositorio indexado.
+
+Vale también para quien reporte un problema: la plantilla de issue pide el rol, y eso es
+deliberado porque sin él no se puede reproducir. Quien reporte decide si su causa lo admite.
+
+## Herramientas de descubrimiento que no existen
+
+Verificado el 17 de agosto de 2026, en los dos hosts:
+
+| Ruta | `oficinajudicialvirtual.pjud.cl` | `www.pjud.cl` |
+|---|---|---|
+| `/sitemap.xml` | 404 | 404 |
+| `/.well-known/security.txt` | 404 | 500 |
+| `/robots.txt` | `Disallow: /` | 404, no publica |
+
+No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de
+`consultaUnificada.php`, que es donde el sitio declara sus 169 rutas. Ese es el método a
+repetir cuando la plataforma cambie.
+
+La ausencia de `security.txt` refuerza lo que ya dice la política de seguridad: no hay canal
+publicado de divulgación de vulnerabilidades, así que va directo a la Corporación
+Administrativa.
+
+## Reglas de la plataforma ya mapeadas
+
+Medidas probando combinaciones contra el sistema real. Se registran acá porque son la clase de
+dato que se re-descubre a costa de peticiones si no queda escrito.
+
+| Búsqueda | Obligatorio | Opcional | Aviso al faltar |
+|---|---|---|---|
+| Por rol | número, año | tipo, corte, tribunal | `Por favor ingresar Rol / Año para la búsqueda` |
+| Por nombre | dos campos **de nombre**, tribunal | año, corte | `Por favor llene mínimo 2 campos` / `seleccione un Tribunal` |
+| Por RUT jurídica | dígito verificador, tribunal | año, corte | `Por favor ingrese dígito verificador` |
+| Por fecha | rango completo, tribunal | corte | `Por favor ingrese una Fecha Final` |
+
+Dos cosas contraintuitivas:
+
+- **Omitir el tribunal amplía los resultados.** La misma consulta por rol devolvió dos causas
+  sin tribunal y una con él. Acotar de más esconde causas, que es el falso negativo que este
+  proyecto existe para evitar.
+- **El año no cuenta** para el mínimo de dos campos en la búsqueda por nombre.
+
+Y una limitación de fondo: la búsqueda por nombre **exige tribunal**, así que no sirve para el
+caso "sé el nombre pero no dónde está la causa", que era el que se suponía que resolvía.
 
 ## Lo que se va a romper
 

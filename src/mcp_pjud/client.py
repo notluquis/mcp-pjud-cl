@@ -20,6 +20,8 @@ from .parser import (
     Actuacion,
     CausaEncontrada,
     actuaciones_receptor,
+    es_aviso_de_captcha,
+    leer_aviso,
     parse_cuadernos,
     parse_resultados,
 )
@@ -112,6 +114,17 @@ class PjudClient:
                 "Detención total: no se reintenta ni se evade. Revisar si la IP quedó "
                 "bloqueada antes de volver a consultar."
             )
+        # Un captcha llega como aviso dentro de la respuesta, con HTTP 200, no como un
+        # código de error. Sin esto quedaría clasificado como "corrige los parámetros" y el
+        # usuario reintentaría, que es justo lo que la regla de detención total prohíbe.
+        aviso = leer_aviso(r.text)
+        if aviso and es_aviso_de_captcha(aviso):
+            raise PjudBloqueado(
+                f"La plataforma interpuso una verificación en {url}: {aviso!r}. "
+                "Detención total: no se reintenta, no se evade. Esperar y revisar si el "
+                "acceso quedó restringido."
+            )
+
         r.raise_for_status()
         return r
 

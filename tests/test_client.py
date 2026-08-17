@@ -924,3 +924,30 @@ def test_la_busqueda_por_rol_no_exige_acotar_en_ninguna_competencia(monkeypatch)
             f"la búsqueda por rol en {competencia} no debe exigir corte: {motivo}"
         )
         assert enviados, f"en {competencia} la búsqueda por rol se rechazó antes de consultar"
+
+
+@pytest.mark.parametrize(
+    ("competencia", "filas"),
+    [("suprema", 1), ("apelaciones", 3)],
+)
+def test_un_listado_completo_no_pide_otra_pagina(competencia, filas, monkeypatch):
+    """En suprema y apelaciones el listado ofrece "siguiente" aunque esté completo.
+
+    Medido sobre sus dos respuestas reales: 1 de 1 y 3 de 3, las dos con enlace. Civil no lo
+    hace, y por eso `_paginado` podía terminar sólo cuando el enlace desaparecía sin que nada
+    fallara. Al habilitar estas dos competencias esa condición dejó de alcanzar: seguir el
+    enlace pide una página que no existe, y la búsqueda COMPLETA termina en error.
+
+    Se cuentan las peticiones, no el resultado: devolver la lista correcta gastando el doble de
+    peticiones contra el Poder Judicial también sería un fallo, y no se vería en los datos.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / f"busqueda_rit_{competencia}.html").read_text(encoding="utf-8")
+    c, enviados = _capturando(listado)
+
+    causas = c.buscar_por_rit("C", 9999, 2019, competencia=competencia)
+
+    assert len(causas) == filas
+    assert len(enviados) == 1, (
+        f"el listado de {competencia} venía completo y se pidieron {len(enviados)} páginas"
+    )

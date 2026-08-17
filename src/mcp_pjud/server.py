@@ -33,6 +33,24 @@ from .juris import (
 )
 from .parser import COMPETENCIAS, Actuacion, CausaEncontrada
 
+#: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
+#: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
+#: contrato que ve el modelo es lo único que tiene para saber qué llamada es válida, y una
+#: descripción que se quedó atrás lo hace intentar una consulta que este servidor rechaza y
+#: atribuir el rechazo a la plataforma.
+_EXIGEN_TRIBUNAL = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")
+_EXIGEN_CORTE = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por == "corte")
+_SIN_ACOTAR = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por is None)
+
+#: La misma regla dicha una vez, para las tres herramientas que la comparten.
+ACOTACION = (
+    "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
+    f"la competencia: {', '.join(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
+    f"{', '.join(_EXIGEN_CORTE)} exige `corte` y NO acepta tribunal; "
+    f"{', '.join(_SIN_ACOTAR)} no exige ninguna de las dos. La búsqueda por rol no exige "
+    "acotar en ninguna."
+)
+
 # La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
 # servidor la recibe antes de llamar cualquier herramienta.
 DIRECTIVA = f"""\
@@ -55,6 +73,8 @@ en vez de elegir una.
 
 Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba
 que la causa no exista.
+
+{ACOTACION}
 
 Si una búsqueda excede el tope de páginas, la herramienta falla en vez de devolver una
 lista recortada. Ese error significa "hay más resultados de los que caben", no "no hay
@@ -117,7 +137,13 @@ Competencia = Annotated[
     Field(description=f"Una de: {', '.join(sorted(MODULOS))}."),
 ]
 Tribunal = Annotated[
-    int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
+    int | None,
+    Field(
+        description="Código del tribunal. Obligatorio en las búsquedas de nombre, RUT y "
+        f"fecha cuando la competencia es una de: {', '.join(_EXIGEN_TRIBUNAL)}. En "
+        f"{', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa. En la búsqueda "
+        "por rol es opcional siempre, y omitirlo AMPLÍA los resultados."
+    ),
 ]
 Paginas = Annotated[
     int,
@@ -149,8 +175,11 @@ CompetenciaConReceptor = Annotated[
 Corte = Annotated[
     int | None,
     Field(
-        description="Código de la corte. OMITIR salvo certeza: fijarla produce falsos "
-        "negativos, porque excluye causas radicadas en otra jurisdicción."
+        description="Código de la corte. Obligatorio en las búsquedas de nombre, RUT y "
+        f"fecha cuando la competencia es una de: {', '.join(_EXIGEN_CORTE)}, donde la "
+        "plataforma responde 'Por favor seleccione una Corte para la búsqueda'. En el resto, "
+        "OMITIR salvo certeza: fijarla produce falsos negativos, porque excluye causas "
+        "radicadas en otra jurisdicción."
     ),
 ]
 
@@ -190,8 +219,9 @@ def buscar_causa_por_nombre(
     """Busca causas por nombre de litigante.
 
     Exige al menos DOS de los tres campos de nombre. El año no cuenta para ese mínimo.
-    Exige además indicar el tribunal: la plataforma no permite buscar por nombre en todos
-    los tribunales a la vez.
+
+    Hay que acotar la búsqueda: con qué depende de la competencia, y lo dicen las
+    descripciones de `tribunal` y de `corte`.
     """
     with _cliente() as c:
         return c.buscar_por_nombre(
@@ -215,7 +245,7 @@ def buscar_causa_por_rut_juridica(
     """Busca causas de una persona jurídica por su RUT.
 
     Es la única vía para empresas: no tienen Clave Única, así que no aparecen en
-    "Mis Causas". Exige indicar el tribunal.
+    "Mis Causas".
     """
     with _cliente() as c:
         return c.buscar_por_rut_juridica(
@@ -230,8 +260,8 @@ def buscar_causa_por_rut_juridica(
 def buscar_causa_por_fecha(
     desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
     hasta: Annotated[str, Field(description="Fecha final del rango, DD/MM/AAAA.")],
-    tribunal: Annotated[int, Field(description="Código del tribunal. La plataforma lo exige acá.")],
     competencia: Competencia = "civil",
+    tribunal: Tribunal = None,
     corte: Corte = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
@@ -241,8 +271,8 @@ def buscar_causa_por_fecha(
     ofrece, y sin ella no hay forma de responder "qué ingresó contra esta empresa esta
     semana" sabiendo el tribunal pero no el rol.
 
-    Exige tribunal, igual que la plataforma. Un solo día en un solo tribunal puede devolver
-    decenas de causas, así que conviene acotar el rango antes de subir el tope de páginas.
+    Un solo día en un solo tribunal puede devolver decenas de causas, así que conviene
+    acotar el rango antes de subir el tope de páginas.
     """
     with _cliente() as c:
         return c.buscar_por_fecha(desde, hasta, competencia, tribunal, corte, paginas)

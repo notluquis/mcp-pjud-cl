@@ -239,6 +239,65 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
             assert verificada in d, f"el esquema no le ofrece {verificada!r}, que sí funciona"
 
 
+def test_ninguna_herramienta_exige_un_campo_que_su_competencia_no_usa(expuestas):
+    """El esquema es el contrato: si declara `tribunal` obligatorio, el modelo NO puede llamar
+    la herramienta sin inventarlo.
+
+    Pasó exactamente eso: al verificar suprema y apelaciones se actualizó la validación del
+    cliente y no el esquema, y `buscar_causa_por_fecha` quedó exigiendo un tribunal que esas
+    dos competencias no usan. La herramienta se anunciaba para seis competencias y sólo se
+    podía llamar para cuatro, sin que ningún test se enterara: los guardias miraban la
+    documentación y la lista de competencias, no cuáles parámetros eran obligatorios.
+
+    Que alguna competencia no lo exija basta para que no pueda ser obligatorio en el esquema:
+    quién lo exige se dice en la descripción, no en la firma.
+    """
+    sin_acotar = {n for n in MODULOS if COMPETENCIAS[n].acota_por != "tribunal"}
+    assert sin_acotar, "si todas exigieran tribunal, este guardia habría que retirarlo"
+
+    culpables = {}
+    for nombre_h, h in expuestas.items():
+        obligatorios = set((h.input_schema or {}).get("required", []))
+        for campo in ("tribunal", "corte"):
+            if campo in obligatorios:
+                culpables.setdefault(nombre_h, set()).add(campo)
+    assert not culpables, (
+        f"Herramientas que declaran obligatorio un campo que no todas las competencias usan: "
+        f"{culpables}. Con {sorted(sin_acotar)} expuestas, el modelo no puede llamarlas."
+    )
+
+
+def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
+    """Y no puede decirlo a mano: se deriva de `parser.COMPETENCIAS`.
+
+    Sin esto, quitar `tribunal` de la firma dejaría al modelo sin saber cuándo hace falta, y
+    la llamada fallaría en el cliente con un error que el modelo atribuye a la plataforma.
+    """
+    from mcp_pjud.server import ACOTACION, DIRECTIVA
+
+    for nombre in MODULOS:
+        assert nombre in ACOTACION, f"la regla de acotación no nombra a {nombre!r}"
+    assert ACOTACION in DIRECTIVA, (
+        "la regla tiene que viajar en la directiva del servidor: es lo que el modelo lee "
+        "antes de llamar cualquier herramienta"
+    )
+
+    for nombre_h, h in expuestas.items():
+        propiedades = (h.input_schema or {}).get("properties", {})
+        for campo, exigen in (
+            ("tribunal", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal"]),
+            ("corte", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "corte"]),
+        ):
+            if campo not in propiedades:
+                continue
+            descripcion = propiedades[campo].get("description", "")
+            for competencia in exigen:
+                assert competencia in descripcion, (
+                    f"{nombre_h}: la descripción de {campo!r} no nombra a {competencia!r}, "
+                    f"que es una de las que lo exigen"
+                )
+
+
 def _secciones_de_herramientas() -> dict[str, str]:
     nombres = re.findall(r"^## `([a-z0-9_]+)`", HERRAMIENTAS, re.M)
     cuerpos = re.split(r"^## `[a-z0-9_]+`", HERRAMIENTAS, flags=re.M)[1:]
@@ -675,3 +734,26 @@ def test_la_referencia_dice_cuales_competencias_entregan_actuaciones(expuestas):
             assert otra in seccion, (
                 f"{otra!r} expone actuaciones que este servidor no lee, y la referencia lo calla"
             )
+
+
+def test_la_hoja_de_ruta_no_declara_sin_ejecutar_lo_que_ya_se_verifico():
+    """La misma página decía que las cuatro búsquedas de suprema y apelaciones se verificaron
+    en vivo y, treinta líneas más abajo, que nada de esas competencias se había ejecutado.
+
+    Una hoja de ruta que se contradice sobre el estado de verificación es peor que no tenerla:
+    su único trabajo es distinguir lo medido de lo supuesto. La sección se quedó atrás porque
+    nada la ataba a `MODULOS`, que es donde ese estado vive de verdad.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    marca = "### Mapeado pero nunca ejecutado"
+    assert marca in texto, "cambió el título de la sección; hay que reapuntar este guardia"
+
+    seccion = texto.split(marca, 1)[1].split("###", 1)[0]
+    # El detalle de varias competencias sí sigue sin ejecutarse, y nombrarlas ahí es correcto.
+    # Lo que no puede aparecer es la afirmación de que sus BÚSQUEDAS no se probaron.
+    verificadas = ", ".join(sorted(MODULOS))
+    for busqueda in ("consultaNombre", "consultaJuridica", "consultaFecha", "consultaRit"):
+        declarada = f"{busqueda}*.php`, `" in seccion or f"- `{busqueda}" in seccion
+        assert not declarada, (
+            f"la hoja de ruta declara {busqueda} sin ejecutar, y está verificada en {verificadas}"
+        )

@@ -34,6 +34,22 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- El esquema MCP quedaba prometiendo lo viejo. `buscar_causa_por_fecha` declaraba `tribunal`
+  como parámetro **obligatorio**, así que en suprema y apelaciones la herramienta se anunciaba
+  para seis competencias y sólo se podía llamar para cuatro: no había forma de hacer la llamada
+  documentada sin inventar un tribunal. Las descripciones de nombre y RUT decían lo mismo. Ahora
+  el texto se deriva de `parser.COMPETENCIAS`, viaja en la directiva del servidor, y hay un
+  guardia que impide declarar obligatorio un campo que alguna competencia expuesta no usa.
+
+- Una búsqueda **completa** en suprema o apelaciones pedía una página de más y terminaba en
+  error. Sus listados ofrecen "siguiente" aunque estén completos, medido sobre sus dos
+  respuestas reales (1 de 1 y 3 de 3, las dos con enlace), y `_paginado` sólo cortaba cuando el
+  enlace desaparecía. Civil no lo hace, y por eso la condición alcanzaba hasta ahora. Ahora
+  manda el total declarado.
+
+- La hoja de ruta se contradecía sobre lo que está verificado: decía que las cuatro búsquedas
+  se probaron en vivo y, más abajo, que ninguna de esas rutas se había ejecutado nunca.
+
 - Con qué hay que acotar las búsquedas por nombre, por RUT y por fecha ahora depende de la
   competencia, y sale de una tabla: `tribunal` en las cuatro de primera instancia, `corte` en
   apelaciones, nada en suprema. Antes el cliente exigía tribunal siempre, y con eso habría

@@ -371,6 +371,18 @@ class PjudClient(Transporte):
                     f"{total}. La paginación no está avanzando."
                 )
 
+            if len(acumuladas) == total:
+                # El total declarado manda por sobre la navegación, y no es una optimización:
+                # en suprema y en apelaciones el listado ofrece "siguiente" AUNQUE esté
+                # completo. Medido sobre sus dos respuestas reales, de 1 de 1 y 3 de 3, las
+                # dos con enlace. Seguirlo pide una página que no existe y termina en
+                # `EstructuraInesperada` por acumular más de lo declarado o por no avanzar,
+                # o sea una búsqueda completa fallando.
+                #
+                # Civil no lo hace, y por eso el hueco sobrevivió hasta que entraron esas dos
+                # competencias.
+                return acumuladas
+
             token = siguiente_pagina(html_)
 
             if token is None:

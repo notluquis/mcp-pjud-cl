@@ -45,16 +45,23 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 
 ### Mapeado pero nunca ejecutado
 
-Las rutas se extrajeron del código de la plataforma. **No se probó ninguna.** El cliente las
+Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
 rechaza en vez de adivinar sus parámetros:
 
-- `consultaNombre*.php`, `consultaJuridica*.php`, `consultaFecha*.php` para todas las
-  competencias
-- Todo lo de `apelaciones`, `suprema`, `laboral`, `penal`, `cobranza`, `familia`
+- El **detalle** de `suprema`, `apelaciones`, `laboral` y `penal`: `causaSuprema.php`,
+  `causaApelaciones.php`, `causaLaboral.php`, `causaPenal.php`. Sus búsquedas sí están
+  verificadas, que no es lo mismo: por eso las cuatro declaran `historia=None` y pedirles
+  actuaciones se rechaza
+- `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
+- `diligenciaCob`, el panel donde cobranza guarda de verdad sus diligencias
 - `receptorCivil.php`, que devuelve la tabla de **retiro** de documentos, no la de
   actuaciones. Se ejecutó una vez y se descartó por no ser lo que se buscaba
+
+Las cuatro búsquedas (`consultaRit*`, `consultaNombre*`, `consultaJuridica*` y
+`consultaFecha*`) salieron de esta lista: están verificadas en las seis competencias que el
+servidor expone.
 
 ### Sin cubrir del todo
 

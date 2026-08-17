@@ -17,6 +17,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Búsqueda de causas en **suprema** y **Cortes de Apelaciones** | Las cuatro búsquedas de cada una. Lo que las bloqueaba era `radio-group`, el radio RIT/RUC del formulario, que las otras cuatro competencias toleran ausente |
 | Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
+| Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
 | Búsqueda por RIT en civil | E-468-2026 y C-1156-2026 |
@@ -131,10 +132,23 @@ Se encontró bisectando desde el juego de campos que fallaba, no leyendo más Ja
   rechaza cobranza en vez de devolver una lista vacía, que es lo correcto mientras el panel no
   esté medido.
 
-  Hay una señal que hay que resolver antes de construir: en la única causa medida, las tres
-  diligencias traían `31/12/1969` en su columna de fecha, o sea el epoch. Si esa columna no
-  informa la fecha real, el panel no responde la pregunta del proyecto y exponerlo sería peor
-  que no tenerlo.
+  **Medido, y la respuesta es que hoy no sirve.** De cinco causas de cobranza, sólo una trae
+  filas en ese panel, y sus tres diligencias traen `31/12/1969` en la columna de fecha: el
+  epoch, o sea el valor cero renderizado. Ninguna trae la fecha doble que este proyecto lee en
+  civil. Construir sobre eso entregaría actuaciones sin la fecha que corre los plazos, que es
+  peor que no entregarlas. Queda a la espera de encontrar una causa donde el panel sí publique
+  fechas.
+
+- **Las notificaciones son otra fuente de fechas, y no son uniformes.** Buscando lo anterior
+  apareció que cobranza publica `notificacionCob` con DOS columnas de fecha, `Fec.Not.` y
+  `Fec.Tram.`, que difieren: las notificaciones por correo electrónico coinciden y las por
+  carta van con un día de diferencia. Civil publica otra cosa: el panel se llama
+  `notificacionesCiv`, tiene ocho columnas y **una sola** fecha.
+
+  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia. Y
+  las dos causas civiles disponibles traen cero filas, así que no hay con qué validar el
+  parseo de civil. Exponerlo ahora sería adivinar. Lo bueno es que no cuesta peticiones: los
+  dos paneles ya vienen en la respuesta del detalle que el cliente pide.
 
 - **Laboral, penal, suprema y apelaciones no tienen receptor.** En todo el sitio sólo existen
   `receptorCivil` y `receptorCobranza`. Queda declarado en la tabla y se rechaza antes de

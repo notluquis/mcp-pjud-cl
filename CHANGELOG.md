@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.2.1] - 2026-08-17
+
+Corrige un defecto de la 0.2.0 y crea la rama `stable`, que la documentación ya recomienda
+instalar y que hasta esta publicación no existía.
+
 ### Agregado
 
 - **Rama `stable`, que apunta siempre a la última versión publicada.** La instalación que la
@@ -450,6 +455,7 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.2.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.1
 [0.2.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.0
 [0.1.0]: https://github.com/notluquis/mcp-pjud-cl/commit/506b5b7

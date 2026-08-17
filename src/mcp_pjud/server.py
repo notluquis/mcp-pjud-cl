@@ -14,6 +14,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .client import (
+    DESCRIPCION,
     INTERVALO_MINIMO,
     MODULOS,
     PAGINAS_MAXIMAS,
@@ -122,6 +123,7 @@ SOLO_LECTURA = ToolAnnotations(
 mcp = MCPServer(
     "mcp-pjud",
     title="Consulta de causas del Poder Judicial de Chile",
+    description=DESCRIPCION,
     version=VERSION,
     website_url="https://mcp-pjud-cl.readthedocs.io",
     instructions=DIRECTIVA,

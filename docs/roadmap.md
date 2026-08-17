@@ -118,10 +118,17 @@ sitio deshabilita (`conTipoCausa`, `conCorte`, `conTribunal`), y que faltaba un 
 en `conTipoCausa`. **Las dos cosas eran falsas.** El combo de libros existe
 (`json/cmbTipos.php`) y devuelve cero bytes para suprema, y la búsqueda anda igual con o sin
 los campos deshabilitados. Faltaba `radio-group`, el radio RIT/RUC del formulario, en el que su
-PHP se ramifica para saber por cuál de los dos se busca. Las otras cuatro competencias lo
-toleran ausente.
+PHP se ramifica para saber por cuál de los dos se busca.
 
 Se encontró bisectando desde el juego de campos que fallaba, no leyendo más JavaScript.
+
+**Y el arreglo salió incompleto, que es la parte que conviene no olvidar.** `radio-group`
+desbloqueó a suprema y apelaciones, pero `penal` tiene su propio radio (`radio-groupPenal`) y
+siguió rota; las tres se declararon verificadas y se publicaron así en la 0.2.0. La causa es
+una sola: se midieron con peticiones armadas a mano y los tests usan dobles, así que nada
+ejercitó `buscar_por_rit` contra la plataforma. Verificar la petición no es verificar el
+cliente. Los campos propios de cada competencia salen ahora de la tabla, con un test que
+compara el formulario enviado contra lo que ella declara.
 
 **Lo que sigue pendiente es lo que da valor**, y es más chico de lo que parecía:
 

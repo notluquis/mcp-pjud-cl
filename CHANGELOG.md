@@ -31,6 +31,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- **Seis datos que se escribían a mano en dos lugares y podían separarse sin que nada avisara.**
+  Cada uno queda con su guardia, y los seis se vieron en rojo:
+
+  | Dato | Estaba | Ahora |
+  |---|---|---|
+  | Versión de Python | En `pyproject.toml` y en dos guías | Las guías se comparan contra `requires-python` |
+  | `MCP_PJUD_CONTACTO` | En el código y en tres páginas | El nombre sale del código que lo lee |
+  | Licencia | En `pyproject.toml` y en `CITATION.cff` | Se comparan |
+  | Revisión del protocolo MCP | Escrita a mano | Se compara contra `LATEST_PROTOCOL_VERSION` del SDK |
+  | Cuántos buscadores están verificados | Contados a mano en la referencia | Se comparan contra `BUSCADORES` |
+  | Descripción del servidor MCP | Sin declarar | Sale de la metadata del paquete |
+
+
 - **El servidor MCP se presentaba sin versión.** La especificación exige desde la revisión
   2026-07-28 implementar `server/discover`, donde viaja `serverInfo` con nombre y versión, y la
   nuestra iba en su valor por defecto: vacía. Es el mismo descuido que el User-Agent tenía con

@@ -917,6 +917,13 @@ def test_todo_lo_que_declara_una_version_dice_la_misma():
         f"el servidor MCP se presenta como versión {mcp.version!r} y el paquete es {version!r}"
     )
 
+    # La descripción que el servidor publica sale de la misma metadata del paquete, así que
+    # no puede quedar como una segunda copia del texto.
+    proyecto = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]
+    assert mcp.description == proyecto["description"], (
+        "el servidor MCP publica una descripción distinta de la que declara el paquete"
+    )
+
     citation = _texto(RAIZ / "CITATION.cff")
     assert f"version: {version}" in citation, (
         f"CITATION.cff atribuye una versión distinta de {version}"
@@ -1036,3 +1043,103 @@ def test_la_instalacion_documentada_apunta_a_la_rama_publicada():
         "la documentación recomienda instalar `stable` y el flujo de publicación no la mueve: "
         "quedaría clavada en la versión con que se creó"
     )
+
+
+def test_la_version_de_python_que_piden_las_guias_es_la_que_exige_el_paquete():
+    """Subir el piso de Python sin tocar las guías deja a alguien instalando y fallando.
+
+    `uv` respeta `requires-python`, así que el error llega, pero llega como un problema de
+    resolución de dependencias en vez de "esta guía te pidió una versión que no sirve".
+    """
+    exigida = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["requires-python"]
+    numero = re.search(r"(\d+\.\d+)", exigida)
+    assert numero, f"no se pudo leer la versión de `requires-python`: {exigida!r}"
+
+    for archivo in ("README.md", "docs/instalacion.md"):
+        texto = _texto(RAIZ / archivo)
+        if "Python" not in texto:
+            continue
+        assert f"Python {numero.group(1)}" in texto, (
+            f"{archivo} no pide Python {numero.group(1)}, que es lo que el paquete exige"
+        )
+
+
+def test_la_variable_de_entorno_documentada_es_la_que_el_servidor_lee():
+    """Si se renombra, el servidor no arranca y la guía sigue diciendo el nombre viejo.
+
+    Y el modo de falla es de los que confunden: el error dice que falta la variable, la persona
+    la tiene puesta con el nombre que leyó, y no hay nada que la haga sospechar de la guía.
+    """
+    servidor = _texto(RAIZ / "src" / "mcp_pjud" / "server.py")
+    nombre = re.search(r'os\.environ\.get\(\s*"([A-Z_]+)"', servidor)
+    assert nombre, "el servidor ya no lee su contacto de una variable de entorno"
+
+    paginas = [RAIZ / "README.md", RAIZ / "docs" / "instalacion.md"]
+    for pagina in paginas:
+        assert nombre.group(1) in _texto(pagina), (
+            f"{pagina.name} no nombra {nombre.group(1)}, que es la variable que el servidor lee"
+        )
+
+
+def test_la_licencia_dice_lo_mismo_en_todas_partes():
+    """Tres archivos declaran la licencia y ninguno leía a los otros.
+
+    En un proyecto cuya licencia prohíbe distribuir y modificar, que dos archivos declaren
+    cosas distintas no es un detalle de metadatos: es la parte que alguien lee antes de decidir
+    qué puede hacer con esto.
+    """
+    declarada = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["license"]
+    assert f"license: {declarada}" in _texto(RAIZ / "CITATION.cff"), (
+        f"CITATION.cff no declara {declarada!r}, que es la licencia del paquete"
+    )
+
+
+def test_la_revision_del_protocolo_que_se_nombra_es_la_del_sdk():
+    """La revisión del protocolo se nombra en el código y en la referencia, y va a cambiar.
+
+    El SDK la expone, así que escribirla a mano es aceptar que quede vieja: subir la
+    dependencia dejaría al proyecto diciendo que habla una revisión que ya no es, en la página
+    que alguien lee para saber si su cliente es compatible.
+    """
+    from mcp.types import LATEST_PROTOCOL_VERSION
+
+    servidor = _texto(RAIZ / "src" / "mcp_pjud" / "server.py")
+    assert LATEST_PROTOCOL_VERSION in servidor, (
+        f"el servidor nombra otra revisión del protocolo; el SDK trae {LATEST_PROTOCOL_VERSION}"
+    )
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    assert LATEST_PROTOCOL_VERSION in referencia, (
+        f"la referencia nombra otra revisión; el SDK trae {LATEST_PROTOCOL_VERSION}"
+    )
+
+
+def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
+    """Registrar un buscador nuevo y no tocar la prosa deja la página contando de menos.
+
+    Y en esta herramienta contar de menos importa: quien lee "tres de diez" decide si le sirve
+    o si tiene que buscar la sentencia por otro lado.
+    """
+    from mcp_pjud.juris import BUSCADORES
+
+    numeros = {
+        1: "uno",
+        2: "dos",
+        3: "tres",
+        4: "cuatro",
+        5: "cinco",
+        6: "seis",
+        7: "siete",
+        8: "ocho",
+        9: "nueve",
+        10: "diez",
+    }
+    esperado = numeros[len(BUSCADORES)]
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    dicho = re.search(r"Están verificados (\w+) de los \w+ buscadores", referencia)
+    assert dicho, "la referencia ya no dice cuántos buscadores están verificados"
+    assert dicho.group(1) == esperado, (
+        f"la referencia dice {dicho.group(1)} buscadores verificados y el código registra "
+        f"{len(BUSCADORES)}"
+    )
+    for nombre in BUSCADORES:
+        assert f"**{nombre}**" in referencia, f"la referencia no nombra el buscador {nombre!r}"

@@ -15,6 +15,7 @@ import re
 import threading
 import time
 from importlib.metadata import PackageNotFoundError
+from importlib.metadata import metadata as _metadata_instalada
 from importlib.metadata import version as _version_instalada
 
 import httpx
@@ -45,8 +46,13 @@ from .parser import (
 #: vez de inventar un número: un agente honesto vale más que uno preciso y falso.
 try:
     VERSION = _version_instalada("mcp-pjud")
+    #: La misma descripción que declara el paquete. El servidor MCP la publica en
+    #: `server/discover`, y escribirla a mano ahí sería una segunda copia del mismo texto que
+    #: alguien tendría que acordarse de cambiar en los dos lados.
+    DESCRIPCION = _metadata_instalada("mcp-pjud")["Summary"]
 except PackageNotFoundError:  # pragma: no cover - sólo fuera de una instalación
     VERSION = "desconocida"
+    DESCRIPCION = ""
 
 BASE = "https://oficinajudicialvirtual.pjud.cl"
 PORTADA = "https://www.pjud.cl/"

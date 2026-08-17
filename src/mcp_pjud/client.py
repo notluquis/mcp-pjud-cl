@@ -473,6 +473,12 @@ class PjudClient(Transporte):
         Comparte las tres búsquedas que lo exigen (nombre, RUT de persona jurídica y fecha),
         porque el requisito es de la competencia y no de la búsqueda: se midió el mismo aviso,
         "Por favor seleccione una Corte para la búsqueda", en las tres de apelaciones.
+
+        `buscar_por_rit` NO llama acá, y es a propósito, no un olvido: la búsqueda por rol es
+        la única que la plataforma acepta sin acotar en ninguna competencia. Medido con
+        `conCorte=0`, suprema devolvió su causa y apelaciones devolvió 31. Agregar la llamada
+        "por consistencia" rompería las dos: pasarían a exigir un dato que ahí no hace falta,
+        y el rechazo saldría de este cliente sin que la plataforma se entere.
         """
         exige = COMPETENCIAS[modulo].acota_por
         if exige == "tribunal" and tribunal is None:

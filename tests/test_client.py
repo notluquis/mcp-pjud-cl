@@ -869,3 +869,52 @@ def test_toda_competencia_declara_con_que_acotar():
         assert spec.acota_por in {"tribunal", "corte", None}, (
             f"{nombre} declara acotarse por {spec.acota_por!r}, que `_acotacion` ignora en silencio"
         )
+
+
+def test_la_busqueda_por_nombre_manda_su_propio_radio_y_los_campos_del_formulario(monkeypatch):
+    """El único payload con guardia era el de rol, y el hueco que rompió suprema fue un campo
+    de formulario que ningún test miraba.
+
+    `radio-group` viaja acá con "N" y en la búsqueda por rol con "1": son formularios distintos
+    con dominios de valores distintos, y no una inconsistencia. Sin este guardia, cambiar
+    cualquiera de los dos deja la otra búsqueda muda y verde.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+    c.buscar_por_nombre(
+        apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia="suprema"
+    )
+    (formulario,) = enviados
+    assert formulario["radio-group"] == "N", (
+        "el formulario de nombre usa 'N', no el '1' del de rol: son dominios distintos"
+    )
+    assert formulario["nomApePaterno"] == "GONZALEZ"
+    assert formulario["nomApeMaterno"] == "PEREZ"
+    assert formulario["nomCompetencia"] == "1", "suprema es la competencia 1"
+
+
+def test_la_busqueda_por_rol_no_exige_acotar_en_ninguna_competencia(monkeypatch):
+    """Es la única de las cuatro que la plataforma acepta sin corte ni tribunal.
+
+    Medido con `conCorte=0`: suprema devolvió su causa y apelaciones devolvió 31. Por eso
+    `buscar_por_rit` no llama a `_acotacion`, y por eso este guardia existe: agregar la llamada
+    "por consistencia" haría que este cliente rechace por su cuenta consultas que sí funcionan.
+
+    Se comprueba que la petición SALGA, no que devuelva algo: lo que se está midiendo es que el
+    cliente no rechace antes de consultar. Con un doble que falla ante cualquier petición, este
+    test se caería justo cuando el código es correcto.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    for competencia in COMPETENCIAS:
+        c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+        try:
+            c.buscar_por_rit("C", 1156, 2026, competencia=competencia, paginas=None)
+        except ValueError as e:
+            assert "exige tribunal" not in str(e) and "exige corte" not in str(e), (
+                f"la búsqueda por rol en {competencia} no debe exigir acotación: {e}"
+            )
+        except EstructuraInesperada:
+            # La fila sintética no calza con todas las competencias, y da lo mismo: la
+            # pregunta es si la petición salió.
+            pass
+        assert enviados, f"en {competencia} la búsqueda por rol se rechazó antes de consultar"

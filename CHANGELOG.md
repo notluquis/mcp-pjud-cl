@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.2.0] - 2026-08-17
+
+Primera versión publicada. La `0.1.0` de abajo quedó documentada pero nunca llegó a tener
+etiqueta, así que su enlace apuntaba a una publicación que no existía: ahora apunta al commit.
+
 ### Agregado
 
 - Búsqueda de causas en **Corte Suprema** y **Cortes de Apelaciones**, con sus cuatro
@@ -382,5 +387,6 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.1.0
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.0
+[0.1.0]: https://github.com/notluquis/mcp-pjud-cl/commit/506b5b7

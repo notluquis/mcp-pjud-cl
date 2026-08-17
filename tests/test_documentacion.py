@@ -862,3 +862,22 @@ def test_cada_cuadro_de_ejemplos_trae_las_filas_que_su_prosa_anuncia():
     assert len(filas) == numeros[citas.group(1)], (
         f"la prosa dice {citas.group(1)} citas y el cuadro trae {len(filas)} filas"
     )
+
+
+def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
+    """El registro de cambios y `pyproject.toml` se editan por separado, y ahí se separan.
+
+    Ya pasó: la versión `0.1.0` quedó escrita en el registro con su enlace a
+    `releases/tag/v0.1.0`, y esa etiqueta nunca se creó. El enlace estuvo muerto desde que se
+    escribió y nada lo notó, porque nada comparaba una cosa con la otra.
+
+    Subir la versión sin anotarla, o anotarla sin subirla, deja el paquete diciendo que es una
+    versión y su registro diciendo que es otra. Quien instale desde el índice ve la primera.
+    """
+    version = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["version"]
+    publicadas = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", _texto(RAIZ / "CHANGELOG.md"), re.M)
+    assert publicadas, "el registro de cambios no declara ninguna versión publicada"
+    assert publicadas[0] == version, (
+        f"`pyproject.toml` dice {version} y la última anotada en el registro es "
+        f"{publicadas[0]}. Las versiones se anotan al publicarlas, no después."
+    )

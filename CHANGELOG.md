@@ -31,7 +31,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Pruebas basadas en propiedades con Hypothesis sobre el parser de fechas. La invariante
   central es que nunca devuelva una fecha que no venga en la entrada: una fecha de diligencia
   inventada se computa como plazo, y eso es peor que no devolver ninguna.
-- CodeQL, OpenSSF Scorecard y revisión de dependencias en pull requests.
+- OpenSSF Scorecard y revisión de dependencias en pull requests. CodeQL queda en el modo
+  gestionado por GitHub, que ya estaba activo: una configuración avanzada en workflow no
+  puede coexistir con él.
 - Período de enfriamiento en Dependabot: una versión recién publicada ya no llega como pull
   request el mismo día, que es la ventana que aprovechan los ataques de cadena de suministro.
 - Publicación automática al empujar una etiqueta `v*`, con notas generadas e inventario de

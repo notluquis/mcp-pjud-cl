@@ -70,6 +70,7 @@ para-informatica
 
 herramientas
 cumplimiento
+licencia
 roadmap
 ```
 

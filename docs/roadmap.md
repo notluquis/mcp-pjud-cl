@@ -101,13 +101,21 @@ que también tiene actuaciones de ministro de fe, que es donde está el valor.
 
 ### 0.5: el resto del detalle de causa
 
-La brecha más barata de cerrar: son pestañas de la misma respuesta que el cliente ya pide, así
-que no cuestan peticiones nuevas. `webscrapthings` las cubre desde 2025 y un abogado las espera.
+`webscrapthings` cubre esto desde 2025 y un abogado lo espera. Se divide en dos, porque el
+costo no es el mismo:
 
-- `#Litigantes`: quiénes son parte y con qué calidad
-- `#Escritos`: los presentados, y cuáles siguen por resolver
-- `#Exhorto` y `detalleExhortos.php`: seguimiento de origen a destino
-- `causaOrigenCivil.php`
+**Sin peticiones nuevas.** Ya vienen en la respuesta del detalle que el cliente pide:
+
+- `litigantesCiv`: quiénes son parte y con qué calidad
+- `escritosCiv`: los presentados, y cuáles siguen por resolver
+- `notificacionesCiv`: con su propio estado y su propia fecha de trámite
+- `exhortosCiv` y `piezasExhortoCiv`: el exhorto visto desde el tribunal de origen
+
+**Una petición cada uno, con su intervalo.** Son modales que la plataforma carga aparte, y hay
+que contarlos en el tiempo total:
+
+- `modal/detalleExhortos.php`, que la fila del exhorto invoca con su propia referencia
+- `modal/causaOrigenCivil.php`
 
 ### 0.6: Programación de Sala
 
@@ -406,15 +414,19 @@ con Clave Única, o sea del lado autenticado.
 
 Es el que más pestañas cubre, y ahí está lo aprovechable:
 
-| Pestaña | Este proyecto |
+| Pestaña, con el selector que usa **su** código | Equivalente acá |
 |---|---|
-| `#Historia` | sí |
-| Selector de cuadernos | sí |
-| `#Litigantes` | **no** |
-| `#Notificaciones` | **no** |
-| `#Escritos` | **no** |
-| `#Exhorto` | **no** |
-| `#Diligencias` en laboral, con descarga de PDF | **no** |
+| `#Historia` | `historiaCiv`, cubierto |
+| Selector de cuadernos | cubierto |
+| `#Litigantes` | `litigantesCiv`, **no** |
+| `#Notificaciones` | `notificacionesCiv`, **no** |
+| `#Escritos` | `escritosCiv`, **no** |
+| `#Exhorto` | `exhortosCiv`, **no** |
+| `#Diligencias` en laboral, con descarga de PDF | sin equivalente, **no** |
+
+Los identificadores de la izquierda son los suyos y no calzan con los nuestros: operan sobre la
+vista autenticada con Clave Única, que tiene otro marcado. Los de la derecha son los que trae
+la consulta pública, verificados contra la respuesta real.
 
 Y un dato que acota la comparación: la palabra "receptor" no aparece ni una vez en sus 400 KB
 de scrapers. Cubre más pestañas, pero no la que a este proyecto le da sentido.
@@ -457,10 +469,13 @@ No es una lista de deseos: cada línea sale de leer la respuesta real, la fixtur
 del que ya lo hace. Se anota con los nombres exactos para que implementarlo no cueste
 re-descubrirlos.
 
-#### Las cuatro pestañas del detalle que ya llegan y se tiran
+#### Los paneles del detalle que ya llegan y se tiran
 
 Lo más barato que queda por hacer. El detalle de causa devuelve **una sola respuesta** que trae
 todos estos paneles, y hoy sólo se lee `historiaCiv`. Cubrirlos no cuesta ni una petición más.
+
+Conviene no confundirlos con los modales de la sección siguiente: aquéllos **sí** cuestan una
+petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
 
 | Panel | Columnas exactas |
 |---|---|

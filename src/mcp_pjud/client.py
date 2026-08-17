@@ -780,6 +780,39 @@ class PjudClient(Transporte):
             tipo, rol, anio, competencia, tribunal, corte, parse_historia
         )
 
+    @staticmethod
+    def _causa_pedida(causas: list[CausaEncontrada], tipo: str, rol: int, anio: int):
+        """Elige de la lista la causa que se pidió, o se detiene.
+
+        Tomar la primera parecía inofensivo mientras el número de rol identificara una causa.
+        En Cortes de Apelaciones NO la identifica: el mismo número y año existen en varios
+        libros a la vez, y una respuesta real trae `Exhorto-1504-2019`, `Civil-1504-2019` y
+        `Protección-1504-2019`, cada una con su propia referencia y su propia historia.
+
+        Devolver la primera entrega las actuaciones de OTRA causa como si fueran las pedidas.
+        Es peor que el falso negativo que este proyecto existe para evitar: una lista vacía se
+        nota, y una historia ajena viene con folios, fechas y trámites que se ven perfectamente
+        bien. Alguien computaría un plazo contra una causa que no es la suya.
+
+        Por eso, ante ambigüedad, se levanta y se dicen los roles encontrados en vez de elegir.
+        """
+        if len(causas) == 1:
+            return causas[0]
+
+        esperado = f"{tipo}-{rol}-{anio}".lstrip("-").lower()
+        exactas = [c for c in causas if (c.rol or "").strip().lower() == esperado]
+        if len(exactas) == 1:
+            return exactas[0]
+
+        encontrados = ", ".join(sorted((c.rol or "?") for c in causas))
+        raise ValueError(
+            f"La búsqueda devolvió {len(causas)} causas y ninguna corresponde sin ambigüedad a "
+            f"{esperado!r}: {encontrados}. En Cortes de Apelaciones el número de rol se repite "
+            "entre libros, así que hay que indicar el libro en `tipo` (por ejemplo "
+            "'Protección'). No se elige una: entregar la historia de otra causa se vería "
+            "perfectamente bien y llevaría a computar un plazo ajeno."
+        )
+
     def _recorrer_cuadernos(
         self,
         tipo: str,
@@ -804,7 +837,7 @@ class PjudClient(Transporte):
         if not causas:
             return []
 
-        html_ = self.detalle(causas[0].referencia, competencia)
+        html_ = self.detalle(self._causa_pedida(causas, tipo, rol, anio).referencia, competencia)
         cuadernos = parse_cuadernos(html_)
 
         # El detalle despliega la Historia de un solo cuaderno. Una causa con cuaderno

@@ -16,6 +16,21 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- **Se abría siempre la primera causa del listado, y en Cortes de Apelaciones eso entrega la
+  historia de otra.** El mismo número de rol y año existen en varios libros a la vez: una
+  respuesta real trae `Exhorto-1504-2019`, `Civil-1504-2019` y `Protección-1504-2019`, con
+  referencias y por lo tanto historias distintas.
+
+  Es peor que el falso negativo que este proyecto existe para evitar. Una lista vacía se nota;
+  una historia ajena viene con folios, fechas y trámites que se ven perfectamente bien, y
+  alguien computaría un plazo contra una causa que no es la suya. Ahora se filtra por el rol
+  pedido y, si queda ambiguo, se levanta diciendo qué libros se encontraron.
+
+  El dato de la ambigüedad ya estaba medido y con test propio desde que se mapeó apelaciones.
+  El error fue construir encima sin conectar las dos cosas.
+
 ### Agregado
 
 - **Herramienta `obtener_historia_causa`**: todas las actuaciones de la causa, no sólo las del

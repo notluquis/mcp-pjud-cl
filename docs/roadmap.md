@@ -82,8 +82,9 @@ por nombre y por RUT de persona jurídica. El recorrido levanta `ResultadosTrunc
 al tope en vez de devolver una lista recortada.
 
 Quedó decidido lo que estaba en duda: **no se encadenan las actuaciones de todas las causas de
-un listado**. Doce causas por cinco peticiones por cinco segundos son cinco minutos, y la
-respuesta correcta es devolver el listado para que el usuario elija cuál abrir.
+un listado**. Doce causas son unas sesenta peticiones, y bajo el régimen sostenido de una cada
+5 segundos eso son unos cinco minutos: la ráfaga alcanza para la primera causa y no cambia el
+total. La respuesta correcta es devolver el listado para que el usuario elija cuál abrir.
 
 ### 0.3: jurisprudencia — hecho parcialmente
 
@@ -326,10 +327,11 @@ No es pesimismo, es planificación:
   evitar el ingreso masivo de escritos (tales como el uso de un Captcha) **y la extracción
   masiva de datos**". Lo segundo nombra directamente a herramientas de esta clase.
 
-  Vale la pena decir en qué se distingue este proyecto de lo que esa frase describe: una
-  petición cada cinco segundos, una causa a la vez, sin persistencia y sin barrido. No es
-  extracción masiva por diseño, y el intervalo está verificado por un job de CI. Si aun así
-  la institución decide cerrar la consulta automatizada, la respuesta es acatar.
+  Vale la pena decir en qué se distingue este proyecto de lo que esa frase describe: un
+  régimen sostenido de una petición cada 5 segundos con una ráfaga acotada a 4, una causa a la
+  vez, sin persistencia y sin barrido. No es extracción masiva por diseño, y las dos
+  constantes del ritmo están verificadas por un job de CI. Si aun así la institución decide
+  cerrar la consulta automatizada, la respuesta es acatar.
 - **Puede publicarse la Política de IA del Poder Judicial.** Si define algo incompatible, este
   proyecto se ajusta o se retira.
 

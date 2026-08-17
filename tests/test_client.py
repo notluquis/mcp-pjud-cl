@@ -6,7 +6,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from mcp_pjud.client import INTERVALO_MINIMO, PjudBloqueado, PjudClient
+from mcp_pjud.client import (
+    INTERVALO_MINIMO,
+    RAFAGA_MAXIMA,
+    PjudBloqueado,
+    PjudClient,
+)
 from mcp_pjud.parser import EstructuraInesperada, parse_resultados
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -28,45 +33,103 @@ def test_no_se_puede_bajar_el_intervalo_minimo():
         PjudClient("test@example.cl", intervalo=0.1)
 
 
-def test_espera_entre_peticiones(monkeypatch):
-    reloj = [100.0]
+def _reloj(monkeypatch, dormido):
+    """Reloj falso que avanza sólo cuando el código duerme, para medir el ritmo real."""
+    ahora = [1000.0]
+    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: ahora[0])
+
+    def dormir(segundos):
+        dormido.append(segundos)
+        ahora[0] += segundos
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormir)
+    return ahora
+
+
+def test_la_rafaga_inicial_sale_sin_esperar(monkeypatch):
+    """Una consulta de actuaciones son cinco peticiones encadenadas para responder una sola
+    pregunta. Con intervalo plano tardaba veinticinco segundos."""
     dormido = []
-    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: reloj[0])
-    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
-
-    monkeypatch.setattr("mcp_pjud.client._ULTIMA", reloj[0] - 1.0)  # pasó 1 s
-
-    c = PjudClient("test@example.cl")
-    c._esperar()
-
-    assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)]
-
-
-def test_no_espera_si_ya_paso_el_intervalo(monkeypatch):
-    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
-    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: pytest.fail("no debía dormir"))
-    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - (INTERVALO_MINIMO + 1))
+    _reloj(monkeypatch, dormido)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", float(RAFAGA_MAXIMA))
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
 
     c = PjudClient("test@example.cl")
-    c._esperar()
+    for _ in range(RAFAGA_MAXIMA):
+        c._esperar()
+
+    assert dormido == [], f"la ráfaga de {RAFAGA_MAXIMA} no debía esperar"
 
 
-def test_un_cliente_nuevo_no_reinicia_el_semaforo(monkeypatch):
-    """`server.py` abre un cliente por llamada de herramienta.
+def test_agotada_la_rafaga_manda_el_intervalo(monkeypatch):
+    dormido = []
+    _reloj(monkeypatch, dormido)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", float(RAFAGA_MAXIMA))
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
 
-    Con un contador por instancia, cada herramienta empezaba con la marca en cero y su
-    primera petición salía sin esperar: dos herramientas seguidas golpeaban el portal sin
-    intervalo. El semáforo es del proceso.
+    c = PjudClient("test@example.cl")
+    for _ in range(RAFAGA_MAXIMA + 1):
+        c._esperar()
+
+    assert dormido == [pytest.approx(INTERVALO_MINIMO)], (
+        "la petición siguiente a la ráfaga tiene que esperar el intervalo completo"
+    )
+
+
+def test_la_rafaga_esta_acotada():
+    """El tope de la ráfaga es lo único que separa esto de no tener control de ritmo.
+
+    Los tests de abajo dimensionan sus bucles con esta constante, así que crecen con ella y
+    no pueden detectar que crezca: con una ráfaga de diez mil, todos siguen verdes y el
+    régimen sostenido deja de existir. Ese piso lo pone este test y nada más.
+
+    Cinco es el largo de la cadena más larga que hace el cliente, o sea alcanza para que una
+    pregunta se responda de una vez y no para barrer.
+    """
+    assert RAFAGA_MAXIMA <= 5, (
+        f"La ráfaga es de {RAFAGA_MAXIMA}. Por encima de la cadena más larga deja de ser "
+        "'responder una pregunta sin esperas' y pasa a ser un permiso para barrer."
+    )
+
+
+def test_el_ritmo_sostenido_no_supera_una_peticion_por_intervalo(monkeypatch):
+    """Lo que la cláusula CUARTA exige es el régimen, no la forma de las primeras.
+
+    Se mide sobre bastantes peticiones: la ráfaga se amortiza y lo que queda es la tasa.
     """
     dormido = []
-    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: 100.0)
-    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormido.append)
-    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 100.0 - 1.0)  # otro cliente acaba de consultar
+    ahora = _reloj(monkeypatch, dormido)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", float(RAFAGA_MAXIMA))
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
+    inicio = ahora[0]
+
+    c = PjudClient("test@example.cl")
+    peticiones = 40
+    for _ in range(peticiones):
+        c._esperar()
+        # El reloj de recarga se mueve al terminar cada petición, como hace `_req`.
+        monkeypatch.setattr("mcp_pjud.client._ULTIMA", ahora[0])
+
+    transcurrido = ahora[0] - inicio
+    minimo = (peticiones - RAFAGA_MAXIMA) * INTERVALO_MINIMO
+    assert transcurrido >= minimo, (
+        f"{peticiones} peticiones tomaron {transcurrido}s y el régimen exige al menos "
+        f"{minimo}s una vez agotada la ráfaga"
+    )
+
+
+def test_el_balde_no_se_recarga_al_abrir_un_cliente_nuevo(monkeypatch):
+    """`server.py` abre un cliente por llamada de herramienta. Si el balde fuera de la
+    instancia, cada herramienta llegaría con la ráfaga entera y el régimen no existiría."""
+    dormido = []
+    _reloj(monkeypatch, dormido)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", 0.0)
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
 
     PjudClient("test@example.cl")._esperar()  # cliente recién creado
 
-    assert dormido == [pytest.approx(INTERVALO_MINIMO - 1.0)], (
-        "un cliente nuevo debe respetar la última petición del proceso, no partir de cero"
+    assert dormido == [pytest.approx(INTERVALO_MINIMO)], (
+        "un cliente nuevo no puede llegar con fichas que el proceso ya gastó"
     )
 
 
@@ -156,10 +219,22 @@ def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):
         c.abrir_sesion()
 
 
-def test_competencia_no_verificada_se_rechaza():
+def test_competencia_que_no_existe_se_rechaza():
     c = PjudClient("test@example.cl")
-    with pytest.raises(ValueError, match="no implementada"):
+    with pytest.raises(ValueError, match="no existe"):
         c._modulo("familia")
+
+
+def test_competencia_que_existe_pero_no_se_verifico_se_rechaza():
+    """Saber leer una competencia y haberla probado son cosas distintas.
+
+    `parser.COMPETENCIAS` sabe leer las seis; `MODULOS` dice cuáles se midieron. Exponer la
+    primera lista como si fuera la segunda es adivinar, y una consulta mal armada devuelve
+    vacío, que se lee como que la causa no existe.
+    """
+    c = PjudClient("test@example.cl")
+    with pytest.raises(ValueError, match="no verificada"):
+        c._modulo("penal")
 
 
 def test_toda_peticion_queda_en_bitacora(monkeypatch):
@@ -551,3 +626,68 @@ def test_una_busqueda_sin_coincidencias_devuelve_vacio_y_no_levanta(monkeypatch)
     )
     c = _cliente_con([vacia])
     assert c.buscar_por_rit("C", 999999, 1990) == []
+
+
+# -- competencias: buscable no es lo mismo que legible --------------------------
+
+
+def test_pedir_actuaciones_de_una_competencia_sin_receptor_no_gasta_peticiones():
+    """En todo el sitio sólo existen `receptorCivil` y `receptorCobranza`.
+
+    Laboral es buscable y no tiene ministro de fe, así que la pregunta no tiene respuesta
+    ahí. Sin este rechazo se gastaban dos peticiones y diez segundos contra la plataforma
+    para terminar culpándola de un cambio de estructura que nunca hubo.
+    """
+    c = _sin_red()
+    with pytest.raises(ValueError, match="no expone actuaciones"):
+        c.actuaciones_receptor("O", 1583, 2018, competencia="laboral")
+
+
+def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticiones():
+    """Cobranza sí tiene receptor y su panel `historiaCob` existe, pero sus columnas son
+    otras: trae `Estado Firma` y no trae `Foja` ni `Georref.`. Leerla con el mapa de civil
+    daría filas mal alineadas."""
+    c = _sin_red()
+    with pytest.raises(ValueError, match="No está verificado"):
+        c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
+
+
+def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
+    """El reloj de recarga arranca cuando la petición termina, no cuando empieza.
+
+    Si contara desde antes, una petición que estuvo un minuto colgada devolvería el balde
+    lleno, o sea el portal recibiría una ráfaga justo cuando peor está. Es la razón por la que
+    `_req` estampa la marca en `finally` y no antes de salir a la red.
+
+    Se mide en la petición SIGUIENTE y no en las fichas de esta: la recarga se calcula al
+    entrar a `_esperar`, así que mirar el balde justo después de `_req` no distingue una
+    implementación de la otra. La primera versión de este test hacía eso y pasaba con la marca
+    puesta antes o después.
+    """
+    ahora = [1000.0]
+    dormido = []
+    monkeypatch.setattr("mcp_pjud.client.time.monotonic", lambda: ahora[0])
+
+    def dormir(s):
+        dormido.append(s)
+        ahora[0] += s
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", dormir)
+    monkeypatch.setattr("mcp_pjud.client._FICHAS", 1.0)  # justo una, sin ráfaga de sobra
+    monkeypatch.setattr("mcp_pjud.client._ULTIMA", 1000.0)
+
+    def transporte(req):
+        ahora[0] += 60.0  # la plataforma tardó un minuto en responder
+        return httpx.Response(200, text="ok")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/a")
+    assert dormido == [], "con una ficha en el balde la primera no debía esperar"
+
+    c._req("GET", "https://oficinajudicialvirtual.pjud.cl/b")
+    assert dormido == [pytest.approx(INTERVALO_MINIMO)], (
+        "la segunda tiene que esperar el intervalo completo: el minuto que la primera estuvo "
+        f"colgada no se convierte en fichas. Esperas observadas: {dormido}"
+    )

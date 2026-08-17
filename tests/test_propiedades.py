@@ -16,6 +16,14 @@ from hypothesis import strategies as st
 
 from mcp_pjud.parser import actuaciones_receptor, parse_historia
 
+#: Sin plazo por ejemplo. Estas propiedades parsean HTML con lxml, y el plazo de 200 ms que
+#: Hypothesis trae por defecto mide el reloj de la máquina y no la propiedad: en una corrida
+#: con la máquina cargada uno de los ejemplos lo excedió, se reportó como propiedad
+#: falsificada, y el caso guardado pasaba al reproducirlo. Un test que falla según la carga
+#: enseña a desconfiar de la suite, que es peor que no tenerlo.
+settings.register_profile("sin_plazo", deadline=None)
+settings.load_profile("sin_plazo")
+
 # Fechas dentro del rango que la plataforma puede devolver.
 fechas = st.dates(min_value=date(1990, 1, 1), max_value=date(2099, 12, 31))
 horas = st.times().map(lambda t: t.replace(second=0, microsecond=0))

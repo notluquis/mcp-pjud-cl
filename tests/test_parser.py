@@ -11,10 +11,12 @@ from pathlib import Path
 import pytest
 
 from mcp_pjud.parser import (
+    COMPETENCIAS,
     EstructuraInesperada,
     actuaciones_receptor,
     parse_cuadernos,
     parse_historia,
+    parse_resultados,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -254,3 +256,100 @@ def test_tabla_con_encabezados_y_cero_filas_levanta_excepcion():
     """
     with pytest.raises(EstructuraInesperada, match="ninguna fila"):
         parse_historia(_historia(""))
+
+
+# -- el listado, para las competencias que no son civil --------------------------
+
+
+def test_una_fila_a_la_que_le_faltan_columnas_se_levanta():
+    """Aceptarla rellenando con vacío haría pasar por causa sin tribunal lo que en realidad
+    es un dato faltante: un cambio de estructura disfrazado de dato."""
+    fila = "<tr><td><a onclick=\"detalleCausaLaboral('ref-1')\">ver</a></td><td>O-1-2018</td></tr>"
+    with pytest.raises(EstructuraInesperada, match="celdas"):
+        parse_resultados(fila, "laboral")
+
+
+def test_una_fila_con_control_ilegible_se_levanta():
+    """Saltarla en silencio pierde una causa dentro de un listado que devuelve las demás, y
+    eso es peor que no devolver nada: la lista parece completa."""
+    fila = '<tr><td><a onclick="detalleCausaCivil(variable)">ver</a></td><td>C-1-2026</td></tr>'
+    with pytest.raises(EstructuraInesperada, match="no se puede leer"):
+        parse_resultados(fila, "civil")
+
+
+def test_leer_la_historia_de_una_competencia_sin_panel_verificado_se_levanta():
+    """El guardia existía y era inalcanzable: `actuaciones_receptor` no reenviaba la
+    competencia, así que el parser siempre miraba `historiaCiv`."""
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        actuaciones_receptor("<html></html>", "", "cobranza")
+
+
+def test_las_columnas_de_cada_competencia_son_las_que_declara_el_sitio():
+    """La tabla salió de los encabezados que `consultaUnificada.php` arma por competencia.
+
+    Se fija acá para que reordenar un mapa sin medir contra el sitio se note: son índices, y
+    un índice corrido devuelve el tribunal en el campo del caratulado sin que nada reviente.
+    """
+    assert COMPETENCIAS["laboral"].columnas == {
+        "rol": 1,
+        "tribunal": 2,
+        "caratulado": 3,
+        "fecha_ingreso": 4,
+        "estado": 5,
+    }
+    assert COMPETENCIAS["cobranza"].columnas == {
+        "rol": 1,
+        "ruc": 2,
+        "tribunal": 3,
+        "caratulado": 4,
+        "fecha_ingreso": 5,
+        "estado": 6,
+    }
+    # Sólo estas dos exponen ministro de fe en todo el sitio.
+    assert {k for k, v in COMPETENCIAS.items() if v.receptor} == {"civil", "cobranza"}
+
+
+# -- los índices de columna, contra respuestas reales -----------------------------
+#
+# La tabla de `COMPETENCIAS` salió del JavaScript del sitio, o sea era una hipótesis. Estas
+# fixtures son listados reales anonimizados: sin ellas, "verificado el 17 de agosto" es una
+# afirmación que CI no puede desmentir, y si mañana la plataforma reordena una columna nada
+# en el repositorio se entera.
+
+LABORAL = (FIXTURES / "busqueda_rit_laboral.html").read_text(encoding="utf-8")
+COBRANZA = (FIXTURES / "busqueda_rit_cobranza.html").read_text(encoding="utf-8")
+
+
+def test_el_listado_laboral_se_lee_con_los_indices_declarados():
+    (causa,) = parse_resultados(LABORAL, "laboral")
+    assert causa.rol == "O-9999-2018"
+    assert causa.tribunal.startswith("Juzgado de Letras del Trabajo")
+    assert causa.caratulado.startswith("APELLIDO FICTICIO")
+    assert causa.fecha_ingreso == "17/10/2018"
+    assert causa.estado == "Cumplimiento"
+    assert causa.competencia == "laboral"
+    # Laboral no publica RUC: es la diferencia con cobranza y penal.
+    assert causa.ruc is None
+
+
+def test_el_listado_de_cobranza_trae_ruc_y_lo_pone_donde_corresponde():
+    """Cobranza intercala el RUC entre el rol y el tribunal. Un índice corrido devolvería el
+    RUC en el campo del tribunal sin que nada reviente."""
+    (causa,) = parse_resultados(COBRANZA, "cobranza")
+    assert causa.rol == "C-9999-2019"
+    assert causa.ruc == "00- 0-0000000-0"
+    assert causa.tribunal.startswith("Jdo. de Letras del Trabajo")
+    assert causa.caratulado.startswith("APELLIDO FICTICIO")
+    assert causa.estado == "Concluido"
+
+
+def test_leer_un_listado_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():
+    """El modo de falla que importa: cobranza tiene una columna más que laboral, así que
+    leerlo con el mapa equivocado corre todos los campos un lugar."""
+    con_mapa_ajeno = parse_resultados(COBRANZA, "laboral")[0]
+    assert con_mapa_ajeno.tribunal != parse_resultados(COBRANZA, "cobranza")[0].tribunal, (
+        "los mapas tienen que producir lecturas distintas, o el test no prueba nada"
+    )
+    # Y al revés no alcanza: laboral tiene menos celdas de las que cobranza declara.
+    with pytest.raises(EstructuraInesperada, match="celdas"):
+        parse_resultados(LABORAL, "cobranza")

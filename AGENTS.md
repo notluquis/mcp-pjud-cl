@@ -15,10 +15,18 @@ terminó con una IP bloqueada y una solicitud de informe sobre responsabilidades
 y penales. La distinción entre **leer** e **ingresar** es la razón por la que este proyecto
 puede existir.
 
-**2. El intervalo mínimo entre peticiones no baja de 5 segundos.** `INTERVALO_MINIMO` en
-`src/mcp_pjud/client.py` implementa la cláusula CUARTA de las condiciones de uso de la
-plataforma, que prohíbe sobrecargarla. No es una constante de rendimiento. El constructor
-rechaza valores menores y hay un job de CI que verifica que la constante no cambió.
+**2. El ritmo de las consultas no se relaja.** Régimen sostenido de una petición cada 5
+segundos, con una ráfaga máxima de 4. `INTERVALO_MINIMO` y `RAFAGA_MAXIMA` en
+`src/mcp_pjud/client.py` implementan juntos la cláusula CUARTA de las condiciones de uso, que
+prohíbe sobrecargar la plataforma. No son constantes de rendimiento. El constructor rechaza
+intervalos menores y hay un job de CI que verifica las dos, porque subir la ráfaga vacía la
+garantía sin tocar el número que todos miran.
+
+La ráfaga existe porque la sobrecarga es una propiedad del régimen: al portal le importa
+cuántas peticiones recibe, no cómo se reparten dentro de un minuto. Una consulta de
+actuaciones son cinco peticiones encadenadas para responder una sola pregunta, y con un
+intervalo plano tardaba veinticinco segundos. El tope de 4 la acota a esa cadena: alcanza para
+responder de una vez, no para barrer.
 
 **3. Ante 403, 429 o captcha: detención total.** Sin reintento, sin rotación de IP, sin
 evasión, sin impersonación de fingerprint TLS. Si el sistema bloquea, la respuesta correcta es

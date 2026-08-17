@@ -13,7 +13,13 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from .client import COMPETENCIAS, INTERVALO_MINIMO, PAGINAS_MAXIMAS, PjudClient
+from .client import (
+    INTERVALO_MINIMO,
+    MODULOS,
+    PAGINAS_MAXIMAS,
+    RAFAGA_MAXIMA,
+    PjudClient,
+)
 from .juris import (
     FECHA_MEDICION,
     FILAS_MAXIMAS,
@@ -63,8 +69,9 @@ Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o
 fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
 como verificada si la búsqueda no la devolvió.
 
-Cada petición a la plataforma respeta un intervalo mínimo de {INTERVALO_MINIMO:.0f} segundos,
-que implementa la prohibición de sobrecargarla. Una consulta de actuaciones son
+Las consultas van a ritmo controlado: hasta {RAFAGA_MAXIMA} peticiones seguidas y después
+una cada {INTERVALO_MINIMO:.0f} segundos, que implementa la prohibición de sobrecargar la
+plataforma. Una consulta de actuaciones son
 varias peticiones encadenadas, así que tarda. No es un error ni algo que convenga paralelizar.
 
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
@@ -100,7 +107,13 @@ def _cliente() -> PjudClient:
 Tipo = Annotated[str, Field(description="Letra del rol. En civil: C, V, E, A, F o I.")]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
 Anio = Annotated[int, Field(description="Año del rol, cuatro dígitos.", ge=1900, le=2100)]
-Competencia = Annotated[str, Field(description=f"Una de: {', '.join(sorted(COMPETENCIAS))}.")]
+#: Lo que el modelo ve. Son las verificadas y no las que existen: anunciar una que el
+#: cliente rechaza hace que el modelo la intente, reciba un error y se lo atribuya a la
+#: plataforma.
+Competencia = Annotated[
+    str,
+    Field(description=f"Una de: {', '.join(sorted(MODULOS))}."),
+]
 Tribunal = Annotated[
     int | None, Field(description="Código del tribunal. Omitir para buscar en todos.")
 ]

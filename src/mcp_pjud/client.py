@@ -18,6 +18,7 @@ import time
 import httpx
 
 from .parser import (
+    COMPETENCIAS,
     Actuacion,
     CausaEncontrada,
     EstructuraInesperada,
@@ -38,12 +39,48 @@ PORTADA = "https://www.pjud.cl/"
 #: público a la consulta de causas. No requiere Clave Única.
 ENTRADA = f"{BASE}/includes/sesion-consultaunificada.php"
 
+#: Intervalo sostenido: a la larga no sale más de una petición cada 5 segundos. Es la
+#: cláusula CUARTA implementada en código, no una constante de rendimiento.
 INTERVALO_MINIMO = 5.0
 
-#: El semáforo es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en
-#: cada llamada de herramienta, así que un contador por instancia se reinicia solo y deja
-#: pasar la primera petición de cada llamada sin esperar: dos herramientas seguidas
-#: golpean el portal sin intervalo. La cláusula CUARTA habla del portal, no del objeto.
+#: Cuántas peticiones pueden salir juntas antes de que el ritmo sostenido empiece a mandar.
+#:
+#: Existe porque el ritmo se le debe al portal, y al portal le da lo mismo cómo se reparten
+#: las peticiones dentro de un minuto: le importa cuántas recibe. Una consulta de actuaciones
+#: son cinco peticiones encadenadas, y con un intervalo plano tardaba veinticinco segundos
+#: para responder una sola pregunta.
+#:
+#: Hay que decir qué se cambió, porque contradice una decisión anterior de este mismo
+#: proyecto: se habían descartado las librerías de control de ritmo justo por implementar un
+#: balde de fichas que permite ráfagas. Lo que cambió no es la opinión sobre la librería sino
+#: la especificación: antes era "al menos 5 segundos entre peticiones consecutivas" y ahora
+#: es "a lo más una cada 5 segundos en régimen, con una ráfaga acotada al principio". El
+#: promedio sostenido es el mismo; lo que se permite es que las primeras salgan juntas.
+RAFAGA_MAXIMA = 4
+
+#: Cuánto se espera una respuesta antes de darla por perdida.
+#:
+#: Medido, y por eso es tan alto: una búsqueda del buscador de fallos por rol y año tardó
+#: 47,8 segundos en devolver el primer byte, contra 4,3 segundos que tarda la página del
+#: mismo host. Es una consulta Solr con facetas sobre más de un millón de documentos, así que
+#: la lentitud es del trabajo y no de la red.
+#:
+#: Con los 30 segundos que había antes, cuatro de cada cinco búsquedas morían por timeout y
+#: eso se leía como "la plataforma está caída". Cortar antes de tiempo no protege a nadie: el
+#: servidor igual hizo el trabajo, y quien consulta se queda sin el dato y con un diagnóstico
+#: equivocado.
+#:
+#: Lo que cuesta: `_req` sostiene el turno durante toda la petición, así que una colgada frena
+#: al resto del proceso hasta noventa segundos. Se acepta a cambio de no soltar el turno antes
+#: de clasificar la respuesta, que es lo que permitía a una segunda llamada consultar después
+#: de que la primera ya recibió un bloqueo.
+ESPERA_MAXIMA = 90.0
+
+#: El balde es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en cada
+#: llamada de herramienta, así que un contador por instancia se reinicia solo y deja pasar la
+#: primera petición de cada llamada sin esperar. La cláusula CUARTA habla del portal, no del
+#: objeto.
+_FICHAS = float(RAFAGA_MAXIMA)
 _ULTIMA = 0.0
 _TURNO = threading.Lock()
 
@@ -60,15 +97,6 @@ _TURNO = threading.Lock()
 #: evitar. Ante la duda, la respuesta correcta es parar y avisar.
 _BLOQUEADO: str | None = None
 
-COMPETENCIAS = {
-    "suprema": 1,
-    "apelaciones": 2,
-    "civil": 3,
-    "laboral": 4,
-    "penal": 5,
-    "cobranza": 6,
-    "familia": 7,
-}
 
 #: Cuántas páginas de resultados se recorren como máximo. La plataforma devuelve 100 por
 #: página, así que el valor por defecto cubre mil causas: más que cualquier consulta
@@ -79,9 +107,20 @@ COMPETENCIAS = {
 #: silencio, que se leería como "no hay más".
 PAGINAS_MAXIMAS = 10
 
-#: Rutas verificadas. Las demás competencias existen en el sitio pero no están probadas
-#: acá, así que se rechazan en vez de adivinar.
-MODULOS = {"civil": "civil"}
+#: Competencias cuyas búsquedas están verificadas contra el sistema real. La tabla de cómo
+#: leer sus resultados vive en `parser.COMPETENCIAS`; ésta dice cuáles se exponen.
+#:
+#: Están separadas a propósito: saber leer una competencia y haberla probado son cosas
+#: distintas, y exponer la primera como si fuera la segunda es adivinar.
+#: Verificado el 17 de agosto de 2026 buscando una causa real de cada una y comprobando que
+#: las columnas del listado calzan con lo que `parser.COMPETENCIAS` declara.
+#:
+#: Las tres que faltan se midieron y fallaron, y por eso no están:
+#:   - `penal` devuelve un listado que el parser no reconoce, probablemente porque su tipo de
+#:     causa es una palabra (`Ordinaria`) y no una letra.
+#:   - `apelaciones` y `suprema` responden "Por favor ingrese sólo números para el Tipo de
+#:     Búsqueda": esperan un código numérico de libro donde las otras llevan letra.
+MODULOS: set[str] = {"civil", "laboral", "cobranza"}
 
 
 class ResultadosTruncados(Exception):
@@ -130,7 +169,7 @@ class Transporte:
                 "Accept-Language": "es-CL,es;q=0.9",
             },
             follow_redirects=True,
-            timeout=30.0,
+            timeout=ESPERA_MAXIMA,
         )
         self.bitacora: list[tuple[float, str, int]] = []
 
@@ -148,9 +187,20 @@ class Transporte:
         return None
 
     def _esperar(self) -> None:
-        pendiente = self.intervalo - (time.monotonic() - _ULTIMA)
-        if pendiente > 0:
-            time.sleep(pendiente)
+        """Toma una ficha del balde, esperando si no hay.
+
+        El balde se recarga a razón de una ficha por intervalo, y el reloj de recarga sólo
+        corre entre peticiones: el tiempo que la plataforma tarda en responder no cuenta como
+        espera. Así el régimen sostenido queda igual de conservador que el intervalo plano
+        anterior, que medía desde el fin de una petición hasta el inicio de la siguiente.
+        """
+        global _FICHAS, _ULTIMA
+        _FICHAS = min(RAFAGA_MAXIMA, _FICHAS + (time.monotonic() - _ULTIMA) / self.intervalo)
+        if _FICHAS < 1.0:
+            time.sleep((1.0 - _FICHAS) * self.intervalo)
+            _FICHAS = 0.0
+        else:
+            _FICHAS -= 1.0
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
         global _ULTIMA, _BLOQUEADO
@@ -166,8 +216,9 @@ class Transporte:
             try:
                 r = self._http.request(metodo, url, **kw)
             finally:
-                # Un timeout que no estampara dejaría al siguiente salir sin esperar,
-                # justo cuando el portal está peor.
+                # El reloj de recarga arranca cuando la petición termina, no cuando empieza.
+                # Un timeout que no lo moviera regalaría fichas por el tiempo que estuvo
+                # colgado, justo cuando el portal está peor.
                 _ULTIMA = time.monotonic()
             self.bitacora.append((time.time(), url, r.status_code))
 
@@ -211,7 +262,9 @@ class PjudClient(Transporte):
         aviso = leer_aviso(r.text)
         return aviso if aviso and es_aviso_de_captcha(aviso) else None
 
-    def _primera_pagina(self, ruta: str, data: dict[str, str]) -> list[CausaEncontrada]:
+    def _primera_pagina(
+        self, ruta: str, data: dict[str, str], competencia: str
+    ) -> list[CausaEncontrada]:
         """Una sola página, sin comprobar completitud.
 
         Para quien sólo necesita el primer resultado, como el flujo de actuaciones de
@@ -219,9 +272,11 @@ class PjudClient(Transporte):
         lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
         no detectarla.
         """
-        return parse_resultados(self._ajax(ruta, data))
+        return parse_resultados(self._ajax(ruta, data), competencia)
 
-    def _paginado(self, ruta: str, data: dict[str, str], paginas: int) -> list[CausaEncontrada]:
+    def _paginado(
+        self, ruta: str, data: dict[str, str], paginas: int, competencia: str
+    ) -> list[CausaEncontrada]:
         """Recorre las páginas de un listado hasta agotarlo o hasta el tope.
 
         La plataforma pagina con un identificador opaco, no con un número: el control de
@@ -250,7 +305,7 @@ class PjudClient(Transporte):
                 # coincidencias no es un cambio de estructura.
                 return acumuladas
 
-            acumuladas.extend(parse_resultados(html_))
+            acumuladas.extend(parse_resultados(html_, competencia))
 
             if numero == 1:
                 total = total_declarado(html_)
@@ -352,13 +407,20 @@ class PjudClient(Transporte):
     # -- consultas --------------------------------------------------------------
 
     def _modulo(self, competencia: str) -> str:
-        try:
-            return MODULOS[competencia.lower()]
-        except KeyError:
+        nombre = competencia.lower()
+        if nombre not in COMPETENCIAS:
             raise ValueError(
-                f"Competencia {competencia!r} no implementada. Verificadas: "
-                f"{', '.join(sorted(MODULOS))}."
-            ) from None
+                f"Competencia {competencia!r} no existe en la plataforma. Son: "
+                f"{', '.join(sorted(COMPETENCIAS))}."
+            )
+        if nombre not in MODULOS:
+            raise ValueError(
+                f"Competencia {competencia!r} no verificada contra el sistema real. "
+                f"Verificadas: {', '.join(sorted(MODULOS))}. Se rechaza en vez de adivinar "
+                "sus parámetros, porque una consulta mal armada devuelve vacío y eso se lee "
+                "como que la causa no existe."
+            )
+        return nombre
 
     def buscar_por_rit(
         self,
@@ -386,14 +448,14 @@ class PjudClient(Transporte):
             "conTipoCausa": tipo.upper(),
             "conRolCausa": str(rol),
             "conEraCausa": str(anio),
-            "conCompetencia": str(COMPETENCIAS[competencia.lower()]),
+            "conCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
             "conCorte": str(corte or 0),
             "conTribunal": str(tribunal or 0),
             "conCaratulado": "",
         }
         if paginas is None:
-            return self._primera_pagina(ruta, campos)
-        return self._paginado(ruta, campos, paginas)
+            return self._primera_pagina(ruta, campos, competencia)
+        return self._paginado(ruta, campos, paginas, competencia)
 
     # -- búsquedas ---------------------------------------------------------------
     #
@@ -444,11 +506,12 @@ class PjudClient(Transporte):
                 "nomEra": str(anio) if anio else "",
                 "nomNombreJur": "",
                 "nomEraJur": "",
-                "nomCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "nomCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
                 "nomTribunal": str(tribunal),
                 "corteNom": str(corte or 0),
             },
             paginas,
+            competencia,
         )
 
     def buscar_por_rut_juridica(
@@ -477,11 +540,12 @@ class PjudClient(Transporte):
                 "rutJur": str(rut),
                 "dvJur": str(digito_verificador).upper(),
                 "eraJur": str(anio) if anio else "",
-                "jurCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "jurCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
                 "jurTribunal": str(tribunal),
                 "corteJur": str(corte or 0),
             },
             paginas,
+            competencia,
         )
 
     def buscar_por_fecha(
@@ -508,11 +572,12 @@ class PjudClient(Transporte):
             {
                 "fecDesde": desde,
                 "fecHasta": hasta,
-                "fecCompetencia": str(COMPETENCIAS[competencia.lower()]),
+                "fecCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
                 "fecTribunal": str(tribunal),
                 "corteFec": str(corte or 0),
             },
             paginas,
+            competencia,
         )
 
     def detalle(self, referencia: str, competencia: str = "civil") -> str:
@@ -538,6 +603,24 @@ class PjudClient(Transporte):
         La Oficina Judicial Virtual no direcciona el detalle por rol, así que hay que
         buscar primero para obtener la referencia opaca de la causa.
         """
+        # Antes de gastar una sola petición. `MODULOS` dice que la BÚSQUEDA está verificada,
+        # que no es lo mismo que poder leer la historia: sin esto, pedir actuaciones de una
+        # competencia buscable pero sin panel mapeado gastaba dos peticiones y diez segundos
+        # contra la plataforma para terminar culpándola de un cambio que nunca hubo.
+        spec = COMPETENCIAS[self._modulo(competencia)]
+        if not spec.receptor:
+            raise ValueError(
+                f"La competencia {competencia!r} no expone actuaciones de ministro de fe: en "
+                "todo el sitio sólo existen `receptorCivil` y `receptorCobranza`. La pregunta "
+                "no tiene respuesta ahí, y devolver una lista vacía se leería como que no "
+                "hubo actuaciones."
+            )
+        if spec.panel is None:
+            raise ValueError(
+                f"No está verificado cómo se lee la historia de {competencia!r}. Se rechaza "
+                "antes de consultar en vez de leerla con el mapa de otra competencia, que "
+                "devolvería filas mal alineadas o una lista vacía."
+            )
         # `paginas=1` a propósito: de todo el listado sólo se usa la primera causa, así que
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
         # contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
@@ -555,10 +638,10 @@ class PjudClient(Transporte):
         # aparentemente completa a la que le faltan justo las diligencias del apremio.
         if len(cuadernos) <= 1:
             nombre = cuadernos[0].nombre if cuadernos else ""
-            return actuaciones_receptor(html_, nombre)
+            return actuaciones_receptor(html_, nombre, competencia)
 
         actuaciones = []
         for cuaderno in cuadernos:
             pagina = self.detalle(cuaderno.referencia, competencia)
-            actuaciones.extend(actuaciones_receptor(pagina, cuaderno.nombre))
+            actuaciones.extend(actuaciones_receptor(pagina, cuaderno.nombre, competencia))
         return actuaciones

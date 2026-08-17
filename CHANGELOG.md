@@ -18,6 +18,28 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Búsquedas en **laboral** y **cobranza**, verificadas contra el sistema real y con fixtures
+  propias. Cobranza publica RUC, que civil no tiene; laboral publica estado de causa.
+
+  Las seis competencias comparten formulario, nombres de campo y una ruta regular: lo único
+  que difiere es qué columnas trae el listado. Por eso hay una tabla de datos
+  (`parser.COMPETENCIAS`) y no seis parsers, y `parse_resultados` y `parse_historia` reciben la
+  competencia. Duplicar el recorrido de filas para cambiar dos índices es la forma más segura
+  de que uno de los seis se quede atrás cuando la plataforma cambie.
+
+  Las otras tres se midieron y quedaron fuera con su error anotado: `penal` devuelve un
+  listado que el parser no reconoce, y `apelaciones` y `suprema` piden un código numérico de
+  libro donde las demás llevan letra.
+
+  Queda declarado en la tabla que en todo el sitio sólo existen `receptorCivil` y
+  `receptorCobranza`: en las otras cuatro competencias la pregunta que da sentido a este
+  proyecto no tiene respuesta, y pedir actuaciones ahí se rechaza antes de gastar una
+  petición en vez de descubrirlo con una lista vacía.
+
+- Separación explícita entre saber leer una competencia y haberla verificado.
+  `parser.COMPETENCIAS` sabe leer las seis; `client.MODULOS` dice cuáles se midieron.
+  Confundirlas es adivinar, y el cliente ahora da dos errores distintos.
+
 - Herramienta `buscar_jurisprudencia`: sentencias de la Corte Suprema desde el Buscador
   Unificado de Fallos. Sirve para verificar que una cita existe antes de usarla.
 
@@ -105,6 +127,24 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- El control de ritmo pasa de un intervalo plano a un balde de fichas: hasta 4 peticiones
+  seguidas y después una cada 5 segundos. El régimen sostenido no cambia; lo que cambia es
+  que una consulta de actuaciones, que son cinco peticiones encadenadas para responder una
+  sola pregunta, baja de 25 segundos a 5.
+
+  Hay que decir qué se cambió, porque contradice una decisión anterior de este mismo
+  proyecto: se habían descartado las librerías de control de ritmo justo por implementar un
+  balde que permite ráfagas. Lo que cambió no es la opinión sobre la librería sino la
+  especificación. Antes era "al menos 5 segundos entre peticiones consecutivas"; ahora es "a
+  lo más una cada 5 segundos en régimen, con ráfaga acotada a 4". La sobrecarga que la
+  cláusula CUARTA prohíbe es una propiedad del régimen, no de dos peticiones sueltas.
+
+  El tope de la ráfaga es lo único que separa esto de no tener control, así que tiene su
+  propio guardia: un test que lo acota a la cadena más larga que hace el cliente, y un job de
+  CI que verifica las dos constantes. Los tests de ritmo dimensionan sus bucles con la
+  constante, o sea crecen con ella y no pueden detectar que crezca: ese piso lo pone el test
+  del tope y nada más.
+
 - Todas las acciones de CI fijadas por SHA de commit en vez de etiqueta. Una etiqueta se puede
   mover; un SHA no. En `setup-uv` además dejó de ser opcional: desde su v8 no publican
   etiquetas de versión mayor.
@@ -122,6 +162,31 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   alguien tiene que poder encontrar sin pasar por el sitio de documentación.
 
 ### Corregido
+
+- `actuaciones_receptor` no reenviaba la competencia al parser, así que la historia se leía
+  siempre con el panel de civil y el guardia que lo protege era inalcanzable. Medido con
+  coverage: nunca se ejecutaba.
+
+- El esquema de las herramientas le anunciaba al modelo las seis competencias, incluidas las
+  tres que el cliente rechaza. El modelo las intentaba, recibía un error y podía atribuirlo a
+  la plataforma. Hay un guardia nuevo que compara el esquema contra lo verificado, porque el
+  que existía cubría la documentación y dejaba fuera el esquema, que es lo que el modelo lee
+  primero.
+
+- Una fila del listado con el control de detalle ilegible se saltaba en silencio. Perder una
+  causa dentro de un listado que devuelve las demás es peor que no devolver nada: la lista
+  parece completa.
+
+- Las pruebas de propiedades corren sin plazo por ejemplo. El de 200 ms que Hypothesis trae
+  por defecto mide el reloj de la máquina y no la propiedad: en una corrida con la máquina
+  cargada un ejemplo lo excedió, se reportó como propiedad falsificada, y el caso guardado
+  pasaba al reproducirlo. Un test que falla según la carga enseña a desconfiar de la suite,
+  que es peor que no tenerlo.
+
+- La espera máxima de una respuesta sube de 30 a 90 segundos. Medido: una búsqueda del
+  buscador de fallos por rol y año tardó 47,8 segundos en el primer byte, contra 4,3 de la
+  página del mismo host. Con 30 segundos, cuatro de cada cinco búsquedas morían por timeout y
+  eso se leía como que la plataforma estaba caída.
 
 - El intervalo entre peticiones se reiniciaba solo. `server.py` abre un cliente nuevo en cada
   llamada de herramienta y la marca de tiempo vivía en la instancia, así que la primera

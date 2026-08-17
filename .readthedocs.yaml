@@ -8,14 +8,13 @@ build:
 sphinx:
   configuration: docs/conf.py
 
-# Se instala el propio paquete con su extra `docs`, en vez de un requirements.txt aparte.
-# Una lista duplicada se desincroniza: ya pasó una vez y rompió el build.
+# `method: uv` lee el grupo `docs` del pyproject y respeta uv.lock, así que instala las
+# mismas versiones que CI. Con pip y un extra, los nombres coincidían pero las versiones se
+# resolvían de nuevo contra PyPI: una publicación incompatible rompía sólo acá, con CI en
+# verde. Es la misma forma de falla que ya ocurrió con el requirements.txt duplicado.
 python:
   install:
-    - method: pip
-      path: .
-      extra_requirements:
+    - method: uv
+      command: sync
+      groups:
         - docs
-
-formats:
-  - pdf

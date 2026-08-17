@@ -32,7 +32,7 @@ jobs:
           enable-cache: false
 
       # No se publica una versión que no pasa sus propias pruebas.
-      - run: uv sync --all-extras --all-groups
+      - run: uv sync --group dev
       - run: uv run pytest -q
 
       - run: uv build

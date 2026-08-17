@@ -67,7 +67,7 @@ docs/          Documentación publicada en Read the Docs
 ## Comandos
 
 ```bash
-uv sync --all-extras --all-groups
+uv sync --all-groups
 uv run pytest              # 50 tests, sin red
 uv run ruff check .
 uv run sphinx-build -b html docs docs/_build/html

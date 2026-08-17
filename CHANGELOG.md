@@ -18,6 +18,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Herramienta `buscar_causa_por_fecha`. Existía en el cliente y no estaba expuesta: es la
+  cuarta búsqueda que la plataforma ofrece, y sin ella no había forma de responder "qué
+  ingresó contra esta empresa esta semana" sabiendo el tribunal pero no el rol.
+
+  Nadie lo había notado porque nada comparaba las dos listas. Ahora hay un test que exige que
+  todo método público de consulta del cliente esté expuesto como herramienta o excluido a
+  propósito con la razón escrita.
+
 - Herramienta `obtener_texto_sentencia`: el texto completo de un fallo, de a uno por llamada.
 
   Está separada de la búsqueda por una razón medida: una sentencia de trece páginas son 25.473

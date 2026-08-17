@@ -208,6 +208,31 @@ def buscar_causa_por_rut_juridica(
 
 
 @mcp.tool(
+    title="Buscar causas por fecha de ingreso",
+    annotations=SOLO_LECTURA,
+)
+def buscar_causa_por_fecha(
+    desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
+    hasta: Annotated[str, Field(description="Fecha final del rango, DD/MM/AAAA.")],
+    tribunal: Annotated[int, Field(description="Código del tribunal. La plataforma lo exige acá.")],
+    competencia: Competencia = "civil",
+    corte: Corte = None,
+    paginas: Paginas = PAGINAS_MAXIMAS,
+) -> list[CausaEncontrada]:
+    """Causas ingresadas en un rango de fechas.
+
+    Existía en el cliente y no estaba expuesta: es la cuarta búsqueda que la plataforma
+    ofrece, y sin ella no hay forma de responder "qué ingresó contra esta empresa esta
+    semana" sabiendo el tribunal pero no el rol.
+
+    Exige tribunal, igual que la plataforma. Un solo día en un solo tribunal puede devolver
+    decenas de causas, así que conviene acotar el rango antes de subir el tope de páginas.
+    """
+    with _cliente() as c:
+        return c.buscar_por_fecha(desde, hasta, competencia, tribunal, corte, paginas)
+
+
+@mcp.tool(
     title="Actuaciones del receptor",
     annotations=SOLO_LECTURA,
 )

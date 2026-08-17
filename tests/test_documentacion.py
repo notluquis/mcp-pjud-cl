@@ -554,3 +554,54 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
         f"Páginas que citan una de las dos latencias sin la otra: {a_medias}. "
         f"Las vigentes son {busqueda} s la búsqueda y {pagina} s la página del mismo host."
     )
+
+
+# -- lo que el cliente sabe hacer contra lo que el servidor expone -----------------
+
+
+#: Métodos públicos del cliente que a propósito NO son herramientas MCP, con la razón.
+NO_SON_HERRAMIENTAS = {
+    # `detalle` devuelve HTML crudo: quien lo necesite usa `obtener_actuaciones_receptor`,
+    # que lo interpreta. Exponerlo entregaría al modelo una página para reinterpretar, que es
+    # exactamente lo que este proyecto existe para no hacer.
+    "detalle",
+    # `abrir_sesion` y `cerrar` son ciclo de vida, no consulta.
+    "abrir_sesion",
+    "cerrar",
+    # `buscar` y `texto` del buscador de fallos se exponen con otro nombre.
+    "buscar",
+    "texto",
+}
+
+
+def test_toda_busqueda_del_cliente_esta_expuesta_o_excluida_a_proposito(expuestas):
+    """`buscar_por_fecha` existió en el cliente y no estaba expuesta durante toda una versión.
+
+    Es la cuarta búsqueda que la plataforma ofrece, y sin ella no había forma de responder
+    "qué ingresó contra esta empresa esta semana" sabiendo el tribunal pero no el rol. Nadie
+    lo notó porque nada comparaba las dos listas.
+    """
+    import inspect
+
+    from mcp_pjud.client import PjudClient
+    from mcp_pjud.juris import JurisClient
+
+    metodos = {
+        nombre
+        for cliente in (PjudClient, JurisClient)
+        for nombre, _ in inspect.getmembers(cliente, inspect.isfunction)
+        if not nombre.startswith("_") and nombre not in NO_SON_HERRAMIENTAS
+    }
+    # Los nombres no calzan uno a uno: `buscar_por_rit` se expone como `buscar_causa_por_rit`.
+    cubiertos = {
+        m
+        for m in metodos
+        if any(
+            m.replace("buscar_por_", "").replace("_", "") in h.replace("_", "") for h in expuestas
+        )
+    }
+    sin_exponer = sorted(metodos - cubiertos)
+    assert not sin_exponer, (
+        f"El cliente sabe hacer esto y ninguna herramienta lo ofrece: {sin_exponer}. "
+        "Si es deliberado, va a NO_SON_HERRAMIENTAS con la razón escrita."
+    )

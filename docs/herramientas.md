@@ -95,6 +95,25 @@ Exige el dígito verificador y el tribunal.
 ```{include} _generado/buscar_causa_por_rut_juridica.md
 ```
 
+## `buscar_causa_por_fecha`
+
+Causas ingresadas en un rango de fechas.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `desde` | str | Fecha inicial, DD/MM/AAAA |
+| `hasta` | str | Fecha final, DD/MM/AAAA |
+| `tribunal` | int | Obligatorio: la plataforma lo exige |
+| `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza` |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+| `paginas` | int | Tope de páginas a recorrer |
+
+Es la cuarta búsqueda que la plataforma ofrece y responde una pregunta que las otras tres no:
+qué ingresó contra alguien en un período, sabiendo el tribunal pero no el rol.
+
+Un solo día en un solo tribunal puede devolver decenas de causas, así que conviene acotar el
+rango antes de subir el tope de páginas: cada página son 100 resultados y una petición.
+
 ## `obtener_actuaciones_receptor`
 
 Actuaciones del ministro de fe con su fecha real de diligencia. Es la razón de existir del
@@ -208,6 +227,16 @@ vacío en el segundo sin que nada reviente. En **laborales** el origen es un juz
 corte, así que `corte_origen` trae el juzgado.
 
 Los siete restantes se rechazan en vez de adivinar sus campos.
+
+:::{warning}
+En **laborales** el rol que el buscador publica **no lleva la letra del tipo de causa**. Medido:
+pedir el rol 364 del año 2020 devuelve `O-364-2020` aunque lo buscado sea `T-364-2020`, que es
+otra causa. Una respuesta con el mismo número **no prueba** que sea la misma causa: hay que
+comparar el caratulado.
+
+Es el falso positivo simétrico del que motivó el proyecto. Acá no es que falte un dato: es que
+sobra uno que parece el correcto.
+:::
 
 ```{include} _generado/buscar_jurisprudencia.md
 ```

@@ -290,3 +290,20 @@ def test_una_sentencia_sin_el_campo_de_texto_se_levanta(monkeypatch):
     c = _con_respuesta(_con_texto(""))
     with pytest.raises(EstructuraInesperada, match="texto_sentencia"):
         c.texto(rol=34546, anio=2025)
+
+
+def test_el_rol_de_laborales_no_lleva_la_letra_del_tipo_de_causa():
+    """Medido: pedir el rol 364 del año 2020 devuelve `O-364-2020` aunque lo buscado sea
+    `T-364-2020`. El campo del buscador no separa los tipos.
+
+    Se fija acá porque es un falso positivo silencioso: una respuesta con el mismo número
+    parece confirmar la cita y puede ser otra causa. Si alguien decide filtrar por tipo, este
+    test es donde se documenta que el buscador no lo hace por él.
+    """
+    assert BUSCADORES["laborales"].campos["rol"] == "rol_era_sup_s"
+    fuente = (Path(__file__).parents[1] / "src" / "mcp_pjud" / "juris.py").read_text(
+        encoding="utf-8"
+    )
+    assert "NO lleva la letra del tipo de causa" in fuente, (
+        "se borró la advertencia que registra que el rol de laborales no distingue tipos"
+    )

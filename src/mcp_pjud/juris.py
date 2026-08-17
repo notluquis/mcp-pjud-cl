@@ -116,6 +116,11 @@ BUSCADORES: Mapping[str, Buscador] = {
     "laborales": Buscador(
         "Laborales",
         {
+            # Medido: el rol que este buscador publica NO lleva la letra del tipo de causa.
+            # Pedir el rol 364 del año 2020 devolvió `O-364-2020` cuando lo buscado era
+            # `T-364-2020`: son causas distintas y el filtro no las separa. Quien verifique una
+            # cita laboral por rol y año tiene que comparar el caratulado, porque una respuesta
+            # con el mismo número no prueba que sea la misma causa.
             "rol": "rol_era_sup_s",
             "caratulado": "caratulado_s",
             "fecha_sentencia": "fec_sentencia_sup_dt",

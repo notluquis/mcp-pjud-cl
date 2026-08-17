@@ -757,3 +757,32 @@ def test_la_hoja_de_ruta_no_declara_sin_ejecutar_lo_que_ya_se_verifico():
         assert not declarada, (
             f"la hoja de ruta declara {busqueda} sin ejecutar, y está verificada en {verificadas}"
         )
+
+
+def test_la_hoja_de_ruta_no_publica_el_diagnostico_que_resulto_falso():
+    """La hoja de ruta llegó a publicar una tabla de "por qué falla cada competencia" con dos
+    causas que la medición desmintió.
+
+    Decía que suprema y apelaciones fallaban porque sobraban los campos que el sitio
+    deshabilita, y que la corrección era omitirlos. Las dos cosas son falsas: la búsqueda anda
+    igual con o sin esos campos, y lo que faltaba era `radio-group`. Una hipótesis equivocada
+    publicada como diagnóstico es peor que no publicar nada, porque el próximo lector la sigue
+    en vez de medir.
+
+    El guardia es sobre la explicación, no sobre el estado: si mañana alguna de las dos vuelve
+    a fallar, hay que escribir por qué falla de verdad, y esa explicación tiene que nombrar el
+    campo medido.
+    """
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    for frase in (
+        "El sitio deja `conTipoCausa` **deshabilitado**",
+        "jQuery no serializa campos deshabilitados",
+    ):
+        assert frase not in texto, (
+            f"la hoja de ruta publica {frase!r} como causa, y la medición la desmintió: la "
+            "búsqueda anda con y sin esos campos"
+        )
+    assert "radio-group" in texto, (
+        "la hoja de ruta tiene que nombrar el campo que de verdad bloqueaba a suprema y "
+        "apelaciones, o el diagnóstico se pierde"
+    )

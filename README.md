@@ -120,7 +120,7 @@ El transporte es stdio: no abre puertos ni escucha en la red.
 
 `@stable` apunta siempre a la última versión publicada, así que se actualiza sola al instalar.
 Si prefieres quedarte en una versión concreta, cambia esa referencia por la etiqueta, por
-ejemplo `@v0.2.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
+ejemplo `@v0.2.1`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
 publicar: no es lo recomendado.
 
 ## Herramientas

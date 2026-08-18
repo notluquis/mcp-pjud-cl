@@ -14,9 +14,11 @@ from __future__ import annotations
 import re
 import threading
 import time
+from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import metadata as _metadata_instalada
 from importlib.metadata import version as _version_instalada
+from typing import TypeVar
 
 import httpx
 
@@ -25,12 +27,14 @@ from .parser import (
     Actuacion,
     CausaEncontrada,
     EstructuraInesperada,
+    Notificacion,
     actuaciones_receptor,
     es_aviso_de_captcha,
     es_sin_resultados,
     leer_aviso,
     parse_cuadernos,
     parse_historia,
+    parse_notificaciones,
     parse_resultados,
     siguiente_pagina,
     total_declarado,
@@ -181,6 +185,12 @@ PAGINAS_MAXIMAS = 10
 #: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
 #: actuaciones no vivían donde el código creía.
 MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
+
+
+#: Lo que una lectura del detalle devuelve por fila. `_recorrer_cuadernos` sirve a dos
+#: (actuaciones y notificaciones) y sin esto quedaba anotado con una sola: el chequeador de
+#: tipos avisó al agregar la segunda, que es para lo que está.
+_Fila = TypeVar("_Fila", Actuacion, Notificacion)
 
 
 class ResultadosTruncados(Exception):
@@ -817,6 +827,41 @@ class PjudClient(Transporte):
             "perfectamente bien y llevaría a computar un plazo ajeno."
         )
 
+    def notificaciones_causa(
+        self,
+        tipo: str,
+        rol: int,
+        anio: int,
+        competencia: str = "civil",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[Notificacion]:
+        """Las notificaciones practicadas en la causa, con sus fechas.
+
+        Sirve donde la historia no alcanza: dice cuándo se notificó a cada parte, que es lo que
+        hace correr un plazo desde el punto de vista de quien lo recibe.
+
+        Ojo con la diferencia entre competencias, porque cambia qué se puede afirmar: cobranza
+        publica la fecha de notificación Y la de trámite por separado, y difieren (una carta
+        midió tres días entre una y otra). Civil y laboral publican una sola, la de trámite, así
+        que ahí `fecha_notificacion` viaja en nulo. Nulo es "no lo informa", no "coincide".
+        """
+        spec = COMPETENCIAS[self._modulo(competencia)]
+        if spec.notificaciones is None:
+            raise ValueError(
+                f"No está verificado cómo se leen las notificaciones de {competencia!r}. Se "
+                "rechaza antes de consultar en vez de leerlas con el mapa de otra competencia."
+            )
+        return self._recorrer_cuadernos(
+            tipo,
+            rol,
+            anio,
+            competencia,
+            tribunal,
+            corte,
+            lambda pagina, _cuaderno, comp: parse_notificaciones(pagina, comp),
+        )
+
     def _recorrer_cuadernos(
         self,
         tipo: str,
@@ -825,8 +870,8 @@ class PjudClient(Transporte):
         competencia: str,
         tribunal: int | None,
         corte: int | None,
-        leer,
-    ) -> list[Actuacion]:
+        leer: Callable[[str, str, str], list[_Fila]],
+    ) -> list[_Fila]:
         """Busca la causa, abre su detalle y recorre TODOS sus cuadernos.
 
         Lo comparten `actuaciones_receptor` y `historia_causa`, que sólo difieren en qué filas

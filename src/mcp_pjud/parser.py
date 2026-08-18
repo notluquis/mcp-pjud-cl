@@ -54,6 +54,75 @@ class Historia(NamedTuple):
     encabezados: tuple[str, ...]
 
 
+class Notificaciones(NamedTuple):
+    """Cómo leer el panel de notificaciones de una competencia.
+
+    Mismo trato que `Historia` y por la misma razón: las tres competencias medidas lo nombran
+    distinto y publican columnas distintas, así que el panel no se puede declarar sin decir
+    cómo se lee.
+    """
+
+    #: Identificador completo del panel. Cuidado: cobranza lo escribe en singular.
+    panel: str
+    #: Orden de las celdas en cada fila.
+    columnas: tuple[str, ...]
+    #: Encabezados que se exigen. Su ausencia significa que la estructura cambió.
+    encabezados: tuple[str, ...]
+
+
+#: La de civil. Medida sobre `C-142-2026`.
+#:
+#: Publica UNA sola fecha, rotulada `Fecha Trámite`. La de notificación no viene, y por eso el
+#: campo correspondiente queda nulo: igualarlo a la de trámite sería inventar una fecha, que es
+#: exactamente lo que este proyecto existe para no hacer.
+NOTIFICACIONES_CIVIL = Notificaciones(
+    panel="notificacionesCiv",
+    columnas=(
+        "rol",
+        "estado",
+        "tipo",
+        "fec_tramite",
+        "tipo_parte",
+        "nombre",
+        "tramite",
+        "observacion",
+    ),
+    encabezados=("est. notif.", "tipo notif.", "fecha trámite", "tipo part."),
+)
+
+#: La de cobranza. Medida sobre `C-208-2019`.
+#:
+#: Es la única de las tres que publica las DOS fechas, y difieren: una notificación por carta
+#: trajo `01/04/2019` de notificación contra `29/03/2019` de trámite, tres días. Es la misma
+#: forma que la fecha doble de la Historia, con otro nombre, y por eso se entregan separadas.
+#:
+#: Ojo con el identificador del panel, que va en singular mientras civil y laboral lo escriben
+#: en plural.
+NOTIFICACIONES_COBRANZA = Notificaciones(
+    panel="notificacionCob",
+    columnas=(
+        "tipo",
+        "estado",
+        "fec_notificacion",
+        "fec_tramite",
+        "tramite",
+        "tipo_parte",
+        "nombre",
+    ),
+    encabezados=("tip.not.", "est.not.", "fec.not.", "fec.tram.", "tip.part."),
+)
+
+#: La de laboral. Medida sobre `O-364-2020`.
+#:
+#: La más corta de las tres: no trae el rol ni el tipo de notificación, y como civil publica una
+#: sola fecha.
+NOTIFICACIONES_LABORAL = Notificaciones(
+    panel="notificacionesLab",
+    columnas=("estado", "fec_tramite", "tipo_parte", "nombre", "tramite", "observacion"),
+    encabezados=("estado notif.", "fecha trámite", "tipo parte"),
+)
+
+
 #: La de cobranza, medida pidiendo un detalle real el 17 de agosto de 2026.
 #:
 #: La diferencia con civil no es que le falten columnas: reemplaza `Foja` por `Estado Firma`
@@ -401,6 +470,106 @@ def _fila_a_actuacion(
     )
 
 
+class Notificacion(BaseModel):
+    """Una fila del panel de notificaciones."""
+
+    estado: str = Field(
+        description="Si la notificación se practicó, y HAY QUE MIRARLO: la lista incluye "
+        "intentos que NO se practicaron. Valores medidos: 'Realizada' en civil y laboral, "
+        "'Pendiente' en laboral, 'realizada' y 'enviada' en cobranza. Una fila 'Pendiente' "
+        "significa que la notificación no se ha practicado, así que su fecha NO hizo correr "
+        "ningún plazo. 'enviada' es una carta despachada, que no es lo mismo que notificada."
+    )
+    tipo: str | None = Field(
+        default=None, description="Vía por la que se notificó: 'mail', 'carta'. Laboral no la trae."
+    )
+    fecha_notificacion: date | None = Field(
+        default=None,
+        description="Cuándo se practicó la notificación, en ISO 8601. NULO donde la "
+        "competencia no publica esta columna: sólo cobranza la trae. Nulo significa que el "
+        "dato no está, NO que coincida con la fecha de trámite.",
+    )
+    fecha_tramite: date | None = Field(
+        default=None,
+        description="Fecha del trámite notificado, en ISO 8601. Es la única que publican civil "
+        "y laboral. NO es por sí sola la fecha en que se notificó: mirar `estado` antes de "
+        "computar un plazo con ella.",
+    )
+    tipo_parte: str = Field(
+        description="Calidad de quien fue notificado. Ej: 'AB.DTE.' abogado demandante, "
+        "'DDO.' demandado."
+    )
+    nombre: str = Field(description="Nombre de quien fue notificado, tal como lo publica el sitio.")
+    tramite: str = Field(default="", description="Qué se notificó. Ej: 'resolución'.")
+    observacion: str | None = Field(
+        default=None,
+        description="Por qué falló la notificación, cuando falló. Cobranza no trae la columna.",
+    )
+    rol: str | None = Field(default=None, description="Rol de la causa. Sólo civil lo repite acá.")
+
+
+def parse_notificaciones(html_detalle: str, competencia: str = "civil") -> list[Notificacion]:
+    """Extrae el panel de notificaciones del detalle de causa.
+
+    Devuelve lista vacía cuando el panel existe y no trae filas, y ésa es la diferencia con
+    `parse_historia`: una causa puede legítimamente no tener ninguna notificación practicada,
+    mientras que toda causa tiene al menos el folio de ingreso en su historia. Tres de las
+    cuatro causas civiles medidas traen el panel vacío.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.notificaciones is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se leen las notificaciones en {competencia}. Leerlas con "
+            "el mapa de otra competencia devolvería columnas corridas o una lista vacía."
+        )
+
+    doc = html.fromstring(html_detalle)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    panes = doc.xpath(f'//*[@id="{spec.notificaciones.panel}"]')
+    if not panes:
+        raise EstructuraInesperada(
+            f"No existe el panel {spec.notificaciones.panel!r} en el detalle de causa. "
+            "La estructura de la Oficina Judicial Virtual cambió."
+        )
+
+    tablas = panes[0].xpath(".//table")
+    if not tablas:
+        raise EstructuraInesperada(f"El panel {spec.notificaciones.panel!r} no trae ninguna tabla.")
+
+    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
+    for esperado in spec.notificaciones.encabezados:
+        if not any(esperado in h for h in encabezados):
+            raise EstructuraInesperada(
+                f"Falta la columna {esperado!r} en las notificaciones de {competencia}. "
+                f"Encabezados: {encabezados}"
+            )
+
+    columnas = spec.notificaciones.columnas
+    notificaciones = []
+    for fila in tablas[0].xpath(".//tr"):
+        celdas = _celdas(fila)
+        if len(celdas) < len(columnas):
+            continue  # encabezado o paginación
+        txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
+        notificaciones.append(
+            Notificacion(
+                estado=txt["estado"],
+                tipo=txt.get("tipo") or None,
+                fecha_notificacion=_fecha(txt["fec_notificacion"])
+                if "fec_notificacion" in txt
+                else None,
+                fecha_tramite=_fecha(txt["fec_tramite"]),
+                tipo_parte=txt["tipo_parte"],
+                nombre=txt["nombre"],
+                tramite=txt.get("tramite", ""),
+                observacion=txt.get("observacion") or None,
+                rol=txt.get("rol") or None,
+            )
+        )
+    return notificaciones
+
+
 def actuaciones_receptor(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -500,6 +669,8 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Cómo leer su panel de notificaciones, o `None` mientras no se haya medido.
+    notificaciones: Notificaciones | None
     #: Si el rol que el listado publica lleva el LIBRO adelante en vez de una letra.
     #:
     #: Medido: apelaciones devuelve `Exhorto-1504-2019` y penal `Ordinaria-528-2017`, mientras
@@ -550,6 +721,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
+        notificaciones=None,
         rol_con_libro=False,
         campos_rit={"conTipoBus": "0"},
         historia=HISTORIA_SUPREMA,
@@ -567,6 +739,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
+        notificaciones=None,
         rol_con_libro=True,
         campos_rit={"conTipoBusApe": "0"},
         historia=HISTORIA_APELACIONES,
@@ -577,6 +750,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_CIVIL,
@@ -587,6 +761,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_LABORAL,
@@ -597,6 +772,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        notificaciones=None,
         rol_con_libro=True,
         campos_rit={"radio-groupPenal": "1"},
         historia=None,
@@ -607,6 +783,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        notificaciones=NOTIFICACIONES_COBRANZA,
         rol_con_libro=False,
         campos_rit={},
         historia=HISTORIA_COBRANZA,

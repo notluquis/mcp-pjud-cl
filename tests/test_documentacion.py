@@ -233,7 +233,11 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     # buscables y eso es correcto: `obtener_actuaciones_receptor` sólo las que publican
     # actuaciones en la Historia, y `obtener_historia_causa` sólo aquellas cuyo panel está
     # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
-    sin_todas_las_competencias = {"obtener_actuaciones_receptor", "obtener_historia_causa"}
+    sin_todas_las_competencias = {
+        "obtener_actuaciones_receptor",
+        "obtener_historia_causa",
+        "obtener_notificaciones_causa",
+    }
     descripciones = [
         p.get("description", "")
         for nombre_h, h in expuestas.items()
@@ -1235,4 +1239,42 @@ def test_las_entradas_del_registro_de_cambios_son_breves():
     assert not largas, (
         f"Entradas del registro de cambios más largas de {LARGO_MAXIMO} líneas: {largas}. "
         "Lo que no cabe va en el pull request."
+    )
+
+
+def test_la_herramienta_de_notificaciones_advierte_que_incluye_las_no_practicadas(expuestas):
+    """Su contrato decía "notificaciones practicadas" y la lista trae también los intentos.
+
+    Un consumidor que siguiera esa descripción tomaría la fecha de una fila pendiente como una
+    notificación que hizo correr un plazo. Es el modo de falla que este proyecto existe para
+    evitar, esta vez metido en la descripción y no en el código.
+
+    No se filtran las pendientes: una causa detenida en notificación es un dato que importa, y
+    omitirlas la haría ver como si avanzara. Lo que se exige es que el contrato lo diga y que
+    apunte al campo con el que se distinguen.
+    """
+    herramienta = expuestas.get("obtener_notificaciones_causa")
+    assert herramienta is not None, "la herramienta de notificaciones ya no está expuesta"
+
+    contrato = (herramienta.description or "") + str(herramienta.input_schema)
+    for exigido in ("no practicadas", "estado"):
+        assert exigido.lower() in contrato.lower(), (
+            f"el contrato de la herramienta no menciona {exigido!r}, y sin eso una fila "
+            "pendiente se lee como una notificación que corrió un plazo"
+        )
+
+    estado = None
+    for h in expuestas.values():
+        for nombre, prop in (
+            (h.output_schema or {})
+            .get("$defs", {})
+            .get("Notificacion", {})
+            .get("properties", {})
+            .items()
+        ):
+            if nombre == "estado":
+                estado = prop.get("description", "")
+    assert estado, "el modelo ya no describe el campo `estado`"
+    assert "Pendiente" in estado, (
+        "la descripción de `estado` no nombra el valor que significa NO practicada"
     )

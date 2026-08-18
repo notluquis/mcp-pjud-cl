@@ -247,6 +247,51 @@ Columnas que sólo publican algunas competencias, y que por eso vienen en nulo e
 ```{include} _generado/obtener_historia_causa.md
 ```
 
+## `obtener_notificaciones_causa`
+
+Las notificaciones de la causa, con sus fechas y a quién se notificó.
+
+:::{danger} La lista incluye notificaciones NO practicadas
+Un intento pendiente viene en la misma lista que uno realizado, y su fecha **no hizo correr
+ningún plazo**. Hay que mirar `estado` antes de computar nada.
+
+| Estado medido | Dónde | Qué significa |
+|---|---|---|
+| `Realizada` / `realizada` | civil, laboral, cobranza | Se practicó |
+| `Pendiente` | laboral | **No** se ha practicado |
+| `enviada` | cobranza | Carta despachada, que no es lo mismo que notificada |
+
+Se incluyen a propósito: una causa detenida en notificación es un dato que importa, y omitir
+esas filas la haría ver como si avanzara.
+:::
+
+:::{warning}
+Las competencias no publican lo mismo, y eso cambia qué se puede afirmar:
+
+| Competencia | Fechas que publica |
+|---|---|
+| `cobranza` | La de **notificación** y la de **trámite**, por separado. Difieren: una carta midió tres días entre una y otra |
+| `civil`, `laboral` | Sólo la de trámite |
+
+Donde no se publica, `fecha_notificacion` viaja en **nulo**. Nulo significa "esta competencia no
+lo informa", **no** que coincida con la fecha de trámite.
+:::
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `tipo` | str | Letra del rol, o el libro en Cortes de Apelaciones |
+| `rol` | int | Número, sin la letra ni el año |
+| `anio` | int | Año, cuatro dígitos |
+| `competencia` | str | Sólo aquellas cuyo panel de notificaciones está medido |
+| `tribunal` | int, opcional | Código del tribunal |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+
+Una causa puede legítimamente no tener ninguna notificación practicada: tres de las cuatro
+causas civiles medidas traen el panel vacío. Acá una lista vacía **sí** es una respuesta.
+
+```{include} _generado/obtener_notificaciones_causa.md
+```
+
 ## `buscar_jurisprudencia`
 
 Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para

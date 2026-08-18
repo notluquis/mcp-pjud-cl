@@ -33,7 +33,7 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import COMPETENCIAS, Actuacion, CausaEncontrada
+from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, Notificacion
 
 #: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
 #: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
@@ -215,6 +215,16 @@ CompetenciaConHistoria = Annotated[
     ),
 ]
 
+#: Las competencias cuyo panel de notificaciones está medido. Derivado, como los otros.
+_CON_NOTIFICACIONES = sorted(n for n in MODULOS if COMPETENCIAS[n].notificaciones is not None)
+CompetenciaConNotificaciones = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_NOTIFICACIONES)}. Son aquellas cuyo panel de "
+        "notificaciones está medido contra una respuesta real."
+    ),
+]
+
 Corte = Annotated[
     int | None,
     Field(
@@ -366,6 +376,38 @@ def obtener_historia_causa(
     """
     with _cliente() as c:
         return c.historia_causa(tipo, rol, anio, competencia, tribunal, corte)
+
+
+@mcp.tool(
+    title="Notificaciones de la causa",
+    annotations=SOLO_LECTURA,
+)
+def obtener_notificaciones_causa(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: CompetenciaConNotificaciones = "civil",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[Notificacion]:
+    """Las notificaciones de la causa, practicadas y no practicadas, con sus fechas.
+
+    Incluye los intentos que NO se practicaron, y eso es a propósito: una causa detenida en
+    notificación es un dato que importa, y omitir esas filas la haría ver como si avanzara.
+    Distinguirlas es obligatorio y se hace con `estado`. Una fila 'Pendiente' no hizo correr
+    ningún plazo, y 'enviada' es una carta despachada, que no es lo mismo que notificada.
+
+    Las competencias no publican lo mismo, y eso cambia qué se puede afirmar. Cobranza trae
+    la fecha de notificación Y la de trámite por separado, y difieren: una carta midió tres
+    días entre una y otra. Civil y laboral traen una sola, la de trámite, así que ahí
+    `fecha_notificacion` viaja en NULO. Nulo significa "esta competencia no lo informa", NO
+    que coincida con la fecha de trámite: no inventar esa igualdad.
+
+    Una causa puede legítimamente no tener ninguna notificación practicada, así que acá una
+    lista vacía sí es una respuesta y no un fallo.
+    """
+    with _cliente() as c:
+        return c.notificaciones_causa(tipo, rol, anio, competencia, tribunal, corte)
 
 
 @mcp.tool(

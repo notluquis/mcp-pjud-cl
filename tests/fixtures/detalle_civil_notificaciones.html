@@ -1,0 +1,562 @@
+<script>
+$(document).ready(function(){
+//---- TOOLTIPS DEL ROL -----	
+	$(".topTool").tooltip({ placement: "right" });
+	
+	$(".topToolNom").tooltip({ placement: "bottom" });
+//----------------------------------------------
+	$("#selCuaderno").change(function(){
+		var dataHisCuaderno = $(this).val();
+		
+		historiaCausaCuaderno(dataHisCuaderno);
+	});	
+	
+});
+</script>
+<!--[if IE]>
+<style>
+    .panel-default {
+         margin-top: 30px;
+    }
+</style>
+<![endif]-->
+	<div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+										<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h4 class="modal-title" style="color:#337ab7;">Detalle Causa Civil</h4>
+			</div>
+		
+			<div class="modal-body">
+			
+				<div class="panel with-nav-tabs">
+				
+					<div class="panel panel-default">
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td><strong>ROL:</strong> C-99142-2026 <span title="Causa LTE" class="label label-primary topTool"></span></td>
+									<td colspan="2"><strong>F. Ing.:</strong> 15/07/2026</td>
+									<td>EMPRESA FICTICIA CUATRO</td>
+								</tr>
+								<tr>
+									<td>
+										<strong>Est. Adm.: </strong>
+										<span class="topTool"  data-toggle="tooltip">
+										  Sin archivar                  																					</span>
+									</td>
+									<td><strong>Proc.:</strong> Ejecutivo Mínima Cuantía</td>
+									<td colspan="2"><strong>Ubicaci&oacute;n:</strong> Digital                       </td>
+								</tr>
+								<tr>
+									<td><strong>Estado Proc.:</strong> Tramitación                   </td>
+									<td><strong>Etapa:</strong> 1 Notificación demanda y su proveído      </td>
+									<td colspan="2"><strong>Tribunal:</strong> Juzgado de Letras y Gar.de Laja                   </td>
+								</tr>
+								<input type="hidden" value="string(42) "1 Notificaci�n demanda y su prove�do      "
+">
+							</tbody>
+						</table>
+								
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td>
+										<strong>Texto Demanda:</strong>
+										<form name="form" action="ADIR_871/civil/documentos/docu.php" method="get" target="txtD">
+											<input type='hidden' name='valorEncTxtDmda' value='referencia-ficticia-001'>
+											<a href="#" onClick='$(this).closest("form").submit();' title="Archivo Texto Demanda" role="img">
+												<i title="Texto Demanda" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+										</form>
+									</td>
+									<td>
+										<strong>Anexos de la causa:</strong>
+										</br>
+										<a data-toggle="modal" href="#modalAnexoCausaCivil" title="Ver Anexos de la causa" role="img" onClick="anexoCausaCivil('referencia-ficticia-002');"><i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+									</td>
+									
+									  
+									  <!-- Bloque boton Certificado -->
+									<td>
+										<strong>Certificado de Env&iacute;o:</strong>
+										<form name="certCivil" action="ADIR_871/civil/documentos/docCertificadoDemanda.php" method="get" target="cert">
+											<input type='hidden' name='dtaCert' value='referencia-ficticia-003'>
+											<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Certificado" role="img">
+												<i title="Descargar Certificado" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+											
+										</form>
+									</td>
+								<!-- Fin Bloque boton Certificado -->
+
+									<td id="boton">
+								<!-- Bloque boton ebook -->
+										<strong>Ebook:</strong>
+										<form name="form" action="ADIR_871/civil/documentos/newebookcivil.php" method="get" target="_blank">
+											<input type='hidden' name='dtaEbook' value='referencia-ficticia-004'>
+											<a href="#"  onClick='$(this).closest("form").submit();' title="Descargar Ebook" role="img">
+											<i title="Descargar Ebook" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+										</form>
+									</td>
+								<!-- Fin Bloque boton ebook -->
+								</tr>
+							</tbody>
+						</table>
+						
+						<!-- Bloque Piezas Exhorto -->
+									<!-- Fin Bloque Piezas Exhorto -->
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					
+					<div class="panel panel-default">
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td>
+										<strong>Historia Causa Cuaderno</strong><br>
+										<select id="selCuaderno" class="form-control form-control-sm">
+												<option value="referencia-ficticia-005" selected="selected">1 - Principal</option>
+												<option value="referencia-ficticia-006" >2 - Apremio Ejecutivo Obligación de Dar</option>
+	
+										</select>
+										<!--
+										159 34830705 45590464 19 142 C 2026										-->
+									</td>
+									<td>
+										<strong>Informaci&oacute;n notificaciones receptor:</strong>
+										<br>
+										<a data-toggle="modal" href="#modalReceptorCivil" title="Ver Receptor" role="img" onClick="receptorCivil('referencia-ficticia-007');"><i class="fa fa-folder fa-2x" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					
+					<div class="panel-heading">
+						<ul class="nav nav-tabs" style="display:inline-block">
+							<li class="active"><a data-toggle="tab" href="#historiaCiv">Historia</a></li>
+							<li><a data-toggle="tab" href="#litigantesCiv">Litigantes</a></li>
+							<li><a data-toggle="tab" href="#notificacionesCiv">Notificaciones</a></li>
+							<li><a data-toggle="tab" href="#escritosCiv">Escritos por Resolver</a></li>
+							<li><a data-toggle="tab" href="#exhortosCiv">Exhortos</a></li>
+						</ul>
+					</div>
+					
+					<div class="tab-content" id="loadHistCuadernoCiv">
+						
+						<div class="tab-pane fade in active" id="historiaCiv"> <!-- INICIO PANEL -->
+						
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+									
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Folio</th>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>Etapa</th>
+												<th>Tr&aacute;mite</th>
+												<th>Desc. Tr&aacute;mite</th>
+												<th>Fec. Tr&aacute;mite</th>
+												<th>Foja</th>
+												<th>Georref.</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>
+													8 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w1" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-008'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
+															</a>
+														</form>
+														  													</td>
+												<td align="center">
+	
+												</td>
+												<td>Notificación demanda y su proveído      </td>
+												<td>Actuación Receptor</td>
+												<!--<td><span title="NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:06/08/2026 12:15" class="topToolNom"></span></td>-->
+												<td>
+ NOTIFICACIÓN DE DEMANDA (Exitosa) Diligencia:06/08/2026 12:15												</td>
+												<td>10/08/2026 (06/08/2026)</td>
+												<td>0</td>
+												<td align="center">
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-009');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													7 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w2" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-010'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
+															</a>
+														</form>
+														  													</td>
+												<td align="center">
+	
+												</td>
+												<td>Notificación demanda y su proveído      </td>
+												<td>Actuación Receptor</td>
+												<!--<td><span title="CERTIFICACIÓN BÚSQUEDAS (Búsqueda negativa) Diligencia:06/08/2026 10:59" class="topToolNom"></span></td>-->
+												<td>
+ CERTIFICACIÓN BÚSQUEDAS (Búsqueda negativa) Diligencia:06/08/2026 10:59												</td>
+												<td>10/08/2026 (06/08/2026)</td>
+												<td>0</td>
+												<td align="center">
+														<a data-toggle="modal" href="#modalGeoReferenciaCivil" title="Georreferencia" role="img" onClick="geoReferencia('referencia-ficticia-011');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													6 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p3">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-012'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+															</a>
+															
+														</form>
+													</td>
+												<td align="center">
+	
+												</td>
+												<td>Notificación demanda y su proveído      </td>
+												<td>Resolución</td>
+												<!--<td><span title="Mero trámite" class="topToolNom"></span></td>-->
+												<td>
+ Mero trámite												</td>
+												<td>04/08/2026</td>
+												<td>4</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>
+													5 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p4">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-013'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+															</a>
+															
+														</form>
+													</td>
+												<td align="center">
+	
+												</td>
+												<td>Inicio de la Tramitación                </td>
+												<td>Resolución</td>
+												<!--<td><span title="Ordena despachar mandamiento" class="topToolNom"></span></td>-->
+												<td>
+ Ordena despachar mandamiento												</td>
+												<td>23/07/2026</td>
+												<td>3</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>
+													4 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p5">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-014'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+															</a>
+															
+														</form>
+													</td>
+												<td align="center">
+	
+												</td>
+												<td>Inicio de la Tramitación                </td>
+												<td></td>
+												<!--<td><span title="Acredita Poder" class="topToolNom"></span></td>-->
+												<td>
+ Acredita Poder												</td>
+												<td>22/07/2026</td>
+												<td>0</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>
+													3 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w6" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-015'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
+															</a>
+														</form>
+														  																<form name="certCivil" action="ADIR_871/civil/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+																<input type='hidden' name='dtaCert' value='referencia-ficticia-016'>
+																<a href="#" onClick='$(this).closest("form").submit();' title="Certificado de envio escrito" role="img" style="display: inline-block;">
+																	<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+																</a>
+																</form>
+														  													</td>
+												<td align="center">
+	
+												</td>
+												<td>Inicio de la Tramitación                </td>
+												<td>Escrito</td>
+												<!--<td><span title="Acompaña documentos" class="topToolNom"></span></td>-->
+												<td>
+ Acompaña documentos												</td>
+												<td>21/07/2026</td>
+												<td>2</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>
+													2 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuS.php" method="get" target="p7">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-017'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento" role="img">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+															</a>
+															
+														</form>
+													</td>
+												<td align="center">
+	
+												</td>
+												<td>Inicio de la Tramitación                </td>
+												<td>Resolución</td>
+												<!--<td><span title="Pospone inicio de la tramitación" class="topToolNom"></span></td>-->
+												<td>
+ Pospone inicio de la tramitación												</td>
+												<td>20/07/2026</td>
+												<td>1</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>
+													1 
+												</td>
+												<td align="left">
+														<form name="form" action="ADIR_871/civil/documentos/docuN.php" method="get" target="w8" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-018'>
+															<a href="#" onClick='$(this).closest("form").submit();' title="Documento principal del escrito" role="img" style="display: inline-block;">
+																<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;,  display: inline-block"></i>
+															</a>
+														</form>
+														  													</td>
+												<td align="center">
+	
+												</td>
+												<td>Inicio de la Tramitación                </td>
+												<td>Escrito</td>
+												<!--<td><span title="Ingreso demanda" class="topToolNom"></span></td>-->
+												<td>
+ Ingreso demanda												</td>
+												<td>15/07/2026</td>
+												<td>1</td>
+												<td align="center">
+												</td>
+											</tr>
+										</tbody>
+									</table>
+
+								</div>
+							</div>
+
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="litigantesCiv"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Participante</th>
+												<th>Rut</th>
+												<th>Persona</th>
+												<th>Nombre o Raz&oacute;n Social</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>DTE.  </td>
+												<td>3333333-3</td>
+												<td>JURIDICA                      </td>
+												<td>EMPRESA FICTICIA CUATRO   </td>				
+											</tr>
+											<tr>
+												<td>AB.DTE</td>
+												<td>2222222-2</td>
+												<td>NATURAL                       </td>
+												<td>PERSONA FICTICIA 20 (Poder Amplio con Limitaciones)</td>				
+											</tr>
+											<tr>
+												<td>AP.DTE</td>
+												<td>22222222-2</td>
+												<td>NATURAL                       </td>
+												<td>PERSONA FICTICIA 21 (Sin Acreditacion)</td>				
+											</tr>
+											<tr>
+												<td>DDO.  </td>
+												<td>66666666-6</td>
+												<td>NATURAL                       </td>
+												<td>PERSONA FICTICIA 23 </td>				
+											</tr>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="notificacionesCiv"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>ROL</th>
+												<th>Est. Notif.</th>
+												<th>Tipo Notif.</th>
+												<th>Fecha Tr&aacute;mite</th>
+												<th>Tipo Part.</th>
+												<th>Nombre</th>
+												<th>Tr&aacute;mite</th>
+												<th>Obs. Fallida</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td nowrap>C-99142-2026</td>
+												<td>Realizada           </td>
+												<td>mail                          </td>
+												<td>20/07/2026</td>
+												<td>AB.DTE         </td>
+												<td nowrap>PERSONA FICTICIA 20</td>
+												<td>resolución                    </td>
+												<td></td>
+											</tr>
+											<tr>
+												<td nowrap>C-99142-2026</td>
+												<td>Realizada           </td>
+												<td>mail                          </td>
+												<td>20/07/2026</td>
+												<td>AP.DTE         </td>
+												<td nowrap>PERSONA FICTICIA 21</td>
+												<td>resolución                    </td>
+												<td></td>
+											</tr>
+											<tr>
+												<td nowrap>C-99142-2026</td>
+												<td>Realizada           </td>
+												<td>mail                          </td>
+												<td>23/07/2026</td>
+												<td>AB.DTE         </td>
+												<td nowrap>PERSONA FICTICIA 20</td>
+												<td>resolución                    </td>
+												<td></td>
+											</tr>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="escritosCiv"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>Fecha de Ingreso</th>
+												<th>Tipo Escrito</th>
+												<th>Solicitante</th>
+											</tr>												
+										</thead>
+										<tbody>
+										</tbody>
+									</table>
+												
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+						
+						
+						<div class="tab-pane fade" id="exhortosCiv"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Rol Origen</th>
+												<th>Tipo Exhorto</th>
+												<th>Rol Destino</th>
+												<th>Fecha Ordena Exhorto</th>
+												<th>Fecha Ingreso Exhorto</th>
+												<th>Tribunal Destino</th>
+												<th>Estado Exhorto</th>
+											</tr>												
+										</thead>
+										<tbody>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+						
+						
+					</div>
+					
+				</div>
+                
+
+			
+			</div>
+			
+        
+			<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+						</div>
+			
+		</div>
+	</div>

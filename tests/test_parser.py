@@ -18,6 +18,7 @@ from mcp_pjud.parser import (
     actuaciones_receptor,
     parse_cuadernos,
     parse_historia,
+    parse_notificaciones,
     parse_resultados,
 )
 
@@ -650,3 +651,95 @@ def test_la_marca_de_rol_con_libro_calza_con_lo_que_publican_las_fixtures():
             f"{competencia} declara rol_con_libro="
             f"{COMPETENCIAS[competencia].rol_con_libro} y sus roles reales son {prefijos}"
         )
+
+
+# -- las notificaciones ---------------------------------------------------------
+
+NOTIF_CIVIL = (FIXTURES / "detalle_civil_notificaciones.html").read_text(encoding="utf-8")
+NOTIF_COBRANZA = (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8")
+
+
+def test_cobranza_publica_las_dos_fechas_y_difieren():
+    """Es la única de las tres que separa la fecha de notificación de la del trámite.
+
+    Y difieren de verdad: en una notificación por carta se midieron tres días entre una y otra.
+    Es la misma forma que la fecha doble de la Historia, con otro nombre, y confundirlas cuesta
+    lo mismo.
+    """
+    notificaciones = parse_notificaciones(NOTIF_COBRANZA, "cobranza")
+    assert len(notificaciones) == 16
+
+    carta = next(n for n in notificaciones if n.tipo == "carta")
+    assert carta.fecha_notificacion is not None
+    assert carta.fecha_tramite is not None
+    assert carta.fecha_notificacion != carta.fecha_tramite, (
+        "la carta medida tenía tres días entre notificación y trámite"
+    )
+    assert carta.fecha_notificacion > carta.fecha_tramite
+
+
+def test_donde_no_se_publica_la_fecha_de_notificacion_va_nula_y_no_copiada():
+    """Civil y laboral publican UNA fecha, la de trámite.
+
+    Copiarla en el campo de notificación produciría un dato con forma de medición que nadie
+    midió. Nulo dice "esta competencia no lo informa", que es lo único cierto.
+    """
+    for competencia, detalle in (("civil", NOTIF_CIVIL), ("laboral", DETALLE_LABORAL)):
+        notificaciones = parse_notificaciones(detalle, competencia)
+        assert notificaciones, f"{competencia} no trajo notificaciones"
+        assert all(n.fecha_notificacion is None for n in notificaciones), (
+            f"{competencia} no publica la fecha de notificación y alguna vino con valor"
+        )
+        assert any(n.fecha_tramite is not None for n in notificaciones)
+
+
+def test_las_notificaciones_de_civil_traen_el_rol_y_el_tipo_de_via():
+    notificaciones = parse_notificaciones(NOTIF_CIVIL, "civil")
+    assert len(notificaciones) == 3
+    assert notificaciones[0].rol
+    assert notificaciones[0].tipo == "mail"
+    assert notificaciones[0].estado == "Realizada"
+    assert notificaciones[0].tipo_parte.startswith("AB")
+
+
+def test_laboral_no_publica_el_tipo_de_via():
+    """Su panel es el más corto de los tres: sin rol y sin tipo de notificación."""
+    notificaciones = parse_notificaciones(DETALLE_LABORAL, "laboral")
+    assert all(n.tipo is None for n in notificaciones)
+    assert all(n.rol is None for n in notificaciones)
+    assert {n.estado for n in notificaciones} >= {"Realizada", "Pendiente"}
+
+    # Y las dos columnas contiguas no están cruzadas. Sin esto el test pasaba igual con
+    # `tipo_parte` y `nombre` intercambiados, porque ninguna de las aserciones de arriba los
+    # mira: quedaba un nombre de persona en el campo de la calidad procesal.
+    assert all(n.tipo_parte.rstrip(".").replace(".", "").isupper() for n in notificaciones), (
+        "la calidad procesal es una sigla como 'AB.DTE.'; si trae un nombre, las columnas "
+        "están cruzadas"
+    )
+    assert any(" " in n.nombre for n in notificaciones), (
+        "el nombre de la persona notificada lleva espacios; una sigla no"
+    )
+
+
+def test_leer_las_notificaciones_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():
+    """Los tres paneles se llaman distinto, y cobranza además lo escribe en singular."""
+    with pytest.raises(EstructuraInesperada, match="notificacionCob"):
+        parse_notificaciones(NOTIF_CIVIL, "cobranza")
+    with pytest.raises(EstructuraInesperada, match="notificacionesCiv"):
+        parse_notificaciones(NOTIF_COBRANZA, "civil")
+
+
+def test_una_competencia_sin_notificaciones_medidas_se_rechaza():
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        parse_notificaciones(DETALLE_SUPREMA, "suprema")
+
+
+def test_un_panel_de_notificaciones_vacio_devuelve_lista_y_no_levanta():
+    """Acá una lista vacía SÍ es una respuesta, al revés que en la Historia.
+
+    Toda causa tiene al menos el folio de ingreso, así que una historia sin filas es anómala.
+    Una causa sin ninguna notificación practicada es corriente: tres de las cuatro causas
+    civiles medidas traen el panel vacío. Levantar ahí convertiría lo normal en un error.
+    """
+    vacio = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    assert parse_notificaciones(vacio, "civil") == []

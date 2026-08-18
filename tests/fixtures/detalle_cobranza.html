@@ -1,0 +1,2721 @@
+<script>
+$(function(){
+//---- TOOLTIPS DEL ROL -----	
+	$(".topToolNom").tooltip({ placement: "bottom" });
+//----------------------------------------------
+	
+//----------------------------------------------
+	$("#selCuadernoCob").change(function(){
+		var dataHisCuaderno = $(this).val();
+		
+		historiaCausaCuadernoCob(dataHisCuaderno);
+	});	
+
+});
+</script>
+<!--[if IE]>
+<style>
+    .panel-default {
+         margin-top: 30px;
+    }
+</style>
+<![endif]-->
+	<div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h4 class="modal-title" style="color:#337ab7;">Detalle Causa Cobranza</h4>
+			</div>
+		
+			<div class="modal-body">
+			
+				<div class="panel with-nav-tabs">
+				
+					<div class="panel panel-default">
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td><strong>RIT :</strong> C-208-2019</td>
+									<td>PARRA/COMERCIALIZADORA E I</td>
+									<td colspan="2"><strong>Fecha Ing.:</strong> 26/03/2019</td>
+								</tr>
+								<tr>
+									<td><strong>RUC :</strong> 18- 4-11111111-1</td>
+									<td><strong>Est. Adm.:</strong> Sin archivar                  </td>
+									<td><strong>Proc.:</strong> Cumplimiento Laboral</td>
+								</tr>
+								<tr>
+									<td><strong>Forma Inicio.:</strong> Sitla                         </td>
+									<td><strong>Estado Proc.:</strong> Tramitación                   </td>
+									<td><strong>Etapa:</strong> Excepciones / Objeta Liquidación        </td>
+								</tr>
+								<tr>
+									<td>
+										<strong>Titulo Ejec. :</strong>
+										<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+									</td>
+									<td><strong>Juez Asignado:</strong> Ana María Fierro Oyarzo</td>
+									<td><strong>Tribunal:</strong> Jdo. Cob. Laboral y Previsional de Concepción     </td>
+								</tr>
+							</tbody>
+						</table>
+								
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td>
+										<strong>Doc. Demanda:</strong>
+										<form name="frmDocDem" action="ADIR_871/cobranza/documentos/docDemandaCobranza.php" method="get" target="docD">
+											<input type='hidden' name='valorDocDmda' value='referencia-ficticia-001'>
+											<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar documento demanda">
+												<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+											</a>
+											
+										</form>
+									</td>
+									<td>
+										<strong>Anexos de la causa:</strong>
+										</br>
+										<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+									</td>
+                                    <!-- Bloque boton ebook -->
+                                    <td id="idEbook">
+                                        <strong>Ebook:</strong>
+                                        <form name="form" action="ADIR_871/cobranza/documentos/newebookcobranza.php" method="get" target="_blank">
+                                            <input type='hidden' name='dtaEbook' value='referencia-ficticia-002'>
+                                            <a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Ebook">
+                                            	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+                                            </a>
+                                            
+                                        </form>
+                                    </td>
+                                    <!-- Fin Bloque boton ebook -->
+                                      
+									  <!-- Bloque boton Certificado -->
+						
+									<td>
+										<strong>Certificado de Env&iacute;o:</strong></br>
+										<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+									</td>
+								<!-- Fin Bloque boton Certificado -->
+
+								<!-- Bloque Doc. Laboral -->
+									<td>
+										<strong>Documentos Laboral:</strong></br>
+										<a data-toggle="modal" href="#modalDocumentoLabCobranza" role="img" title="Documento laboral" onClick="documentoLabCobranza('referencia-ficticia-002');"><i class="fa fa-folder fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+									
+									</td>
+									<!-- Fin Bloque Doc. Laboral -->
+
+								<!-- Bloque Detalle Exhortos -->
+									<td>
+										
+										<strong>Documentos Exhorto:</strong></br>
+										<i class="fa fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+									</td>
+									<!-- Fin Bloque Detalle Exhortos -->
+									
+									<!-- Bloque Causas Acumuladas -->
+									
+									<!-- Fin Bloque Causas Acumuladas -->
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					
+					<div class="panel panel-default">
+						<table class="table table-responsive table-titulos">
+							<tbody>
+								<tr>
+									<td>
+										<strong>Historia Causa Cuaderno</strong><br>
+										<select id="selCuadernoCob" class="form-control form-control-sm">
+												<option value="referencia-ficticia-003" selected="selected">Principal</option>
+	
+										</select>
+									</td>
+									<td>
+										<strong>Informaci&oacute;n notificaciones receptor:</strong>
+										<br>
+										<a data-toggle="modal" href="#modalReceptorCobranza" role="img" title="Receptor" onClick="receptorCobranza('referencia-ficticia-004');"><i class="fa fa-folder fa-2x" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					
+					<div class="panel-heading">
+						<ul class="nav nav-tabs" style="display:inline-block">
+							<li class="active"><a data-toggle="tab" href="#historiaCob">Historia</a></li>
+							<li><a data-toggle="tab" href="#litigantesCob">Litigantes</a></li>
+							<li><a data-toggle="tab" href="#notificacionCob">Notificaciones</a></li>
+							<li><a data-toggle="tab" href="#diligenciaCob">Diligencias</a></li>
+							<li><a data-toggle="tab" href="#liquidacionCob">Liquidaci&oacute;n</a></li>
+							<!--
+							<li><a data-toggle="tab" href="#deudaCob">Deuda Act.</a></li>
+							-->
+						</ul>
+					</div>
+					
+					<div class="tab-content" id="loadHistCuadernoCob">
+						
+						<div class="tab-pane fade in active" id="historiaCob"> <!-- INICIO PANEL -->
+						
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+									
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Folio</th>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>Etapa</th>
+												<th>Tr&aacute;mite</th>
+												<th>Desc. Tr&aacute;mite</th>
+												<th>Estado Firma</th>
+												<th>Fec. Tr&aacute;mite</th>
+												<th>Georref.</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>71</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH1">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-005'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+										
+													<form name="frmDocOf" action="ADIR_871/cobranza/documentos/docOficioCobranza.php" method="get" target="docOf1">
+														<input type='hidden' name='dtaDocOf' value='referencia-ficticia-006'>
+														<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<label class="label label-info" style="cursor:pointer; font-size:13px;" >
+															Resol. Of. fza pública embargo															<span class="badge" style="background-color:#fff;"><i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;"></i></span>
+														</label>
+														</a>
+													</form>
+													
+													<p style="display:none">1332-99999999-9 </p>
+												</td>
+												<td>Firmado</td>
+												<td>30/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>70</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra2" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-007'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-008'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Embargo												</td>
+												<td>Firmado</td>
+												<td>26/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>69</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH3">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-009'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certificación (firme)         												</td>
+												<td>Firmado</td>
+												<td>24/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>68</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH4">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-010'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Certifíquese (ejecutoria)     												</td>
+												<td>Firmado</td>
+												<td>23/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>68</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+Certifíquese (ejecutoria)     												</td>
+												<td>Firmado</td>
+												<td>23/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>67</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra6" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-011'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-012'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicitud que indica												</td>
+												<td>Firmado</td>
+												<td>21/08/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>66</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH7">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-013'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>29/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>65</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH8">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-014'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>29/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>64</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH9">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-015'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Aprueba Liquidación           												</td>
+												<td>Firmado</td>
+												<td>29/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>63</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH10">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-016'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Liquidacion                   												</td>
+												<td>Firmado</td>
+												<td>28/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>62</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH11">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-017'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+CSP reliquídese               												</td>
+												<td>Firmado</td>
+												<td>27/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>62</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+CSP reliquídese               												</td>
+												<td>Firmado</td>
+												<td>27/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>61</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra13" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-018'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-019'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita liquidación												</td>
+												<td>Firmado</td>
+												<td>25/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>60</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra14" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-020'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuacion - Receptor</td>
+													
+												<td>
+Notificación [ Realizada ]												</td>
+												<td>Firmado</td>
+												<td>24/07/2022</td>
+												<td align="center">
+														<a data-toggle="modal" href="#modalGeoReferenciaCobranza" role="img" title="Georreferencia" onClick="geoReferenciaCobranza('referencia-ficticia-021');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+																										</td>
+											</tr>
+											<tr>
+												<td>58</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH15">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-022'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>15/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>59</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH16">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-023'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>15/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>57</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH17">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-024'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+T.Pte domi s/p vig/Pend.Art.52												</td>
+												<td>Firmado</td>
+												<td>15/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>56</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra18" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-025'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-026'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Señala domicilio												</td>
+												<td>Firmado</td>
+												<td>13/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>55</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH19">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-027'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Aplica aperc no ptado escrito 												</td>
+												<td>Firmado</td>
+												<td>12/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>53</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH20">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-028'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>06/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>54</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH21">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-029'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>06/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>52</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH22">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-030'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Previo proveer aclare suma-pet												</td>
+												<td>Firmado</td>
+												<td>06/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>51</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra23" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-031'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-032'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Señala domicilio												</td>
+												<td>Firmado</td>
+												<td>03/07/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>50</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH24">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-033'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL/Cumpla Not art. 52 CPC    												</td>
+												<td>Firmado</td>
+												<td>12/05/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>50</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+NHL/Cumpla Not art. 52 CPC    												</td>
+												<td>Firmado</td>
+												<td>12/05/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>49</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra26" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-034'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-035'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita liquidación												</td>
+												<td>Firmado</td>
+												<td>10/05/2022</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>48</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH27">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-036'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL/Notificación Art. 52 CPC  												</td>
+												<td>Firmado</td>
+												<td>08/10/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>48</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+NHL/Notificación Art. 52 CPC  												</td>
+												<td>Firmado</td>
+												<td>08/10/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>47</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra29" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-037'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-038'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita nueva liquidación												</td>
+												<td>Firmado</td>
+												<td>06/10/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>46</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH30">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-039'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL/Estese al mérito (Certif.)												</td>
+												<td>Firmado</td>
+												<td>18/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>45</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra31" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-040'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-041'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicitud que indica												</td>
+												<td>Firmado</td>
+												<td>16/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>44</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH32">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-042'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certificación oficio.         												</td>
+												<td>Firmado</td>
+												<td>08/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>43</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH33">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-043'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Certifíquese (envío of Carab) 												</td>
+												<td>Firmado</td>
+												<td>05/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>43</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+Certifíquese (envío of Carab) 												</td>
+												<td>Firmado</td>
+												<td>05/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>42</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra35" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-044'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-045'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Certificación que se indica												</td>
+												<td>Firmado</td>
+												<td>03/02/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>41</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH36">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-046'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+										
+													<form name="frmDocOf" action="ADIR_871/cobranza/documentos/docOficioCobranza.php" method="get" target="docOf36">
+														<input type='hidden' name='dtaDocOf' value='referencia-ficticia-047'>
+														<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<label class="label label-info" style="cursor:pointer; font-size:13px;" >
+															Resol. Of. fza pública embargo															<span class="badge" style="background-color:#fff;"><i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;"></i></span>
+														</label>
+														</a>
+													</form>
+													
+													<p style="display:none">1332-88888888-8 </p>
+												</td>
+												<td>Firmado</td>
+												<td>25/01/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>40</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra37" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-048'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-049'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita fuerza pública												</td>
+												<td>Firmado</td>
+												<td>20/01/2021</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>39</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra38" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-050'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuacion - Receptor</td>
+													
+												<td>
+Oposición a embargo [ Realizada ]												</td>
+												<td>Firmado</td>
+												<td>12/01/2021</td>
+												<td align="center">
+														<a data-toggle="modal" href="#modalGeoReferenciaCobranza" role="img" title="Georreferencia" onClick="geoReferenciaCobranza('referencia-ficticia-051');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+																										</td>
+											</tr>
+											<tr>
+												<td>37</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH39">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-052'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>04/12/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>38</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH40">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-053'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>04/12/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>36</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH41">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-054'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+T.Pte. bien/Art447,448y449 CPC												</td>
+												<td>Firmado</td>
+												<td>04/12/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>35</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra42" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-055'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-056'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Embargo												</td>
+												<td>Firmado</td>
+												<td>02/12/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>34</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH43">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-057'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certificación                 												</td>
+												<td>Firmado</td>
+												<td>25/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>33</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH44">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-058'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+CSP Certifíquese              												</td>
+												<td>Firmado</td>
+												<td>23/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>32</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra45" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-059'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-060'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Certificacion												</td>
+												<td>Firmado</td>
+												<td>18/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>30</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH46">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-061'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>06/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>31</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH47">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-062'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>06/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>29</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH48">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-063'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Aprueba reliquidación         												</td>
+												<td>Firmado</td>
+												<td>06/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>28</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH49">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-064'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Liquidacion                   												</td>
+												<td>Firmado</td>
+												<td>06/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>27</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH50">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-065'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+HL Reposición/Liquídese       												</td>
+												<td>Firmado</td>
+												<td>04/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>27</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+HL Reposición/Liquídese       												</td>
+												<td>Firmado</td>
+												<td>04/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>26</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra52" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-066'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-067'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Reposición												</td>
+												<td>Firmado</td>
+												<td>02/11/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>25</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH53">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-068'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL liquidar (sin depósitos)  												</td>
+												<td>Sin Efecto</td>
+												<td>30/10/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>24</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra54" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-069'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-070'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita nueva liquidación												</td>
+												<td>Firmado</td>
+												<td>28/10/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>23</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra55" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-071'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuacion - Receptor</td>
+													
+												<td>
+Notificación [ Realizada ]												</td>
+												<td>Firmado</td>
+												<td>19/10/2020</td>
+												<td align="center">
+														<a data-toggle="modal" href="#modalGeoReferenciaCobranza" role="img" title="Georreferencia" onClick="geoReferenciaCobranza('referencia-ficticia-072');"><i class="fa fa-globe fa-lg" aria-hidden="true" style="cursor:pointer; color:#2FB083"></i></a>
+																										</td>
+											</tr>
+											<tr>
+												<td>22</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH56">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-073'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL/Notificación Art. 52 CPC  												</td>
+												<td>Firmado</td>
+												<td>08/09/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>22</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+NHL/Notificación Art. 52 CPC  												</td>
+												<td>Firmado</td>
+												<td>08/09/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>21</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra58" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-074'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-075'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicitud que indica												</td>
+												<td>Firmado</td>
+												<td>07/09/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>20</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH59">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-076'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+NHL (cumpla Ley 18.120)       												</td>
+												<td>Firmado</td>
+												<td>04/09/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>19</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra60" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-077'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-078'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Solicita nueva liquidación												</td>
+												<td>Firmado</td>
+												<td>02/09/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>18</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH61">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-079'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Cumple/Revoca/Nvo. PyP dte.   												</td>
+												<td>Firmado</td>
+												<td>13/08/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>17</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra62" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-080'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Acompaña patrocinio y poder												</td>
+												<td>Firmado</td>
+												<td>10/08/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>16</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH63">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-081'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>20/07/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>15</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH64">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-082'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Previo a proveer (poder)      												</td>
+												<td>Firmado</td>
+												<td>20/07/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>14</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra65" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-083'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-084'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Revoca patrocinio y poder												</td>
+												<td>Firmado</td>
+												<td>14/07/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>13</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH66">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-085'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Aplica apercibimiento         												</td>
+												<td>Firmado</td>
+												<td>10/07/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>12</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH67">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-086'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>18/06/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>11</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH68">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-087'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Previo a proveer (poder)      												</td>
+												<td>Firmado</td>
+												<td>18/06/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>10</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra69" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-088'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  														 <form name="certCobranza" action="ADIR_871/cobranza/documentos/docCertificadoEscrito.php" method="get" target="cert" style="display: inline-block;">
+															<input type='hidden' name='dtaCert' value='referencia-ficticia-089'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+															<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Certificado de envio escrito." style="display: inline-block;">
+																<i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#2693FF; cursor:pointer; display: inline-block;" ></i>
+															</a>
+																</span>
+															</form>
+																										</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Escrito</td>
+													
+												<td>
+Revoca patrocinio y poder												</td>
+												<td>Firmado</td>
+												<td>16/06/2020</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>9</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH70">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-090'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>16/04/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>8</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH71">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-091'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Resolución</td>
+													
+												<td>
+Embargo de oficio             												</td>
+												<td>Firmado</td>
+												<td>16/04/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>7</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH72">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-092'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de Carta      												</td>
+												<td>Firmado</td>
+												<td>01/04/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>6</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH73">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-093'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Excepciones / Objeta Liquidación</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>29/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>5</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH74">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-094'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Ingreso</td>
+												<td>Resolución</td>
+													
+												<td>
+										
+													<form name="frmDocOf" action="ADIR_871/cobranza/documentos/docOficioCobranza.php" method="get" target="docOf74">
+														<input type='hidden' name='dtaDocOf' value='referencia-ficticia-095'>
+														<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<label class="label label-info" style="cursor:pointer; font-size:13px;" >
+															aprueba liquidación/Requiérase															<span class="badge" style="background-color:#fff;"><i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;"></i></span>
+														</label>
+														</a>
+													</form>
+													
+													<p style="display:none">1332-77777777-7 </p>
+												</td>
+												<td>Firmado</td>
+												<td>29/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>5</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+										
+													<form name="frmDocOf" action="ADIR_871/cobranza/documentos/docOficioCobranza.php" method="get" target="docOf75">
+														<input type='hidden' name='dtaDocOf' value='referencia-ficticia-095'>
+														<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<label class="label label-info" style="cursor:pointer; font-size:13px;" >
+															aprueba liquidación/Requiérase															<span class="badge" style="background-color:#fff;"><i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;"></i></span>
+														</label>
+														</a>
+													</form>
+													
+													<p style="display:none">1332-77777777-7 </p>
+												</td>
+												<td>Firmado</td>
+												<td>29/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>5</td>
+												<td></td>
+												<td align="center">
+												</td>
+												<td></td>
+												<td></td>
+													
+												<td>
+										
+													<form name="frmDocOf" action="ADIR_871/cobranza/documentos/docOficioCobranza.php" method="get" target="docOf76">
+														<input type='hidden' name='dtaDocOf' value='referencia-ficticia-095'>
+														<a href="#" onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<label class="label label-info" style="cursor:pointer; font-size:13px;" >
+															aprueba liquidación/Requiérase															<span class="badge" style="background-color:#fff;"><i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;"></i></span>
+														</label>
+														</a>
+													</form>
+													
+													<p style="display:none">1332-77777777-7 </p>
+												</td>
+												<td>Firmado</td>
+												<td>29/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>4</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH77">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-096'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Ingreso</td>
+												<td>Actuación</td>
+													
+												<td>
+Liquidacion                   												</td>
+												<td>Firmado</td>
+												<td>28/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>3</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH78">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-097'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Ingreso</td>
+												<td>Actuación</td>
+													
+												<td>
+Certifica Envío de E-Mail     												</td>
+												<td>Firmado</td>
+												<td>27/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>2</td>	
+												<td align="left" width="3%">
+														<form name="frmDocH" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docH79">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-098'>
+															
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+																<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ef9e14; cursor:pointer;" ></i>
+																</a>
+														</form>
+												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Ingreso</td>
+												<td>Resolución</td>
+													
+												<td>
+Liquídese Cumplimiento        												</td>
+												<td>Firmado</td>
+												<td>27/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+											<tr>
+												<td>1</td>	
+												<td align="left" width="3%">
+															
+														<form name="frmDocTra" action="ADIR_871/cobranza/documentos/docuCobranza.php" method="get" target="docTra80" style="display: inline-block;">
+															<input type='hidden' name='dtaDoc' value='referencia-ficticia-099'>
+															<span title="Documento sin firma electr&oacute;nica avanzada" class="topToolNom">
+																<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento" style="display: inline-block;">
+																	<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer; display: inline-block;" ></i>
+																</a>
+															</span>
+														</form>
+													  												</td>
+																								<td align="center">
+	
+												</td>
+												<td>Ingreso</td>
+												<td>Escrito</td>
+													
+												<td>
+Ingreso demanda												</td>
+												<td>Firmado</td>
+												<td>26/03/2019</td>
+												<td align="center">
+												</td>
+											</tr>
+										</tbody>
+									</table>
+
+								</div>
+							</div>
+
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="litigantesCob"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Sujeto</th>
+												<th>Rut</th>
+												<th>Persona</th>
+												<th>Nombre o Raz&oacute;n Social</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>DTE.  </td>
+												<td>55555555-5</td>
+												<td>NATURAL                       </td>			
+												<td>PERSONA FICTICIA 24</td>			
+											</tr>
+											<tr>
+												<td>DDO.  </td>
+												<td>1111111-1</td>
+												<td>JURIDICA                      </td>			
+												<td>EMPRESA FICTICIA TRES  </td>			
+											</tr>
+											<tr>
+												<td>AB.DTE</td>
+												<td>44444444-4</td>
+												<td>NATURAL                       </td>			
+												<td>PERSONA FICTICIA 26</td>			
+											</tr>
+											<tr>
+												<td>AB.DTE</td>
+												<td>33333333-3</td>
+												<td>NATURAL                       </td>			
+												<td>PERSONA FICTICIA 25</td>			
+											</tr>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+
+
+						<div class="tab-pane fade" id="notificacionCob"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Tip.Not.</th>
+												<th>Est.Not.</th>
+												<th>Fec.Not.</th>
+												<th>Fec.Tram.</th>
+												<th>Tr&aacute;mite</th>
+												<th>Tip.Part.</th>
+												<th>Nombre</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>27/03/2019</td>
+												<td>27/03/2019</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 22</td>
+											</tr>
+											<tr>
+												<td>carta                         </td>
+												<td>enviada                                           </td>
+												<td>01/04/2019</td>
+												<td>29/03/2019</td>
+												<td>resolución                    </td>
+												<td>DDO.           </td>
+												<td>EMPRESA FICTICIA TRES  </td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>29/03/2019</td>
+												<td>29/03/2019</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 22</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>16/04/2019</td>
+												<td>16/04/2019</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 22</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>18/06/2020</td>
+												<td>18/06/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>20/07/2020</td>
+												<td>20/07/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>06/11/2020</td>
+												<td>06/11/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>06/11/2020</td>
+												<td>06/11/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 26</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>04/12/2020</td>
+												<td>04/12/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>04/12/2020</td>
+												<td>04/12/2020</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 26</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>06/07/2022</td>
+												<td>06/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>06/07/2022</td>
+												<td>06/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 26</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>15/07/2022</td>
+												<td>15/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>15/07/2022</td>
+												<td>15/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 26</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>29/07/2022</td>
+												<td>29/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 25</td>
+											</tr>
+											<tr>
+												<td>e-mail                        </td>
+												<td>realizada                                         </td>
+												<td>29/07/2022</td>
+												<td>29/07/2022</td>
+												<td>resolución                    </td>
+												<td>AB.DTE.        </td>
+												<td>PERSONA FICTICIA 26</td>
+											</tr>
+										</tbody>
+									</table>
+												
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+						
+						
+						<div class="tab-pane fade" id="diligenciaCob"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+							
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Doc. Ida</th>
+												<th>Doc. Vta.</th>
+												<th>Estado Diligencia</th>
+												<th>RIT</th>
+												<th>RUC</th>
+												<th>Tipo Diligencia</th>
+												<th>Fecha Tr&aacute;mite</th>
+												<th>Destinatario</th>
+												<th>Responsable</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td>		
+																										<i class="fa fa-file-o fa-lg" aria-hidden="true" style="color:#888787; cursor:no-drop;"></i>
+													</td>
+												<td>
+																										<i class="fa fa-file-o fa-lg" aria-hidden="true" style="color:#888787; cursor:no-drop;"></i>
+													</td>
+												<td>cumplida                      </td>
+												<td>C-208-2019</td>		
+												<td>18- 4-140954-4</td>
+												<td>Oficios Varios 3</td>
+												<td>31/12/1969</td>
+												<td>No Asignado                   </td>
+												<td>Katiuska Andrea Venegas Fierro</td>
+											</tr>
+										</tbody>
+									</table>
+										
+								</div>
+							</div>
+						</div> <!-- FIN PANEL -->
+						
+						
+						<div class="tab-pane fade" id="liquidacionCob"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th width="100px">Liquidaci&oacute;n</th>
+                                                <th>Fecha Liquidaci&oacute;n</th>
+                                                <th>Cuaderno</th>
+                                                <th>Estado</th>
+                                                <th>Monto L&iacute;quido</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td align="center">
+													
+													<form name="frmLiq" action="ADIR_871/cobranza/documentos/docLiquidacionCobranza.php" method="get" target="liq1">
+														<input type='hidden' name='valorLiq' value='referencia-ficticia-100'>
+														<a href="#"  onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+														</a>
+													</form>
+												</td>      
+                                                <td>28/07/2022</td>
+                                                <td>Principal</td>
+                                                <td>Firmado</td>
+                                                <td>$24.563.365.-</td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center">
+													
+													<form name="frmLiq" action="ADIR_871/cobranza/documentos/docLiquidacionCobranza.php" method="get" target="liq2">
+														<input type='hidden' name='valorLiq' value='referencia-ficticia-101'>
+														<a href="#"  onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+														</a>
+													</form>
+												</td>      
+                                                <td>06/11/2020</td>
+                                                <td>Principal</td>
+                                                <td>Firmado</td>
+                                                <td>$12.680.528.-</td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center">
+													
+													<form name="frmLiq" action="ADIR_871/cobranza/documentos/docLiquidacionCobranza.php" method="get" target="liq3">
+														<input type='hidden' name='valorLiq' value='referencia-ficticia-102'>
+														<a href="#"  onClick='$(this).closest("form").submit();' title="Descargar Documento">
+														<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+														</a>
+													</form>
+												</td>      
+                                                <td>28/03/2019</td>
+                                                <td>Principal</td>
+                                                <td>Firmado</td>
+                                                <td>$4.481.885.-</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+						</div> <!-- FIN PANEL -->
+						
+						
+						<div class="tab-pane fade" id="deudaCob"> <!-- INICIO PANEL -->
+						
+                            <div class="panel panel-default">                        
+                                <div class="table-responsive">
+																		<div class="panel-group" id="accordion">
+									
+										<!-- First Panel -->
+										<div id="idPanelUno" class="panel panel-default">
+											<div class="panel-heading" style="cursor: pointer;">
+												<h5 class="panel-title" style="color:#337ab7;" data-toggle="collapse" data-target="#actDeuda">
+													Act. Deuda
+													<span class="pull-left hidden-xs showopacity fa fa-inbox fa-lg" aria-hidden="true" style="color:#337ab7"></span>
+												</h5>
+											</div>
+											
+											<div id="actDeuda" class="panel-collapse collapse">
+											<div id="loadActDeuda"></div>
+
+											</div>
+										</div>
+										
+										
+										
+										<!-- Second Panel -->
+										<div id="idPanelDos" class="panel panel-default">
+											<div class="panel-heading" style="cursor: pointer;">
+												<h5 class="panel-title" style="color:#337ab7;" data-toggle="collapse" data-target="#detalleDeuda">
+													Detalle Deuda
+													<span class="pull-left hidden-xs showopacity fa fa-list-alt fa-lg" aria-hidden="true" style="color:#337ab7"></span>
+												</h5>
+											</div>
+											
+											<div id="detalleDeuda" class="panel-collapse collapse">
+											<div id="loadDetDeuda"></div>
+											
+											</div>
+										</div>
+										
+									</div>
+									                                </div>
+                            </div>
+							
+						</div> <!-- FIN PANEL -->
+
+					</div>					
+				</div>
+                
+
+							
+			</div>
+			
+        
+			<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+						</div>
+			
+		</div>
+	</div>
+<script>
+$(function(){
+//************************** EVENTO PARA CARGAR EL TAB ACT. DEUDA ********************************//	
+//------------------------------------------------------------------
+	$('#idPanelUno').one("click",function () {
+		
+		var dataActDeuda	= 'referencia-ficticia-103';
+		
+		$.ajax({
+			url     : '../ADIR_871/cobranza/json/jsonActDeuda.php',
+			dataType: "html",
+			type    : "POST",
+			cache   : false,
+			data    :{
+						dataActDeuda : dataActDeuda
+					},
+			success:function(data){ 
+						 
+				$("#actDeuda").html(data);		   
+			},
+			beforeSend:function()
+			{
+				$("#loadActDeuda").html("<center><b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' /></center>");
+			}
+		});
+	});
+//------------------------------------------------------------------
+	
+//------------------------------------------------------------------
+	$('#idPanelDos').one("click",function () {
+		
+		var dataDetalleDeuda	= 'referencia-ficticia-103';
+		
+		$.ajax({
+			url     : '../ADIR_871/cobranza/json/jsonDetalleDeuda.php',
+			dataType: "html",
+			type    : "POST",
+			cache   : false,
+			data    :{
+						dataDetalleDeuda : dataDetalleDeuda
+					},
+			success:function(data){ 
+						 
+				$("#detalleDeuda").html(data);		   
+			},
+			beforeSend:function()
+			{
+				$("#loadDetDeuda").html("<center><b class='imgLoad'>Cargando</b></br><img src='images/pagLoad.gif' /></center>");
+			}
+		});
+	});
+//------------------------------------------------------------------
+//************************************************************************************************//
+});
+</script>

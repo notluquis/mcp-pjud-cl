@@ -233,7 +233,11 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     # buscables y eso es correcto: `obtener_actuaciones_receptor` sólo las que publican
     # actuaciones en la Historia, y `obtener_historia_causa` sólo aquellas cuyo panel está
     # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
-    sin_todas_las_competencias = {"obtener_actuaciones_receptor", "obtener_historia_causa"}
+    sin_todas_las_competencias = {
+        "obtener_actuaciones_receptor",
+        "obtener_historia_causa",
+        "obtener_notificaciones_causa",
+    }
     descripciones = [
         p.get("description", "")
         for nombre_h, h in expuestas.items()

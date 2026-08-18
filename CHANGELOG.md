@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Herramienta `obtener_notificaciones_causa`: las notificaciones practicadas, con sus fechas y
+  a quién se notificó. Medida en `civil`, `cobranza` y `laboral`.
+- Cobranza publica la fecha de notificación y la de trámite por separado, y difieren: una carta
+  midió tres días. Donde la competencia no la publica, `fecha_notificacion` va nula y no
+  copiada de la de trámite.
+
+
 ## [0.3.0] - 2026-08-17
 
 ### Agregado

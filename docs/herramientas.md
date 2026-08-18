@@ -249,9 +249,21 @@ Columnas que sólo publican algunas competencias, y que por eso vienen en nulo e
 
 ## `obtener_notificaciones_causa`
 
-Las notificaciones practicadas en la causa, con sus fechas y a quién se notificó. Dice cuándo se
-notificó a cada parte, que es lo que hace correr un plazo desde el punto de vista de quien lo
-recibe.
+Las notificaciones de la causa, con sus fechas y a quién se notificó.
+
+:::{danger} La lista incluye notificaciones NO practicadas
+Un intento pendiente viene en la misma lista que uno realizado, y su fecha **no hizo correr
+ningún plazo**. Hay que mirar `estado` antes de computar nada.
+
+| Estado medido | Dónde | Qué significa |
+|---|---|---|
+| `Realizada` / `realizada` | civil, laboral, cobranza | Se practicó |
+| `Pendiente` | laboral | **No** se ha practicado |
+| `enviada` | cobranza | Carta despachada, que no es lo mismo que notificada |
+
+Se incluyen a propósito: una causa detenida en notificación es un dato que importa, y omitir
+esas filas la haría ver como si avanzara.
+:::
 
 :::{warning}
 Las competencias no publican lo mismo, y eso cambia qué se puede afirmar:

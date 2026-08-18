@@ -390,10 +390,12 @@ def obtener_notificaciones_causa(
     tribunal: Tribunal = None,
     corte: Corte = None,
 ) -> list[Notificacion]:
-    """Las notificaciones practicadas en la causa, con sus fechas y a quién se notificó.
+    """Las notificaciones de la causa, practicadas y no practicadas, con sus fechas.
 
-    Dice cuándo se notificó a cada parte, que es lo que hace correr un plazo desde el punto
-    de vista de quien lo recibe.
+    Incluye los intentos que NO se practicaron, y eso es a propósito: una causa detenida en
+    notificación es un dato que importa, y omitir esas filas la haría ver como si avanzara.
+    Distinguirlas es obligatorio y se hace con `estado`. Una fila 'Pendiente' no hizo correr
+    ningún plazo, y 'enviada' es una carta despachada, que no es lo mismo que notificada.
 
     Las competencias no publican lo mismo, y eso cambia qué se puede afirmar. Cobranza trae
     la fecha de notificación Y la de trámite por separado, y difieren: una carta midió tres

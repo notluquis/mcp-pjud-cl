@@ -473,7 +473,13 @@ def _fila_a_actuacion(
 class Notificacion(BaseModel):
     """Una fila del panel de notificaciones."""
 
-    estado: str = Field(description="Si la notificación se practicó. Ej: 'Realizada', 'enviada'.")
+    estado: str = Field(
+        description="Si la notificación se practicó, y HAY QUE MIRARLO: la lista incluye "
+        "intentos que NO se practicaron. Valores medidos: 'Realizada' en civil y laboral, "
+        "'Pendiente' en laboral, 'realizada' y 'enviada' en cobranza. Una fila 'Pendiente' "
+        "significa que la notificación no se ha practicado, así que su fecha NO hizo correr "
+        "ningún plazo. 'enviada' es una carta despachada, que no es lo mismo que notificada."
+    )
     tipo: str | None = Field(
         default=None, description="Vía por la que se notificó: 'mail', 'carta'. Laboral no la trae."
     )
@@ -486,7 +492,8 @@ class Notificacion(BaseModel):
     fecha_tramite: date | None = Field(
         default=None,
         description="Fecha del trámite notificado, en ISO 8601. Es la única que publican civil "
-        "y laboral.",
+        "y laboral. NO es por sí sola la fecha en que se notificó: mirar `estado` antes de "
+        "computar un plazo con ella.",
     )
     tipo_parte: str = Field(
         description="Calidad de quien fue notificado. Ej: 'AB.DTE.' abogado demandante, "

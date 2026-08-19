@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.4.0] - 2026-08-19
+
 ### Agregado
 
 - Herramienta `obtener_notificaciones_causa`: las notificaciones de la causa con sus fechas,
@@ -172,7 +174,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.3.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.4.0
 [0.3.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.3.0
 [0.2.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.1
 [0.2.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.0

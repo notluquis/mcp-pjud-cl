@@ -12,6 +12,12 @@
 #
 # La clave lleva guion BAJO. Con guion medio el archivo se lee sin error y no hace nada, que
 # es la peor forma de equivocarse en una configuración: parece puesta.
+#
+# Y esto NO silencia el chequeo de la aplicación de GitHub: está medido, sigue en rojo con el
+# archivo puesto y bien escrito. Este archivo lo lee `ggshield`, la herramienta de línea de
+# comandos; la aplicación se configura desde su panel, donde hay que marcar los dos hallazgos
+# como falsos positivos a mano. Se deja igual porque quien corra `ggshield` localmente sí lo
+# usa, y porque el motivo queda escrito donde se busca.
 version: 2
 
 secret:

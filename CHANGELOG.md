@@ -16,6 +16,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- El estado de la parte en laboral llegaba siempre nulo: el sitio lo publica como icono y no
+  como texto. Ahora viaja la clase del icono, sin interpretar.
+- Un panel de materias con encabezados y cero filas se publicaba como lista vacía, que se lee
+  como que la causa no litiga nada.
+
 ### Agregado
 
 - Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un

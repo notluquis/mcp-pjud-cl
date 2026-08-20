@@ -880,7 +880,12 @@ class Litigante(BaseModel):
     abogado_defensor: str | None = Field(
         default=None, description="Si tiene abogado defensor. Sólo laboral publica la columna."
     )
-    estado: str | None = Field(default=None, description="Estado de la parte. Sólo en laboral.")
+    estado: str | None = Field(
+        default=None,
+        description="Estado de la parte, tal como el sitio lo emite: la clase del icono, sin "
+        "interpretar. Sólo laboral publica la columna, y ahí NUNCA es nulo. Un nulo significa "
+        "que esta competencia no publica el dato, no que la parte no tenga estado.",
+    )
 
 
 class Materia(BaseModel):
@@ -925,6 +930,32 @@ def parse_exhortos(html_detalle: str, competencia: str = "civil") -> list[Exhort
     ]
 
 
+def _estado_de_parte(celdas, columnas: tuple[str, ...]) -> str | None:
+    """El estado de la parte, que laboral publica como icono y no como texto.
+
+    Leerlo con `text_content()` devolvía cadena vacía en las cuatro filas medidas, y ésa se
+    normalizaba a nulo. El nulo ya significa "esta competencia no publica el dato", así que el
+    dato existía y se informaba como ausente: el falso negativo de siempre, en un campo chico.
+
+    Se devuelve la clase del icono SIN interpretar. Las cuatro filas medidas traen la misma
+    (`fa-check-square-o`), o sea hay un solo valor observado y no se sabe qué emite el sitio
+    para los demás estados. Traducirlo a "vigente" o "notificado" sería inventar el mapa.
+    """
+    if "estado" not in columnas:
+        return None
+    celda = celdas[columnas.index("estado")]
+    texto = " ".join(celda.text_content().split())
+    if texto:
+        return texto
+    for icono in celda.iter():
+        clases = (icono.get("class") or "").split()
+        # `fa` y `fa-lg` son la familia y el tamaño: no dicen nada del estado.
+        significativas = [c for c in clases if c.startswith("fa-") and c != "fa-lg"]
+        if significativas:
+            return " ".join(significativas)
+    return None
+
+
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
     """Quiénes son parte en la causa y con qué calidad.
 
@@ -939,6 +970,7 @@ def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Liti
             "mapa de otra competencia devolvería el RUT en el campo del sujeto, que se ve "
             "plausible y es falso."
         )
+    columnas = spec.litigantes.columnas
     litigantes = [
         Litigante(
             sujeto=txt["sujeto"],
@@ -946,9 +978,9 @@ def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Liti
             rut=txt["rut"],
             persona=txt["persona"],
             abogado_defensor=txt.get("abogado_defensor") or None,
-            estado=txt.get("estado") or None,
+            estado=_estado_de_parte(celdas, columnas),
         )
-        for _celdas, txt in _filas_del_panel(html_detalle, spec.litigantes)
+        for celdas, txt in _filas_del_panel(html_detalle, spec.litigantes)
     ]
     if not litigantes:
         # Toda causa tiene partes: es lo que la hace una causa. Un panel con encabezados y cero
@@ -971,7 +1003,7 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
             "Leerlo en otra devolvería una lista vacía, que se leería como que la causa no "
             "tiene materias."
         )
-    return [
+    materias = [
         Materia(
             codigo=txt["codigo"],
             glosa=txt["glosa"],
@@ -980,6 +1012,17 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
         )
         for _celdas, txt in _filas_del_panel(html_detalle, spec.materias)
     ]
+    if not materias:
+        # Una causa laboral sin materia no existe: la materia es QUÉ se litiga, y es lo que
+        # el tribunal registra al ingresarla. Encabezados y cero filas es una respuesta
+        # truncada o una estructura que cambió, y devolver la lista vacía publicaría "esta
+        # causa no litiga nada".
+        raise EstructuraInesperada(
+            f"El panel de materias de {competencia} tiene encabezados y ninguna fila. Toda "
+            "causa laboral tiene materia, así que la respuesta viene truncada o la estructura "
+            "cambió. No se devuelve la lista vacía porque se leería como que no se litiga nada."
+        )
+    return materias
 
 
 class DetalleCausa(BaseModel):

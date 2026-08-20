@@ -18,8 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
-- Campo `documento_referencia` en las actuaciones: con qué pedir el documento. Antes sólo se
-  decía que existía.
+- Campos `documento_ruta` y `documento_referencia` en las actuaciones: con qué pedir el
+  documento. Antes sólo se decía que existía.
 - Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
   campo del detalle, la cadena de peticiones y qué activa la detención total.
 

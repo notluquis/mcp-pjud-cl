@@ -173,7 +173,12 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `cuaderno` | str | A qué cuaderno pertenece |
 | `foja` | str | Foja |
 | `georreferenciado` | bool | `false` significa **ausente** (art. 9 inc. 3 Ley 20.886) |
+| `estado_firma` | str \| null | Estado de firma del trámite. Cobranza lo publica en lugar de la foja; civil no lo trae |
+| `correlativo` | str \| null | Correlativo interno del trámite. Sólo en suprema |
+| `anio_tramite` | str \| null | Año que suprema publica en columna aparte, además de la fecha |
 | `tiene_documento` | bool | Si el folio trae documento descargable |
+| `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
+| `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
 
 ### Ejemplo
 
@@ -190,7 +195,9 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
   "cuaderno": "2 - Apremio Ejecutivo Obligación de Dar",
   "foja": "0",
   "georreferenciado": true,
-  "tiene_documento": true
+  "tiene_documento": true,
+  "documento_ruta": "docuN.php",
+  "documento_referencia": "hHkPqx0yRb2..."
 }
 ```
 

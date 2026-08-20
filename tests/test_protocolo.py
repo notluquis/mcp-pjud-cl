@@ -31,6 +31,7 @@ cubren:
 """
 
 import asyncio
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -69,8 +70,13 @@ HERRAMIENTA = "buscar_causa_por_rit"
 ARGUMENTOS = {"tipo": "E", "rol": 468, "anio": 2026}
 
 
-def _responder(cuerpo: str) -> Callable[[httpx.Request], httpx.Response]:
-    """Doble del sitio: la portada de la que se deriva la sesión y un cuerpo para la búsqueda.
+def _responder(
+    cuerpo: str, detalle: str | None = None, estado_busqueda: int = 200
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Doble del sitio: la portada de la que se deriva la sesión, el listado y el detalle.
+
+    `estado_busqueda` permite responder un 403 y llegar a la detención total, que es el otro
+    mensaje que la directiva le promete al modelo.
 
     Cualquier otra ruta revienta en vez de responder algo plausible: un doble que contesta a
     una petición que el test no previó mide otra cosa que la que dice medir.
@@ -83,13 +89,23 @@ def _responder(cuerpo: str) -> Callable[[httpx.Request], httpx.Response]:
         if url.endswith("consultaUnificada.php"):
             return httpx.Response(200, text=PORTADA)
         if url.endswith("/civil/consultaRitCivil.php"):
-            return httpx.Response(200, text=cuerpo)
+            return httpx.Response(estado_busqueda, text=cuerpo)
+        if detalle is not None and url.endswith("/civil/modal/causaCivil.php"):
+            return httpx.Response(200, text=detalle)
         raise AssertionError(f"petición no prevista por el doble: {peticion.method} {url}")
 
     return responder
 
 
-def _llamar(monkeypatch: pytest.MonkeyPatch, cuerpo: str) -> CallToolResult:
+def _llamar(
+    monkeypatch: pytest.MonkeyPatch,
+    cuerpo: str,
+    *,
+    herramienta: str = HERRAMIENTA,
+    argumentos: dict | None = None,
+    detalle: str | None = None,
+    estado_busqueda: int = 200,
+) -> CallToolResult:
     """Llama la herramienta a través de una sesión MCP real y devuelve lo que viaja por el cable.
 
     `Client(mcp)` es API pública del SDK y conecta el servidor en el mismo proceso, sin red y
@@ -106,14 +122,16 @@ def _llamar(monkeypatch: pytest.MonkeyPatch, cuerpo: str) -> CallToolResult:
 
     def fabricar(contacto: str) -> PjudClient:
         cliente = PjudClient(contacto)
-        cliente._http = httpx.Client(transport=httpx.MockTransport(_responder(cuerpo)))
+        cliente._http = httpx.Client(
+            transport=httpx.MockTransport(_responder(cuerpo, detalle, estado_busqueda))
+        )
         return cliente
 
     monkeypatch.setattr(servidor, "PjudClient", fabricar)
 
     async def ida_y_vuelta() -> CallToolResult:
         async with Client(servidor.mcp) as cliente:
-            return await cliente.call_tool(HERRAMIENTA, ARGUMENTOS)
+            return await cliente.call_tool(herramienta, argumentos or ARGUMENTOS)
 
     return asyncio.run(ida_y_vuelta())
 
@@ -252,3 +270,91 @@ def test_el_contenido_estructurado_valida_contra_el_esquema_anunciado(
         "la herramienta anuncia esquema de salida y no devolvió contenido estructurado"
     )
     jsonschema.validate(resultado.structured_content, esquema)
+
+
+#: Un listado que declara más resultados de los que caben en una página, con el bloque de
+#: navegación REAL de una página intermedia, que es el que ofrece la siguiente.
+#:
+#: Se arma así y no tocando el listado entero porque el real declara un total de 1 y no ofrece
+#: página siguiente: con eso el recorrido corta al primer intento y nunca llega a truncar.
+_NAV_INTERMEDIA = re.sub(
+    r"<div[^>]*>\s*Total de registros:.*?</div>",
+    "",
+    (FIXTURES / "nav_pagina_intermedia.html").read_text(encoding="utf-8"),
+    flags=re.S,
+)
+_FILAS = LISTADO[: LISTADO.rindex("<tr", 0, LISTADO.index("Total de registros"))]
+LISTADO_LARGO = _FILAS + (
+    f"<tr><td colspan='5'><div>Total de registros: <b>500</b></div>{_NAV_INTERMEDIA}</td></tr>"
+)
+
+
+def test_el_aviso_de_truncacion_llega_al_modelo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La directiva le promete al modelo que este error NO significa "no hay resultados".
+
+    Dice textual que si una búsqueda excede el tope de páginas la herramienta falla en vez de
+    devolver una lista recortada, y que ese error significa "hay más resultados de los que
+    caben". Esa instrucción sólo sirve si el texto cruza el protocolo entero: si llegara
+    opaco, el modelo tendría la instrucción y ninguna forma de saber que aplica, y una lista
+    recortada informada como completa es un plazo que nadie revisó.
+
+    `ResultadosTruncados` sólo aparecía en tests del lado del cliente.
+    """
+    resultado = _llamar(
+        monkeypatch,
+        LISTADO_LARGO,
+        argumentos={**ARGUMENTOS, "paginas": 1},
+    )
+
+    texto = _texto(resultado)
+    assert resultado.is_error, f"la truncación tiene que llegar como error, y llegó: {texto}"
+    assert "500" in texto, (
+        f"el modelo tiene que saber CUÁNTOS resultados hay para decidir si acota o sube el "
+        f"tope, y el mensaje no los trae: {texto}"
+    )
+    assert "Acota la búsqueda o sube el tope" in texto, (
+        f"el mensaje tiene que decir qué HACER, no sólo que falló: con un error opaco el "
+        f"modelo informa 'no se encontró nada', que es lo contrario. Llegó: {texto}"
+    )
+
+
+def test_el_aviso_de_detencion_total_llega_al_modelo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Es lo único que le dice al modelo que NO reintente.
+
+    Ante un 403 la regla 3 exige detención total, sin reintento ni rotación. El modelo no
+    tiene forma de saberlo salvo por este texto: si llegara opaco leería "algo falló" y el
+    reintento es exactamente lo que convierte un bloqueo temporal en una IP baneada.
+    """
+    resultado = _llamar(monkeypatch, "bloqueado", estado_busqueda=403)
+
+    texto = _texto(resultado)
+    assert resultado.is_error
+    assert "403" in texto, f"el modelo tiene que ver el código que lo detuvo: {texto}"
+
+
+def test_las_actuaciones_de_receptor_no_llegan_como_lista_vacia(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """La herramienta que da sentido al proyecto, cruzando el protocolo por primera vez.
+
+    Acá una lista vacía se lee como "no hubo actuaciones del ministro de fe", que es
+    exactamente el falso negativo que cuesta un plazo. Se le da un listado legible y un
+    detalle que no lo es: si el detalle roto llegara como `[]`, el modelo informaría que la
+    causa no tiene actuaciones cuando lo cierto es que no se pudieron leer.
+    """
+    resultado = _llamar(
+        monkeypatch,
+        LISTADO,
+        herramienta="obtener_actuaciones_receptor",
+        argumentos={"tipo": "E", "rol": 468, "anio": 2026},
+        detalle="<html><body><p>Sesión expirada</p></body></html>",
+    )
+
+    assert resultado.is_error, (
+        f"un detalle ilegible llegó como respuesta y no como error: "
+        f"{resultado.structured_content!r}"
+    )
+    assert resultado.structured_content != {"result": []}, (
+        "la herramienta que existe para no perder plazos entregó una lista vacía ante un "
+        "detalle que no se pudo leer"
+    )

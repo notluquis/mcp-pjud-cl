@@ -157,6 +157,28 @@ _TURNO = threading.Lock()
 #: evitar. Ante la duda, la respuesta correcta es parar y avisar.
 _BLOQUEADO: str | None = None
 
+#: Errores de httpx que se leen como rechazo y no como plataforma lenta. Un cortafuegos que
+#: rechaza a nivel de red no manda un 403: corta la conexión, y eso llega como `ReadError` o
+#: `ConnectError`. Sin esto, ese rechazo se propagaba como error de red y la detención total
+#: no se activaba, así que quien envolviera las llamadas en un reintento seguía golpeando un
+#: cortafuegos que ya lo rechazó. Reportado en la incidencia #34.
+#:
+#: `TimeoutException` queda FUERA a propósito, y es la parte que decide el corte: está medido
+#: que una búsqueda en el buscador de fallos tarda hasta 177 segundos, así que armar la
+#: detención total con un timeout dejaría el servidor detenido por una consulta lenta y
+#: normal. Eso sería negarse el servicio a uno mismo, no cuidar la plataforma.
+#:
+#: `ConnectError` sí queda dentro, y es una decisión con costo: una wifi caída produce la
+#: misma clase que un cortafuegos que rechaza el SYN. Se prefiere detener y que una persona
+#: mire, porque el error opuesto es el que termina en una IP baneada. El mensaje dice que no
+#: se puede distinguir, para que quien lo lea sepa qué revisar.
+_RECHAZO_DE_CONEXION = (httpx.NetworkError, httpx.RemoteProtocolError)
+
+#: La marca que F5 BIG-IP APM pone en su desafío. Viene con HTTP 200 y antes de la
+#: aplicación, así que ni el código de estado ni `_SENAL_CAPTCHA`, que busca palabras en un
+#: aviso de la aplicación, lo ven pasar.
+_MARCA_APM = "APM_DO_NOT_TOUCH"
+
 
 #: Cuántas páginas de resultados se recorren como máximo. La plataforma devuelve 100 por
 #: página, así que el valor por defecto cubre mil causas: más que cualquier consulta
@@ -290,13 +312,22 @@ class Transporte:
             self._esperar()
             try:
                 r = self._http.request(metodo, url, **kw)
-            except httpx.HTTPError:
+            except httpx.HTTPError as e:
                 # Una petición que no llegó a respuesta igual salió a la red, y la bitácora
                 # existe para poder acreditar cuánto se consultó. Sin esto los timeouts no
                 # quedaban registrados, o sea el registro subestimaba el tráfico generado
                 # justo en las corridas donde la plataforma iba peor. Se anota con estado 0,
                 # que ningún código HTTP usa.
                 self.bitacora.append((time.time(), url, 0))
+                if isinstance(e, _RECHAZO_DE_CONEXION):
+                    _BLOQUEADO = (
+                        f"La conexión con {url} se cortó: {type(e).__name__}. No se distingue "
+                        "un corte de red local de un rechazo del cortafuegos, y un cortafuegos "
+                        "que corta la conexión ya rechazó a esta IP. Detención total: no se "
+                        "reintenta. Revisar la red y si el acceso quedó restringido, y "
+                        "reiniciar el servidor sólo después de eso."
+                    )
+                    raise PjudBloqueado(_BLOQUEADO) from e
                 raise
             finally:
                 # El reloj de recarga arranca cuando la petición termina, no cuando empieza.
@@ -311,6 +342,24 @@ class Transporte:
                     "del proceso, incluidas las consultas al otro sistema: los dos están "
                     "detrás del mismo cortafuegos. No se reintenta ni se evade. Revisar si "
                     "la IP quedó bloqueada, y reiniciar el servidor sólo después de eso."
+                )
+                raise PjudBloqueado(_BLOQUEADO)
+
+            # El cortafuegos también rechaza con 200: un desafío de F5 BIG-IP APM, que es
+            # JavaScript ofuscado en vez de la página. Tomarlo por bueno hace que el fallo
+            # aparezca en la petición SIGUIENTE, un paso más allá de la causa real, que es el
+            # diagnóstico equivocado que este proyecto ya pagó caro con los timeouts.
+            #
+            # Va acá y no en `_bloqueo_encubierto` porque es una propiedad del cortafuegos
+            # compartido, no de ninguna de las dos aplicaciones. El corte del cuerpo es porque
+            # esto corre en cada respuesta y las del detalle de causa son grandes; el desafío
+            # trae la marca al principio.
+            if _MARCA_APM in r.text[:4000]:
+                _BLOQUEADO = (
+                    f"El cortafuegos interpuso un desafío de F5 BIG-IP APM en {url} en vez de "
+                    "la página, con HTTP 200. No es una caída de la plataforma. Resolverlo "
+                    "exige ejecutar su JavaScript, o sea sortear un control "
+                    "anti-automatización, y eso el proyecto no lo hace. Detención total."
                 )
                 raise PjudBloqueado(_BLOQUEADO)
 

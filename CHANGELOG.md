@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Un corte de conexión no activaba la detención total. Un cortafuegos que rechaza a nivel de
+  red no manda un 403: corta la conexión, y eso llegaba como error de transporte. Quien
+  envolviera las llamadas en un reintento seguía golpeando un cortafuegos que ya lo rechazó.
+  ([#34])
+- El cortafuegos también rechaza con HTTP 200, mandando un desafío de F5 BIG-IP APM en vez de
+  la página. Se tomaba por bueno y el fallo aparecía recién en la petición siguiente. ([#34])
+
 ## [0.5.0] - 2026-08-20
 
 ### Agregado
@@ -232,3 +241,4 @@ receptor con la fecha de diligencia correcta.
 [#26]: https://github.com/notluquis/mcp-pjud-cl/pull/26
 [#28]: https://github.com/notluquis/mcp-pjud-cl/pull/28
 [#29]: https://github.com/notluquis/mcp-pjud-cl/pull/29
+[#34]: https://github.com/notluquis/mcp-pjud-cl/issues/34

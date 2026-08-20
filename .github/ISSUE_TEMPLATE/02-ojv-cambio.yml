@@ -43,7 +43,21 @@ body:
         - "Sí, en el navegador funciona normal"
         - "No, en el navegador también falla"
         - "En el navegador aparece un captcha"
+        - "La respuesta trae JavaScript en vez de la página (busca APM_DO_NOT_TOUCH)"
         - "No lo probé"
+    validations:
+      required: true
+
+  - type: input
+    id: red
+    attributes:
+      label: Desde dónde sale la consulta
+      description: >-
+        País y tipo de conexión: residencial, oficina, servidor, VPN, nube. No hace falta la
+        IP. En la incidencia #34 ésta terminó siendo la variable que explicaba todo: el mismo
+        código andaba desde Chile y el cortafuegos rechazaba desde Canadá, así que sin este
+        dato se busca el problema en el lugar equivocado.
+      placeholder: "Chile, conexión residencial"
     validations:
       required: true
 

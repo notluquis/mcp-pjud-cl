@@ -1113,6 +1113,37 @@ def test_el_diagrama_de_la_detencion_nombra_todo_lo_que_la_detiene():
     assert "NO detiene" in pagina, "el diagrama dejó de decir que un timeout no detiene"
 
 
+def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real():
+    """La hoja de ruta nombraba UNA ruta de documentos y la respuesta trae seis.
+
+    Quedó así porque se escribió de memoria en vez de mirar la respuesta guardada, que las
+    tenía a la vista con su parámetro y todo. El guardia se ata a la fixture: si el sitio
+    agrega o retira una ruta de documentos, la página deja de listarlas y se entera.
+    """
+    fixture = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html")
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+
+    rutas = set(re.findall(r"civil/documentos/([\w.-]+\.php)", fixture))
+    assert len(rutas) >= 6, f"la fixture dejó de traer las rutas de documentos: {rutas}"
+
+    for ruta in rutas:
+        assert ruta in hoja, (
+            f"la respuesta real ofrece {ruta!r} para descargar documentos y la hoja de ruta no "
+            "la nombra"
+        )
+
+    # Y el parámetro de cada una, que es lo que hace falta para invocarla. Se saca de la
+    # fixture y no de una lista escrita a mano.
+    seccion = hoja.split("### 0.7: documentos", 1)[1].split("####", 1)[0]
+    for ruta in rutas:
+        tramo = fixture.split(ruta, 1)[1][:400]
+        nombres = re.findall(r"name='([\w]+)'", tramo)
+        assert nombres, f"la fixture ya no muestra con qué parámetro se invoca {ruta!r}"
+        assert nombres[0] in seccion, (
+            f"{ruta!r} se invoca con {nombres[0]!r} y la tabla de la hoja de ruta dice otra cosa"
+        )
+
+
 def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
     """La página afirmaba en un párrafo que no se entendía cuándo aparece `piezasExhortoCiv` y
     en el de al lado que sí, con la explicación. Dos respuestas incompatibles a la misma

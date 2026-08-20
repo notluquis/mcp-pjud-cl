@@ -260,11 +260,76 @@ mide antes de exponerlo.
 
 ### 0.7: documentos
 
-- Descarga de documentos por folio vía `docuN.php`
+No es una ruta, son seis, y estaban a la vista en las fixtures. Todas son `GET` con un solo
+parámetro oculto que lleva una referencia opaca, igual que el resto del sitio:
 
-**Decisión pendiente y no trivial:** descargar un PDF significa traer datos de terceros a
-disco. Eso cambia el perfil de retención y entra de lleno en la Ley 21.719. Probablemente
-requiera consentimiento explícito por llamada, y ruta de destino elegida por el usuario.
+| Ruta | Parámetro | Qué entrega |
+|---|---|---|
+| `civil/documentos/docu.php` | `valorEncTxtDmda` | El texto de la demanda |
+| `civil/documentos/docuN.php` | `dtaDoc` | El documento de una fila de la Historia |
+| `civil/documentos/docuS.php` | `dtaDoc` | El documento de un escrito |
+| `civil/documentos/newebookcivil.php` | `dtaEbook` | **El expediente entero en un PDF** |
+| `civil/documentos/docCertificadoDemanda.php` | `dtaCert` | Certificado de envío de la demanda |
+| `civil/documentos/docCertificadoEscrito.php` | `dtaCert` | Certificado de envío de un escrito |
+
+Mapeadas leyendo la respuesta guardada de C-1156-2026. **Ninguna ejecutada**, así que vale la
+regla de siempre: se mide antes de exponerla.
+
+#### Cómo se devuelve un documento sin reventar el contexto
+
+El ebook es el expediente completo. Meterlo en la respuesta de una herramienta, aunque sea en
+base64, gasta el contexto del modelo en algo que probablemente no necesita leer entero, y el
+costo lo paga la conversación del abogado.
+
+La especificación del protocolo tiene la pieza para esto y no hace falta inventarla. En la
+revisión `2026-07-28` una herramienta puede devolver:
+
+| Forma | Qué es | Cuándo |
+|---|---|---|
+| `ResourceLink` | Un puntero con `uri`, `mimeType` y `size`, sin el contenido | El ebook y cualquier documento largo. El cliente lo lee con `resources/read` **sólo si lo necesita** |
+| `EmbeddedResource` con `BlobResourceContents` | El contenido en base64, dentro de la respuesta | Un documento chico que el modelo sí tiene que leer ahora |
+
+`ResourceLink` trae `size`, así que el cliente puede decidir **antes** de gastar el contexto.
+Ésa es la diferencia con devolver el PDF y esperar que a nadie le explote la ventana.
+
+#### Extraer texto: qué biblioteca, y por qué la licencia decide
+
+Lo medido por terceros y publicado, no por este proyecto:
+
+| Biblioteca | Licencia | Velocidad | Nota |
+|---|---|---|---|
+| PyMuPDF | **AGPL-3.0** | 8 a 12 veces más rápida | Trae OCR y detección de tablas |
+| pdfplumber | MIT | La más lenta de las tres | Mejor en tablas de documentos financieros |
+| pypdf | BSD-3 | Intermedia | Python puro, sin dependencias binarias |
+
+**La velocidad no decide acá, la licencia sí.** Este proyecto se distribuye bajo PolyForm
+Strict, y publicar una rueda que enlaza código AGPL pone las dos licencias en conflicto. Con
+eso PyMuPDF queda fuera aunque sea la más rápida, y quedan pypdf y pdfplumber.
+
+#### Un PDF sin capa de texto es un escaneo, y ahí NO se transcribe
+
+Detectarlo es barato: si no se extrae texto, es una imagen. Lo que no corresponde es pasarle
+OCR y entregar el resultado como el texto del documento.
+
+Una transcripción automática de una resolución judicial **se ve idéntica a la resolución y no
+lo es**. Es peor que la lista vacía de la regla 4: la lista vacía se nota, un texto plausible
+con una palabra cambiada no. Lo correcto es decir que el documento es un escaneo y entregar el
+documento, no una versión de él.
+
+#### Y la parte que no es técnica
+
+Traer un PDF a disco cambia el perfil de retención del proyecto y entra de lleno en la Ley
+21.719. La regla 5 dice que no se persisten datos de terceros, así que si un documento se
+guarda, lo guarda quien llama y no este servidor: ruta elegida por el usuario, consentimiento
+explícito por llamada, y nada escrito por defecto.
+
+### 0.7b: la georreferencia, que hoy es sólo un sí o un no
+
+`geoReferenciaCivil.php` está mapeada y sin ejecutar. Hoy la Historia sólo dice si una
+actuación tiene georreferencia; dónde se practicó la diligencia vive detrás de ese modal, y
+cuesta **una petición por actuación**, con su intervalo. Para las ocho actuaciones de receptor
+de E-468-2026 serían ocho peticiones más, así que si se implementa tiene que ser a pedido de
+una actuación concreta y no de barrido.
 
 ### 0.8: el detalle de las competencias ya buscables — hecho, salvo penal
 

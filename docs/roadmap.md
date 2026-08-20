@@ -19,6 +19,8 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
 | Las cuatro capacidades nuevas, de punta a punta | 20 de agosto de 2026, **10 peticiones y todas 200**: 17 cortes, 24 tribunales en Concepción, el detalle de C-1156-2026 con su exhorto, y el documento del folio 9 (975.006 bytes, 1 página, sin capa de texto: un escaneo) |
 | **La arista del exhorto, seguida entera** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán; `listar_tribunales` sobre la corte 45 lo resuelve a **código 145**, que es con lo que se busca esa causa. Era el dato que faltaba |
+| La georreferencia de una actuación | 20 de agosto de 2026, C-1156-2026: tres actuaciones georreferenciadas, y el modal devuelve coordenadas, precisión en metros y la fecha del dispositivo con hora. El parámetro es `valGeoRef` |
+| El monitor de salas está en otro host y NO comparte cortafuegos | `salas.pjud.cl` responde `Server: Apache`, sin la cookie `TS<hex>` de F5 que sí traen la Oficina Judicial Virtual y el buscador de fallos |
 | Los códigos de tribunal | 20 de agosto de 2026: `combosJSON/leeTrib.php` con competencia 3 y corte 46 devolvió JSON con 24 tribunales y su código. Confirma 162 como 2º Juzgado Civil de Concepción y 163 como 3º, que hasta entonces se habían deducido |
 | Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
 | Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
@@ -258,14 +260,35 @@ que contarlos en el tiempo total:
 - `modal/detalleExhortos.php`, que la fila del exhorto invoca con su propia referencia
 - `modal/causaOrigenCivil.php`
 
-### 0.6: Programación de Sala
+### 0.6: Programación de Sala — medido, y no es lo que esta página decía
 
-El "¿cuándo me ven?", que hoy no se cubre y las dos herramientas comerciales sí. Los campos
-están mapeados leyendo `automatizador-legal`: `progComp`, `progCorte`, `progRolCausa`,
-`progEraCausa`, `progTipoCausa`, botón `btnProgConsulta`, tabla `dtaTableDetalleProgSala`.
+Acá había un mapeo listo para implementar, sacado de leer `automatizador-legal`: `progComp`,
+`progCorte`, `progRolCausa`, `progEraCausa`, `progTipoCausa`, `btnProgConsulta` y
+`dtaTableDetalleProgSala`. **Ninguno de los siete existe.** Medido el 20 de agosto de 2026:
+cero ocurrencias en `consultaUnificada.php` y cero en la página real.
 
-Ninguno verificado contra el sistema real todavía, así que vale la misma regla de siempre: se
-mide antes de exponerlo.
+Tres cosas resultaron distintas de lo que decía:
+
+**Está en otro host.** `https://salas.pjud.cl/monitor/monitor.php`, no en la Oficina Judicial
+Virtual. Se llega desde la portada, que lo enlaza.
+
+**No comparte cortafuegos con los otros dos.** OJV y `juris.pjud.cl` responden con la cookie
+`TS<hex>` de F5 BIG-IP, y por eso la detención total es del proceso y no del host. `salas`
+responde `Server: Apache`, sin esa cookie y sin `Via`. Es una diferencia medida, no una
+suposición, y habría que decidirla antes de consultarlo desde acá: el motivo de la detención
+total no es técnico, es no escalar contra la institución, y eso no cambia con el host.
+
+**Y no es una consulta por causa.** Se llama "Monitor de Salas" y pide *"Seleccione Corte y
+Sala que desea visualizar"*: dos desplegables, `corte` (que viaja como `cod_corte`) y `sala`,
+que se llena con `controlador/listaSalaPorCorte.php`. **No recibe un rol.** Es un tablero de
+qué se está viendo ahora en una sala, no la respuesta a "¿cuándo me ven?".
+
+Un detalle más que conviene tener anotado: los valores del desplegable de corte vienen
+cifrados (`t+r7m+HbenMm8+DvHDPmhBvuw50npbnCNFmLW+Sp4RM=`), **no son los códigos numéricos que
+usa la Oficina Judicial Virtual**. Son dos sistemas con dos vocabularios.
+
+Queda como pregunta abierta y no como tarea: si lo que se quería era "¿cuándo me ven?", esto no
+lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
 ### 0.7: documentos
 
@@ -371,13 +394,40 @@ guarda sin usarla: `detalleExhortos.php` sigue mapeado y sin ejecutar, y cuando 
 ya está. **No sirve como identidad**: el mismo exhorto llega con una referencia distinta en
 cada cuaderno, así que la deduplicación las ignora a propósito.
 
-### 0.7b: la georreferencia, que hoy es sólo un sí o un no
+### 0.7b: la georreferencia — medida, y trae una tercera fecha
 
-`geoReferenciaCivil.php` está mapeada y sin ejecutar. Hoy la Historia sólo dice si una
-actuación tiene georreferencia; dónde se practicó la diligencia vive detrás de ese modal, y
-cuesta **una petición por actuación**, con su intervalo. Para las ocho actuaciones de receptor
-de E-468-2026 serían ocho peticiones más, así que si se implementa tiene que ser a pedido de
-una actuación concreta y no de barrido.
+Hoy la Historia sólo dice si una actuación tiene georreferencia. Detrás del modal hay más de lo
+que esta página suponía. Medido el 20 de agosto de 2026 sobre C-1156-2026, que tiene tres
+actuaciones georreferenciadas:
+
+| Dato | Ejemplo medido |
+|---|---|
+| Coordenadas | `-36.7894544, -73.0467343` |
+| Precisión | 6 metros |
+| **Fecha del dispositivo** | **`27-03-2026 17:40`** |
+
+Hay seis rutas, una por competencia más una unificada, bajo `ADIR_nnn/<competencia>/modal/`. El
+parámetro es `valGeoRef` y la referencia viaja en el `onclick` de la celda, igual que la de los
+documentos, y es un token firmado del mismo tipo.
+
+**La fecha del dispositivo es el hallazgo, y no es un detalle.** Este proyecto existe por la
+distinción entre la fecha de registro y la de diligencia. Ésta es una TERCERA fuente, la del
+aparato del ministro de fe, y es la única que trae **hora**. En la actuación medida coincide con
+`fecha_diligencia`, que es lo que uno esperaría, y por eso mismo sirve: es una fuente
+independiente con la que contrastar la que corre los plazos.
+
+Si se implementa, `discrepancia_fechas` tendría que contemplarla, y la hora es dato nuevo que
+hoy no se entrega en ninguna parte.
+
+**Y trae fotos y videos.** El modal tiene tres pestañas: `mapasGeoRef`, `imagenesGeoRef` y
+`videosGeoRef`. En la actuación medida las dos últimas vienen vacías, pero existen, y una
+fotografía de una diligencia es un dato personal de terceros de otra categoría que un nombre:
+puede mostrar el interior de una vivienda o a quien la habita. Eso hay que decidirlo antes de
+escribir el código, no después.
+
+Cuesta **una petición por actuación**, con su intervalo. Para las ocho de receptor de
+E-468-2026 serían ocho peticiones más, así que va a pedido de una actuación concreta y nunca de
+barrido.
 
 ### 0.8: el detalle de las competencias ya buscables — hecho, salvo penal
 

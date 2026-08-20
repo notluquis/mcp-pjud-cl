@@ -149,10 +149,11 @@ compara el formulario enviado contra lo que ella declara.
   carta van con un día de diferencia. Civil publica otra cosa: el panel se llama
   `notificacionesCiv`, tiene ocho columnas y **una sola** fecha.
 
-  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia. Y
-  las dos causas civiles disponibles traen cero filas, así que no hay con qué validar el
-  parseo de civil. Exponerlo ahora sería adivinar. Lo bueno es que no cuesta peticiones: los
-  dos paneles ya vienen en la respuesta del detalle que el cliente pide.
+  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia.
+  **Resuelto en la 0.4.0**, cuando apareció una causa civil con tres notificaciones reales y
+  se pudo medir en vez de adivinar: los dos paneles se leen, cada uno con sus columnas, y
+  `fecha_notificacion` va nula donde la competencia no la publica en vez de copiar la de
+  trámite.
 
 - **Laboral, penal, suprema y apelaciones no tienen receptor.** En todo el sitio sólo existen
   `receptorCivil` y `receptorCobranza`. Queda declarado en la tabla y se rechaza antes de

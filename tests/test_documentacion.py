@@ -235,9 +235,9 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
     sin_todas_las_competencias = {
         "obtener_actuaciones_receptor",
-        "obtener_historia_causa",
-        "obtener_notificaciones_causa",
-        "obtener_liquidaciones_causa",
+        # Ofrece las que tienen al menos un panel del detalle medido. `penal` no lo tiene, y
+        # anunciarla haría que el modelo intente una llamada que siempre se rechaza.
+        "obtener_detalle_causa",
     }
     descripciones = [
         p.get("description", "")
@@ -732,6 +732,46 @@ def test_la_herramienta_de_actuaciones_solo_ofrece_lo_que_funciona(expuestas):
         )
 
 
+def test_la_lectura_combinada_solo_ofrece_competencias_con_algun_panel(expuestas):
+    """`obtener_detalle_causa` está en `sin_todas_las_competencias`, así que el guardia general
+    no la mira, y sin este quedaría sin ninguno.
+
+    Ofrecerle `penal` al modelo, que no tiene un solo panel medido, lo hace intentar una
+    llamada que el cliente rechaza siempre y atribuirle el fallo a la plataforma.
+    """
+    sirven = {
+        n
+        for n in MODULOS
+        if any(
+            (
+                COMPETENCIAS[n].historia,
+                COMPETENCIAS[n].litigantes,
+                COMPETENCIAS[n].notificaciones,
+                COMPETENCIAS[n].liquidaciones,
+                COMPETENCIAS[n].materias,
+            )
+        )
+    }
+    assert sirven, "si ninguna competencia tuviera paneles, la herramienta no debería existir"
+    assert set(MODULOS) - sirven, (
+        "si todas tuvieran algún panel, este alias sobra y hay que usar el general"
+    )
+
+    descripcion = (
+        (expuestas["obtener_detalle_causa"].input_schema or {})
+        .get("properties", {})
+        .get("competencia", {})
+        .get("description", "")
+    )
+    ofrecidas = descripcion.split("Una de: ", 1)[-1].split(".", 1)[0]
+    for buena in sirven:
+        assert buena in ofrecidas, f"{buena!r} tiene paneles medidos y el esquema no la ofrece"
+    for otra in set(MODULOS) - sirven:
+        assert otra not in ofrecidas, (
+            f"el esquema ofrece {otra!r} y la lectura combinada la rechaza siempre"
+        )
+
+
 def test_la_referencia_dice_cuales_competencias_entregan_actuaciones(expuestas):
     """La afirmación se repite en la referencia, el registro de cambios y el roadmap, y su
     fuente es `receptor_en_historia`. Sin guardia, implementar cobranza dejaría la referencia
@@ -1006,6 +1046,31 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
         )
 
 
+def test_la_cuenta_de_rutas_de_la_plataforma_es_la_de_la_fixture():
+    """La hoja de ruta afirmaba 169 rutas y son otra cosa: 189 menciones de un `.php`, o sea
+    102 distintas.
+
+    El número venía de una medición vieja y nadie podía notar que había envejecido, porque
+    estaba escrito a mano en la prosa. La fuente está versionada, así que se cuenta.
+
+    Y son dos números, no uno: cuántas veces el JavaScript nombra un `.php` y cuántas rutas
+    distintas hay detrás. Confundirlos es lo que hace parecer que la plataforma tiene casi el
+    doble de superficie de la que tiene.
+    """
+    javascript = (RAIZ / "tests" / "fixtures" / "consultaUnificada.html").read_text(
+        encoding="utf-8", errors="replace"
+    )
+    menciones = re.findall(r"[\w./-]+\.php", javascript)
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+
+    assert f"{len(menciones)} veces" in texto, (
+        f"la fixture nombra un .php {len(menciones)} veces y la hoja de ruta dice otra cosa"
+    )
+    assert f"{len(set(menciones))} rutas distintas" in texto, (
+        f"son {len(set(menciones))} rutas distintas y la hoja de ruta dice otra cosa"
+    )
+
+
 def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_github():
     """`--generate-notes` imprime "What's Changed" y "by X in Y", en inglés y sin opción.
 
@@ -1243,44 +1308,6 @@ def test_las_entradas_del_registro_de_cambios_son_breves():
     )
 
 
-def test_la_herramienta_de_notificaciones_advierte_que_incluye_las_no_practicadas(expuestas):
-    """Su contrato decía "notificaciones practicadas" y la lista trae también los intentos.
-
-    Un consumidor que siguiera esa descripción tomaría la fecha de una fila pendiente como una
-    notificación que hizo correr un plazo. Es el modo de falla que este proyecto existe para
-    evitar, esta vez metido en la descripción y no en el código.
-
-    No se filtran las pendientes: una causa detenida en notificación es un dato que importa, y
-    omitirlas la haría ver como si avanzara. Lo que se exige es que el contrato lo diga y que
-    apunte al campo con el que se distinguen.
-    """
-    herramienta = expuestas.get("obtener_notificaciones_causa")
-    assert herramienta is not None, "la herramienta de notificaciones ya no está expuesta"
-
-    contrato = (herramienta.description or "") + str(herramienta.input_schema)
-    for exigido in ("no practicadas", "estado"):
-        assert exigido.lower() in contrato.lower(), (
-            f"el contrato de la herramienta no menciona {exigido!r}, y sin eso una fila "
-            "pendiente se lee como una notificación que corrió un plazo"
-        )
-
-    estado = None
-    for h in expuestas.values():
-        for nombre, prop in (
-            (h.output_schema or {})
-            .get("$defs", {})
-            .get("Notificacion", {})
-            .get("properties", {})
-            .items()
-        ):
-            if nombre == "estado":
-                estado = prop.get("description", "")
-    assert estado, "el modelo ya no describe el campo `estado`"
-    assert "Pendiente" in estado, (
-        "la descripción de `estado` no nombra el valor que significa NO practicada"
-    )
-
-
 def test_ninguna_version_del_registro_repite_una_seccion():
     """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
 
@@ -1305,3 +1332,35 @@ def test_ninguna_version_del_registro_repite_una_seccion():
         f"Versiones del registro con una sección repetida: {repetidas}. La publicación copia "
         "el tramo entero, así que el encabezado saldría dos veces en la página."
     )
+
+
+def test_el_detalle_combinado_advierte_lo_que_cuesta_un_plazo(expuestas):
+    """Su contrato reúne lo que antes advertían tres herramientas, y no puede perderlo.
+
+    Tres cosas que un modelo tiene que saber antes de informar: que `fecha_diligencia` viene
+    en nulo salvo en dos competencias, que las notificaciones incluyen las NO practicadas, y
+    que los litigantes traen datos personales de terceros. Al juntar las lecturas, cada aviso
+    que no se copie desaparece sin que nada falle.
+    """
+    herramienta = expuestas.get("obtener_detalle_causa")
+    assert herramienta is not None, "la lectura combinada del detalle ya no está expuesta"
+
+    contrato = herramienta.description or ""
+    for exigido in (
+        "fecha_diligencia",
+        "no practicadas",
+        "estado",
+        "personales",
+        # Este se perdió de verdad: lo llevaba `obtener_liquidaciones_causa`, y al retirarla
+        # el aviso se fue con ella. Sumar las liquidaciones informa una deuda varias veces
+        # más grande que la real.
+        "NO se suman",
+        # El título decía "detalle completo" y el contrato no desmentía nada. Un modelo que
+        # lo lee así informa "la causa no tiene escritos" cuando lo que pasa es que este
+        # servidor no sabe leer ese panel.
+        "NO es el expediente completo",
+    ):
+        assert exigido.lower() in contrato.lower(), (
+            f"el contrato de la lectura combinada no menciona {exigido!r}, y sin eso el "
+            "modelo informa un dato que no puede afirmar"
+        )

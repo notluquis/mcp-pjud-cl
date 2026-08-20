@@ -33,7 +33,7 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, Liquidacion, Notificacion
+from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, DetalleCausa
 
 #: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
 #: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
@@ -202,35 +202,27 @@ CompetenciaConReceptor = Annotated[
     ),
 ]
 
-#: Las competencias cuya tabla de Historia está medida. Se deriva y no se escribe a mano por
-#: la misma razón que `_CON_RECEPTOR`: ofrecerle al modelo una que el cliente rechaza lo hace
-#: intentarla y atribuir el error a la plataforma.
-_CON_HISTORIA = sorted(n for n in MODULOS if COMPETENCIAS[n].historia is not None)
-CompetenciaConHistoria = Annotated[
+#: Las competencias con al menos un panel del detalle medido. `penal` no está: ninguno de los
+#: suyos lo está, así que la lectura combinada la rechaza siempre. Ofrecerla en el esquema hace
+#: que el modelo la intente, reciba un error y se lo atribuya a la plataforma.
+_CON_DETALLE = sorted(
+    n
+    for n in MODULOS
+    if any(
+        (
+            COMPETENCIAS[n].historia,
+            COMPETENCIAS[n].litigantes,
+            COMPETENCIAS[n].notificaciones,
+            COMPETENCIAS[n].liquidaciones,
+            COMPETENCIAS[n].materias,
+        )
+    )
+)
+CompetenciaConDetalle = Annotated[
     str,
     Field(
-        description=f"Una de: {', '.join(_CON_HISTORIA)}. Son aquellas cuyo panel de historia "
-        "está medido contra una respuesta real. Las demás se rechazan antes de consultar, en "
-        "vez de leerlas con el mapa de otra competencia."
-    ),
-]
-
-#: Las competencias cuyo panel de notificaciones está medido. Derivado, como los otros.
-_CON_NOTIFICACIONES = sorted(n for n in MODULOS if COMPETENCIAS[n].notificaciones is not None)
-CompetenciaConNotificaciones = Annotated[
-    str,
-    Field(
-        description=f"Una de: {', '.join(_CON_NOTIFICACIONES)}. Son aquellas cuyo panel de "
-        "notificaciones está medido contra una respuesta real."
-    ),
-]
-
-#: Las competencias que publican liquidación del crédito. Hoy sólo cobranza.
-_CON_LIQUIDACIONES = sorted(n for n in MODULOS if COMPETENCIAS[n].liquidaciones is not None)
-CompetenciaConLiquidaciones = Annotated[
-    str,
-    Field(
-        description=f"Una de: {', '.join(_CON_LIQUIDACIONES)}. Es la única que liquida el crédito."
+        description=f"Una de: {', '.join(_CON_DETALLE)}. Son aquellas con al menos un panel del "
+        "detalle medido contra una respuesta real."
     ),
 ]
 
@@ -362,87 +354,45 @@ def obtener_actuaciones_receptor(
 
 
 @mcp.tool(
-    title="Historia de la causa",
+    title="Detalle de la causa: historia, partes y notificaciones",
     annotations=SOLO_LECTURA,
 )
-def obtener_historia_causa(
+def obtener_detalle_causa(
     tipo: Tipo,
     rol: Rol,
     anio: Anio,
-    competencia: CompetenciaConHistoria = "civil",
+    competencia: CompetenciaConDetalle = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
-) -> list[Actuacion]:
-    """Todas las actuaciones de la causa, no sólo las del ministro de fe.
+) -> DetalleCausa:
+    """Historia, litigantes, notificaciones, liquidaciones y materias de la causa.
 
-    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto.
+    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y lo hace
+    con una sola cadena de peticiones. Preferir esta herramienta antes que preguntar por
+    partes: los paneles vienen juntos en la misma respuesta, así que pedirlos por separado
+    multiplica las consultas contra la plataforma sin traer nada nuevo.
 
-    Cuatro de las seis competencias no tienen receptor, así que ahí ésta es la única vía
-    para saber qué pasó en la causa y cuándo. Cuidado con las fechas: `fecha_diligencia`
-    viene en nulo salvo en civil y cobranza, porque las demás no publican la fecha doble.
-    Nulo significa que esa competencia no informa la fecha de diligencia, NO que el trámite
-    no se haya practicado, y NO sirve para computar plazos.
+    NO es el expediente completo. El detalle publica más paneles de los que este servidor sabe
+    leer: los escritos, los exhortos y sus piezas todavía no están medidos, así que su ausencia
+    acá NO significa que la causa no los tenga.
+
+    Cada campo distingue tres estados y hay que respetarlos al informar:
+
+    - NULO: esta competencia no publica ese panel. La pregunta no tiene respuesta acá.
+    - Lista vacía: el panel existe y no trae filas. Es una respuesta.
+    - Con elementos: lo que hay.
+
+    Cuidado con dos cosas al computar plazos. `fecha_diligencia` de la historia viene en nulo
+    salvo en civil y cobranza, y las notificaciones incluyen las NO practicadas, que se
+    distinguen por su `estado`.
+
+    Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
+    historial. Sumarlas informa una deuda inflada varias veces.
+
+    Los litigantes traen RUT de personas naturales: son datos personales de terceros.
     """
     with _cliente() as c:
-        return c.historia_causa(tipo, rol, anio, competencia, tribunal, corte)
-
-
-@mcp.tool(
-    title="Notificaciones de la causa",
-    annotations=SOLO_LECTURA,
-)
-def obtener_notificaciones_causa(
-    tipo: Tipo,
-    rol: Rol,
-    anio: Anio,
-    competencia: CompetenciaConNotificaciones = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
-) -> list[Notificacion]:
-    """Las notificaciones de la causa, practicadas y no practicadas, con sus fechas.
-
-    Incluye los intentos que NO se practicaron, y eso es a propósito: una causa detenida en
-    notificación es un dato que importa, y omitir esas filas la haría ver como si avanzara.
-    Distinguirlas es obligatorio y se hace con `estado`. Una fila 'Pendiente' no hizo correr
-    ningún plazo, y 'enviada' es una carta despachada, que no es lo mismo que notificada.
-
-    Las competencias no publican lo mismo, y eso cambia qué se puede afirmar. Cobranza trae
-    la fecha de notificación Y la de trámite por separado, y difieren: una carta midió tres
-    días entre una y otra. Civil y laboral traen una sola, la de trámite, así que ahí
-    `fecha_notificacion` viaja en NULO. Nulo significa "esta competencia no lo informa", NO
-    que coincida con la fecha de trámite: no inventar esa igualdad.
-
-    Una causa puede legítimamente no tener ninguna notificación practicada, así que acá una
-    lista vacía sí es una respuesta y no un fallo.
-    """
-    with _cliente() as c:
-        return c.notificaciones_causa(tipo, rol, anio, competencia, tribunal, corte)
-
-
-@mcp.tool(
-    title="Liquidación del crédito",
-    annotations=SOLO_LECTURA,
-)
-def obtener_liquidaciones_causa(
-    tipo: Tipo,
-    rol: Rol,
-    anio: Anio,
-    competencia: CompetenciaConLiquidaciones = "cobranza",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
-) -> list[Liquidacion]:
-    """Cuánto se debe en un juicio de cobranza y a qué fecha.
-
-    Una causa acumula liquidaciones sucesivas: la medida fue de $4.481.885 en 2019 a
-    $24.563.365 en 2022, así que la fecha de cada una importa tanto como el monto. La más
-    reciente es la vigente; las anteriores son el historial, no deudas que se sumen.
-
-    `monto` viene en pesos sin separadores, y en NULO si el sitio publicó algo con otra forma.
-    Nulo no es cero: cero sería una deuda saldada. `monto_publicado` trae siempre el texto tal
-    como aparece en el expediente.
-    """
-    with _cliente() as c:
-        return c.liquidaciones_causa(tipo, rol, anio, competencia, tribunal, corte)
+        return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)
 
 
 @mcp.tool(

@@ -26,6 +26,7 @@ from .parser import (
     COMPETENCIAS,
     Actuacion,
     CausaEncontrada,
+    DetalleCausa,
     EstructuraInesperada,
     Liquidacion,
     Notificacion,
@@ -36,6 +37,8 @@ from .parser import (
     parse_cuadernos,
     parse_historia,
     parse_liquidaciones,
+    parse_litigantes,
+    parse_materias,
     parse_notificaciones,
     parse_resultados,
     siguiente_pagina,
@@ -761,37 +764,6 @@ class PjudClient(Transporte):
             tipo, rol, anio, competencia, tribunal, corte, actuaciones_receptor
         )
 
-    def historia_causa(
-        self,
-        tipo: str,
-        rol: int,
-        anio: int,
-        competencia: str = "civil",
-        tribunal: int | None = None,
-        corte: int | None = None,
-    ) -> list[Actuacion]:
-        """Todas las actuaciones de la causa, no sólo las del ministro de fe.
-
-        Existe porque cuatro de las seis competencias no tienen receptor: en suprema,
-        apelaciones, laboral y penal la pregunta que da origen a este proyecto no tiene
-        respuesta, y sin esto lo único que quedaba ahí era la búsqueda. La historia dice qué
-        pasó en la causa y cuándo, que es lo que se puede saber en esas cuatro.
-
-        Ojo con la diferencia: acá `fecha_diligencia` viene en nulo salvo en civil y cobranza,
-        porque las demás no publican la fecha doble. Nulo significa que la competencia no
-        informa esa fecha, no que el trámite no se haya practicado.
-        """
-        spec = COMPETENCIAS[self._modulo(competencia)]
-        if spec.historia is None:
-            raise ValueError(
-                f"No está verificado cómo se lee la historia de {competencia!r}. Se rechaza "
-                "antes de consultar en vez de leerla con el mapa de otra competencia, que "
-                "devolvería filas mal alineadas o una lista vacía."
-            )
-        return self._recorrer_cuadernos(
-            tipo, rol, anio, competencia, tribunal, corte, parse_historia
-        )
-
     @staticmethod
     def _causa_pedida(causas: list[CausaEncontrada], tipo: str, rol: int, anio: int):
         """Elige de la lista la causa que se pidió, o se detiene.
@@ -829,7 +801,7 @@ class PjudClient(Transporte):
             "perfectamente bien y llevaría a computar un plazo ajeno."
         )
 
-    def notificaciones_causa(
+    def detalle_causa(
         self,
         tipo: str,
         rol: int,
@@ -837,75 +809,74 @@ class PjudClient(Transporte):
         competencia: str = "civil",
         tribunal: int | None = None,
         corte: int | None = None,
-    ) -> list[Notificacion]:
-        """Las notificaciones practicadas en la causa, con sus fechas.
+    ) -> DetalleCausa:
+        """Todo lo que la respuesta del detalle publica, con UNA sola cadena de peticiones.
 
-        Sirve donde la historia no alcanza: dice cuándo se notificó a cada parte, que es lo que
-        hace correr un plazo desde el punto de vista de quien lo recibe.
+        Las lecturas separadas pedían la misma respuesta HTML una vez cada una. Preguntar las
+        cuatro cosas de una causa con dos cuadernos costaba dieciséis peticiones contra la
+        plataforma para leer cuatro paneles que ya venían juntos en la primera. La hoja de ruta
+        lo decía desde el principio: "ya vienen en la respuesta del detalle que el cliente
+        pide", y la implementación había derivado de su propio plan.
 
-        Ojo con la diferencia entre competencias, porque cambia qué se puede afirmar: cobranza
-        publica la fecha de notificación Y la de trámite por separado, y difieren (una carta
-        midió tres días entre una y otra). Civil y laboral publican una sola, la de trámite, así
-        que ahí `fecha_notificacion` viaja en nulo. Nulo es "no lo informa", no "coincide".
+        Un panel que la competencia no publica viaja en nulo y no en lista vacía: "acá no se
+        informa" y "no ocurrió" son cosas distintas.
         """
         spec = COMPETENCIAS[self._modulo(competencia)]
-        if spec.notificaciones is None:
-            raise ValueError(
-                f"No está verificado cómo se leen las notificaciones de {competencia!r}. Se "
-                "rechaza antes de consultar en vez de leerlas con el mapa de otra competencia."
-            )
-        return self._recorrer_cuadernos(
-            tipo,
-            rol,
-            anio,
-            competencia,
-            tribunal,
-            corte,
-            lambda pagina, _cuaderno, comp: parse_notificaciones(pagina, comp),
+        paneles = (
+            spec.historia,
+            spec.litigantes,
+            spec.notificaciones,
+            spec.liquidaciones,
+            spec.materias,
         )
-
-    def liquidaciones_causa(
-        self,
-        tipo: str,
-        rol: int,
-        anio: int,
-        competencia: str = "cobranza",
-        tribunal: int | None = None,
-        corte: int | None = None,
-    ) -> list[Liquidacion]:
-        """Cuánto se debe y a qué fecha. Sólo cobranza publica el panel.
-
-        Responde la pregunta que da sentido a un juicio de cobro y que hasta ahora no se
-        contestaba: la causa medida trae tres liquidaciones sucesivas, de $4.481.885 en 2019 a
-        $24.563.365 en 2022.
-        """
-        spec = COMPETENCIAS[self._modulo(competencia)]
-        if spec.liquidaciones is None:
+        if not any(paneles):
             raise ValueError(
-                f"La competencia {competencia!r} no publica liquidaciones: sólo cobranza tiene "
-                "el panel. Se rechaza antes de consultar en vez de devolver una lista vacía, "
-                "que se leería como que no hay deuda liquidada."
+                f"No está verificado cómo leer ningún panel del detalle de {competencia!r}. Se "
+                "rechaza antes de consultar en vez de gastar dos peticiones para devolver todo "
+                "en nulo, que además se leería como que la causa no tiene nada."
             )
-        filas = self._recorrer_cuadernos(
-            tipo,
-            rol,
-            anio,
-            competencia,
-            tribunal,
-            corte,
-            lambda pagina, _cuaderno, comp: parse_liquidaciones(pagina, comp),
+
+        causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
+        if not causas:
+            return DetalleCausa(causa_encontrada=False)
+
+        primera = self.detalle(self._causa_pedida(causas, tipo, rol, anio).referencia, competencia)
+        cuadernos = parse_cuadernos(primera)
+
+        # El detalle despliega un cuaderno a la vez, y el de apremio esconde el requerimiento
+        # de pago y el embargo. Se recorren todos, igual que las lecturas separadas.
+        paginas = [(primera, cuadernos[0].nombre if cuadernos else "")]
+        if len(cuadernos) > 1:
+            paginas = [
+                (self.detalle(cuaderno.referencia, competencia), cuaderno.nombre)
+                for cuaderno in cuadernos
+            ]
+
+        historia: list[Actuacion] | None = [] if spec.historia else None
+        if historia is not None:
+            for pagina, nombre in paginas:
+                historia.extend(parse_historia(pagina, nombre, competencia))
+
+        # Los demás paneles no llevan el cuaderno en la fila, así que si el sitio los repite en
+        # cada uno llegarían duplicados. Se deduplica por el contenido, que es correcto tanto
+        # si el panel es global como si fuera por cuaderno: en el segundo caso las filas
+        # difieren y se conservan todas.
+        def _juntar(leer, declarado):
+            if declarado is None:
+                return None
+            vistos: dict[str, object] = {}
+            for pagina, _ in paginas:
+                for fila in leer(pagina, competencia):
+                    vistos.setdefault(fila.model_dump_json(), fila)
+            return list(vistos.values())
+
+        return DetalleCausa(
+            historia=historia,
+            litigantes=_juntar(parse_litigantes, spec.litigantes),
+            notificaciones=_juntar(parse_notificaciones, spec.notificaciones),
+            liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),
+            materias=_juntar(parse_materias, spec.materias),
         )
-        # Se recorren los cuadernos y después se deduplica, y las dos cosas por lo mismo: no se
-        # midió si el panel lista todas las liquidaciones de la causa o sólo las del cuaderno
-        # abierto, porque la única causa de cobranza medida no tiene selector de cuadernos.
-        #
-        # Recorrer sin deduplicar repetiría un monto si el panel es global, y alguien podría
-        # sumarlos. No recorrer omitiría liquidaciones si es por cuaderno, que es peor: un
-        # falso negativo sobre cuánto se debe. Así queda correcto bajo las dos hipótesis.
-        vistas: dict[tuple, Liquidacion] = {}
-        for fila in filas:
-            vistas.setdefault((fila.fecha, fila.cuaderno, fila.monto_publicado), fila)
-        return list(vistas.values())
 
     def _recorrer_cuadernos(
         self,

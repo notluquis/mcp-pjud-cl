@@ -8,7 +8,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from mcp_pjud import client
 from mcp_pjud.client import (
+    BASE,
     INTERVALO_MINIMO,
     MODULOS,
     RAFAGA_MAXIMA,
@@ -183,6 +185,147 @@ def test_el_bloqueo_detiene_tambien_al_resto_del_proceso(codigo, monkeypatch):
         segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/y")
 
     assert len(llamadas) == 1, "tras el bloqueo no debe salir ninguna petición más"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.ReadError("[Errno 104] Connection reset by peer"),
+        httpx.ConnectError("connection refused"),
+        httpx.RemoteProtocolError("server disconnected"),
+    ],
+)
+def test_un_corte_de_conexion_detiene_igual_que_un_403(error, monkeypatch):
+    """Un cortafuegos que rechaza a nivel de red no manda un 403: corta la conexión.
+
+    Reportado en la incidencia #34, con un reset saliendo desde Canadá. `httpx.ReadError`
+    hereda de `TransportError` y se propagaba como error de red sin tocar `_BLOQUEADO`, así
+    que quien envolviera las llamadas en un reintento seguía golpeando un cortafuegos que ya
+    lo había rechazado. Eso es exactamente lo que convierte un bloqueo temporal en una IP
+    baneada.
+
+    Y la petición que recibió el corte igual salió a la red, así que sigue en la bitácora:
+    el registro existe para acreditar cuánto se consultó, no cuánto se respondió.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(req):
+        salieron.append(str(req.url))
+        raise error
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(PjudBloqueado, match=type(error).__name__):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/consultaUnificada.php")
+    assert c.bitacora[-1][2] == 0, "la petición cortada tiene que quedar en la bitácora"
+
+    # Y detiene al proceso entero, igual que el 403: otro cliente, otro host.
+    otro = PjudClient("test@example.cl")
+    otro._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    with pytest.raises(PjudBloqueado):
+        otro._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
+
+    assert len(salieron) == 1, "tras el corte no debe salir ninguna petición más"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.ReadTimeout("timed out"),
+        httpx.ConnectTimeout("timed out"),
+        httpx.PoolTimeout("timed out"),
+    ],
+)
+def test_un_timeout_no_detiene_el_proceso(error, monkeypatch):
+    """Éste es el contrapeso del de arriba, y es el que decide dónde va el corte.
+
+    `TimeoutException` hereda de `TransportError`, así que capturar `TransportError` entero,
+    que es lo primero que uno escribe, dejaría el servidor detenido por una consulta lenta.
+    Y está medido que lo son: una búsqueda en el buscador de fallos tardó 177 segundos. Sería
+    negarse el servicio a uno mismo, no cuidar la plataforma.
+
+    Sin este test, alguien "simplifica" el `isinstance` a `TransportError` y la suite entera
+    sigue verde.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(req):
+        raise error
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(httpx.TimeoutException):
+        c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
+    assert client._BLOQUEADO is None, "un timeout no es un rechazo y no puede detener el proceso"
+
+
+def test_un_desafio_de_f5_con_200_detiene_en_la_peticion_que_lo_trae(monkeypatch):
+    """El cortafuegos también rechaza con HTTP 200: manda su desafío en vez de la página.
+
+    Reportado en la incidencia #34. El 200 se tomaba por bueno y el fallo aparecía recién en
+    la petición SIGUIENTE, un paso más allá de la causa real. `_SENAL_CAPTCHA` no lo ve
+    porque busca palabras en un aviso de la aplicación, y esto viene antes de la aplicación.
+
+    No se resuelve el desafío: ejecutarlo es sortear un control anti-automatización, que es
+    justo lo que `ACCEPTABLE_USE.md` pide no hacer.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+    desafio = (
+        '<APM_DO_NOT_TOUCH>\n<script type="text/javascript">\n'
+        "(function(){ window.sWvc=!!window.sWvc; })();\n</script>"
+    )
+
+    def transporte(req):
+        salieron.append(str(req.url))
+        return httpx.Response(200, text=desafio)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(PjudBloqueado, match="F5 BIG-IP APM"):
+        c._req("GET", f"{BASE}/includes/sesion-consultaunificada.php")
+
+    assert len(salieron) == 1, "el desafío tiene que detener en la petición que lo trae"
+
+
+def test_la_secuencia_reportada_en_la_incidencia_34_se_detiene_en_la_primera(monkeypatch):
+    """La incidencia reporta la secuencia entera, y el punto es dónde había que parar.
+
+    La petición 1, el GET a `sesion-consultaunificada.php`, devolvía **HTTP 200**, y quien
+    la recibía la tomaba por buena porque el código de estado decía que sí. La petición 2,
+    el GET a `consultaUnificada.php`, moría con `Connection reset by peer` en el cortafuegos,
+    antes de llegar a la aplicación.
+
+    Con eso, el traceback culpaba a `abrir_sesion` de no poder derivar el prefijo, un paso
+    más allá de la causa real, que ya estaba servida en la respuesta anterior. Es la misma
+    forma de diagnóstico equivocado que este proyecto ya pagó caro con los timeouts.
+
+    Acá se reproduce completa, con el cuerpo del desafío guardado como fixture, y se exige
+    que la petición 2 **no salga**: el desafío detiene en la que lo trae.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    desafio = (FIXTURES / "desafio_f5_apm.html").read_text(encoding="utf-8")
+    salieron = []
+
+    def transporte(req):
+        salieron.append(str(req.url))
+        if "sesion-consultaunificada" in str(req.url):
+            return httpx.Response(200, text=desafio)
+        raise httpx.ReadError("[Errno 104] Connection reset by peer")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with pytest.raises(PjudBloqueado, match="F5 BIG-IP APM"):
+        c.abrir_sesion()
+
+    assert len(salieron) == 1, (
+        f"la segunda petición no debe salir: el desafío ya rechazó a esta IP. Salieron {salieron}"
+    )
 
 
 def test_un_bloqueo_en_un_host_detiene_tambien_al_otro(monkeypatch):

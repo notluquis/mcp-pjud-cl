@@ -1238,6 +1238,17 @@ def parse_piezas_exhorto(
                 documento_referencia=documento[1],
             )
         )
+    if not piezas:
+        # Esta causa ES un exhorto, y un exhorto existe porque el tribunal de origen despachó
+        # algo: las piezas medidas incluyen `Ordena despachar mandamiento` y `Exhórtese`, o sea
+        # los actos que lo crearon. Cero filas acá es una respuesta truncada, y la lista vacía
+        # se leería como que el tribunal de origen no mandó ninguna pieza.
+        raise EstructuraInesperada(
+            f"El panel de piezas del exhorto de {competencia} tiene encabezados y ninguna "
+            "fila, en una causa que la cabecera declara exhorto. La respuesta viene truncada "
+            "o la estructura cambió. No se devuelve la lista vacía porque se leería como que "
+            "el tribunal de origen no despachó ninguna pieza."
+        )
     return piezas
 
 

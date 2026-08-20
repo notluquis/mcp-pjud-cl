@@ -1254,3 +1254,21 @@ def test_el_certificado_de_envio_no_se_entrega_como_si_fuera_la_resolucion():
         <input type="hidden" name="dtaCert" value="CERT"></form></td>"""
     )
     assert _documento_de_la_celda(celda) == (None, None)
+
+
+def test_una_causa_exhortada_sin_piezas_no_se_publica_como_que_no_le_mandaron_nada():
+    """Un exhorto existe porque el tribunal de origen despachó algo.
+
+    Las seis piezas medidas incluyen `Ordena despachar mandamiento` y `Exhórtese`, o sea los
+    actos que lo crearon. Cero filas ahí es una respuesta truncada, y la lista vacía se leería
+    como que el tribunal de origen no mandó ninguna pieza, que en un exhorto no existe.
+    """
+    doc = H.fromstring(DETALLE)
+    panel = doc.xpath('//*[@id="piezasExhortoCiv"]')[0]
+    filas = panel.xpath(".//tbody/tr")
+    assert filas, "la fixture dejó de traer piezas y el recorte no prueba nada"
+    for fila in filas:
+        fila.getparent().remove(fila)
+
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_piezas_exhorto(H.tostring(doc, encoding="unicode"), "civil")

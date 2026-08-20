@@ -880,6 +880,45 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
     ]
 
 
+class DetalleCausa(BaseModel):
+    """Todo lo que la respuesta del detalle publica, leído de una sola vez.
+
+    Cada campo distingue tres estados, y la diferencia entre los dos últimos es la que este
+    proyecto existe para no borrar:
+
+    - `None`: esta competencia NO publica ese panel. La pregunta no tiene respuesta acá.
+    - `[]`: el panel existe y no trae filas. Es una respuesta: no hay notificaciones
+      practicadas, no hay liquidaciones, no hay materias.
+    - Con elementos: lo que hay.
+
+    Devolver lista vacía en el primer caso las haría indistinguibles, y "esta competencia no lo
+    informa" se leería como "no ocurrió".
+    """
+
+    historia: list[Actuacion] | None = Field(
+        default=None,
+        description="Todas las actuaciones, de todos los cuadernos. NULO si la competencia no "
+        "tiene su panel de historia medido.",
+    )
+    litigantes: list[Litigante] | None = Field(
+        default=None,
+        description="Quiénes son parte y con qué calidad procesal. Trae RUT de personas "
+        "naturales: son datos personales de terceros.",
+    )
+    notificaciones: list[Notificacion] | None = Field(
+        default=None,
+        description="Notificaciones practicadas Y no practicadas. Mirar `estado` antes de "
+        "computar un plazo con sus fechas.",
+    )
+    liquidaciones: list[Liquidacion] | None = Field(
+        default=None,
+        description="Cuánto se debe y a qué fecha. Sólo cobranza liquida el crédito.",
+    )
+    materias: list[Materia] | None = Field(
+        default=None, description="Qué se litiga. Sólo laboral publica el panel."
+    )
+
+
 def actuaciones_receptor(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:

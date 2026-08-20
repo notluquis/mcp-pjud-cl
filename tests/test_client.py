@@ -1014,19 +1014,21 @@ def test_solo_las_competencias_medidas_declaran_campos_de_mas():
 
 
 def test_la_historia_se_rechaza_donde_el_panel_no_esta_medido():
-    """Penal es buscable y su panel de historia no está mapeado.
+    """Penal es buscable y NINGÚN panel de su detalle está mapeado.
 
     Se pidió su detalle y `historiaPen` vino con encabezados y CERO filas, igual que sus otros
-    tres paneles, así que declarar sus columnas sería escribir un mapa que nada comprobó. Se
-    rechaza antes de gastar una petición, en vez de leerlo con el mapa de otra competencia.
+    tres paneles, así que declarar sus columnas sería escribir un mapa que nada comprobó.
+
+    Se rechaza antes de gastar peticiones. Sin esto la lectura combinada gastaría dos para
+    devolver todos los campos en nulo, que además se lee como que la causa no tiene nada.
     """
     c = _sin_red()
     with pytest.raises(ValueError, match="No está verificado"):
-        c.historia_causa("1", 528, 2017, competencia="penal", tribunal=1082)
+        c.detalle_causa("1", 528, 2017, competencia="penal", tribunal=1082)
 
 
 def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch):
-    """`actuaciones_receptor` e `historia_causa` sólo difieren en qué filas se quedan.
+    """`actuaciones_receptor` y la lectura combinada sólo difieren en qué filas se quedan.
 
     Comparten el recorrido a propósito: duplicarlo para cambiar el filtro es la forma más
     segura de que uno de los dos se olvide del cuaderno de apremio, que es exactamente el
@@ -1053,7 +1055,8 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
     c, pedidos_receptor = cliente()
     del_receptor = c.actuaciones_receptor("C", 9001, 2026, tribunal=162)
     c, pedidos_historia = cliente()
-    de_historia = c.historia_causa("C", 9001, 2026, tribunal=162)
+    detalle = c.detalle_causa("C", 9001, 2026, tribunal=162)
+    de_historia = detalle.historia or []
 
     assert pedidos_receptor == pedidos_historia, (
         "las dos lecturas tienen que hacer exactamente las mismas peticiones"
@@ -1108,13 +1111,13 @@ def test_un_rol_que_existe_en_varios_libros_no_se_resuelve_eligiendo_el_primero(
     """
     c, _ = _cliente_apelaciones(monkeypatch)
     with pytest.raises(ValueError, match="ninguna corresponde sin ambigüedad"):
-        c.historia_causa("", 9999, 2019, competencia="apelaciones", corte=46)
+        c.detalle_causa("", 9999, 2019, competencia="apelaciones", corte=46)
 
 
 def test_el_libro_en_tipo_desambigua_la_causa_de_apelaciones(monkeypatch):
     """Y con el libro indicado sí se resuelve, sin preguntar nada más."""
     c, _ = _cliente_apelaciones(monkeypatch)
-    actuaciones = c.historia_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
+    actuaciones = c.detalle_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
     assert actuaciones, "con el libro indicado la causa se resuelve"
 
 
@@ -1126,7 +1129,7 @@ def test_el_mensaje_de_ambiguedad_nombra_los_libros_encontrados(monkeypatch):
     """
     c, _ = _cliente_apelaciones(monkeypatch)
     with pytest.raises(ValueError, match="ambigüedad") as fallo:
-        c.historia_causa("", 9999, 2019, competencia="apelaciones", corte=46)
+        c.detalle_causa("", 9999, 2019, competencia="apelaciones", corte=46)
     for libro in ("Exhorto", "Civil", "Protección"):
         assert libro in str(fallo.value), f"el mensaje no nombra el libro {libro!r}"
 
@@ -1150,4 +1153,74 @@ def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):
 
     c, _ = _capturando(solo_exhorto)
     with pytest.raises(ValueError, match="ambigüedad"):
-        c.historia_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
+        c.detalle_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
+
+
+def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
+    """Es la razón de existir de la lectura combinada, y va como número.
+
+    Antes cada panel se pedía por su cuenta y cada uno repetía la cadena entera: buscar, abrir
+    el detalle y recorrer los cuadernos. Preguntar cuatro cosas de una causa con dos cuadernos
+    costaba dieciséis peticiones contra la plataforma para leer paneles que ya venían juntos en
+    la primera respuesta.
+
+    Cuadruplicar las consultas va contra la cláusula CUARTA, que es la obligación central del
+    proyecto, así que el ahorro se fija acá y no en la prosa.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(str(peticion.url))
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=apremio if len(pedidos) > 3 else principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert len(pedidos) == 4, (
+        f"leer el detalle completo de una causa de dos cuadernos costó {len(pedidos)} "
+        f"peticiones: la búsqueda, el detalle y un cuaderno cada uno son cuatro"
+    )
+    assert detalle.historia, "la historia no puede venir vacía"
+    assert detalle.litigantes, "los litigantes tampoco"
+    assert len({a.cuaderno for a in detalle.historia}) == 2, (
+        "se leyó un solo cuaderno: el de apremio es donde viven el requerimiento y el embargo"
+    )
+
+
+def test_un_panel_que_la_competencia_no_publica_viaja_en_nulo_y_no_vacio(monkeypatch):
+    """La distinción que este proyecto existe para no borrar.
+
+    Lista vacía significa "el panel existe y no trae filas", que es una respuesta. Nulo
+    significa "esta competencia no lo informa". Devolver vacío en el segundo caso haría leer
+    "acá no se informa" como "no ocurrió".
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert detalle.liquidaciones is None, "civil no liquida el crédito: eso es nulo, no vacío"
+    assert detalle.materias is None, "civil no publica materias"
+    assert detalle.notificaciones == [], (
+        "civil SÍ publica el panel de notificaciones y esta causa no tiene ninguna: eso es "
+        "una lista vacía, que es una respuesta, y no un nulo"
+    )

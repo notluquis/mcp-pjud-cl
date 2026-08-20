@@ -235,9 +235,6 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
     sin_todas_las_competencias = {
         "obtener_actuaciones_receptor",
-        "obtener_historia_causa",
-        "obtener_notificaciones_causa",
-        "obtener_liquidaciones_causa",
     }
     descripciones = [
         p.get("description", "")
@@ -1243,44 +1240,6 @@ def test_las_entradas_del_registro_de_cambios_son_breves():
     )
 
 
-def test_la_herramienta_de_notificaciones_advierte_que_incluye_las_no_practicadas(expuestas):
-    """Su contrato decía "notificaciones practicadas" y la lista trae también los intentos.
-
-    Un consumidor que siguiera esa descripción tomaría la fecha de una fila pendiente como una
-    notificación que hizo correr un plazo. Es el modo de falla que este proyecto existe para
-    evitar, esta vez metido en la descripción y no en el código.
-
-    No se filtran las pendientes: una causa detenida en notificación es un dato que importa, y
-    omitirlas la haría ver como si avanzara. Lo que se exige es que el contrato lo diga y que
-    apunte al campo con el que se distinguen.
-    """
-    herramienta = expuestas.get("obtener_notificaciones_causa")
-    assert herramienta is not None, "la herramienta de notificaciones ya no está expuesta"
-
-    contrato = (herramienta.description or "") + str(herramienta.input_schema)
-    for exigido in ("no practicadas", "estado"):
-        assert exigido.lower() in contrato.lower(), (
-            f"el contrato de la herramienta no menciona {exigido!r}, y sin eso una fila "
-            "pendiente se lee como una notificación que corrió un plazo"
-        )
-
-    estado = None
-    for h in expuestas.values():
-        for nombre, prop in (
-            (h.output_schema or {})
-            .get("$defs", {})
-            .get("Notificacion", {})
-            .get("properties", {})
-            .items()
-        ):
-            if nombre == "estado":
-                estado = prop.get("description", "")
-    assert estado, "el modelo ya no describe el campo `estado`"
-    assert "Pendiente" in estado, (
-        "la descripción de `estado` no nombra el valor que significa NO practicada"
-    )
-
-
 def test_ninguna_version_del_registro_repite_una_seccion():
     """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
 
@@ -1305,3 +1264,22 @@ def test_ninguna_version_del_registro_repite_una_seccion():
         f"Versiones del registro con una sección repetida: {repetidas}. La publicación copia "
         "el tramo entero, así que el encabezado saldría dos veces en la página."
     )
+
+
+def test_el_detalle_combinado_advierte_lo_que_cuesta_un_plazo(expuestas):
+    """Su contrato reúne lo que antes advertían tres herramientas, y no puede perderlo.
+
+    Tres cosas que un modelo tiene que saber antes de informar: que `fecha_diligencia` viene
+    en nulo salvo en dos competencias, que las notificaciones incluyen las NO practicadas, y
+    que los litigantes traen datos personales de terceros. Al juntar las lecturas, cada aviso
+    que no se copie desaparece sin que nada falle.
+    """
+    herramienta = expuestas.get("obtener_detalle_causa")
+    assert herramienta is not None, "la lectura combinada del detalle ya no está expuesta"
+
+    contrato = herramienta.description or ""
+    for exigido in ("fecha_diligencia", "no practicadas", "estado", "personales"):
+        assert exigido.lower() in contrato.lower(), (
+            f"el contrato de la lectura combinada no menciona {exigido!r}, y sin eso el "
+            "modelo informa un dato que no puede afirmar"
+        )

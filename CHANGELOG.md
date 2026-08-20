@@ -16,6 +16,23 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Herramienta `obtener_detalle_causa`: historia, litigantes, notificaciones, liquidaciones y
+  materias de una sola cadena de peticiones, recorriendo todos los cuadernos.
+- Litigantes en las cinco competencias con detalle mapeado, y materias en laboral. Los
+  litigantes traen RUT de personas naturales.
+
+### Cambiado
+
+- **Se retiran `obtener_historia_causa`, `obtener_notificaciones_causa` y
+  `obtener_liquidaciones_causa`**: pasan a ser campos de `obtener_detalle_causa`. Cada una
+  repetía la cadena entera para leer un panel de la misma respuesta, así que preguntar las
+  cuatro cosas de una causa con dos cuadernos costaba dieciséis peticiones donde bastan cuatro.
+- Un panel que la competencia no publica viaja en nulo y no en lista vacía: "acá no se informa"
+  y "no ocurrió" son cosas distintas.
+
+
 ### Corregido
 
 - Insertar o reordenar una columna en el sitio corría los datos sin que nada avisara. Los

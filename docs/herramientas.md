@@ -200,81 +200,43 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 ```{include} _generado/obtener_actuaciones_receptor.md
 ```
 
-## `obtener_historia_causa`
 
-Todas las actuaciones de la causa, no sólo las del ministro de fe. Recorre **todos los
-cuadernos**, no sólo el que la plataforma muestra por defecto.
 
-Existe porque cuatro de las seis competencias no tienen receptor: en `suprema`, `apelaciones`,
-`laboral` y `penal` la pregunta que da origen a este proyecto no tiene respuesta, y sin esto lo
-único disponible ahí era la búsqueda.
 
-:::{warning}
-`fecha_diligencia` viene en **nulo** salvo en `civil` y `cobranza`, porque las demás no publican
-la fecha doble. Nulo significa que esa competencia no informa la fecha de diligencia, **no** que
-el trámite no se haya practicado, y **no sirve para computar plazos**.
+## `obtener_detalle_causa`
+
+Todo lo que el expediente publica, leído de **una sola cadena de peticiones**: historia,
+litigantes, notificaciones, liquidaciones y materias. Recorre todos los cuadernos, no sólo el
+que la plataforma muestra por defecto.
+
+:::{important} Preferir ésta antes que preguntar por partes
+Los paneles vienen juntos en la misma respuesta HTML. Pedirlos por separado multiplica las
+consultas contra la plataforma sin traer nada nuevo: preguntar cuatro cosas de una causa con
+dos cuadernos costaba **dieciséis** peticiones donde bastan **cuatro**.
 :::
 
-:::{important} En Cortes de Apelaciones el número de rol NO identifica una causa
-El mismo número y año existen en varios libros a la vez. Una respuesta real devolvió
-`Exhorto-1504-2019`, `Civil-1504-2019` y `Protección-1504-2019`: tres causas distintas, con
-historias distintas.
+Cada campo distingue tres estados, y los dos últimos significan cosas distintas:
 
-Ahí hay que indicar el libro en `tipo` (por ejemplo `"Protección"`). Si la búsqueda queda
-ambigua, la herramienta **falla y dice cuáles encontró**, en vez de abrir una: entregar la
-historia de otra causa se vería perfectamente bien y llevaría a computar un plazo ajeno.
-:::
-
-| Parámetro | Tipo | Descripción |
-|---|---|---|
-| `tipo` | str | Letra del rol, o el **libro** en Cortes de Apelaciones |
-| `rol` | int | Número, sin la letra ni el año |
-| `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Sólo aquellas cuyo panel de historia está medido |
-| `tribunal` | int, opcional | Código del tribunal |
-| `corte` | int, opcional | **Omitir salvo certeza** |
-
-Columnas que sólo publican algunas competencias, y que por eso vienen en nulo en el resto:
-
-| Campo | Dónde aparece |
+| Valor | Qué significa |
 |---|---|
-| `foja` | civil |
-| `estado_firma` | cobranza |
-| `estado` | laboral, suprema, apelaciones |
-| `sala` | suprema, apelaciones |
-| `correlativo`, `anio_tramite` | suprema |
+| **nulo** | Esta competencia no publica ese panel. La pregunta no tiene respuesta acá |
+| **lista vacía** | El panel existe y no trae filas. Es una respuesta |
+| **con elementos** | Lo que hay |
 
-```{include} _generado/obtener_historia_causa.md
-```
-
-## `obtener_notificaciones_causa`
-
-Las notificaciones de la causa, con sus fechas y a quién se notificó.
-
-:::{danger} La lista incluye notificaciones NO practicadas
-Un intento pendiente viene en la misma lista que uno realizado, y su fecha **no hizo correr
-ningún plazo**. Hay que mirar `estado` antes de computar nada.
-
-| Estado medido | Dónde | Qué significa |
-|---|---|---|
-| `Realizada` / `realizada` | civil, laboral, cobranza | Se practicó |
-| `Pendiente` | laboral | **No** se ha practicado |
-| `enviada` | cobranza | Carta despachada, que no es lo mismo que notificada |
-
-Se incluyen a propósito: una causa detenida en notificación es un dato que importa, y omitir
-esas filas la haría ver como si avanzara.
-:::
-
-:::{warning}
-Las competencias no publican lo mismo, y eso cambia qué se puede afirmar:
-
-| Competencia | Fechas que publica |
+| Campo | Dónde existe |
 |---|---|
-| `cobranza` | La de **notificación** y la de **trámite**, por separado. Difieren: una carta midió tres días entre una y otra |
-| `civil`, `laboral` | Sólo la de trámite |
+| `historia` | civil, cobranza, laboral, suprema, apelaciones |
+| `litigantes` | las mismas cinco |
+| `notificaciones` | civil, cobranza, laboral |
+| `liquidaciones` | sólo cobranza |
+| `materias` | sólo laboral |
 
-Donde no se publica, `fecha_notificacion` viaja en **nulo**. Nulo significa "esta competencia no
-lo informa", **no** que coincida con la fecha de trámite.
+:::{warning} Al computar plazos
+`fecha_diligencia` de la historia viene en **nulo** salvo en civil y cobranza. Y las
+notificaciones incluyen las **no practicadas**, que se distinguen por su `estado`: una fila
+pendiente no hizo correr ningún plazo.
+
+Los litigantes traen **RUT de personas naturales**: son datos personales de terceros.
 :::
 
 | Parámetro | Tipo | Descripción |
@@ -282,49 +244,11 @@ lo informa", **no** que coincida con la fecha de trámite.
 | `tipo` | str | Letra del rol, o el libro en Cortes de Apelaciones |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Sólo aquellas cuyo panel de notificaciones está medido |
+| `competencia` | str | Las verificadas. `penal` se rechaza: ningún panel suyo está medido |
 | `tribunal` | int, opcional | Código del tribunal |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 
-Una causa puede legítimamente no tener ninguna notificación practicada: tres de las cuatro
-causas civiles medidas traen el panel vacío. Acá una lista vacía **sí** es una respuesta.
-
-```{include} _generado/obtener_notificaciones_causa.md
-```
-
-## `obtener_liquidaciones_causa`
-
-Cuánto se debe en un juicio de cobranza y a qué fecha. Es la única competencia que liquida el
-crédito, y hasta ahora esa pregunta no se contestaba.
-
-Una causa acumula liquidaciones sucesivas. La medida fue así:
-
-| Fecha | Estado | Monto |
-|---|---|---|
-| 28/07/2022 | Firmado | $24.563.365.- |
-| 06/11/2020 | Firmado | $12.680.528.- |
-| 28/03/2019 | Firmado | $4.481.885.- |
-
-La más reciente es la vigente. Las anteriores son el historial, **no deudas que se sumen**.
-
-:::{note} Dos campos para el monto, a propósito
-`monto` viene en pesos y sin separadores, listo para calcular. Va en **nulo** si el sitio
-publicó algo con otra forma, y nulo no es cero: cero sería una deuda saldada.
-
-`monto_publicado` trae siempre el texto tal como aparece en el expediente, que es contra lo que
-alguien va a comparar.
-:::
-
-| Parámetro | Tipo | Descripción |
-|---|---|---|
-| `tipo` | str | Letra del rol |
-| `rol` | int | Número, sin la letra ni el año |
-| `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Sólo `cobranza` publica el panel |
-| `tribunal` | int, opcional | Código del tribunal |
-| `corte` | int, opcional | **Omitir salvo certeza** |
-
-```{include} _generado/obtener_liquidaciones_causa.md
+```{include} _generado/obtener_detalle_causa.md
 ```
 
 ## `buscar_jurisprudencia`

@@ -22,6 +22,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   materias de una sola cadena de peticiones, recorriendo todos los cuadernos.
 - Litigantes en las cinco competencias con detalle mapeado, y materias en laboral. Los
   litigantes traen RUT de personas naturales.
+- La liquidación del crédito en cobranza: cuánto se debe y a qué fecha. El monto viene en dos
+  campos, uno en pesos para calcular y otro con el texto tal como aparece en el expediente.
 
 ### Cambiado
 
@@ -32,23 +34,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Un panel que la competencia no publica viaja en nulo y no en lista vacía: "acá no se informa"
   y "no ocurrió" son cosas distintas.
 
-
 ### Corregido
 
 - Insertar o reordenar una columna en el sitio corría los datos sin que nada avisara. Los
   encabezados ahora se comparan por cantidad y posición.
 - `tests/test_resistencia.py`: deforma las fixtures como podría deformarlas la plataforma y
   exige el fallo ruidoso. Dieciocho de sus cuarenta y cinco casos pasaban en silencio.
-
-
-### Agregado
-
-- Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué
-  fecha. Es la única competencia que liquida el crédito.
-- El monto viene en dos campos: `monto` en pesos para calcular, y `monto_publicado` con el
-  texto tal como aparece en el expediente. `monto` va nulo si el sitio publicó otra forma, y
-  nulo no es cero.
-
 
 ## [0.4.0] - 2026-08-19
 

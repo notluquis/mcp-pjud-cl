@@ -380,7 +380,9 @@ def obtener_detalle_causa(
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
     - NULO: esta competencia no publica ese panel. La pregunta no tiene respuesta acá.
-    - Lista vacía: el panel existe y no trae filas. Es una respuesta.
+    - Lista vacía: el panel existe y no trae filas. Es una respuesta. `litigantes` y `materias`
+      nunca vienen así: una causa sin partes, o laboral sin materia, no existe, y ahí se
+      levanta un error en vez de publicar una lista vacía.
     - Con elementos: lo que hay.
 
     Cuidado con dos cosas al computar plazos. `fecha_diligencia` de la historia viene en nulo

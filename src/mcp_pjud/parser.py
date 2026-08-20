@@ -953,7 +953,14 @@ def _estado_de_parte(celdas, columnas: tuple[str, ...]) -> str | None:
         significativas = [c for c in clases if c.startswith("fa-") and c != "fa-lg"]
         if significativas:
             return " ".join(significativas)
-    return None
+    # La columna existe y no se pudo leer nada de ella. Devolver `None` acá repetiría el
+    # error que esta función vino a arreglar, una capa más abajo: `None` significa "esta
+    # competencia no publica el dato", y la competencia SÍ lo publica.
+    raise EstructuraInesperada(
+        "La columna de estado de la parte existe y no trae ni texto ni un icono reconocible. "
+        "El sitio cambió cómo la publica. No se devuelve nulo porque nulo significa que la "
+        "competencia no informa el dato, y ésta sí lo informa."
+    )
 
 
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
@@ -1033,7 +1040,11 @@ class DetalleCausa(BaseModel):
 
     - `None`: esta competencia NO publica ese panel. La pregunta no tiene respuesta acá.
     - `[]`: el panel existe y no trae filas. Es una respuesta: no hay notificaciones
-      practicadas, no hay liquidaciones, no hay materias.
+      practicadas, no hay liquidaciones, no hay exhortos despachados.
+
+    Dos paneles NO pueden venir vacíos y por eso no están en esa lista: `litigantes`, porque
+    una causa sin partes no existe, y `materias`, porque una causa laboral sin materia tampoco.
+    Si el sitio los devuelve sin filas se levanta en vez de publicar la lista vacía.
     - Con elementos: lo que hay.
 
     Devolver lista vacía en el primer caso las haría indistinguibles, y "esta competencia no lo

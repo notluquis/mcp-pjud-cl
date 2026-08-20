@@ -998,3 +998,20 @@ def test_una_causa_laboral_sin_materias_no_se_publica_como_que_no_litiga_nada():
 
     with pytest.raises(EstructuraInesperada, match="ninguna fila"):
         parse_materias(H.tostring(doc, encoding="unicode"), "laboral")
+
+
+def test_un_icono_de_estado_irreconocible_levanta_en_vez_de_volver_nulo():
+    """Es el mismo falso negativo, una capa más abajo.
+
+    Si el sitio cambia el icono por algo sin clase `fa-`, o lo deja vacío, devolver `None`
+    diría "esta competencia no publica el estado" cuando sí lo publica. La columna existe: que
+    no se pueda leer es una estructura que cambió, no un dato ausente.
+    """
+    doc = H.fromstring((FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8"))
+    iconos = doc.xpath('//*[@id="litigantesLab"]//tbody//i')
+    assert iconos, "la fixture laboral dejó de traer el icono de estado"
+    for icono in iconos:
+        icono.set("class", "glyphicon glyphicon-ok")
+
+    with pytest.raises(EstructuraInesperada, match="estado de la parte"):
+        parse_litigantes(H.tostring(doc, encoding="unicode"), "laboral")

@@ -1233,6 +1233,24 @@ def test_el_listado_de_tribunales_exige_la_corte(expuestas):
     )
 
 
+def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
+    """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
+    alguien mira para decidir si esto le entra al entorno.
+
+    Quedó vieja al entrar `pypdf`: decía cuatro y eran cinco. Nadie lo iba a notar, porque el
+    número está en una frase y no en una tabla.
+    """
+    numeros = {1: "Una", 2: "Dos", 3: "Tres", 4: "Cuatro", 5: "Cinco", 6: "Seis", 7: "Siete"}
+    cuantas = len(tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["dependencies"])
+    guia = _texto(RAIZ / "docs" / "instalacion.md")
+
+    dicho = re.search(r"(\w+) dependencias\.", guia)
+    assert dicho, "la guía dejó de decir cuántas dependencias trae"
+    assert dicho.group(1) == numeros[cuantas], (
+        f"la guía dice {dicho.group(1).lower()} dependencias y el paquete declara {cuantas}"
+    )
+
+
 def test_la_cuenta_de_cortes_que_cita_la_referencia_es_la_medida():
     """La referencia dice cuántas cortes hay, y es un dato que se escribe a mano.
 

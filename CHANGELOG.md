@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.7.0] - 2026-08-20
+
 ### Agregado
 
 - Campos `documento_ruta` y `documento_referencia` en las actuaciones: con qué pedir el
@@ -256,7 +258,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.6.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.7.0
 [0.6.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.6.0
 [0.5.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.1
 [0.5.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.0

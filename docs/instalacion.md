@@ -6,7 +6,7 @@ Un servidor [Model Context Protocol](https://modelcontextprotocol.io) en Python 
 consulta pública de causas del Poder Judicial de Chile como herramientas invocables por un
 cliente MCP.
 
-Solo lectura. Cuatro dependencias. Sin base de datos, sin navegador, sin credenciales.
+Solo lectura. Cinco dependencias. Sin base de datos, sin navegador, sin credenciales.
 
 ## Instalación
 
@@ -22,7 +22,7 @@ MCP_PJUD_CONTACTO="informatica@estudio.cl"
 Sin ella el servidor **no arranca**. Ese correo viaja en el `User-Agent` de cada petición:
 
 ```
-User-Agent: mcp-pjud/0.6.0 (+contacto: informatica@estudio.cl)
+User-Agent: mcp-pjud/0.7.0 (+contacto: informatica@estudio.cl)
 ```
 
 Es deliberado. El Poder Judicial debe poder identificar y contactar a quien consulta. No hay
@@ -119,7 +119,7 @@ consecuencias distintas:
 | Referencia | Qué corre | Cuándo conviene |
 |---|---|---|
 | `@stable` | La última versión **publicada**. Se actualiza sola al instalar | Es lo que la documentación recomienda y lo que traen los ejemplos |
-| `@v0.6.0` | Esa versión y ninguna otra | Cuando el entorno exige que nada cambie sin revisión |
+| `@v0.7.0` | Esa versión y ninguna otra | Cuando el entorno exige que nada cambie sin revisión |
 | sin `@` | La rama principal, con cambios **sin publicar** | Para desarrollar sobre el proyecto, no para trabajar con causas |
 
 `stable` se mueve sola: el flujo de publicación la avanza a cada etiqueta, y sólo después de
@@ -128,7 +128,7 @@ que la versión se creó sin errores. Si una publicación falla, `stable` se que
 Para fijar una versión concreta:
 
 ```
-"args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.6.0", "mcp-pjud"]
+"args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@v0.7.0", "mcp-pjud"]
 ```
 
 ### Desde un clon, para desarrollar

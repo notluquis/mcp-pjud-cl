@@ -27,13 +27,26 @@ DESTINO = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "datos")
 
 
 def api(ruta: str):
-    """Una lectura de la API. Sin reintento: si falla, la foto de hoy no sale y se ve."""
+    """Una lectura de la API. Sin reintento: si falla, la foto de hoy no sale y se ve.
+
+    Fallar es lo correcto acá. Guardar una foto a medias la dejaría indistinguible de un día
+    sin tráfico, y ese cero se arrastraría para siempre en el CSV sin que nada avise.
+    """
     salida = subprocess.run(  # noqa: S603
         ["gh", "api", f"repos/{REPO}/{ruta}"],  # noqa: S607
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
+    if salida.returncode != 0:
+        if "Resource not accessible" in salida.stderr or "403" in salida.stderr:
+            raise SystemExit(
+                f"La API de tráfico rechazó {ruta!r}. Exige permiso de escritura sobre el "
+                "repositorio, que el token del workflow no tiene: hay que configurar el "
+                "secreto TRAFICO_TOKEN con un token de grano fino que declare "
+                "'Administration: read'.\n\n" + salida.stderr
+            )
+        raise SystemExit(f"La API falló en {ruta!r}:\n{salida.stderr}")
     return json.loads(salida.stdout)
 
 

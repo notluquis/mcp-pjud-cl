@@ -149,8 +149,21 @@ def test_ninguna_pagina_cita_un_intervalo_distinto_del_real():
 #: latencia.
 PAGINAS_CON_LA_MEDICION = (
     "docs/herramientas.md",
-    "docs/roadmap.md",
+    "docs/verificacion.md",
 )
+
+
+#: Las dos páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
+#: antes miraban `roadmap.md` miran las dos, y eso es a propósito: anclarlos sólo a la página
+#: nueva cubriría MENOS que antes, porque nada impediría reponer la afirmación vieja en la que
+#: se quedó con el nombre. La regla del corte es que el dato medido vive en una sola, no que el
+#: guardia mire una sola.
+ESTADO_Y_PLAN = ("docs/verificacion.md", "docs/roadmap.md")
+
+
+def _estado_y_plan() -> str:
+    """El texto de las dos páginas juntas, para los guardias que las cruzan."""
+    return "\n".join(_texto(RAIZ / p) for p in ESTADO_Y_PLAN)
 
 
 def test_las_cifras_medidas_del_buscador_son_las_mismas_en_todas_partes():
@@ -867,7 +880,7 @@ def test_la_hoja_de_ruta_no_declara_sin_ejecutar_lo_que_ya_se_verifico():
     su único trabajo es distinguir lo medido de lo supuesto. La sección se quedó atrás porque
     nada la ataba a `MODULOS`, que es donde ese estado vive de verdad.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     marca = "### Mapeado pero nunca ejecutado"
     assert marca in texto, "cambió el título de la sección; hay que reapuntar este guardia"
 
@@ -896,7 +909,7 @@ def test_la_hoja_de_ruta_no_publica_el_diagnostico_que_resulto_falso():
     a fallar, hay que escribir por qué falla de verdad, y esa explicación tiene que nombrar el
     campo medido.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     for frase in (
         "El sitio deja `conTipoCausa` **deshabilitado**",
         "jQuery no serializa campos deshabilitados",
@@ -1096,7 +1109,7 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
     y no quedó mapeado porque la respuesta trajo cero filas. Ejecutar no es mapear, y la hoja
     de ruta tiene que decir por qué.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     sin_ejecutar = texto.split("### Mapeado pero nunca ejecutado", 1)[1].split("###", 1)[0]
 
     for competencia, modal in _MODAL_DETALLE.items():
@@ -1240,32 +1253,149 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
     que la enciende, mientras `AGENTS.md` y el README dicen que no hay ninguna. En un
     documento de reglas, un matiz así no es una redacción distinta: es otra regla.
 
-    Se compara la frase que titula cada una, no el párrafo entero: cada archivo la desarrolla
-    para su lector, y exigirles el mismo texto obligaría a escribir tres veces lo mismo, que
-    es el problema del que se viene.
+    Se comprueba que cada regla esté presente por su idea y no por su párrafo: cada archivo la
+    desarrolla para su lector, y exigirles el mismo texto obligaría a escribir tres veces lo
+    mismo, que es el problema del que se viene.
+
+    La primera versión de este guardia recorría un diccionario que nunca consumía y terminaba
+    en `assert titulos`, que sólo comprobaba que un literal no estuviera vacío: las reglas 1 a
+    4 podían divergir enteras y seguía verde. Es exactamente el error que este proyecto
+    persigue, cometido en el guardia que venía a evitarlo.
     """
-    titulos = {
-        "no escribir": ("Nada que escriba", "escritura"),
-        "ritmo": ("una petición cada", "intervalo"),
-        "detención": ("detención total",),
-        "fallo ruidoso": ("Fallo ruidoso", "nunca"),
-        "persistencia": ("Sin persistencia de datos de terceros",),
+    #: Cada regla, por las palabras sin las que deja de ser esa regla. No es el párrafo: es lo
+    #: que no puede faltar.
+    REGLAS = {
+        "1. no escribir": ("ingreso", "modificaci"),
+        "2. el ritmo": ("cada 5 segundos", "cláusula CUARTA"),
+        "3. detención total": ("403", "429", "detención total"),
+        "4. fallo ruidoso": ("lista vacía", "plazos"),
+        "5. sin persistencia": ("Sin persistencia de datos de terceros",),
     }
     archivos = {
         "AGENTS.md": _texto(RAIZ / "AGENTS.md"),
         ".github/CONTRIBUTING.md": _texto(RAIZ / ".github" / "CONTRIBUTING.md"),
     }
     # El README es para quien la usa, no para quien contribuye: enumera menos y está bien.
+
+    faltantes = {}
     for nombre, texto in archivos.items():
-        assert "Sin persistencia de datos de terceros" in texto, (
-            f"{nombre} enuncia la regla 5 con otras palabras. En un documento de reglas eso "
-            "no es estilo: 'sin persistencia por defecto' insinúa que hay una configuración "
-            "que la enciende, y no la hay."
-        )
+        plano = " ".join(texto.split())
+        for regla, señas in REGLAS.items():
+            ausentes = [s for s in señas if s.lower() not in plano.lower()]
+            if ausentes:
+                faltantes[f"{nombre} / {regla}"] = ausentes
+    assert not faltantes, (
+        f"Reglas que un documento enuncia sin lo que las define: {faltantes}. En un documento "
+        "de reglas eso no es estilo, es otra regla."
+    )
+
+    for nombre, texto in archivos.items():
         assert "por defecto" not in texto.split("persistencia", 1)[1][:40], (
             f"{nombre} matiza la regla 5 con un 'por defecto' que la vuelve otra regla"
         )
-    assert titulos, "si la lista quedara vacía este guardia no comprobaría nada"
+
+
+#: Encabezados que la hoja de ruta publicó y que se movieron a otra página al partirla. Un
+#: enlace a `roadmap.html#...` que alguien haya guardado o citado sigue existiendo, y sin el
+#: encabezado lleva al INICIO de la página sin avisar. Un enlace roto se nota; uno que va al
+#: lugar equivocado, no.
+#:
+#: La lista sólo crece: si se mueve otra sección, se agrega acá antes de moverla.
+ANCLAS_HEREDADAS = (
+    "Qué está verificado y qué no",
+    "Jurisprudencia: qué hay mapeado y qué falta",
+    "Sobre los identificadores de causa en esta documentación",
+    "Reglas de la plataforma ya mapeadas",
+    "Qué más existe",
+    "Hallazgos de OpenSSF Scorecard que siguen abiertos",
+)
+
+
+#: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
+#: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
+#: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se
+#: contradigan, que es el modo de falla real.
+AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
+
+
+def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
+    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
+
+    No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
+    Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa,
+    que es lo que pasa siempre con un dato repetido tres veces.
+
+    Y va con la fecha pegada por el mismo motivo que las cifras de latencia: una medición sin
+    fecha invita a tomarla por permanente, y ésta describe una tecnología de este año.
+    """
+    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
+    citan = [d for d in donde if AHREFS["dominios"] in _texto(RAIZ / d)]
+    assert citan, "ninguna página cita el estudio, y tres lo citaban"
+
+    for d in citan:
+        # Con los espacios normalizados: en `conf.py` la cita va en un comentario envuelto y
+        # la fecha queda partida en dos líneas. Se comprobó rompiéndolo así.
+        texto = " ".join(_texto(RAIZ / d).split())
+        for clave, valor in AHREFS.items():
+            assert valor in texto, (
+                f"{d} cita el estudio sin su {clave} ({valor}). Las tres copias tienen que "
+                "decir lo mismo, porque ninguna se puede verificar contra el código."
+            )
+
+
+def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
+    """Tres afirmaciones verificables entraron sin guardia: cuántas actuaciones tienen
+    georreferencia, cuántas rutas hay y con qué parámetro se piden.
+
+    La primera entró mal, y es la peor forma de entrar mal en este proyecto: decía tres, que
+    son las del cuaderno principal, y son seis contando el de apremio. Es el falso negativo
+    que originó todo esto, cometido en su propia documentación.
+    """
+    fixtures = RAIZ / "tests" / "fixtures"
+    refs = set()
+    for nombre in ("c1156_principal.html", "c1156_apremio.html"):
+        refs |= set(re.findall(r"geoReferencia\('([^']+)'\)", _texto(fixtures / nombre)))
+    assert len(refs) >= 2, "las fixtures dejaron de traer georreferencias"
+
+    # Anclado a la página que OWNS el dato, no a las dos: se comprobó rompiéndolo con la
+    # concatenación puesta y quedaba verde, porque la copia de la otra página lo rescataba.
+    hoja = _texto(RAIZ / "docs" / "verificacion.md")
+    numeros = {3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho"}
+    assert f"**{numeros[len(refs)]}**" in hoja or str(len(refs)) in hoja, (
+        f"las fixtures traen {len(refs)} actuaciones georreferenciadas entre los dos "
+        "cuadernos, y la documentación dice otra cosa"
+    )
+
+    # Las rutas y el parámetro salen del JavaScript versionado, no de una lista a mano.
+    js = _texto(fixtures / "consultaUnificada.html")
+    rutas = set(re.findall(r"([\w/]*modal/geoReferencia\w*\.php)", js))
+    assert rutas, "la fixture dejó de traer las rutas de georreferencia"
+    assert f"{len(rutas)} rutas" in hoja or numeros.get(len(rutas), "") in hoja, (
+        f"son {len(rutas)} rutas de georreferencia y la documentación dice otra cosa"
+    )
+    parametro = re.search(r"geoReferenciaCivil\.php'.{0,400}?data\s*:\s*\{\s*(\w+)", js, re.S)
+    assert parametro, "la fixture dejó de mostrar con qué parámetro se pide la georreferencia"
+    assert f"`{parametro.group(1)}`" in hoja, (
+        f"la georreferencia se pide con {parametro.group(1)!r} y la documentación dice otra cosa"
+    )
+
+
+def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():
+    """Al partir la hoja de ruta, sus fragmentos publicados quedaron apuntando al vacío.
+
+    `myst_heading_anchors` genera un ancla por encabezado hasta el nivel 3, así que
+    `roadmap.html#que-mas-existe` existía y era citable. Moverlo sin dejar nada no da 404: da
+    el inicio de la página, en silencio, que es la forma de romper un enlace que nadie nota.
+
+    Lo que se exige es que el encabezado siga estando, no que el contenido siga ahí: cada uno
+    quedó como un puntero de una línea a la página que se lo llevó.
+    """
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    faltan = [t for t in ANCLAS_HEREDADAS if f"# {t}" not in hoja]
+    assert not faltan, (
+        f"la hoja de ruta perdió encabezados que publicó y que alguien puede haber enlazado: "
+        f"{faltan}. Un enlace a su fragmento ahora lleva al inicio de la página sin avisar."
+    )
 
 
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
@@ -1329,9 +1459,25 @@ def test_los_codigos_de_tribunal_que_cita_la_documentacion_son_los_medidos():
     }
     assert medidos, "la fixture de tribunales quedó vacía"
 
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    hoja = _estado_y_plan()
     citados = {c: n for c, n in medidos.items() if n in hoja}
     assert citados, "la hoja de ruta dejó de nombrar los tribunales medidos"
+
+    # El chequeo estricto se hace por PAR y sobre el texto con los espacios normalizados, no
+    # por línea: el ejemplo de JSON viene partido en dos líneas en la prosa, así que un
+    # chequeo por línea no ve el emparejamiento. Se comprobó rompiéndolo así y quedaba verde.
+    #
+    # Y se limita a los pares explícitos `COD_TRIBUNAL`/`GLS_TRIBUNAL` en vez de a cualquier
+    # cercanía, porque la prosa compara dos códigos a propósito ("163 se dedujo porque 162 era
+    # el 2º Juzgado") y exigirle que no nombre otro la haría imposible de escribir.
+    plano = " ".join(hoja.split())
+    pares = re.findall(r'"COD_TRIBUNAL":\s*"(\d+)",\s*"GLS_TRIBUNAL":\s*"([^"]+)"', plano)
+    assert pares, "la documentación dejó de traer un par código/tribunal como dato"
+    for codigo, nombre in pares:
+        assert medidos.get(codigo) == nombre, (
+            f"la documentación empareja el código {codigo} con {nombre!r}, y lo medido es "
+            f"{medidos.get(codigo)!r}"
+        )
 
     for codigo, nombre in citados.items():
         cerca = False
@@ -1342,7 +1488,7 @@ def test_los_codigos_de_tribunal_que_cita_la_documentacion_son_los_medidos():
                 break
             desde = i + 1
         assert cerca, (
-            f"la hoja de ruta nombra {nombre!r} y en ninguna de sus menciones dice que su "
+            f"la documentación nombra {nombre!r} y en ninguna de sus menciones dice que su "
             f"código es {codigo}, que es el medido"
         )
 
@@ -1355,11 +1501,17 @@ def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real
     agrega o retira una ruta de documentos, la página deja de listarlas y se entera.
     """
     fixture = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html")
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
 
     rutas = set(re.findall(r"civil/documentos/([\w.-]+\.php)", fixture))
     assert len(rutas) >= 6, f"la fixture dejó de traer las rutas de documentos: {rutas}"
 
+    # Acotado a la SECCIÓN de la tabla y no a la página entera. Se comprobó rompiéndolo:
+    # cambiar una ruta en la tabla seguía verde, porque el nombre viejo aparecía en otro
+    # párrafo de la misma página, en la lista de rutas mapeadas y sin ejecutar.
+    seccion = _texto(RAIZ / "docs" / "verificacion.md").split(
+        "## Las rutas que entregan documentos", 1
+    )[1]
+    hoja = seccion
     for ruta in rutas:
         assert ruta in hoja, (
             f"la respuesta real ofrece {ruta!r} para descargar documentos y la hoja de ruta no "
@@ -1368,7 +1520,6 @@ def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real
 
     # Y el parámetro de cada una, que es lo que hace falta para invocarla. Se saca de la
     # fixture y no de una lista escrita a mano.
-    seccion = hoja.split("### 0.7: documentos", 1)[1].split("####", 1)[0]
     for ruta in rutas:
         tramo = fixture.split(ruta, 1)[1][:400]
         nombres = re.findall(r"name='([\w]+)'", tramo)
@@ -1423,8 +1574,8 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
 
     # El diagrama repite las mismas cifras que la tabla, así que es un lugar más donde pueden
     # quedar viejas. Se exige que las diga, no que las dibuje de alguna forma concreta.
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
-    diagrama = hoja.split("#### Los dos lados del exhorto", 1)[1].split("```", 2)[1]
+    hoja = _texto(RAIZ / "docs" / "verificacion.md")
+    diagrama = hoja.split("## Los dos lados del exhorto", 1)[1].split("```", 2)[1]
     for exigido in (
         "C-1156-2026",
         "E-875-2026",
@@ -1440,7 +1591,7 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
             "siguen diciendo eso"
         )
 
-    antes = hoja.split("#### Los dos lados del exhorto", 1)[0]
+    antes = hoja.split("## Los dos lados del exhorto", 1)[0]
     assert "no está entendido" not in antes[-1500:], (
         "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
         "párrafo siguiente lo explica: dos respuestas a la misma pregunta"
@@ -1538,7 +1689,7 @@ def test_la_cuenta_de_rutas_de_la_plataforma_es_la_de_la_fixture():
         encoding="utf-8", errors="replace"
     )
     menciones = re.findall(r"[\w./-]+\.php", javascript)
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
 
     assert f"{len(menciones)} veces" in texto, (
         f"la fixture nombra un .php {len(menciones)} veces y la hoja de ruta dice otra cosa"

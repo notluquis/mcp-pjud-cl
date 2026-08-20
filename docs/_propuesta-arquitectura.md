@@ -488,6 +488,17 @@ sección 5.
 Aparte, es la única de las tres piezas que puede fallar en silencio: un `{include}` de un
 archivo que se renombra deja de incluir sin avisar mientras `-W` esté apagado. Otra razón para
 el orden de 6.5.
+
+**Y al intentarla, con `-W` ya encendido, no funcionó.** `CONTRIBUTING.md` enlaza a `../CLA.md`
+y `../LICENSE.md`, que están en la raíz del repositorio y **no son documentos de Sphinx**: al
+incluirlo, MyST intenta resolverlos como referencias y emite `xref_missing` por cada una. Con
+`-W` eso es un error, y está bien que lo sea, porque el resultado sin `-W` habría sido una
+página publicada con cuatro enlaces muertos.
+
+O sea la pieza (c) no cuesta diez líneas: cuesta decidir qué hacer con los enlaces de un
+archivo que hoy vive fuera del sitio y apunta a archivos que también viven fuera. Queda sin
+hacer, y el enlace externo se mantiene. Es exactamente el tipo de costo que el orden de 6.5
+existía para descubrir antes y no después.
 :::
 
 ## 4. Que la documentación no diverja del código, como mecanismo

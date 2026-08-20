@@ -217,3 +217,87 @@ plataforma que quedaron deliberadamente fuera de este repositorio por esta razó
 | User agent identificable | `client.py` | Obligatorio por variable de entorno |
 | Sin persistencia | Todo el proyecto | No hay dependencia de base de datos |
 | Bitácora de peticiones | `client.py` | Test unitario |
+
+## Hallazgos de OpenSSF Scorecard que siguen abiertos
+
+Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
+
+| Hallazgo | Estado | Por qué |
+|---|---|---|
+| `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
+| `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
+| `SAST` | Resuelto | Se pasó de modo gestionado a workflow con `codeql-action` fijado por SHA y consultas `security-extended`, que es una de las dos huellas que Scorecard busca |
+| `Fuzzing` | Resuelto | Harness de Atheris en `tests/fuzz_parser.py`. Ver abajo por qué también hay pruebas de propiedades |
+| `CII-Best-Practices` | **Inalcanzable con esta licencia** | Ver abajo |
+
+Sobre `Code-Review`: en un proyecto de una persona no tiene arreglo técnico, pero para código
+que decide plazos procesales vale preguntarse si conviene un segundo par de ojos antes de
+tocar el parser. Queda dicho como pregunta abierta y no como casilla marcada.
+
+### Sobre `Fuzzing`
+
+La primera versión de esta nota decía que Scorecard "no reconoce" las pruebas basadas en
+propiedades. Es incorrecto, y conviene decirlo bien porque cambia la conclusión.
+
+Scorecard acepta tres señales: inclusión en [OSS-Fuzz](https://google.github.io/oss-fuzz/),
+despliegue de ClusterFuzzLite, o funciones de fuzzing definidas por el proyecto. Y en esa
+tercera categoría **sí cuenta explícitamente las librerías de pruebas basadas en propiedades**:
+QuickCheck, Hedgehog, SmallCheck y validity en Haskell, fast-check en JavaScript y TypeScript,
+proper y quickcheck en Erlang, FsCheck en C# y F#, PropCheck y ExUnitProperties en Elixir, y
+qcheck en Gleam.
+
+O sea el enfoque que este proyecto usa es exactamente el que Scorecard considera válido. Lo
+que falta es que su detector incluya **Hypothesis**, que es el equivalente en Python y no está
+en esa lista.
+
+De modo que el hallazgo no dice "a este proyecto le falta fuzzing". Dice "Scorecard todavía no
+sabe detectar el fuzzing que este proyecto tiene".
+
+Y hay un detalle que la primera versión de esta nota tampoco tenía: **Scorecard detecta
+Atheris con un grep**. Su código (`checks/raw/fuzzing.go`) busca el patrón `import atheris` en
+archivos `*.py`, sin exigir inscripción en OSS-Fuzz ni infraestructura alguna. Inscribirse en
+OSS-Fuzz son semanas de trámite; un archivo con ese import son minutos. La nota anterior
+mandaba por el camino largo.
+
+El repositorio tiene ahora `tests/fuzz_parser.py`, un harness real que corre el parser y
+verifica la misma invariante. No corre en CI porque el fuzzing por tiempo no encaja en un
+check obligatorio; se ejecuta a mano al tocar el parser.
+
+Conviene precisar en qué se diferencian, porque no es en el oráculo. Un harness de Atheris que
+ejecute el parser y afirme que toda fecha devuelta viene en la entrada detecta la misma
+infracción que `test_nunca_inventa_una_fecha`: los fuzzers no están limitados a encontrar
+corrupción de memoria, y cualquier harness puede llevar el oráculo que se le ponga.
+
+La diferencia real está en cómo se llega a la entrada que rompe. Hypothesis genera desde
+estrategias tipadas, así que produce fechas y horas bien formadas y explora el espacio que le
+interesa a este parser, y cuando falla **reduce** el caso hasta el ejemplo mínimo. Un fuzzer
+guiado por cobertura muta bytes, lo que le permite alcanzar caminos que una estrategia tipada
+quizá nunca genere, a cambio de entregar entradas menos legibles.
+
+Son complementarios, y por eso están los dos. La generación estructurada de Hypothesis corre en
+cada cambio y rinde más por hora invertida; el harness de Atheris se usa cuando se toca el
+parser. La inscripción en OSS-Fuzz, que automatizaría el segundo de forma continua, queda como
+paso posterior y no como requisito.
+
+### Sobre `CII-Best-Practices`
+
+La insignia de OpenSSF Best Practices **no se puede obtener con la licencia de este proyecto**,
+y conviene dejarlo escrito para no volver a intentarlo.
+
+Entre los criterios obligatorios del nivel `passing` está `floss_license`:
+
+> "The software produced by the project MUST be released as FLOSS"
+
+[PolyForm Strict](licencia.md) no es FLOSS: prohíbe modificar, distribuir y el uso comercial.
+No es un criterio sugerido que se pueda saltar, es un MUST.
+
+Marcarlo como cumplido sería falso, y una insignia es una declaración pública. Así que el
+hallazgo queda abierto de forma permanente mientras la licencia no cambie.
+
+Es el de severidad más baja de los cinco, y la decisión de licencia se tomó por razones que
+pesan más: que nadie publique su propia versión y que todo uso profesional pase por un permiso
+explícito. El costo está anotado en la página de licencia junto a los demás.
+
+La serie Baseline de la misma insignia podría no exigir FLOSS, pero sus niveles
+(`baseline-1/2/3`) no son los que el check de Scorecard puntúa, que son `passing`, `silver` y
+`gold`. O sea tampoco cerraría el hallazgo.

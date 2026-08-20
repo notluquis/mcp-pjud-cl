@@ -35,7 +35,7 @@ desarrolla el mecanismo y la 5 lo aterriza con nombres de archivo.
 
 ### 2.1 Lo medido en este repositorio
 
-Seis mediciones sostienen todo lo demás. Ninguna es una opinión sobre estructura.
+Siete mediciones sostienen todo lo demás. Ninguna es una opinión sobre estructura.
 
 **a) La medición de la incidencia #57 ya envejeció, en cuatro días.** `wc -l docs/*.md` hoy da
 2.786 líneas totales, `roadmap.md` 1.103 y `herramientas.md` 553. La incidencia dice que la
@@ -114,6 +114,28 @@ archivo servido. Verificado también que una página huérfana no desaparece: se
 Sacar algo del `toctree` lo esconde del lector humano y lo deja donde estaba para el otro
 canal.
 
+**g) Las reglas que no se negocian están escritas tres veces, y ya divergieron.** Viven en
+`AGENTS.md:7` («Reglas que no se negocian»), en `.github/CONTRIBUTING.md:41` (mismo título) y en
+`docs/instalacion.md:199` («Controles que no se deben tocar»). Sobre la persistencia, las tres
+copias no dicen lo mismo:
+
+| Archivo | Qué dice |
+|---|---|
+| `AGENTS.md` | «Sin persistencia de datos de terceros. Se consulta y se devuelve.» |
+| `docs/instalacion.md` | «Sin persistencia. No hay base de datos ni caché en disco.» |
+| `.github/CONTRIBUTING.md` | «Sin persistencia **por defecto**.» |
+
+«Por defecto» dice que se puede configurar. Las otras dos dicen que no existe. Es una
+divergencia sobre una regla que no se negocia, y **ningún guardia la cubre**: los que recorren
+`PROSA` vigilan el intervalo, la mención de la ráfaga, las leyes citadas y las cifras de
+latencia, no la redacción de las reglas.
+
+Para ser justo con el otro caso, porque la honestidad es lo que hace útil el hallazgo: la
+ráfaga también se describe distinto («ráfaga máxima de 4» contra «ráfaga de 4 al inicio»), pero
+ahí las dos son defendibles. El código es un balde de fichas que arranca lleno
+(`_FICHAS = float(RAFAGA_MAXIMA)`), así que 4 es a la vez el tope del balde y lo que sale junto
+al principio. Ésa no es una divergencia; la de la persistencia sí.
+
 ### 2.2 Dónde chocan las dos audiencias, y por qué eso decide la arquitectura
 
 Diátaxis parte por **propósito del lector**, no por identidad del lector. Al mapear las dos
@@ -160,7 +182,111 @@ pieza (c) de la sección 3.3 lo resuelve sin duplicar una línea.
 
 ### 2.4 Qué hacen otros proyectos con dos audiencias
 
-<!-- PENDIENTE-AUDIENCIAS -->
+**El patrón mayoritario es cortar arriba, con una sección hermana que NO replica los cuatro
+cuadrantes.** Verificado proyecto por proyecto:
+
+| Proyecto | Dónde va lo de quien contribuye |
+|---|---|
+| [Django](https://docs.djangoproject.com/en/stable/) | sección de primer nivel `internals/`, «The Django open-source project»: gobernanza, releases, políticas |
+| [Python](https://devguide.python.org/) | sitio aparte |
+| [Rust](https://rustc-dev-guide.rust-lang.org/about-this-guide.html) | sitio aparte (`rustc-dev-guide`) |
+| [Read the Docs](https://docs.readthedocs.com/dev/) | dos árboles, `platform/` y `dev/`, tras una [decisión escrita en 2019](https://github.com/readthedocs/readthedocs.org/issues/5070) |
+| [Astropy](https://docs.astropy.org/en/stable/index_dev.html) | segunda portada dentro del mismo proyecto Sphinx (`index_dev`) |
+| [pyca/cryptography](https://cryptography.io/en/latest/) | **no separa**: «Development» convive con las páginas de usuario en el mismo toctree |
+| [nashpy](https://nashpy.readthedocs.io/en/stable/) | minoría: replica los cuatro cuadrantes dentro de «Contributor documentation» |
+
+Dato honesto sobre la fuerza de esa evidencia: se encontró una decisión escrita a favor de
+separar, y **ninguna escrita a favor de no separar**. `cryptography` es un ejemplo, no una
+justificación. Así que el patrón mayoritario se toma como patrón, no como demostración.
+
+**Diátaxis tiene una respuesta para este caso exacto, escrita por Procida, y hoy está caída.**
+La página se llama «Diátaxis in complex hierarchies» y `https://diataxis.fr/complex-hierarchies/`
+devuelve 404 desde la reorganización del repositorio del 3 de agosto de 2026. El texto se
+conserva
+[en el fuente versionado](https://raw.githubusercontent.com/evildmp/diataxis-documentation-framework/de7a2d813e2fda339b959e3075afb4e2f09bf54c/complex-hierarchies.rst),
+y plantea literalmente este problema:
+
+> «A more difficult problem is when the structure outlined by Diátaxis meets another structure
+> (...) or when documentation encounters very different user-types.»
+
+> «Diátaxis is not a scheme into which documentation must be placed, four boxes.»
+
+> «Then perhaps it makes sense to be freer with the structure, in some parts (...) while
+> completely separating the contributors' how-to guides from both.»
+
+Y en `how-to-use-diataxis`, sobre la tentación de la grilla: «It certainly does not mean that
+you should create empty structures for tutorials/howto guides/reference/explanation with nothing
+in them. Don't do that. It's horrible.»
+
+**La palabra «audiencia» no aparece en la doctrina de Diátaxis.** Ni `audience`, ni `persona`,
+ni `user type`, en ninguna de sus páginas fundacionales. Los ejes de `foundations` son la
+relación de quien practica con su oficio (acción contra cognición, adquirir contra aplicar), no
+quién lee. Los blogs secundarios que dicen «cada cuadrante apunta a una audiencia» están
+inventando. Es la confirmación externa de lo que 2.2 midió acá: Diátaxis parte por propósito, y
+por eso **basta**, siempre que la partición se haga bien.
+
+Detalle de procedencia que vale anotar: la
+[discusión #93](https://github.com/evildmp/diataxis-documentation-framework/discussions/93) del
+repositorio de Diátaxis plantea esta misma pregunta y **Procida nunca respondió**. No hay
+doctrina oficial más allá de la página caída.
+
+### 2.4b Páginas de «qué está verificado»: quién las tiene y cómo no se les pudren
+
+Ésta es la parte que más importa, porque `verificacion.md` va a ser exactamente eso.
+
+**El precedente que valida el patrón de este repositorio.**
+[python-holidays](https://raw.githubusercontent.com/vacanza/holidays/dev/tests/test_docs.py)
+tiene su tabla de países soportados en el README, y `tests/test_docs.py` **parsea las tablas del
+README y las contrasta contra `list_supported_countries()`**. Si el código y la tabla divergen,
+la suite se cae. Es literalmente `tests/test_documentacion.py` aplicado a una tabla de cobertura,
+en un proyecto ajeno que llegó solo a la misma solución.
+
+**El que va un paso más allá, y es el que conviene copiar.** Home Assistant lleva el estado en
+un `quality_scale.yaml` por integración, una entrada por regla, con tres estados: `todo`, `done`
+y `exempt`. Lo valida `script/hassfest/quality_scale.py` en CI, y **`exempt` exige un `comment`
+obligatorio**:
+
+```python
+vol.Schema({
+    vol.Required("status"): "exempt",
+    vol.Required("comment"): str,
+})
+```
+
+Trasladado acá: el estado por competencia podría vivir en un archivo legible por máquina donde
+declarar «no cubierta» **obliga a escribir por qué**, con `verificacion.md` generada desde ahí.
+Es la respuesta directa a la regla 4 de `AGENTS.md` llevada a la documentación: el silencio deja
+de ser una opción representable.
+
+**La redacción que hay que copiar tal cual.** La página de compatibilidad de Hypothesis
+distingue lo probado de lo no auditado, y se compromete:
+
+> «Each of the following is fully supported, and tested regularly in CI (...) In theory,
+> Hypothesis supports cross-thread API calls. However, we have not explicitly audited this
+> behavior, and do not regularly test it in our CI. (...) **If our investigation determines that
+> we cannot support** cross-thread calls for the feature in question, **we will update this page
+> accordingly**.»
+
+Es exactamente la distinción entre «verificado contra el sistema real» y «mapeado pero nunca
+ejecutado», con la promesa de actualizar incluida. Otros dos ejemplos cortos y hechos a mano que
+funcionan:
+[«What Sigstore Doesn't Guarantee»](https://docs.sigstore.dev/about/security/) y
+[«Known security limitations» de cryptography](https://cryptography.io/en/latest/limitations/),
+que son dos ítems y sirven.
+
+**Y la advertencia, que viene del proyecto más parecido a éste.**
+[juriscraper](https://github.com/freelawproject/juriscraper/wiki/Court-Websites), que raspa
+jurisprudencia de tribunales de Estados Unidos, publica su estado por tribunal como **wiki de
+GitHub**, con etiquetas `DONE`, `TODO` e `IMPOSSIBLE`, sin generación desde el código y sin
+guardia. **Última revisión: diciembre de 2022.** Es el destino exacto de `verificacion.md` si se
+escribe entera a mano: una tabla de estado que quedó cuatro años atrás, en el proyecto del rubro
+más cercano que existe.
+
+El antipatrón complementario lo documenta MDN: en `browser-compat-data`, «if a browser is not
+defined, it means we don't have support information for that browser», o sea la ausencia
+significa desconocimiento y se lee igual que «no soportado». Es la regla 4 de `AGENTS.md`
+invertida, y es la razón por la que `verificacion.md` tiene que nombrar explícitamente lo no
+cubierto en vez de omitirlo.
 
 ### 2.5 Árbol contra grafo
 
@@ -218,7 +344,7 @@ Diátaxis basta, siempre que la partición se haga bien, que es exactamente lo q
 
 ## 3. El mapa concreto
 
-Once páginas donde hoy hay nueve. Dos nuevas, ninguna renombrada, **ninguna URL publicada
+Doce páginas donde hoy hay nueve. Tres nuevas, ninguna renombrada, **ninguna URL publicada
 muere**: `roadmap.md` y `cumplimiento.md` conservan su nombre, así que no hace falta ninguna
 extensión de redirecciones.
 
@@ -235,6 +361,18 @@ extensión de redirecciones.
 | **`ecosistema.md`** | **Explicación** | `## Qué más existe` entero | ~386 |
 | `licencia.md` | Explicación | sin cambios | 92 |
 | `financiamiento.md` | Explicación | sin cambios | 71 |
+| **`contribuir.md`** | **Cómo se hace**, como sección hermana | ver 3.3c | ~10 más lo incluido |
+
+El `toctree` queda así, y el reparto no es casual: «Cómo se hace» con `instalacion` y
+`ejemplos`, «Referencia» con `herramientas` y `verificacion`, «Explicación» con `uso`,
+`cumplimiento`, `licencia`, `roadmap`, `ecosistema` y `financiamiento`, y «Proyecto» con
+`contribuir` más los enlaces que ya están. Seis es el grupo más grande, y Procida da «seven
+items seems to be a comfortable general limit» como techo cómodo por sección.
+
+`contribuir.md` va bajo «Proyecto» y **no** bajo «Cómo se hace», siguiendo el patrón mayoritario
+de 2.4: la documentación de quien contribuye es una sección hermana, no una entrada más en el
+carril de quien usa la herramienta. Es lo que hace Django con `internals/` («The Django
+open-source project») dentro de su propio sitio.
 
 Ninguna página queda por sobre `herramientas.md`, que hoy es la más larga después de la hoja de
 ruta y que no se toca. La que hay que mirar después es `ecosistema.md`, cuya subsección
@@ -289,21 +427,33 @@ posibles en vez de dejarlo implícito.
 
 **b) `html_meta` por página.** Es la `<meta name="description">` de la página publicada, o sea
 lo que muestra un buscador y lo que aparece al compartir el enlace, y de paso lo que `llms.txt`
-usa en vez de truncar la primera línea (2.1e). Hoy está sin usar en las nueve páginas. Once
+usa en vez de truncar la primera línea (2.1e). Hoy está sin usar en las nueve páginas. Doce
 descripciones de una frase, en el front matter, sin duplicar contenido: es donde la audiencia se
 nombra explícitamente («para quien evalúa si puede confiar en una fecha», «para quien audita el
 alcance verificado») sin que eso obligue a partir ninguna página.
 
-**c) `AGENTS.md` y `.github/CONTRIBUTING.md` entran al `toctree`.** Hoy son enlaces externos
-(2.3), o sea invisibles para `llms.txt`. La forma barata, sin mover los archivos ni duplicarlos,
-es una página `contribuir.md` de pocas líneas que los incluya con `{include} ../AGENTS.md`,
-igual que `herramientas.md` ya incluye `_generado/`. Es lo que hace que las reglas que no se
-negocian lleguen al lector que las necesita.
+**c) `contribuir.md`: una página que incluye `.github/CONTRIBUTING.md`.** Hoy ese archivo es un
+enlace de salida hacia GitHub (2.3), y es el único documento del proyecto que le habla
+directamente a la segunda audiencia. La forma barata, sin mover el archivo ni duplicarlo, es una
+página de diez líneas con `{include} ../.github/CONTRIBUTING.md`, igual que `herramientas.md` ya
+incluye `_generado/`. Con eso entra al árbol, al buscador del sitio y a la barra lateral.
+
+Se incluye `CONTRIBUTING.md` y **no** `AGENTS.md`, a propósito. `CONTRIBUTING.md` es una página
+de «Cómo se hace» limpia: cómo se prepara un cambio acá. `AGENTS.md` mezcla los cuatro tipos de
+Diátaxis en un archivo, que es exactamente lo que esta propuesta viene a corregir en
+`roadmap.md`; meterlo entero al árbol importaría el problema en vez de resolverlo. `AGENTS.md`
+se queda donde está, que es donde lo lee su destinatario.
 
 :::{warning}
-La pieza (c) es la única de las tres que puede salir mal en silencio: un `{include}` de un
-archivo que se renombra deja de incluir sin avisar si `-W` no está encendido. Es otra razón
-para el orden que impone la sección 6.
+Y ojo con lo que la pieza (c) deja al descubierto, porque es peor que un problema de
+navegación: las cinco reglas que no se negocian están escritas tres veces y ya divergieron
+(2.1g). Publicar `CONTRIBUTING.md` sin resolver eso pondría en la documentación oficial la
+versión que dice «sin persistencia **por defecto**». O el corte de esa duplicación entra junto
+con la pieza (c), o la pieza (c) no entra. Es candidato de la sección 5.
+
+Aparte, es la única de las tres piezas que puede fallar en silencio: un `{include}` de un
+archivo que se renombra deja de incluir sin avisar mientras `-W` esté apagado. Otra razón para
+el orden de 6.5.
 :::
 
 ## 4. Que la documentación no diverja del código, como mecanismo
@@ -461,6 +611,14 @@ dice **contra qué se verificó y cuándo**, y eso no está en el código ni deb
 regla que se cae sola de Diátaxis es: se genera Referencia, se escribe Explicación a mano. Una
 página que mezcla las dos es la que se vuelve ilegible, y es el fallo que `AGENTS.md` ya nombra.
 
+Dicho eso, hay una tercera vía que 2.4b encontró y que no es ni «desde el código» ni «a mano»:
+**un archivo de estado legible por máquina, versionado aparte del código**, como el
+`quality_scale.yaml` de Home Assistant. `verificacion.md` se generaría desde ahí, y lo que se
+gana es lo que hoy no existe: que declarar una competencia como no cubierta **obligue a escribir
+por qué**, validado en CI. Es la regla 4 de `AGENTS.md` llevada a la documentación, y es la
+diferencia entre esta página y la wiki de juriscraper, congelada desde 2022. Se propone como
+segundo paso, después del corte, porque su valor depende de que la página exista primero.
+
 ### 5.4 Una verificación nueva que hoy no existe y cuesta poco
 
 Medido: hay 51 bloques de código cercados en toda la prosa. Uno solo es `python` y ninguno trae
@@ -588,10 +746,24 @@ plegar contenido, `dropdown` es lo correcto: son `<details>`/`<summary>` nativos
 expande durante la búsqueda en página
 ([Chrome](https://developer.chrome.com/docs/css-ui/hidden-until-found)).
 
+**Replicar los cuatro cuadrantes de Diátaxis para la segunda audiencia (la grilla 4x2).** Es
+lo que hace nashpy y funciona, pero es minoría y tiene un costo que acá no se paga: con doce
+páginas, ocho contenedores dejan la mitad vacíos, y `how-to-use-diataxis` lo prohíbe por su
+nombre: «It certainly does not mean that you should create empty structures for tutorials/howto
+guides/reference/explanation with nothing in them. Don't do that. It's horrible.» Lo que sí
+recomienda Procida en la página caída de 2.4 es ser más libre por cuadrante, no armar la grilla.
+
 **Una página colgando de dos `toctree`, o `sphinx-tags`.** Los motivos están medidos en 2.5: el
 mensaje de Sphinx es `info` y `-W` no lo ve, la barra lateral y el anterior/siguiente eligen
 padres por reglas distintas ([#13012](https://github.com/sphinx-doc/sphinx/issues/13012)), y
-`sphinx-tags` lleva dos años sin publicar en PyPI.
+`sphinx-tags` lleva dos años sin publicar en PyPI. Y hay un argumento de fondo que pesa más
+que los tres: **Andy Matuschak, que es el mayor defensor del enlazado denso, rechaza las
+etiquetas** por ineficaces como estructura de asociación
+([nota](https://notes.andymatuschak.org/Evergreen_notes_should_be_densely_linked)); su argumento
+es que una etiqueta es un balde categórico ancho y un enlace es una conexión específica. Sumado
+a que no existe ningún estudio de usabilidad que compare navegación por árbol contra navegación
+por etiquetas en documentación, ni ninguna reorganización de documentación publicada con
+métricas antes y después, la evidencia disponible no alcanza para pagar la deuda.
 
 **`:orphan:` para esconder páginas de trabajo.** Medido: no las esconde de `llms.txt`, sólo
 silencia el aviso `toc.not_included`. Tampoco las saca del buscador del sitio, que usa el campo
@@ -641,8 +813,15 @@ acentuado, porque una discrepancia de slug se ve exactamente igual que "sin hall
 
 **`--keep-going` junto a `-W`.** Redundante: desde Sphinx 8.1 el build ya no se detiene en el
 primer aviso, y en la 9.1 que usa este repositorio la bandera **ya no aparece en `--help`**.
-Verificado: `-W` solo reportó los cuatro avisos y salió en 1. Recomendar `-W --keep-going` sería
-citar una bandera vieja.
+Verificado sobre el árbol roto de 2.1b: `-W` sin acompañantes reportó todos los avisos, no se
+detuvo en el primero, y salió en 1. Recomendar `-W --keep-going` sería citar una bandera vieja.
+
+**`sphinx.ext.todo` con `todo_emit_warnings` para llevar la lista de lo que falta verificar.**
+La idea es buena (una directiva por pendiente, una `todolist` que los junta sola, y nada que se
+pueda desincronizar) y choca de frente con la recomendación principal: `todo_emit_warnings` hace
+que **cada pendiente emita un aviso de build**, y con `-W` encendido cada pendiente es un build
+roto. Las dos cosas no pueden convivir sin `suppress_warnings`, que es justo lo que 4.5 pone
+como la segunda mordida del guardia. Si alguna vez se quiere, se quiere sin `todo_emit_warnings`.
 
 **`mutmut` para verificar los guardias de documentación.** No muta archivos `.md`, y
 `paths_to_mutate` es `src/mcp_pjud/`. Sirve por el otro lado y no dice nada sobre si el guardia

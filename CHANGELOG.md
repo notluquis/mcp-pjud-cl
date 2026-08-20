@@ -18,13 +18,6 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
-- `tests/test_protocolo.py`: verifica a través de una sesión MCP real que lo que el parser
-  rechaza le llegue al modelo como error y no como lista vacía.
-- `jsonschema` pasa a estar declarado en las dependencias de desarrollo.
-
-
-### Agregado
-
 - Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué
   fecha. Es la única competencia que liquida el crédito.
 - El monto viene en dos campos: `monto` en pesos para calcular, y `monto_publicado` con el

@@ -1279,3 +1279,29 @@ def test_la_herramienta_de_notificaciones_advierte_que_incluye_las_no_practicada
     assert "Pendiente" in estado, (
         "la descripción de `estado` no nombra el valor que significa NO practicada"
     )
+
+
+def test_ninguna_version_del_registro_repite_una_seccion():
+    """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
+
+    El flujo de publicación copia el tramo entero entre un `## [versión]` y el siguiente, así
+    que la release muestra el encabezado repetido. Y como publicar consiste en insertar la
+    versión nueva justo debajo de `[No publicado]`, el error se cuela sin que nadie lo mire:
+    ya pasó, con las dos primeras líneas visibles siendo un archivo de tests y una dependencia
+    de desarrollo.
+    """
+    texto = _texto(RAIZ / "CHANGELOG.md")
+    versiones = re.split(r"^## (?=\[)", texto, flags=re.M)[1:]
+
+    repetidas = {}
+    for tramo in versiones:
+        nombre = tramo.splitlines()[0].strip()
+        secciones = re.findall(r"^### (.+)$", tramo, re.M)
+        duplicadas = {s for s in secciones if secciones.count(s) > 1}
+        if duplicadas:
+            repetidas[nombre] = sorted(duplicadas)
+
+    assert not repetidas, (
+        f"Versiones del registro con una sección repetida: {repetidas}. La publicación copia "
+        "el tramo entero, así que el encabezado saldría dos veces en la página."
+    )

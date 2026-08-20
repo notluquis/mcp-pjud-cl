@@ -35,11 +35,6 @@ from collections.abc import Callable
 from pathlib import Path
 
 import httpx
-
-# `jsonschema` viene igual con `mcp`, que lo declara como dependencia dura, así que este
-# import funcionaría sin ponerlo en el grupo `dev`. Está declarado de todas formas: apoyarse en
-# una dependencia transitiva es depender de una decisión ajena que puede cambiar sin aviso, y
-# el día que cambie esto moriría con un `ImportError` que no explica nada.
 import jsonschema
 import pytest
 from mcp.client import Client
@@ -74,19 +69,6 @@ HERRAMIENTA = "buscar_causa_por_rit"
 ARGUMENTOS = {"tipo": "E", "rol": 468, "anio": 2026}
 
 
-class _ClienteSinEspera(PjudClient):
-    """El cliente real con el semáforo desactivado.
-
-    Acá se mide el protocolo, no el ritmo. Una llamada son tres peticiones encadenadas, así
-    que dos llamadas en un mismo test agotan la ráfaga y la suite dormiría de verdad. El
-    régimen sostenido tiene sus propios tests en `test_client.py`, que sí lo miden y que son
-    los que impiden relajarlo.
-    """
-
-    def _esperar(self) -> None:
-        """Sin espera."""
-
-
 def _responder(cuerpo: str) -> Callable[[httpx.Request], httpx.Response]:
     """Doble del sitio: la portada de la que se deriva la sesión y un cuerpo para la búsqueda.
 
@@ -107,32 +89,55 @@ def _responder(cuerpo: str) -> Callable[[httpx.Request], httpx.Response]:
     return responder
 
 
-def _llamar(monkeypatch: pytest.MonkeyPatch, cuerpo: str) -> tuple[CallToolResult, Tool]:
+def _llamar(monkeypatch: pytest.MonkeyPatch, cuerpo: str) -> CallToolResult:
     """Llama la herramienta a través de una sesión MCP real y devuelve lo que viaja por el cable.
 
     `Client(mcp)` es API pública del SDK y conecta el servidor en el mismo proceso, sin red y
-    sin sockets. Devuelve también la herramienta tal como `list_tools` la anuncia, porque el
-    esquema de salida sólo sirve como contrato si se lee de ahí y no del código.
+    sin sockets.
     """
     # El contacto se lee del entorno UNA vez, al importar `server`, y para cuando corre este
     # test el módulo ya está importado por otros. `monkeypatch.setenv` no lo tocaría: hay que
     # reemplazar el valor ya leído.
     monkeypatch.setattr(servidor, "_CONTACTO", "test@example.cl")
+    # El mismo idioma que usa el resto de la suite para no dormir de verdad. Anular `_esperar`
+    # con una subclase sacaría el balde de fichas del camino ejercitado, y el ritmo es la
+    # cláusula CUARTA implementada en código: conviene que siga corriendo aunque no se mida acá.
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
 
     def fabricar(contacto: str) -> PjudClient:
-        cliente = _ClienteSinEspera(contacto)
+        cliente = PjudClient(contacto)
         cliente._http = httpx.Client(transport=httpx.MockTransport(_responder(cuerpo)))
         return cliente
 
     monkeypatch.setattr(servidor, "PjudClient", fabricar)
 
-    async def ida_y_vuelta() -> tuple[CallToolResult, Tool]:
+    async def ida_y_vuelta() -> CallToolResult:
         async with Client(servidor.mcp) as cliente:
-            anunciadas = await cliente.list_tools()
-            herramienta = next(t for t in anunciadas.tools if t.name == HERRAMIENTA)
-            return await cliente.call_tool(HERRAMIENTA, ARGUMENTOS), herramienta
+            return await cliente.call_tool(HERRAMIENTA, ARGUMENTOS)
 
     return asyncio.run(ida_y_vuelta())
+
+
+def _anunciada() -> Tool:
+    """La herramienta tal como `list_tools` la anuncia.
+
+    El esquema de salida sólo sirve como contrato si se lee de ahí y no del código. Va aparte
+    de `_llamar` porque dos de las tres pruebas no lo necesitan, y pedirlo igual levantaba una
+    sesión de más en cada llamada.
+    """
+
+    async def anunciar() -> Tool:
+        async with Client(servidor.mcp) as cliente:
+            anunciadas = await cliente.list_tools()
+            herramienta = next((t for t in anunciadas.tools if t.name == HERRAMIENTA), None)
+            assert herramienta is not None, (
+                f"el servidor ya no anuncia {HERRAMIENTA!r}. Sin el default, `next` levanta "
+                "`StopIteration` dentro de una corrutina y Python la convierte en un "
+                "`RuntimeError` que no nombra ni la herramienta ni `list_tools`."
+            )
+            return herramienta
+
+    return asyncio.run(anunciar())
 
 
 def _texto(resultado: CallToolResult) -> str:
@@ -158,7 +163,7 @@ def test_el_mensaje_del_parser_sobrevive_el_viaje(monkeypatch: pytest.MonkeyPatc
         "haría que este test pase sin verificar nada"
     )
 
-    resultado, _ = _llamar(monkeypatch, LISTADO_ROTO)
+    resultado = _llamar(monkeypatch, LISTADO_ROTO)
 
     assert resultado.is_error, (
         "un cambio de estructura llegó al modelo como resultado exitoso: lo va a leer como "
@@ -175,12 +180,22 @@ def test_una_busqueda_sin_coincidencias_no_se_parece_a_un_parseo_roto(
 ) -> None:
     """Las dos respuestas podrían viajar como el mismo arreglo vacío, y significan lo opuesto.
 
-    "No hay causas con ese rol" es una respuesta. "No pude leer el listado" es un fallo. Si el
-    parser se ablandara y devolviera una lista vacía ante una estructura que no reconoce, las
-    dos llegarían idénticas al modelo y la segunda se informaría como la primera.
+    "No hay causas con ese rol" es una respuesta. "No pude leer el listado" es un fallo, y si
+    llegaran idénticos el modelo informaría el segundo como el primero.
+
+    Lo que este test verifica, dicho con precisión porque la primera redacción prometía de
+    más: que la DEFENSA EN CAPAS impide que un listado ilegible llegue como lista vacía, no
+    que el parser sea la capa que lo impide. Se midió ablandando `parse_resultados` para que
+    devolviera `[]` en vez de levantar, y el test siguió verde: `_paginado` corta antes, porque
+    el listado declara un total de registros que no calza con las filas que se pudieron leer.
+
+    Eso no lo invalida, lo describe: la garantía es real y la sostienen dos guardias, no uno.
+    Y no es reemplazable por un caso donde sólo actúe el parser, porque para eso el listado
+    tendría que declarar total cero, y la plataforma esa forma no la emite: cero resultados
+    llegan con el aviso de "sin resultados", que es la otra pata de este mismo test.
     """
-    vacio, _ = _llamar(monkeypatch, LISTADO_VACIO)
-    roto, _ = _llamar(monkeypatch, LISTADO_ROTO)
+    vacio = _llamar(monkeypatch, LISTADO_VACIO)
+    roto = _llamar(monkeypatch, LISTADO_ROTO)
 
     assert not vacio.is_error, (
         "una búsqueda legítima sin coincidencias llegó como error: eso empuja a reintentar o "
@@ -197,6 +212,13 @@ def test_una_busqueda_sin_coincidencias_no_se_parece_a_un_parseo_roto(
         "'sin resultados' y 'no pude leer el listado' llegan al modelo con el mismo cuerpo"
     )
     assert roto.is_error, "el listado ilegible tiene que llegar marcado como error"
+    # Y que sea un error de ESTRUCTURA, no cualquiera. El doble levanta `AssertionError` ante
+    # una ruta no prevista, y el SDK convierte cualquier excepción común en un resultado con
+    # `is_error`: sin esto, un cambio de rutas dejaría el test verde midiendo un error de
+    # plomería del propio doble en vez del que dice medir.
+    assert "petición no prevista" not in _texto(roto), (
+        f"el error no vino del parseo sino del doble: {_texto(roto)}"
+    )
 
 
 def test_el_contenido_estructurado_valida_contra_el_esquema_anunciado(
@@ -209,7 +231,8 @@ def test_el_contenido_estructurado_valida_contra_el_esquema_anunciado(
     valida por su cuenta dentro de `call_tool`, así que esta comprobación es redundante a
     propósito: es la mitad que no depende de que el SDK siga haciéndolo.
     """
-    resultado, herramienta = _llamar(monkeypatch, LISTADO)
+    resultado = _llamar(monkeypatch, LISTADO)
+    herramienta = _anunciada()
 
     esquema = herramienta.output_schema
     assert esquema, "la herramienta dejó de anunciar esquema de salida"
@@ -218,6 +241,13 @@ def test_el_contenido_estructurado_valida_contra_el_esquema_anunciado(
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({"result": "esto no es una lista de causas"}, esquema)
 
+    # Primero que no sea error, y con el texto del SDK adentro. Si el esquema y la salida
+    # divergen, el SDK lo detecta ANTES y devuelve un resultado con `is_error` y sin contenido
+    # estructurado: sin esta línea el test reventaría más abajo diciendo que el servidor no
+    # devolvió nada, que culpa a la causa equivocada y además nunca llega a validar.
+    assert not resultado.is_error, (
+        f"la llamada con datos buenos llegó como error: {_texto(resultado)}"
+    )
     assert resultado.structured_content is not None, (
         "la herramienta anuncia esquema de salida y no devolvió contenido estructurado"
     )

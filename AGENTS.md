@@ -139,8 +139,8 @@ con 67 viñetas, y encima repetían lo que la sección de al lado ya decía. `te
 acota el largo de cada viñeta.
 
 Ojo con lo que ese guardia puede y no puede hacer: cuenta líneas, así que atrapa el desborde y
-no el contenido. Una viñeta de exactamente cuatro líneas que enumera cómo funciona algo lo pasa
-sin problema, y aun así sobra. Eso ya se coló dos veces.
+no el contenido. Una viñeta que justo cabe en el límite y enumera cómo funciona algo lo pasa sin
+problema, y aun así sobra. Eso ya se coló dos veces.
 
 ## Licencia y contribuciones
 

@@ -1389,6 +1389,7 @@ def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
         "liquidaciones",
         "materias",
         "exhortos",
+        "piezas_exhorto",
     ):
         fila = next((f for f in paneles.splitlines() if f.startswith(f"| `{campo}`")), None)
         assert fila, f"la tabla de paneles no tiene fila para {campo!r}"

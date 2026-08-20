@@ -19,6 +19,7 @@ from mcp_pjud.parser import (
     parse_historia,
     parse_liquidaciones,
     parse_notificaciones,
+    parse_piezas_exhorto,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -46,6 +47,9 @@ PANELES = [
     ("notificacionCob", "detalle_cobranza", "cobranza", parse_notificaciones),
     ("notificacionesLab", "detalle_laboral", "laboral", parse_notificaciones),
     ("liquidacionCob", "detalle_cobranza", "cobranza", parse_liquidaciones),
+    # Nueve columnas, con `Cuaderno` al medio: es el mapa posicional más ancho después de
+    # la Historia, y el único con encabezados que traen una errata del sitio.
+    ("piezasExhortoCiv", "detalle_causa_civil", "civil", parse_piezas_exhorto),
 ]
 
 IDS = [f"{p}-{c}" for p, _, c, _ in PANELES]

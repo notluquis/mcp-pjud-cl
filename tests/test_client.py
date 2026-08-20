@@ -1569,3 +1569,94 @@ def test_un_listado_de_tribunales_vacio_levanta_en_vez_de_publicarse(monkeypatch
     c, _ = _cliente_de_combos(monkeypatch, [{"OTRO_NOMBRE": "163", "GLS_TRIBUNAL": "x"}])
     with pytest.raises(EstructuraInesperada, match="vino vacío"):
         c.listar_tribunales("civil", 46)
+
+
+def test_el_detalle_de_una_causa_exhortada_trae_sus_piezas(monkeypatch):
+    """E-468-2026 es el otro lado del exhorto: la causa que otro tribunal abrió acá.
+
+    Sus dos paneles del exhorto dicen cosas opuestas y las dos importan. `exhortos` viene
+    vacío porque esta causa no despachó ninguno, y `piezas_exhorto` trae los seis trámites que
+    el tribunal de origen mandó junto con el exhorto.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    exhortada = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=exhortada)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("E", 468, 2026, tribunal=163)
+
+    assert detalle.causa_es_exhorto is True
+    assert detalle.piezas_exhorto is not None, "esta causa ES un exhorto: no puede venir nulo"
+    assert len(detalle.piezas_exhorto) == 6
+    assert detalle.exhortos == [], (
+        "el panel de exhortos despachados existe y esta causa no despacha ninguno: eso es una "
+        "lista vacía, y no se confunde con las piezas que sí trae"
+    )
+
+
+def test_una_causa_que_no_es_exhorto_se_distingue_de_una_competencia_sin_el_panel(monkeypatch):
+    """El contrato que esta lectura vino a resolver.
+
+    En `piezas_exhorto` el nulo puede significar dos cosas: que la competencia no publica el
+    panel, o que ESTA causa no es un exhorto. Meter las dos en el mismo nulo borra la
+    distinción que el resto del modelo protege, así que la nombra `causa_es_exhorto`: acá es
+    falso, o sea la causa no lo es, y no que civil no informe.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(str(peticion.url))
+        return httpx.Response(200, text=paginas[min(len(pedidos) - 1, len(paginas) - 1)])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("C", 9001, 2026, tribunal=162)
+
+    assert detalle.causa_es_exhorto is False, (
+        "C-1156-2026 despacha un exhorto pero no es uno, y la cabecera lo dice"
+    )
+    assert detalle.piezas_exhorto is None, (
+        "la lista vacía se leería como que el tribunal de origen no mandó ninguna pieza, y acá "
+        "no hay tribunal de origen: esta causa no es un exhorto"
+    )
+    assert detalle.exhortos, "el otro lado sí está: esta causa despacha E-875-2026"
+
+
+def test_la_pregunta_del_exhorto_no_se_responde_en_una_competencia_sin_medir(monkeypatch):
+    """Sin el guardia, leer la cabecera de cobranza reventaría la lectura entera, y con una
+    respuesta inventada diría que ninguna causa de cobranza es un exhorto.
+
+    `causa_es_exhorto` en nulo es la respuesta honesta: la pregunta no está medida acá.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / "busqueda_rit_cobranza.html").read_text(encoding="utf-8")
+    cobranza = (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=cobranza)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("C", 9999, 2019, competencia="cobranza", tribunal=1200)
+
+    assert detalle.causa_es_exhorto is None
+    assert detalle.piezas_exhorto is None
+    assert detalle.liquidaciones, "y el resto de la lectura sigue funcionando"

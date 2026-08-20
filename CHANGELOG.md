@@ -22,6 +22,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   documento. Antes sólo se decía que existía.
 - Herramientas `listar_cortes` y `listar_tribunales`: los códigos que las búsquedas exigen y
   que antes había que saberse de memoria.
+- Campos `piezas_exhorto` y `causa_es_exhorto` en el detalle: qué le mandó el tribunal de
+  origen a una causa exhortada, y si la causa es un exhorto o no.
 - Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
   campo del detalle, la cadena de peticiones y qué activa la detención total.
 

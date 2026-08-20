@@ -193,12 +193,12 @@ fila, así que si el sitio los repite en cada uno llegarían dos veces.
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
 - `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
 - `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
-- `piezasExhortoCiv`: entendido y sin mapear. Se lee desde el otro lado del exhorto, y lo que
-  falta no es medirlo sino decidir el contrato. Ver abajo
+- `piezasExhortoCiv`: el exhorto visto desde el otro lado. **Hecho**, con un campo aparte que
+  dice si la causa es un exhorto. Ver abajo
 
-Lo que falta importa más de lo que parece: mientras no estén, la respuesta del detalle NO es
-el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un
-escrito como que la causa no lo tiene.
+Lo que falta importa más de lo que parece: mientras el de escritos no esté, la respuesta del
+detalle NO es el expediente completo, y su contrato tiene que decirlo para que nadie lea la
+ausencia de un escrito como que la causa no lo tiene.
 
 #### Los dos lados del exhorto, medidos
 
@@ -234,15 +234,21 @@ que no se consultó; E-468-2026 tiene como origen a C-15411-2025, que tampoco. L
 es un ejemplar de cada lado, y con eso alcanza para la conclusión: qué paneles trae depende de
 si la causa ES un exhorto, no de cuál exhorto sea.
 
-`exhortosCiv` se lee desde el origen y ya está cubierto. `piezasExhortoCiv` se lee desde el
-destino y no lo está, y mapearlo tiene una decisión de contrato antes que de código: hoy
-`None` significa "esta COMPETENCIA no publica el panel", y acá haría falta decir "esta CAUSA
-no es un exhorto", que no es lo mismo. Sobrecargar `None` con los dos sentidos es exactamente
-la distinción que este proyecto existe para no borrar.
+`exhortosCiv` se lee desde el origen y `piezasExhortoCiv` desde el destino: los dos están
+cubiertos. Mapear el segundo tenía una decisión de contrato antes que de código, porque en
+`DetalleCausa` el `None` ya significaba "esta COMPETENCIA no publica el panel" y acá hacía
+falta decir "esta CAUSA no es un exhorto", que no es lo mismo. Sobrecargar `None` con los dos
+sentidos es exactamente la distinción que este proyecto existe para no borrar.
 
-Lo que probablemente lo resuelva es la **cabecera de la causa**, que hoy no se lee de ninguna
-competencia: trae `Proc.`, `Etapa`, `Estado Proc.`, `Ubicación` y el tribunal, y de ahí sale si
-la causa es un exhorto sin tener que inferirlo de la presencia de un panel.
+Se resolvió con la **cabecera de la causa**, que hasta entonces no se leía de ninguna
+competencia: el rótulo `Proc.` dice `Exhorto` cuando la causa lo es, y de ahí sale la respuesta
+sin inferirla de qué paneles llegaron. Al lado de `piezas_exhorto` viaja `causa_es_exhorto`,
+con el mismo oficio que `causa_encontrada`: nombrar cuál de los dos silencios es éste.
+
+Las dos lecturas se contrastan y una contradicción levanta, porque las dos salidas silenciosas
+pierden datos. Si el sitio renombra el `id` del panel, creerle al panel diría "esta causa no es
+un exhorto" y las piezas desaparecerían sin error; al revés, un panel que llegue en una causa
+que la cabecera no declara exhorto no se descarta por la cabecera.
 
 **Una petición cada uno, con su intervalo.** Son modales que la plataforma carga aparte, y hay
 que contarlos en el tiempo total:
@@ -754,8 +760,7 @@ re-descubrirlos.
 #### Los paneles del detalle que ya llegan y se tiran
 
 El detalle de causa devuelve **una sola respuesta** que trae todos estos paneles. Cubrirlos no
-cuesta ni una petición más, y por eso fueron lo primero. Quedan los dos del exhorto y los
-escritos.
+cuesta ni una petición más, y por eso fueron lo primero. Quedan los escritos.
 
 Conviene no confundirlos con los modales de la sección siguiente: aquéllos **sí** cuestan una
 petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
@@ -766,13 +771,13 @@ petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
 | `escritosCiv` | `Doc.`, `Anexo`, `Fecha de Ingreso`, `Tipo Escrito`, `Solicitante` |
 | `notificacionesCiv` | `ROL`, `Est. Notif.`, `Tipo Notif.`, `Fecha Trámite`, `Tipo Part.`, `Nombre`, `Trámite`, `Obs. Fallida`. **Cubierto** |
 | `exhortosCiv` | `Rol Origen`, `Tipo Exhorto`, `Rol Destino`, `Fecha Ordena Exhorto`, `Fecha Ingreso Exhorto`, `Tribunal Destino`, `Estado Exhorto`. **Cubierto** |
-| `piezasExhortoCiv` | `Folio`, `Doc.`, `Cuaderno`, `Anexo`, `Etapa`, `Támite`, `Desc. Támite`, `Fec. Támite`, `Foja` |
+| `piezasExhortoCiv` | `Folio`, `Doc.`, `Cuaderno`, `Anexo`, `Etapa`, `Támite`, `Desc. Támite`, `Fec. Támite`, `Foja`. **Cubierto** |
 
 Tres advertencias que sólo se ven mirando la respuesta:
 
 - **`piezasExhortoCiv` trae los encabezados con errata**: dice `Támite` y `Fec. Támite`, sin la
-  erre. Un parser que busque `Trámite` no encuentra nada y devuelve vacío. Hay que calzar con
-  el texto que la plataforma emite, no con el correcto.
+  erre. Un parser que busque `Trámite` no encuentra nada y devuelve vacío. El mapeo calza con
+  el texto que la plataforma emite, no con el correcto, y si algún día la corrigen levanta.
 - **`notificacionesCiv` tiene su propia `Fecha Trámite`, y no se comporta como la de la
   historia.** La inferencia por el nombre de las columnas (`Est. Notif.`, `Obs. Fallida`) era
   que respondía "¿la notificación resultó?", la pregunta anterior a "¿cuándo corre el plazo?",
@@ -782,10 +787,10 @@ Tres advertencias que sólo se ven mirando la respuesta:
 - **`litigantesCiv` trae RUT de personas naturales.** Es el panel con más carga de datos
   personales de todo el detalle, y su fixture tendrá que anonimizarse como el resto.
 
-Estado de la evidencia: `exhortosCiv` está verificado con datos reales (C-1156-2026 despacha
-E-875-2026 al 1º Juzgado Civil de Chillán, estado `Generado`). De `escritosCiv` se conoce la
-estructura, pero **las causas de la muestra lo traen vacío**: no hay fila real que sirva de
-fixture todavía.
+Estado de la evidencia: los dos del exhorto están verificados con datos reales. C-1156-2026
+despacha E-875-2026 al 1º Juzgado Civil de Chillán, estado `Generado`, y E-468-2026 trae las
+seis piezas que su tribunal de origen despachó. De `escritosCiv` se conoce la estructura, pero
+**las causas de la muestra lo traen vacío**: no hay fila real que sirva de fixture todavía.
 
 #### Modales de la Oficina Judicial Virtual sin usar
 

@@ -1046,6 +1046,29 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
         )
 
 
+def test_el_readme_nombra_todas_las_herramientas_que_el_servidor_expone(expuestas):
+    """La portada listaba dos de ocho y decía "Ambas", así que además de incompleta afirmaba
+    que eso era todo.
+
+    Quedó así por acumulación: cada herramienta nueva entró con su sección en la referencia,
+    que sí tiene guardia, y nadie volvió a la tabla del README. Es la lista que ve quien
+    evalúa si el servidor le sirve, antes de abrir la documentación.
+    """
+    tabla = _texto(RAIZ / "README.md").split("## Herramientas", 1)[1].split("\n## ", 1)[0]
+
+    for nombre in expuestas:
+        assert f"`{nombre}`" in tabla, f"el README no nombra {nombre!r}, que el servidor expone"
+
+    # Y en la otra dirección, que es la que se degrada sola: retirar una herramienta la saca
+    # del servidor y no del README, y la portada queda ofreciendo algo que no existe. Sólo la
+    # primera celda de cada fila, porque la segunda nombra campos del modelo.
+    for fila in tabla.splitlines():
+        if not fila.startswith("| `"):
+            continue
+        nombre = fila.split("`", 2)[1]
+        assert nombre in expuestas, f"el README ofrece {nombre!r} y el servidor no lo expone"
+
+
 def test_la_cuenta_de_rutas_de_la_plataforma_es_la_de_la_fixture():
     """La hoja de ruta afirmaba 169 rutas y son otra cosa: 189 menciones de un `.php`, o sea
     102 distintas.

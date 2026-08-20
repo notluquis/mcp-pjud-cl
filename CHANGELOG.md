@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.5.0] - 2026-08-20
+
 ### Agregado
 
 - Herramienta `obtener_detalle_causa`: historia, litigantes, notificaciones, liquidaciones y
@@ -38,6 +40,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- La portada listaba dos de las ocho herramientas y decía "ambas", así que además de
+  incompleta afirmaba que eso era todo.
 - Insertar o reordenar una columna en el sitio corría los datos sin que nada avisara. Los
   encabezados ahora se comparan por cantidad y posición.
 - `tests/test_resistencia.py`: deforma las fixtures como podría deformarlas la plataforma y
@@ -201,7 +205,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.4.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.0
 [0.4.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.4.0
 [0.3.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.3.0
 [0.2.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.2.1

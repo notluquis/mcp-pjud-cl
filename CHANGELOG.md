@@ -16,12 +16,23 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-## [0.5.1] - 2026-08-20
+## [0.6.0] - 2026-08-20
 
 ### Agregado
 
 - Campo `exhortos` en el detalle de causa civil: qué causas despachó este tribunal a otro, con
   el rol y el tribunal destino donde viven esas actuaciones.
+
+### Cambiado
+
+- La lectura combinada del detalle se ejercitó por primera vez contra la plataforma real. La
+  cuenta de peticiones ahora dice si incluye las dos que abren la sesión: son cuatro sin ellas
+  y seis con ellas.
+
+## [0.5.1] - 2026-08-20
+
+### Agregado
+
 - La rama `estadisticas` guarda una foto diaria del tráfico, que GitHub retiene sólo catorce
   días, y publica un resumen legible al abrirla.
 
@@ -223,7 +234,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.5.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.6.0
 [0.5.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.1
 [0.5.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.0
 [0.4.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.4.0

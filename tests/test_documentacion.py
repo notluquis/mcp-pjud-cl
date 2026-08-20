@@ -1085,6 +1085,34 @@ def test_el_contrato_no_llama_sin_medir_a_un_panel_que_ya_entrega(expuestas):
         )
 
 
+def test_el_diagrama_de_la_detencion_nombra_todo_lo_que_la_detiene():
+    """El diagrama nombraba `ReadError` y `ConnectError`, que son dos subclases, y la constante
+    son dos clases BASE que cubren más: también la escritura cortada y el protocolo roto.
+
+    Quien diagnostique por qué quedó bloqueado el proceso lee esta página, y un diagrama que
+    enumera de menos manda a buscar la causa donde no está. La fuente es la constante.
+    """
+    from mcp_pjud.client import _RECHAZO_DE_CONEXION
+
+    pagina = _texto(RAIZ / "docs" / "cumplimiento.md")
+    # Acotado al bloque del diagrama y no a la página entera: la prosa de al lado nombra las
+    # mismas clases, así que mirar todo dejaba pasar un diagrama que enumeraba de menos. Se vio
+    # rompiéndolo: la primera versión de este guardia seguía verde con el error puesto.
+    diagrama = pagina.split("```mermaid", 1)[1].split("```", 1)[0]
+    for clase in _RECHAZO_DE_CONEXION:
+        assert clase.__name__ in diagrama, (
+            f"{clase.__name__} activa la detención total y el diagrama no lo nombra"
+        )
+
+    import httpx
+
+    assert httpx.TimeoutException not in _RECHAZO_DE_CONEXION, (
+        "si los timeouts pasaran a detener, el diagrama diría lo contrario de lo que hace el "
+        "código: una consulta lenta y normal dejaría el servidor detenido"
+    )
+    assert "NO detiene" in pagina, "el diagrama dejó de decir que un timeout no detiene"
+
+
 def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
     """La página afirmaba en un párrafo que no se entendía cuándo aparece `piezasExhortoCiv` y
     en el de al lado que sí, con la explicación. Dos respuestas incompatibles a la misma

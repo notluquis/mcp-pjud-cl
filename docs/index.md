@@ -66,6 +66,7 @@ ejemplos
 :hidden:
 
 herramientas
+verificacion
 ```
 
 ```{toctree}
@@ -77,6 +78,7 @@ uso
 cumplimiento
 licencia
 roadmap
+ecosistema
 financiamiento
 ```
 

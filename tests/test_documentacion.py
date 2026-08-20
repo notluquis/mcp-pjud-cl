@@ -149,8 +149,21 @@ def test_ninguna_pagina_cita_un_intervalo_distinto_del_real():
 #: latencia.
 PAGINAS_CON_LA_MEDICION = (
     "docs/herramientas.md",
-    "docs/roadmap.md",
+    "docs/verificacion.md",
 )
+
+
+#: Las dos páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
+#: antes miraban `roadmap.md` miran las dos, y eso es a propósito: anclarlos sólo a la página
+#: nueva cubriría MENOS que antes, porque nada impediría reponer la afirmación vieja en la que
+#: se quedó con el nombre. La regla del corte es que el dato medido vive en una sola, no que el
+#: guardia mire una sola.
+ESTADO_Y_PLAN = ("docs/verificacion.md", "docs/roadmap.md")
+
+
+def _estado_y_plan() -> str:
+    """El texto de las dos páginas juntas, para los guardias que las cruzan."""
+    return "\n".join(_texto(RAIZ / p) for p in ESTADO_Y_PLAN)
 
 
 def test_las_cifras_medidas_del_buscador_son_las_mismas_en_todas_partes():
@@ -867,7 +880,7 @@ def test_la_hoja_de_ruta_no_declara_sin_ejecutar_lo_que_ya_se_verifico():
     su único trabajo es distinguir lo medido de lo supuesto. La sección se quedó atrás porque
     nada la ataba a `MODULOS`, que es donde ese estado vive de verdad.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     marca = "### Mapeado pero nunca ejecutado"
     assert marca in texto, "cambió el título de la sección; hay que reapuntar este guardia"
 
@@ -896,7 +909,7 @@ def test_la_hoja_de_ruta_no_publica_el_diagnostico_que_resulto_falso():
     a fallar, hay que escribir por qué falla de verdad, y esa explicación tiene que nombrar el
     campo medido.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     for frase in (
         "El sitio deja `conTipoCausa` **deshabilitado**",
         "jQuery no serializa campos deshabilitados",
@@ -1096,7 +1109,7 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
     y no quedó mapeado porque la respuesta trajo cero filas. Ejecutar no es mapear, y la hoja
     de ruta tiene que decir por qué.
     """
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
     sin_ejecutar = texto.split("### Mapeado pero nunca ejecutado", 1)[1].split("###", 1)[0]
 
     for competencia, modal in _MODAL_DETALLE.items():
@@ -1329,9 +1342,25 @@ def test_los_codigos_de_tribunal_que_cita_la_documentacion_son_los_medidos():
     }
     assert medidos, "la fixture de tribunales quedó vacía"
 
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    hoja = _estado_y_plan()
     citados = {c: n for c, n in medidos.items() if n in hoja}
     assert citados, "la hoja de ruta dejó de nombrar los tribunales medidos"
+
+    # El chequeo estricto se hace por PAR y sobre el texto con los espacios normalizados, no
+    # por línea: el ejemplo de JSON viene partido en dos líneas en la prosa, así que un
+    # chequeo por línea no ve el emparejamiento. Se comprobó rompiéndolo así y quedaba verde.
+    #
+    # Y se limita a los pares explícitos `COD_TRIBUNAL`/`GLS_TRIBUNAL` en vez de a cualquier
+    # cercanía, porque la prosa compara dos códigos a propósito ("163 se dedujo porque 162 era
+    # el 2º Juzgado") y exigirle que no nombre otro la haría imposible de escribir.
+    plano = " ".join(hoja.split())
+    pares = re.findall(r'"COD_TRIBUNAL":\s*"(\d+)",\s*"GLS_TRIBUNAL":\s*"([^"]+)"', plano)
+    assert pares, "la documentación dejó de traer un par código/tribunal como dato"
+    for codigo, nombre in pares:
+        assert medidos.get(codigo) == nombre, (
+            f"la documentación empareja el código {codigo} con {nombre!r}, y lo medido es "
+            f"{medidos.get(codigo)!r}"
+        )
 
     for codigo, nombre in citados.items():
         cerca = False
@@ -1342,7 +1371,7 @@ def test_los_codigos_de_tribunal_que_cita_la_documentacion_son_los_medidos():
                 break
             desde = i + 1
         assert cerca, (
-            f"la hoja de ruta nombra {nombre!r} y en ninguna de sus menciones dice que su "
+            f"la documentación nombra {nombre!r} y en ninguna de sus menciones dice que su "
             f"código es {codigo}, que es el medido"
         )
 
@@ -1355,11 +1384,17 @@ def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real
     agrega o retira una ruta de documentos, la página deja de listarlas y se entera.
     """
     fixture = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html")
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
 
     rutas = set(re.findall(r"civil/documentos/([\w.-]+\.php)", fixture))
     assert len(rutas) >= 6, f"la fixture dejó de traer las rutas de documentos: {rutas}"
 
+    # Acotado a la SECCIÓN de la tabla y no a la página entera. Se comprobó rompiéndolo:
+    # cambiar una ruta en la tabla seguía verde, porque el nombre viejo aparecía en otro
+    # párrafo de la misma página, en la lista de rutas mapeadas y sin ejecutar.
+    seccion = _texto(RAIZ / "docs" / "verificacion.md").split(
+        "## Las rutas que entregan documentos", 1
+    )[1]
+    hoja = seccion
     for ruta in rutas:
         assert ruta in hoja, (
             f"la respuesta real ofrece {ruta!r} para descargar documentos y la hoja de ruta no "
@@ -1368,7 +1403,6 @@ def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real
 
     # Y el parámetro de cada una, que es lo que hace falta para invocarla. Se saca de la
     # fixture y no de una lista escrita a mano.
-    seccion = hoja.split("### 0.7: documentos", 1)[1].split("####", 1)[0]
     for ruta in rutas:
         tramo = fixture.split(ruta, 1)[1][:400]
         nombres = re.findall(r"name='([\w]+)'", tramo)
@@ -1423,8 +1457,8 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
 
     # El diagrama repite las mismas cifras que la tabla, así que es un lugar más donde pueden
     # quedar viejas. Se exige que las diga, no que las dibuje de alguna forma concreta.
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
-    diagrama = hoja.split("#### Los dos lados del exhorto", 1)[1].split("```", 2)[1]
+    hoja = _texto(RAIZ / "docs" / "verificacion.md")
+    diagrama = hoja.split("## Los dos lados del exhorto", 1)[1].split("```", 2)[1]
     for exigido in (
         "C-1156-2026",
         "E-875-2026",
@@ -1440,7 +1474,7 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
             "siguen diciendo eso"
         )
 
-    antes = hoja.split("#### Los dos lados del exhorto", 1)[0]
+    antes = hoja.split("## Los dos lados del exhorto", 1)[0]
     assert "no está entendido" not in antes[-1500:], (
         "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
         "párrafo siguiente lo explica: dos respuestas a la misma pregunta"
@@ -1538,7 +1572,7 @@ def test_la_cuenta_de_rutas_de_la_plataforma_es_la_de_la_fixture():
         encoding="utf-8", errors="replace"
     )
     menciones = re.findall(r"[\w./-]+\.php", javascript)
-    texto = _texto(RAIZ / "docs" / "roadmap.md")
+    texto = _estado_y_plan()
 
     assert f"{len(menciones)} veces" in texto, (
         f"la fixture nombra un .php {len(menciones)} veces y la hoja de ruta dice otra cosa"

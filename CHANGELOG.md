@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Cambiado
+
+- La hoja de ruta se partió en tres: lo medido va a `verificacion`, el ecosistema a
+  `ecosistema`, y queda un plan de versiones que por fin es eso. Ninguna URL publicada muere.
+
 ## [0.7.0] - 2026-08-20
 
 ### Agregado

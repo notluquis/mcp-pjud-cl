@@ -175,9 +175,8 @@ cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuest
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
 - `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
 - `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
-- `piezasExhortoCiv`: falta, y no por costo. El panel trae seis filas reales en una respuesta
-  y **no existe** en las dos de C-1156, que sí traen el exhorto. Cuándo lo renderiza el sitio
-  no está entendido, y mapearlo con esa duda haría fallar una causa que hoy funciona
+- `piezasExhortoCiv`: entendido y sin mapear. Se lee desde el otro lado del exhorto, y lo que
+  falta no es medirlo sino decidir el contrato. Ver abajo
 
 Lo que falta importa más de lo que parece: mientras no estén, la respuesta del detalle NO es
 el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un

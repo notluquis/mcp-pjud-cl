@@ -1077,6 +1077,46 @@ def test_el_contrato_no_llama_sin_medir_a_un_panel_que_ya_entrega(expuestas):
         )
 
 
+def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
+    """La página afirmaba en un párrafo que no se entendía cuándo aparece `piezasExhortoCiv` y
+    en el de al lado que sí, con la explicación. Dos respuestas incompatibles a la misma
+    pregunta, en la misma página.
+
+    Pasó porque la conclusión se agregó y la viñeta anterior no se retiró. El guardia se ata a
+    la evidencia versionada y no a la prosa: las fixtures dicen qué panel trae cada causa, así
+    que la tabla de la hoja de ruta se compara contra ellas.
+
+    Los exhortos se cuentan con el parser del proyecto y no con XPath a mano: es el mismo
+    código que produce la respuesta, así que si cambia el mapeo esto se entera.
+    """
+    from mcp_pjud.parser import parse_exhortos
+
+    FIXT = RAIZ / "tests" / "fixtures"
+    # C-1156 es el ORIGEN: despacha un exhorto y no es uno. E-468 es el DESTINO: ES un exhorto,
+    # y por eso trae las piezas que el tribunal de origen le mandó.
+    esperado = {
+        "c1156_principal.html": (1, False),
+        "detalle_causa_civil.html": (0, True),
+    }
+
+    for nombre, (exhortos, tiene_piezas) in esperado.items():
+        texto = _texto(FIXT / nombre)
+        assert len(parse_exhortos(texto, "civil")) == exhortos, (
+            f"{nombre} cambió cuántos exhortos despacha, y la hoja de ruta dice {exhortos}"
+        )
+        presente = 'id="piezasExhortoCiv"' in texto
+        assert presente is tiene_piezas, (
+            f"{nombre} {'trae' if presente else 'no trae'} el panel de piezas y la hoja de "
+            f"ruta dice lo contrario"
+        )
+
+    antes = _texto(RAIZ / "docs" / "roadmap.md").split("#### Los dos lados del exhorto", 1)[0]
+    assert "no está entendido" not in antes[-1500:], (
+        "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
+        "párrafo siguiente lo explica: dos respuestas a la misma pregunta"
+    )
+
+
 def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
     """Las dos se escribían a mano copiando lo que dice `parser.COMPETENCIAS`.
 

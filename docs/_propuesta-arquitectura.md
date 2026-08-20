@@ -15,6 +15,21 @@ culpa de este mismo archivo. Aun con `orphan`, la página **sí** aparece en `ll
 ordenada al final: está medido en 2.1f. Cuando esta propuesta se ejecute o se
 descarte, el archivo se borra.
 
+Y una nota que es la tesis de este documento cayéndole encima: `orphan: true` resuelve `-W` y
+**no** resuelve `PROSA`, que es un glob de `docs/*.md` sin más filtro que `_build`. O sea este
+archivo de trabajo queda vigilado por los siete guardias de glob, como cualquier página
+publicada. Verificado rompiéndolo a propósito: basta agregarle una línea que cite un intervalo distinto
+del real para que `test_ninguna_pagina_cita_un_intervalo_distinto_del_real` se ponga en rojo
+nombrando este archivo, y al restaurarlo vuelven a pasar los 65. Pasa en verde porque no cita
+ningún intervalo, no porque esté exento.
+
+Y la prueba se cobró sola: la primera redacción de este párrafo transcribía la línea falsa entre
+comillas para explicar el experimento, y el guardia la leyó como una afirmación de la prosa y se
+puso en rojo. Un guardia que no distingue una cita de una afirmación es ruidoso en el margen y
+correcto en el fondo, porque un lector tampoco distingue. Si la migración va a dejar más archivos de trabajo con prefijo `_` dentro de `docs/`,
+hay que decidir antes si van a `exclude_patterns` y al filtro de `PROSA`, o si se acepta que la
+prosa de trabajo cumpla las mismas reglas que la publicada.
+
 Todo lo que dice "medido" se midió en este repositorio el 20-08-2026, sobre `2ab2714`, sin
 consultar al Poder Judicial. Los comandos están citados para que se puedan repetir.
 :::
@@ -65,7 +80,11 @@ media docena de enlaces rotos pasa en verde.**
 
 **d) `roadmap.md` es el 34% del texto que se sirve, y su descripción publicada describe sólo
 su primera sección.** `llms-full.txt` son 239.535 bytes y `roadmap.html.md` son 82.419, o sea
-el 34%. La entrada de `roadmap.md` en `llms.txt` dice «Esta tabla es lo más importante de la
+el 34%. Medido en texto servido hay una página más grande, `herramientas.md` con 105.889 bytes,
+y la diferencia entre las dos es justamente la tesis: `herramientas.md` tiene 553 líneas de
+fuente y engorda al construirse porque incluye los esquemas generados, o sea es larga por
+Referencia generada; `roadmap.md` tiene 1.103 líneas escritas a mano porque son seis documentos
+en un archivo. Larga no es el problema. Larga y mezclada, sí. La entrada de `roadmap.md` en `llms.txt` dice «Esta tabla es lo más importante de la
 página. Distingue tres cosas que suelen confundirse:», que es literalmente su primera línea de
 prosa, cortada a 100 caracteres. La de `uso.md` sale partida a media palabra. No es un defecto
 de la extensión: `sphinx_llm/txt.py:1047` toma la primera línea de más de 10 caracteres y la
@@ -374,8 +393,8 @@ de 2.4: la documentación de quien contribuye es una sección hermana, no una en
 carril de quien usa la herramienta. Es lo que hace Django con `internals/` («The Django
 open-source project») dentro de su propio sitio.
 
-Ninguna página queda por sobre `herramientas.md`, que hoy es la más larga después de la hoja de
-ruta y que no se toca. La que hay que mirar después es `ecosistema.md`, cuya subsección
+Ninguna página nueva queda por sobre `herramientas.md`, que es la más larga en texto servido
+(2.1d) y que no se toca, porque su tamaño es de Referencia generada y no de mezcla. La que hay que mirar después es `ecosistema.md`, cuya subsección
 `### Lo que falta, medido` son 208 líneas por sí sola: es la sección individual más grande de
 toda la documentación y ya merece su propio seguimiento.
 

@@ -27,6 +27,7 @@ from .parser import (
     Actuacion,
     CausaEncontrada,
     EstructuraInesperada,
+    Liquidacion,
     Notificacion,
     actuaciones_receptor,
     es_aviso_de_captcha,
@@ -34,6 +35,7 @@ from .parser import (
     leer_aviso,
     parse_cuadernos,
     parse_historia,
+    parse_liquidaciones,
     parse_notificaciones,
     parse_resultados,
     siguiente_pagina,
@@ -190,7 +192,7 @@ MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelac
 #: Lo que una lectura del detalle devuelve por fila. `_recorrer_cuadernos` sirve a dos
 #: (actuaciones y notificaciones) y sin esto quedaba anotado con una sola: el chequeador de
 #: tipos avisó al agregar la segunda, que es para lo que está.
-_Fila = TypeVar("_Fila", Actuacion, Notificacion)
+_Fila = TypeVar("_Fila", Actuacion, Notificacion, Liquidacion)
 
 
 class ResultadosTruncados(Exception):
@@ -861,6 +863,49 @@ class PjudClient(Transporte):
             corte,
             lambda pagina, _cuaderno, comp: parse_notificaciones(pagina, comp),
         )
+
+    def liquidaciones_causa(
+        self,
+        tipo: str,
+        rol: int,
+        anio: int,
+        competencia: str = "cobranza",
+        tribunal: int | None = None,
+        corte: int | None = None,
+    ) -> list[Liquidacion]:
+        """Cuánto se debe y a qué fecha. Sólo cobranza publica el panel.
+
+        Responde la pregunta que da sentido a un juicio de cobro y que hasta ahora no se
+        contestaba: la causa medida trae tres liquidaciones sucesivas, de $4.481.885 en 2019 a
+        $24.563.365 en 2022.
+        """
+        spec = COMPETENCIAS[self._modulo(competencia)]
+        if spec.liquidaciones is None:
+            raise ValueError(
+                f"La competencia {competencia!r} no publica liquidaciones: sólo cobranza tiene "
+                "el panel. Se rechaza antes de consultar en vez de devolver una lista vacía, "
+                "que se leería como que no hay deuda liquidada."
+            )
+        filas = self._recorrer_cuadernos(
+            tipo,
+            rol,
+            anio,
+            competencia,
+            tribunal,
+            corte,
+            lambda pagina, _cuaderno, comp: parse_liquidaciones(pagina, comp),
+        )
+        # Se recorren los cuadernos y después se deduplica, y las dos cosas por lo mismo: no se
+        # midió si el panel lista todas las liquidaciones de la causa o sólo las del cuaderno
+        # abierto, porque la única causa de cobranza medida no tiene selector de cuadernos.
+        #
+        # Recorrer sin deduplicar repetiría un monto si el panel es global, y alguien podría
+        # sumarlos. No recorrer omitiría liquidaciones si es por cuaderno, que es peor: un
+        # falso negativo sobre cuánto se debe. Así queda correcto bajo las dos hipótesis.
+        vistas: dict[tuple, Liquidacion] = {}
+        for fila in filas:
+            vistas.setdefault((fila.fecha, fila.cuaderno, fila.monto_publicado), fila)
+        return list(vistas.values())
 
     def _recorrer_cuadernos(
         self,

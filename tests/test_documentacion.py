@@ -237,6 +237,7 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
         "obtener_actuaciones_receptor",
         "obtener_historia_causa",
         "obtener_notificaciones_causa",
+        "obtener_liquidaciones_causa",
     }
     descripciones = [
         p.get("description", "")

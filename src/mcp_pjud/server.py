@@ -33,7 +33,7 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, Notificacion
+from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, Liquidacion, Notificacion
 
 #: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
 #: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
@@ -225,6 +225,15 @@ CompetenciaConNotificaciones = Annotated[
     ),
 ]
 
+#: Las competencias que publican liquidación del crédito. Hoy sólo cobranza.
+_CON_LIQUIDACIONES = sorted(n for n in MODULOS if COMPETENCIAS[n].liquidaciones is not None)
+CompetenciaConLiquidaciones = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_LIQUIDACIONES)}. Es la única que liquida el crédito."
+    ),
+]
+
 Corte = Annotated[
     int | None,
     Field(
@@ -408,6 +417,32 @@ def obtener_notificaciones_causa(
     """
     with _cliente() as c:
         return c.notificaciones_causa(tipo, rol, anio, competencia, tribunal, corte)
+
+
+@mcp.tool(
+    title="Liquidación del crédito",
+    annotations=SOLO_LECTURA,
+)
+def obtener_liquidaciones_causa(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: CompetenciaConLiquidaciones = "cobranza",
+    tribunal: Tribunal = None,
+    corte: Corte = None,
+) -> list[Liquidacion]:
+    """Cuánto se debe en un juicio de cobranza y a qué fecha.
+
+    Una causa acumula liquidaciones sucesivas: la medida fue de $4.481.885 en 2019 a
+    $24.563.365 en 2022, así que la fecha de cada una importa tanto como el monto. La más
+    reciente es la vigente; las anteriores son el historial, no deudas que se sumen.
+
+    `monto` viene en pesos sin separadores, y en NULO si el sitio publicó algo con otra forma.
+    Nulo no es cero: cero sería una deuda saldada. `monto_publicado` trae siempre el texto tal
+    como aparece en el expediente.
+    """
+    with _cliente() as c:
+        return c.liquidaciones_causa(tipo, rol, anio, competencia, tribunal, corte)
 
 
 @mcp.tool(

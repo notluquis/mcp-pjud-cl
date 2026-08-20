@@ -18,6 +18,7 @@ from mcp_pjud.parser import (
     actuaciones_receptor,
     parse_cuadernos,
     parse_historia,
+    parse_liquidaciones,
     parse_notificaciones,
     parse_resultados,
 )
@@ -743,3 +744,65 @@ def test_un_panel_de_notificaciones_vacio_devuelve_lista_y_no_levanta():
     """
     vacio = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
     assert parse_notificaciones(vacio, "civil") == []
+
+
+# -- la liquidación del crédito -------------------------------------------------
+
+
+def test_las_liquidaciones_de_cobranza_traen_monto_y_fecha():
+    """Es la pregunta que da sentido a un juicio de cobro y que no se contestaba.
+
+    La causa medida acumula tres liquidaciones sucesivas: la más reciente es la vigente y las
+    anteriores son el historial. No se suman, y por eso la fecha de cada una importa tanto como
+    el monto.
+    """
+    liquidaciones = parse_liquidaciones(NOTIF_COBRANZA, "cobranza")
+    assert len(liquidaciones) == 3
+
+    montos = [liq.monto for liq in liquidaciones]
+    assert montos == [24563365, 12680528, 4481885]
+    assert all(liq.fecha is not None for liq in liquidaciones)
+    assert liquidaciones[0].fecha > liquidaciones[-1].fecha, "vienen de la más nueva a la más vieja"
+    assert liquidaciones[0].monto_publicado == "$24.563.365.-"
+    assert all(liq.estado == "Firmado" for liq in liquidaciones)
+
+
+def test_el_monto_se_conserva_tambien_como_lo_publica_el_sitio():
+    """Se entregan los dos: el número para calcular y el texto para comparar.
+
+    El expediente muestra `$24.563.365.-`, y es contra eso que alguien va a contrastar. Dejar
+    sólo el entero obligaría a reconstruir el formato para verificar, y ahí es donde se cuela
+    un error de tres órdenes de magnitud.
+    """
+    liquidaciones = parse_liquidaciones(NOTIF_COBRANZA, "cobranza")
+    for liq in liquidaciones:
+        assert liq.monto_publicado.startswith("$")
+        assert liq.monto is not None
+        assert str(liq.monto) == liq.monto_publicado.strip("$.-").replace(".", "")
+
+
+@pytest.mark.parametrize(
+    ("publicado", "esperado"),
+    [
+        ("$24.563.365.-", 24563365),
+        ("$1.000.-", 1000),
+        ("$0.-", 0),
+        ("", None),
+        ("sin monto", None),
+        # Una coma significaría decimales donde se midió que no los hay, o un separador
+        # distinto. Las dos lecturas difieren en tres órdenes de magnitud, así que no se
+        # adivina: se devuelve nulo y queda el texto publicado.
+        ("$1.234,56", None),
+    ],
+)
+def test_el_monto_no_se_adivina_cuando_no_tiene_la_forma_medida(publicado, esperado):
+    from mcp_pjud.parser import _monto
+
+    assert _monto(publicado) == esperado
+
+
+def test_una_competencia_que_no_liquida_se_rechaza():
+    """Cobranza es la única con el panel. En las demás la lista vacía se leería como que no
+    hay deuda liquidada, y eso es distinto de que la competencia no lo publique."""
+    with pytest.raises(EstructuraInesperada, match="no publica liquidaciones"):
+        parse_liquidaciones(NOTIF_CIVIL, "civil")

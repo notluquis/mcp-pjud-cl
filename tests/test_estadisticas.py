@@ -117,3 +117,110 @@ def test_la_clave_compuesta_distingue_dos_referentes_de_la_misma_foto(estadistic
         ("2026-08-20", "github.com"),
         ("2026-08-21", "github.com"),
     }
+
+
+# -- la paginación ------------------------------------------------------------------
+#
+# Sin estos, quitar `paginar=True`, borrar `--paginate` o romper el aplanado dejaría la suite
+# entera en verde: los tests de arriba sólo llaman a `guardar`. Es un parámetro opcional cuyo
+# valor por defecto apaga la rama nueva, o sea código sin test por construcción.
+
+
+@pytest.fixture
+def gh_falso(estadisticas, monkeypatch):
+    """Reemplaza la llamada a `gh` y guarda con qué argumentos la invocaron."""
+    llamadas: list[list[str]] = []
+
+    def correr(orden, **kw):
+        llamadas.append(orden)
+        salida = (
+            '[[{"tag_name": "v0.1.0"}], [{"tag_name": "v0.2.0"}]]'
+            if "--slurp" in orden
+            else '[{"tag_name": "v0.1.0"}]'
+        )
+        return type("R", (), {"returncode": 0, "stdout": salida, "stderr": ""})()
+
+    monkeypatch.setattr(estadisticas.subprocess, "run", correr)
+    return llamadas
+
+
+def test_la_consulta_de_versiones_pide_todas_las_paginas(estadisticas, gh_falso):
+    """`gh api` trae 30 por página y NO avisa que hay más.
+
+    Pasadas 30 versiones dejarían de contarse las descargas de las viejas, en silencio, que es
+    la misma truncación callada que el resto del proyecto levanta en vez de esconder.
+    """
+    estadisticas.api("releases", paginar=True)
+    assert "--paginate" in gh_falso[0], f"la consulta no pagina: {gh_falso[0]}"
+
+
+def test_las_paginas_llegan_aplanadas_y_no_como_lista_de_listas(estadisticas, gh_falso):
+    """`--slurp` devuelve un arreglo por página, y no se puede combinar con `--jq` para
+    aplanarlo: `gh` lo rechaza con un error. Se aplana en Python, y si eso se rompe cada
+    versión se leería como una lista y `v["assets"]` reventaría.
+    """
+    versiones = estadisticas.api("releases", paginar=True)
+    assert versiones == [{"tag_name": "v0.1.0"}, {"tag_name": "v0.2.0"}]
+
+
+def test_una_consulta_sin_paginar_no_pide_paginas_de_mas(estadisticas, gh_falso):
+    """Las de tráfico devuelven un objeto, no una lista: paginarlas no aporta y `--slurp` las
+    envolvería en un arreglo que el resto del código no espera."""
+    estadisticas.api("traffic/views")
+    assert "--paginate" not in gh_falso[0]
+    assert "--slurp" not in gh_falso[0]
+
+
+def test_un_rechazo_de_permisos_dice_que_falta_el_token(estadisticas, monkeypatch):
+    """El 403 de la API de tráfico es indistinguible de un día sin visitas si se traga.
+
+    Está medido: el token del workflow recibe `Resource not accessible by integration`, porque
+    la API exige acceso de escritura y `permissions:` no tiene clave que lo conceda.
+    """
+
+    def correr(orden, **kw):
+        return type(
+            "R",
+            (),
+            {"returncode": 1, "stdout": "", "stderr": "Resource not accessible by integration"},
+        )()
+
+    monkeypatch.setattr(estadisticas.subprocess, "run", correr)
+    with pytest.raises(SystemExit, match="TRAFICO_TOKEN"):
+        estadisticas.api("traffic/views")
+
+
+def test_la_foto_completa_pide_las_versiones_paginadas(estadisticas, monkeypatch, tmp_path):
+    """Los de arriba prueban `api()`, no quién la llama.
+
+    Sin éste, borrar `paginar=True` del sitio de llamada deja toda la suite en verde: es el
+    mismo agujero que el parámetro opcional cuyo valor por defecto apaga la rama nueva. Acá se
+    camina la foto entera y se exige que la consulta de versiones, y sólo ésa, pagine.
+    """
+    RESPUESTAS = {
+        "traffic/views": '{"views": [{"timestamp": "2026-08-01T00:00:00Z", "count": 3, '
+        '"uniques": 1}]}',
+        "traffic/clones": '{"clones": []}',
+        "traffic/popular/referrers": '[{"referrer": "google.com", "count": 2, "uniques": 2}]',
+        "traffic/popular/paths": '[{"path": "/x", "count": 1, "uniques": 1}]',
+        "releases": '[[{"tag_name": "v0.1.0", "assets": [{"name": "a.whl", '
+        '"download_count": 0}]}]]',
+        "": '{"stargazers_count": 1, "forks_count": 0, "subscribers_count": 0, '
+        '"open_issues_count": 3}',
+    }
+    ordenes: list[list[str]] = []
+
+    def correr(orden, **kw):
+        ordenes.append(orden)
+        ruta = orden[2].removeprefix(f"repos/{estadisticas.REPO}").lstrip("/")
+        return type("R", (), {"returncode": 0, "stdout": RESPUESTAS[ruta], "stderr": ""})()
+
+    monkeypatch.setattr(estadisticas.subprocess, "run", correr)
+    monkeypatch.setattr(estadisticas, "DESTINO", tmp_path)
+    estadisticas.main()
+
+    paginadas = {o[2].split("/")[-1] for o in ordenes if "--paginate" in o}
+    assert paginadas == {"releases"}, (
+        f"la consulta de versiones tiene que paginar y ninguna otra. Paginan: {paginadas}"
+    )
+    assert (tmp_path / "README.md").exists(), "la foto no dejó el resumen que se lee en la rama"

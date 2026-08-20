@@ -1384,10 +1384,12 @@ def test_las_entradas_del_registro_de_cambios_no_pasan_de_dos_frases():
     problema. La tercera la encontró una revisión, no el guardia.
 
     Contar frases lo cierra. Antes de escribirlo se midió contra el registro entero, porque
-    un guardia con falso positivo enseña a ignorarlo, que es peor que no tenerlo: de las 78
-    viñetas publicadas, 76 pasan y la única que sobra es la que la revisión marcó. El falso
-    positivo que sí apareció midiendo era `art. 9 inc. 3 de la Ley 20.886`, y por eso las
-    abreviaturas se descuentan también cuando las sigue un número.
+    un guardia con falso positivo enseña a ignorarlo, que es peor que no tenerlo: de las 79
+    viñetas, 58 tienen una frase y 21 tienen dos.
+
+    Los dos falsos positivos que aparecieron midiendo, y que por eso se descuentan: `art. 9
+    inc. 3 de la Ley 20.886`, que obliga a descontar la abreviatura también cuando la sigue un
+    número, y la referencia final `([#11], [#21])`, que va después del punto y no es una frase.
     """
     FRASES_MAXIMAS = 2
 

@@ -18,19 +18,16 @@ para evitar: el ebook oficial no trae ninguna de las dos.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import date, time
 from typing import NamedTuple
 
 from lxml import etree, html
 from pydantic import BaseModel, Field
 
-# Marcador de que una fila de Historia es una actuación del ministro de fe.
-TRAMITE_RECEPTOR = "actuación receptor"
 
-
-class Historia(NamedTuple):
-    """Cómo leer la tabla de Historia de una competencia.
+class Panel(NamedTuple):
+    """Cómo se lee un panel del detalle de causa.
 
     Las tres cosas viajan juntas a propósito. Antes el sufijo del panel estaba en la tabla y
     las columnas seguían clavadas a civil, así que poner `panel="Cob"` habría corrido las
@@ -38,6 +35,10 @@ class Historia(NamedTuple):
     `foja` y la georreferencia se habría leído de la celda equivocada. Lo único que lo
     impedía era que civil exige el encabezado `georref.`, que cobranza no trae, o sea una
     protección accidental. Con esto no se puede declarar el panel sin declarar sus columnas.
+
+    Era el mismo tipo escrito tres veces, uno por familia de panel. Los tres declaraban estos
+    tres campos y dos repetían el docstring casi textual, y de ahí salió que el mensaje de "no
+    trae ninguna tabla" quedara con dos redacciones para la misma condición.
     """
 
     #: Identificador COMPLETO del panel, no un sufijo.
@@ -45,29 +46,26 @@ class Historia(NamedTuple):
     #: Antes se guardaba el sufijo y el código anteponía `historia`, lo que funcionaba mientras
     #: las dos competencias mapeadas se llamaran así. No se generaliza: suprema usa
     #: `movimientosSup`, apelaciones `movimientosApe` y laboral `movimientoLab`, en singular
-    #: mientras las otras dos van en plural. Un esquema de prefijo habría buscado paneles
-    #: inexistentes, y buscar un panel que no está devuelve vacío.
+    #: mientras las otras dos van en plural, y cobranza escribe `notificacionCob` también en
+    #: singular. Un esquema de prefijo habría buscado paneles inexistentes, y buscar un panel
+    #: que no está devuelve vacío.
     panel: str
-    #: Orden de las celdas en cada fila.
+    #: Orden de las celdas en cada fila. La celda `i` es `columnas[i]`.
     columnas: tuple[str, ...]
-    #: Encabezados que se exigen. Su ausencia significa que la estructura cambió.
+    #: Los encabezados que el sitio publica, COMPLETOS y en orden. No es una lista blanca: se
+    #: comparan por cantidad y posición, porque con pertenencia una columna insertada o
+    #: permutada pasaba entera y el mapeo posicional corría los campos posteriores.
     encabezados: tuple[str, ...]
 
 
-class Notificaciones(NamedTuple):
-    """Cómo leer el panel de notificaciones de una competencia.
+#: Nombres por familia, para que las constantes y la tabla sigan diciendo de qué hablan.
+Historia = Panel
+Notificaciones = Panel
+Liquidaciones = Panel
 
-    Mismo trato que `Historia` y por la misma razón: las tres competencias medidas lo nombran
-    distinto y publican columnas distintas, así que el panel no se puede declarar sin decir
-    cómo se lee.
-    """
 
-    #: Identificador completo del panel. Cuidado: cobranza lo escribe en singular.
-    panel: str
-    #: Orden de las celdas en cada fila.
-    columnas: tuple[str, ...]
-    #: Encabezados que se exigen. Su ausencia significa que la estructura cambió.
-    encabezados: tuple[str, ...]
+# Marcador de que una fila de Historia es una actuación del ministro de fe.
+TRAMITE_RECEPTOR = "actuación receptor"
 
 
 #: La de civil. Medida sobre `C-142-2026`.
@@ -145,14 +143,6 @@ NOTIFICACIONES_LABORAL = Notificaciones(
         "obs. fallida",
     ),
 )
-
-
-class Liquidaciones(NamedTuple):
-    """Cómo leer el panel de liquidaciones de una competencia."""
-
-    panel: str
-    columnas: tuple[str, ...]
-    encabezados: tuple[str, ...]
 
 
 #: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
@@ -481,6 +471,55 @@ def _celdas(fila) -> list:
     return fila.xpath("./td")
 
 
+def _filas_del_panel(html_detalle: str, spec: Panel) -> Iterator[tuple[list, dict[str, str]]]:
+    """Localiza el panel, valida su tabla y entrega `(celdas, texto)` por fila de datos.
+
+    Son los pasos que las tres lecturas repetían textualmente, con la línea que arma el
+    diccionario de texto por columna idéntica byte a byte en tres lugares. La prueba de que se
+    copiaron: el mensaje de "no trae ninguna tabla" había derivado en dos redacciones para la
+    misma condición.
+
+    Lo que queda DELIBERADAMENTE afuera, porque es lo que sostiene la regla 4:
+
+    - El guardia de cero filas, que sólo aplica a la Historia. Su ausencia en notificaciones y
+      liquidaciones es contrato escrito: una causa puede no tener ninguna practicada. Hornear
+      cualquiera de las dos conductas acá rompería un contrato o eliminaría una protección.
+    - Los mensajes que nombran el falso negativo concreto de cada panel. El de historia dice
+      que una lista vacía se leería como que la causa no tiene actuaciones; el de liquidaciones,
+      como que no hay deuda liquidada. Un texto genérico pierde justo lo que hace útil al fallo
+      ruidoso.
+
+    Y entrega las celdas crudas además del texto porque la Historia las necesita: lee enlaces
+    dentro de la celda para saber si hay georreferencia y documento.
+    """
+    doc = html.fromstring(html_detalle)
+    # Los comentarios traen copias del texto de las celdas; sin esto se duplican.
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    panes = doc.xpath(f'//*[@id="{spec.panel}"]')
+    if not panes:
+        raise EstructuraInesperada(
+            f"No existe el panel {spec.panel!r} en el detalle de causa. "
+            "La estructura de la Oficina Judicial Virtual cambió."
+        )
+
+    tablas = panes[0].xpath(".//table")
+    if not tablas:
+        raise EstructuraInesperada(f"El panel {spec.panel!r} no contiene ninguna tabla.")
+
+    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
+    _validar_encabezados(encabezados, spec.encabezados, spec.panel)
+
+    for fila in tablas[0].xpath(".//tr"):
+        celdas = _celdas(fila)
+        if len(celdas) < len(spec.columnas):
+            continue  # fila de encabezado o de paginación
+        yield (
+            celdas,
+            {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(spec.columnas)},
+        )
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -492,32 +531,10 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    panel = spec.historia.panel
-
-    doc = html.fromstring(html_detalle)
-    # Los comentarios traen copias del texto de las celdas; sin esto se duplican.
-    etree.strip_elements(doc, etree.Comment, with_tail=False)
-
-    panes = doc.xpath(f'//*[@id="{panel}"]')
-    if not panes:
-        raise EstructuraInesperada(
-            f"No existe el panel {panel!r} en el detalle de causa. "
-            "La estructura de la Oficina Judicial Virtual cambió."
-        )
-
-    tablas = panes[0].xpath(".//table")
-    if not tablas:
-        raise EstructuraInesperada(f"El panel {panel!r} no contiene ninguna tabla.")
-
-    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    _validar_encabezados(encabezados, spec.historia.encabezados, panel)
-
-    actuaciones = []
-    for fila in tablas[0].xpath(".//tr"):
-        celdas = _celdas(fila)
-        if len(celdas) < len(spec.historia.columnas):
-            continue  # fila de encabezado o de paginación
-        actuaciones.append(_fila_a_actuacion(celdas, cuaderno, spec.historia.columnas))
+    actuaciones = [
+        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
+    ]
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el
@@ -648,30 +665,8 @@ def parse_notificaciones(html_detalle: str, competencia: str = "civil") -> list[
             "el mapa de otra competencia devolvería columnas corridas o una lista vacía."
         )
 
-    doc = html.fromstring(html_detalle)
-    etree.strip_elements(doc, etree.Comment, with_tail=False)
-
-    panes = doc.xpath(f'//*[@id="{spec.notificaciones.panel}"]')
-    if not panes:
-        raise EstructuraInesperada(
-            f"No existe el panel {spec.notificaciones.panel!r} en el detalle de causa. "
-            "La estructura de la Oficina Judicial Virtual cambió."
-        )
-
-    tablas = panes[0].xpath(".//table")
-    if not tablas:
-        raise EstructuraInesperada(f"El panel {spec.notificaciones.panel!r} no trae ninguna tabla.")
-
-    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    _validar_encabezados(encabezados, spec.notificaciones.encabezados, spec.notificaciones.panel)
-
-    columnas = spec.notificaciones.columnas
     notificaciones = []
-    for fila in tablas[0].xpath(".//tr"):
-        celdas = _celdas(fila)
-        if len(celdas) < len(columnas):
-            continue  # encabezado o paginación
-        txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
+    for _celdas_crudas, txt in _filas_del_panel(html_detalle, spec.notificaciones):
         notificaciones.append(
             Notificacion(
                 estado=txt["estado"],
@@ -742,29 +737,8 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
             "deuda liquidada."
         )
 
-    doc = html.fromstring(html_detalle)
-    etree.strip_elements(doc, etree.Comment, with_tail=False)
-
-    panes = doc.xpath(f'//*[@id="{spec.liquidaciones.panel}"]')
-    if not panes:
-        raise EstructuraInesperada(
-            f"No existe el panel {spec.liquidaciones.panel!r} en el detalle de causa. "
-            "La estructura de la Oficina Judicial Virtual cambió."
-        )
-    tablas = panes[0].xpath(".//table")
-    if not tablas:
-        raise EstructuraInesperada(f"El panel {spec.liquidaciones.panel!r} no trae ninguna tabla.")
-
-    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    _validar_encabezados(encabezados, spec.liquidaciones.encabezados, spec.liquidaciones.panel)
-
-    columnas = spec.liquidaciones.columnas
     liquidaciones = []
-    for fila in tablas[0].xpath(".//tr"):
-        celdas = _celdas(fila)
-        if len(celdas) < len(columnas):
-            continue
-        txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
+    for _celdas_crudas, txt in _filas_del_panel(html_detalle, spec.liquidaciones):
         liquidaciones.append(
             Liquidacion(
                 fecha=_fecha(txt["fecha"]),

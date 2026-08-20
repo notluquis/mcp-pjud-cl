@@ -1,0 +1,16 @@
+# Configuración del escaneo de secretos.
+#
+# `uv.lock` queda fuera y no es una excepción cómoda: por construcción no contiene otra cosa
+# que URLs de PyPI y hashes SHA-256 de los artefactos, y un SHA-256 es indistinguible de una
+# clave de API para cualquier detector genérico. Se marcó al entrar `pypdf`, con dos "secretos"
+# que son los hashes de su rueda y de su distribución de fuente.
+#
+# El riesgo de excluirlo es nulo en la dirección que importa: nadie escribe una credencial en
+# un archivo que `uv` reescribe entero en cada resolución. Y el costo de no excluirlo sí es
+# real: un guardia que falla cada vez que cambia una dependencia enseña a ignorarlo, y ése es
+# el que después deja pasar el secreto de verdad.
+version: 2
+
+secret:
+  ignored-paths:
+    - uv.lock

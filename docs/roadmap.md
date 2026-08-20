@@ -169,6 +169,23 @@ costo no es el mismo:
 era el punto: `obtener_detalle_causa` los lee todos de una sola cadena. Preguntar las cuatro
 cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuesta cuatro.
 
+La cadena entera, medida en vivo con C-1156-2026 el 20 de agosto de 2026. Las dos primeras
+abren la sesión, y por eso el total es seis y no cuatro:
+
+```mermaid
+graph LR
+  S1["1· sesion-consultaunificada.php"] --> S2["2· consultaUnificada.php<br/><i>de acá salen el prefijo y el token</i>"]
+  S2 --> B["3· consultaRit<br/><i>encuentra la causa</i>"]
+  B --> D["4· detalle<br/><i>trae la lista de cuadernos</i>"]
+  D --> C1["5· cuaderno Principal"]
+  D --> C2["6· cuaderno Apremio"]
+  C1 --> R["una respuesta"]
+  C2 --> R
+```
+
+Los paneles que NO son la historia se deduplican por contenido: no llevan el cuaderno en la
+fila, así que si el sitio los repite en cada uno llegarían dos veces.
+
 - `litigantesCiv`: quiénes son parte y con qué calidad. **Hecho**, en las cinco competencias
   con detalle mapeado
 - `notificacionesCiv`: con su propio estado y su propia fecha de trámite. **Hecho**
@@ -197,6 +214,20 @@ exhorto: su cabecera dice `Proc.: Exhorto`, `Etapa: 0 Exhorto`, y nombra a `C-15
 causa de origen. Sus seis piezas son la tramitación que el tribunal de origen despachó junto
 con el exhorto (`Ordena despachar mandamiento`, `Exhórtese`, `Curso progresivo a los autos`),
 o sea **lo que el tribunal que recibe tuvo a la vista**.
+
+```mermaid
+graph LR
+  subgraph origen["C-1156-2026 · 2º Juzgado Civil de Concepción"]
+    O1["exhortosCiv<br/>1 fila"]
+    O2["piezasExhortoCiv<br/>SIN PANEL"]
+  end
+  subgraph destino["E-468-2026 · 3º Juzgado Civil de Concepción"]
+    D1["exhortosCiv<br/>0 filas"]
+    D2["piezasExhortoCiv<br/>6 filas"]
+  end
+  origen -->|"despacha E-875-2026<br/>a Chillán"| destino
+  D2 -.->|"son la tramitación<br/>que el origen mandó"| O1
+```
 
 `exhortosCiv` se lee desde el origen y ya está cubierto. `piezasExhortoCiv` se lee desde el
 destino y no lo está, y mapearlo tiene una decisión de contrato antes que de código: hoy

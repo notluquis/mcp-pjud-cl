@@ -55,6 +55,24 @@ Tres decisiones bajan directamente de este antecedente:
 3. **Ante bloqueo, detención total.** No se evade, porque quien pagaría el costo de una
    escalada es el usuario que tiene plazos corriendo.
 
+Qué cuenta como bloqueo, y qué no. La rama de la derecha existe porque un rechazo del
+cortafuegos no siempre llega como código de error: puede cortar la conexión, o mandar un
+desafío con HTTP 200. Las tres detienen el proceso entero, no la llamada que se topó con ellas.
+
+```mermaid
+graph TD
+  R["Respuesta de la plataforma"] --> A{"¿código?"}
+  A -->|"403 o 429"| B["DETENCIÓN TOTAL"]
+  A -->|"200"| C{"¿el cuerpo es<br/>la página?"}
+  C -->|"desafío de F5<br/>APM_DO_NOT_TOUCH"| B
+  C -->|"aviso de captcha"| B
+  C -->|"sí"| OK["se procesa"]
+  R --> X{"¿no hubo<br/>respuesta?"}
+  X -->|"conexión cortada<br/>ReadError, ConnectError"| B
+  X -->|"timeout<br/>la plataforma va lenta"| T["se propaga como timeout<br/><i>NO detiene: el buscador de fallos<br/>tarda hasta 177,0 s medidos</i>"]
+  B --> F["no se reintenta, no se evade,<br/>y tampoco se consulta el otro host:<br/>comparten cortafuegos"]
+```
+
 ## Condiciones de uso de la plataforma
 
 El Acta 37-2016 de la Corte Suprema, artículo 3, obliga a aceptar los términos y condiciones

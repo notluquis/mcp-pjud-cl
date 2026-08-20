@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
+  campo del detalle, la cadena de peticiones y qué activa la detención total.
+
 ## [0.6.0] - 2026-08-20
 
 ### Agregado

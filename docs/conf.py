@@ -23,6 +23,11 @@ extensions = [
     # desde clientes distintos. Es lo que hace legible una referencia de API.
     "sphinx_copybutton",
     "sphinx_design",
+    # Diagramas. Se elige mermaid y no graphviz por una razón concreta: GitHub renderiza
+    # los bloques ```mermaid de forma nativa, así que el mismo texto se ve en la
+    # documentación publicada Y al leer el archivo en el repositorio. Graphviz obligaría a
+    # instalar un binario en el runner y no se vería en GitHub.
+    "sphinxcontrib.mermaid",
 ]
 
 # Sin autodoc, napoleon ni viewcode: ninguna página usa directivas de API. Estaban
@@ -30,6 +35,12 @@ extensions = [
 
 # Sólo lo que se usa. `colon_fence` para los avisos, `deflist` para las listas de campos.
 myst_enable_extensions = ["colon_fence", "deflist", "attrs_inline"]
+
+# Sin esto habría que escribir ```{mermaid}, que es la directiva de Sphinx y GitHub muestra
+# como texto plano. Con esto el bloque se escribe ```mermaid a secas: GitHub lo dibuja solo y
+# Sphinx lo trata igual que la directiva. Un diagrama que sólo se ve en un lado se desactualiza
+# en el otro sin que nadie lo note.
+myst_fence_as_directive = ["mermaid"]
 myst_heading_anchors = 3
 
 templates_path = ["_templates"]
@@ -155,6 +166,22 @@ def _generar_tablas(app):
     for campo in paneles:
         cuales = [n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None]
         filas.append(f"| `{campo}` | {lista(cuales) if cuales else 'ninguna todavía'} |")
+    # El mismo dato como grafo. Se genera y no se dibuja a mano por lo de siempre: un diagrama
+    # escrito a mano con las competencias de hoy es un dato repetido, y los dibujos son peores
+    # que las tablas para notar que quedaron viejos.
+    lineas = ["```mermaid", "graph LR"]
+    for campo in paneles:
+        cuales = [n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None]
+        for quien in sorted(cuales):
+            lineas.append(f"  {quien} --> {campo}")
+    sin_nada = sorted(
+        n for n in MODULOS if not any(getattr(COMPETENCIAS[n], c) is not None for c in paneles)
+    )
+    for quien in sin_nada:
+        lineas.append(f'  {quien} --> nada["ningún panel medido"]')
+    lineas.append("```")
+    (destino / "paneles-grafo.md").write_text("\n".join(lineas) + "\n", encoding="utf-8")
+
     (destino / "paneles.md").write_text(
         "| Campo | Dónde existe |\n|---|---|\n" + "\n".join(filas) + "\n",
         encoding="utf-8",

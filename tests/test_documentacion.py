@@ -647,6 +647,14 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
         for p in citan
         if peor not in _texto(p) and p.name != "CHANGELOG.md"
     ]
+    # El diagrama de la detención total cita el peor caso para justificar por qué un timeout
+    # NO detiene el proceso. Es un dato repetido más, y si el techo se vuelve a medir hay que
+    # redibujarlo: sin esto, el diagrama seguiría diciendo un número que ya no es.
+    assert peor in _texto(RAIZ / "docs" / "cumplimiento.md"), (
+        f"el diagrama de la detención total ya no cita el peor caso medido ({peor} s), que es "
+        "lo que justifica que un timeout no detenga el proceso"
+    )
+
     assert not sin_el_peor, (
         f"Páginas que citan la latencia típica sin el peor caso medido: {sin_el_peor}. "
         f"Sola, la de {busqueda} s invita a repetir el error de tomar una muestra por techo; "
@@ -1110,7 +1118,22 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
             f"ruta dice lo contrario"
         )
 
-    antes = _texto(RAIZ / "docs" / "roadmap.md").split("#### Los dos lados del exhorto", 1)[0]
+    # El diagrama repite las mismas cifras que la tabla, así que es un lugar más donde pueden
+    # quedar viejas. Se exige que las diga, no que las dibuje de alguna forma concreta.
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    diagrama = hoja.split("subgraph origen", 1)[1].split("```", 1)[0]
+    for exigido in (
+        "exhortosCiv<br/>1 fila",
+        "piezasExhortoCiv<br/>SIN PANEL",
+        "exhortosCiv<br/>0 filas",
+        "piezasExhortoCiv<br/>6 filas",
+    ):
+        assert exigido in diagrama, (
+            f"el diagrama de los dos lados del exhorto ya no dice {exigido!r}, y las fixtures "
+            "siguen diciendo eso"
+        )
+
+    antes = hoja.split("#### Los dos lados del exhorto", 1)[0]
     assert "no está entendido" not in antes[-1500:], (
         "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
         "párrafo siguiente lo explica: dos respuestas a la misma pregunta"

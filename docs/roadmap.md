@@ -17,6 +17,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Búsqueda de causas en **suprema** y **Cortes de Apelaciones** | Las cuatro búsquedas de cada una. Lo que las bloqueaba era `radio-group`, el radio RIT/RUC del formulario, que las otras cuatro competencias toleran ausente |
 | Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
+| Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
 | Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
@@ -313,9 +314,9 @@ fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué 
 | Buscador | Estado |
 |---|---|
 | Corte Suprema | **Verificado.** `id_buscador` 528 |
-| Corte de Apelaciones | Mapeado, sin ejecutar |
+| Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias |
 | Civiles | Mapeado, sin ejecutar |
-| Laborales | Mapeado, sin ejecutar |
+| Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema |
 | Penales | Mapeado, sin ejecutar |
 | Familia | Mapeado, sin ejecutar |
 | Cobranza | Mapeado, sin ejecutar |

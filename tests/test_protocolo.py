@@ -358,3 +358,14 @@ def test_las_actuaciones_de_receptor_no_llegan_como_lista_vacia(
         "la herramienta que existe para no perder plazos entregó una lista vacía ante un "
         "detalle que no se pudo leer"
     )
+    # Y que el error venga del parseo del detalle y no del doble. Es el mismo hueco que el
+    # caso del listado ilegible, y se coló otra vez acá: si cambiara la ruta del modal, el
+    # doble levantaría `AssertionError`, el SDK la convertiría en un resultado con `is_error`
+    # y sin contenido, y las dos aserciones de arriba pasarían sin haber tocado el parser.
+    texto = _texto(resultado)
+    assert "petición no prevista" not in texto, (
+        f"el error no vino de leer el detalle sino del doble: {texto}"
+    )
+    assert "historiaCiv" in texto, (
+        f"el modelo tiene que ver QUÉ no se pudo leer, y el mensaje no lo dice: {texto}"
+    )

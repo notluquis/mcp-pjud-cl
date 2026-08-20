@@ -1436,3 +1436,117 @@ def test_el_detalle_de_una_competencia_sin_exhortos_medidos_los_deja_en_nulo(
     from mcp_pjud.parser import COMPETENCIAS
 
     assert COMPETENCIAS[competencia].exhortos is None
+
+
+def test_una_referencia_que_cambia_entre_cuadernos_no_duplica_el_exhorto(monkeypatch):
+    """El MISMO exhorto llega con una referencia distinta en cada cuaderno.
+
+    Está medido sobre C-1156-2026: `referencia-ficticia-021` en el principal y `-030` en el de
+    apremio. Son tokens de render, no identidades, así que deduplicar incluyéndolas informaba
+    dos exhortos donde hay uno, y una causa que despachó uno diría que despachó dos.
+
+    Se entregan igual, porque son lo único que permitiría abrir el detalle del exhorto cuando
+    ese panel esté medido. Lo que cambia es que no cuentan para decidir si dos filas son la
+    misma cosa.
+    """
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+
+    from mcp_pjud.parser import parse_exhortos
+
+    refs = {parse_exhortos(pagina, "civil")[0].referencia for pagina in (principal, apremio)}
+    assert len(refs) == 2, (
+        "las fixtures dejaron de traer referencias distintas por cuaderno y este test ya no "
+        f"prueba nada: {refs}"
+    )
+
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(str(peticion.url))
+        return httpx.Response(200, text=paginas[min(len(pedidos) - 1, len(paginas) - 1)])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    exhortos = c.detalle_causa("C", 9001, 2026, tribunal=162).exhortos or []
+    assert len(exhortos) == 1, f"un exhorto llegó {len(exhortos)} veces"
+    assert exhortos[0].referencia, "la referencia se entrega igual, sólo no cuenta para dedup"
+
+
+# -- los códigos que las búsquedas exigen -------------------------------------------
+
+
+def _cliente_de_combos(monkeypatch, cuerpo, estado=200):
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidos: list[tuple[str, bytes]] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append((str(peticion.url), peticion.content))
+        return httpx.Response(estado, json=cuerpo)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+    return c, pedidos
+
+
+def test_los_combos_no_cuelgan_del_prefijo_de_rutas(monkeypatch):
+    """Todo lo demás del sitio va bajo `ADIR_nnn`. Estos NO, y está medido: con el prefijo
+    devuelven 404.
+
+    Es la clase de detalle que se pierde al reusar el ayudante de siempre, y el síntoma sería
+    un 404 que se lee como "no hay tribunales".
+    """
+    c, pedidos = _cliente_de_combos(
+        monkeypatch, [{"COD_CORTE": "46", "GLS_CORTE": "C.A. de Concepción"}]
+    )
+    c.listar_cortes()
+
+    url = pedidos[0][0]
+    assert url.endswith("/combosJSON/leeCorte.php"), url
+    assert "ADIR_" not in url, f"la consulta se hizo bajo el prefijo y ahí devuelve 404: {url}"
+
+
+def test_el_listado_de_tribunales_manda_el_codigo_de_la_competencia_pedida(monkeypatch):
+    """Los códigos difieren entre competencias: pedir los de civil con el código de laboral
+    devolvería una lista plausible y equivocada, y quien buscara con esos números no
+    encontraría la causa."""
+    c, pedidos = _cliente_de_combos(
+        monkeypatch, [{"COD_TRIBUNAL": "163", "GLS_TRIBUNAL": "3º Juzgado Civil de Concepción"}]
+    )
+    tribunales = c.listar_tribunales("civil", 46)
+
+    cuerpo = pedidos[0][1].decode()
+    assert f"codCompetencia={COMPETENCIAS['civil'].codigo}" in cuerpo, cuerpo
+    assert "codCorte=46" in cuerpo, cuerpo
+    assert [(t.codigo, t.nombre) for t in tribunales] == [
+        (163, "3º Juzgado Civil de Concepción")
+    ]
+
+
+def test_una_competencia_que_el_servidor_no_consulta_se_rechaza_sin_gastar_peticion(monkeypatch):
+    """Es la regla de siempre: rechazar antes de consultar, no adivinar el código."""
+    c, pedidos = _cliente_de_combos(monkeypatch, [])
+    with pytest.raises(EstructuraInesperada, match="no es una competencia"):
+        c.listar_tribunales("familia", 46)
+    assert not pedidos, "no debe salir ninguna petición para una competencia que no se consulta"
+
+
+def test_un_listado_de_cortes_vacio_levanta_en_vez_de_publicarse(monkeypatch):
+    """Siempre hay cortes. Una lista vacía se leería como que no las hay, y quien la reciba
+    concluiría que no puede buscar en apelaciones."""
+    c, _ = _cliente_de_combos(monkeypatch, [])
+    with pytest.raises(EstructuraInesperada, match="vac"):
+        c.listar_cortes()
+
+
+def test_una_respuesta_que_no_es_una_lista_levanta(monkeypatch):
+    """Si la plataforma pasa a responder un objeto de error con HTTP 200, iterarlo daría sus
+    claves como si fueran tribunales."""
+    c, _ = _cliente_de_combos(monkeypatch, {"error": "sesion expirada"})
+    with pytest.raises(EstructuraInesperada, match="en vez de una lista"):
+        c.listar_tribunales("civil", 46)

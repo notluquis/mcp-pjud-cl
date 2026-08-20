@@ -330,11 +330,12 @@ Traer un PDF a disco cambia el perfil de retención del proyecto y entra de llen
 guarda, lo guarda quien llama y no este servidor: ruta elegida por el usuario, consentimiento
 explícito por llamada, y nada escrito por defecto.
 
-### 0.7a: los códigos de tribunal, que hoy hay que saberse de memoria
+### 0.7a: los códigos de tribunal — hecho
 
-**Es el muro de entrada del proyecto y no estaba anotado.** Para buscar una causa en primera
-instancia hay que pasar `tribunal=162`, y ese número no aparece en ninguna parte de la
-respuesta ni de esta documentación: quien no lo sepa no puede usar el servidor.
+**Era el muro de entrada del proyecto.** Para buscar una causa en primera instancia hay que
+pasar `tribunal=162`, y ese número no aparecía en ninguna parte de la respuesta ni de esta
+documentación: quien no lo supiera no podía usar el servidor. Lo resuelven `listar_cortes` y
+`listar_tribunales`.
 
 No estaba mapeado porque los combos se llenan por AJAX, así que leer el HTML de
 `consultaUnificada.php` no los muestra. Están en el JavaScript:
@@ -353,9 +354,14 @@ Con esto se cierra el único lugar donde este proyecto adivinó: el código 163 
 162 era el 2º Juzgado y salió bien, que es exactamente la forma de acertar que la regla de
 "medir antes de exponer" existe para no aceptar. Ahora está medido.
 
-Y es lo que hace **seguible** la arista del exhorto: hoy `tribunal_destino` es un nombre
-("1º Juzgado Civil de Chillán") y la búsqueda exige un entero, así que un modelo que lee la
-respuesta no puede ir a buscar la causa de destino aunque tenga su rol.
+Y es lo que hace **seguible** la arista del exhorto. El detalle entrega el tribunal de destino
+por su nombre ("1º Juzgado Civil de Chillán") y la búsqueda exige un entero, así que son tres
+llamadas: ubicar la corte, sacar el código del tribunal, y buscar la causa por su rol.
+
+El exhorto trae además su propia referencia, que es como la plataforma abre su detalle. Se
+guarda sin usarla: `detalleExhortos.php` sigue mapeado y sin ejecutar, y cuando se mida el dato
+ya está. **No sirve como identidad**: el mismo exhorto llega con una referencia distinta en
+cada cuaderno, así que la deduplicación las ignora a propósito.
 
 ### 0.7b: la georreferencia, que hoy es sólo un sí o un no
 

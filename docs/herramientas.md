@@ -33,6 +33,54 @@ El número no está escrito a mano: `tests/test_documentacion.py` lo compara con
 suite en rojo.
 :::
 
+## `listar_cortes`
+
+Las Cortes de Apelaciones con el **código** que las búsquedas exigen. Sin parámetros.
+
+Llamarla antes de buscar por nombre, RUT o fecha en `apelaciones`: ahí `corte` es obligatorio y
+su valor no aparece en ninguna otra respuesta.
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `codigo` | int | Lo que va en el parámetro `corte` de las búsquedas |
+| `nombre` | str | Nombre tal como lo publica la plataforma |
+
+Medido el 20 de agosto de 2026: **17 cortes**.
+
+```{include} _generado/listar_cortes.md
+```
+
+## `listar_tribunales`
+
+Los tribunales de una corte, con el **código** que las búsquedas exigen.
+
+:::{important} Es el muro de entrada
+Para buscar en primera instancia hay que pasar `tribunal`, y ese número no aparece en ninguna
+otra respuesta ni en esta página. Sin esta herramienta hay que sabérselo de memoria.
+:::
+
+| Parámetro | Qué es |
+|---|---|
+| `competencia` | Cuál de las seis. Los códigos de tribunal difieren entre competencias |
+| `corte` | Código de la corte, el que entrega `listar_cortes` |
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `codigo` | int | Lo que va en el parámetro `tribunal` de las búsquedas |
+| `nombre` | str | Nombre tal como lo publica la plataforma |
+
+### Cómo seguir un exhorto
+
+El detalle entrega el tribunal de destino por su **nombre**, y la búsqueda pide el **código**.
+Son tres llamadas:
+
+1. `listar_cortes` para ubicar la corte del tribunal de destino.
+2. `listar_tribunales` con esa corte, para sacar el código por nombre.
+3. `buscar_causa_por_rit` con el `rol_destino` del exhorto y ese `tribunal`.
+
+```{include} _generado/listar_tribunales.md
+```
+
 ## `buscar_causa_por_rit`
 
 Busca causas por rol en la consulta pública.

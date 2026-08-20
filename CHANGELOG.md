@@ -20,6 +20,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - Campos `documento_ruta` y `documento_referencia` en las actuaciones: con qué pedir el
   documento. Antes sólo se decía que existía.
+- Herramientas `listar_cortes` y `listar_tribunales`: los códigos que las búsquedas exigen y
+  que antes había que saberse de memoria.
 - Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
   campo del detalle, la cadena de peticiones y qué activa la detención total.
 

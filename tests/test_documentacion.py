@@ -297,7 +297,14 @@ def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
         "antes de llamar cualquier herramienta"
     )
 
+    # `listar_tribunales` recibe `corte` con otro sentido: no acota una búsqueda de causas,
+    # dice de qué corte se quieren los tribunales. Exigirle la frase de la acotación le pondría
+    # al modelo una explicación que no aplica al parámetro que está leyendo.
+    no_acotan = {"listar_tribunales"}
+
     for nombre_h, h in expuestas.items():
+        if nombre_h in no_acotan:
+            continue
         propiedades = (h.input_schema or {}).get("properties", {})
         for campo, exigen in (
             ("tribunal", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal"]),

@@ -904,6 +904,20 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
     return liquidaciones
 
 
+class Corte(BaseModel):
+    """Una Corte de Apelaciones, con el código que las búsquedas exigen."""
+
+    codigo: int = Field(description="Lo que va en el parámetro `corte` de las búsquedas.")
+    nombre: str = Field(description="Nombre tal como lo publica la plataforma.")
+
+
+class Tribunal(BaseModel):
+    """Un tribunal de primera instancia, con el código que las búsquedas exigen."""
+
+    codigo: int = Field(description="Lo que va en el parámetro `tribunal` de las búsquedas.")
+    nombre: str = Field(description="Nombre tal como lo publica la plataforma.")
+
+
 class Exhorto(BaseModel):
     """Una causa que este tribunal despachó a otro para que practique una diligencia.
 
@@ -925,6 +939,11 @@ class Exhorto(BaseModel):
     )
     fecha_ingreso: date | None = Field(
         default=None, description="Cuándo ingresó al tribunal destino."
+    )
+    referencia: str | None = Field(
+        default=None,
+        description="La referencia con la que la plataforma abre el detalle de este exhorto. "
+        "Se guarda para cuando ese panel esté medido: hoy no hay herramienta que la use.",
     )
 
 
@@ -970,6 +989,23 @@ class Materia(BaseModel):
     )
 
 
+def _referencia_del_exhorto(celdas, columnas: tuple[str, ...]) -> str | None:
+    """La referencia con la que la plataforma abre el detalle de un exhorto.
+
+    Viaja en el `onclick` de la celda del rol de destino, no en un formulario. Se guarda
+    porque es lo único que permitiría seguir la arista sin reconstruir una búsqueda, y hoy
+    `detalleExhortos.php` está mapeado y sin ejecutar: cuando se mida, el dato ya está.
+    """
+    if "rol_destino" not in columnas:
+        return None
+    celda = celdas[columnas.index("rol_destino")]
+    for elemento in celda.iter():
+        m = _REFERENCIA_EN_MODAL.match(elemento.get("onclick") or "")
+        if m:
+            return m.group(2)
+    return None
+
+
 def parse_exhortos(html_detalle: str, competencia: str = "civil") -> list[Exhorto]:
     """Las causas que este tribunal despachó a otro.
 
@@ -994,8 +1030,9 @@ def parse_exhortos(html_detalle: str, competencia: str = "civil") -> list[Exhort
             estado=txt["estado"] or None,
             fecha_orden=_fecha(txt["fecha_orden"]),
             fecha_ingreso=_fecha(txt["fecha_ingreso"]),
+            referencia=_referencia_del_exhorto(celdas, spec.exhortos.columnas),
         )
-        for _celdas, txt in _filas_del_panel(html_detalle, spec.exhortos)
+        for celdas, txt in _filas_del_panel(html_detalle, spec.exhortos)
     ]
 
 

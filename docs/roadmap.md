@@ -451,3 +451,34 @@ La hoja de ruta la mueve el uso real, no la lista de deseos del autor. Lo más �
 - Pedir una **competencia** con una causa pública que sirva de fixture
 - Contar en Discusiones **qué te falta** para poder usarlo
 
+## Dónde se fue lo que estaba acá
+
+Esta página tenía 1.159 líneas y era seis documentos. Los encabezados de abajo se conservan
+porque un enlace publicado a `roadmap.html#...` seguiría existiendo y llevaría al inicio de la
+página **sin avisar**, que es peor que un 404: un enlace roto se nota y uno que va al lugar
+equivocado, no.
+
+### Qué está verificado y qué no
+
+Se movió a {doc}`verificacion`, junto con las tablas de lo medido.
+
+### Jurisprudencia: qué hay mapeado y qué falta
+
+El estado de los diez buscadores se movió a {doc}`verificacion`. Lo que falta decidir sigue
+más abajo, en la hoja de ruta.
+
+### Sobre los identificadores de causa en esta documentación
+
+Se movió a {doc}`verificacion`.
+
+### Reglas de la plataforma ya mapeadas
+
+Se movió a {doc}`verificacion`.
+
+### Qué más existe
+
+Se movió a {doc}`ecosistema`, que es el análisis de las otras herramientas.
+
+### Hallazgos de OpenSSF Scorecard que siguen abiertos
+
+Se movieron a {doc}`cumplimiento`, que es donde vive la postura de seguridad.

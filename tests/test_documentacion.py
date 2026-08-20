@@ -1281,6 +1281,40 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
     assert titulos, "si la lista quedara vacía este guardia no comprobaría nada"
 
 
+#: Encabezados que la hoja de ruta publicó y que se movieron a otra página al partirla. Un
+#: enlace a `roadmap.html#...` que alguien haya guardado o citado sigue existiendo, y sin el
+#: encabezado lleva al INICIO de la página sin avisar. Un enlace roto se nota; uno que va al
+#: lugar equivocado, no.
+#:
+#: La lista sólo crece: si se mueve otra sección, se agrega acá antes de moverla.
+ANCLAS_HEREDADAS = (
+    "Qué está verificado y qué no",
+    "Jurisprudencia: qué hay mapeado y qué falta",
+    "Sobre los identificadores de causa en esta documentación",
+    "Reglas de la plataforma ya mapeadas",
+    "Qué más existe",
+    "Hallazgos de OpenSSF Scorecard que siguen abiertos",
+)
+
+
+def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():
+    """Al partir la hoja de ruta, sus fragmentos publicados quedaron apuntando al vacío.
+
+    `myst_heading_anchors` genera un ancla por encabezado hasta el nivel 3, así que
+    `roadmap.html#que-mas-existe` existía y era citable. Moverlo sin dejar nada no da 404: da
+    el inicio de la página, en silencio, que es la forma de romper un enlace que nadie nota.
+
+    Lo que se exige es que el encabezado siga estando, no que el contenido siga ahí: cada uno
+    quedó como un puntero de una línea a la página que se lo llevó.
+    """
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    faltan = [t for t in ANCLAS_HEREDADAS if f"# {t}" not in hoja]
+    assert not faltan, (
+        f"la hoja de ruta perdió encabezados que publicó y que alguien puede haber enlazado: "
+        f"{faltan}. Un enlace a su fragmento ahora lleva al inicio de la página sin avisar."
+    )
+
+
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
     """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
     alguien mira para decidir si esto le entra al entorno.

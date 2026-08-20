@@ -50,9 +50,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 ### Cambiado
 
 - **Se retiran `obtener_historia_causa`, `obtener_notificaciones_causa` y
-  `obtener_liquidaciones_causa`**: pasan a ser campos de `obtener_detalle_causa`. Cada una
-  repetía la cadena entera para leer un panel de la misma respuesta, así que preguntar las
-  cuatro cosas de una causa con dos cuadernos costaba dieciséis peticiones donde bastan cuatro.
+  `obtener_liquidaciones_causa`**: pasan a ser campos de `obtener_detalle_causa`. Preguntar las
+  cuatro cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuesta
+  cuatro, más las dos que abren la sesión.
 - Un panel que la competencia no publica viaja en nulo y no en lista vacía: "acá no se informa"
   y "no ocurrió" son cosas distintas.
 

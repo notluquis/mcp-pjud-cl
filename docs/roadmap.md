@@ -1043,9 +1043,15 @@ Lo que **no** se copia, y conviene decir por qué:
 - **El panel para probar en vivo.** En su caso una prueba consulta su API; acá consultaría al
   Poder Judicial desde el navegador de quien lee la documentación, sin intervalo, sin
   identificación y sin bitácora. Es exactamente lo que el proyecto no hace.
-- **Migrar a readme.com.** Es de pago y cerrado, y la documentación de este proyecto se publica
-  también en Markdown y `llms.txt` para que un agente la lea sin atravesar HTML. Sphinx con
-  Furo ya da buscador, modo oscuro y navegación; lo que faltaba eran las tres piezas de arriba.
+- **Migrar a readme.com.** Es de pago y cerrado. Sphinx con Furo ya da buscador, modo oscuro y
+  navegación; lo que faltaba eran las tres piezas de arriba.
+
+  Acá se decía además que la documentación se publica en Markdown y `llms.txt` "para que un
+  agente la lea sin atravesar HTML", como si eso fuera un argumento de peso. Es una capacidad,
+  no una evidencia: Ahrefs midió 137.210 dominios en mayo de 2026 y **el 97% de los `llms.txt`
+  publicados no recibió ninguna petición**. Se sigue generando porque no cuesta nada y no
+  repite ningún dato, que es el único criterio que tiene que pasar, y no porque conste que
+  alguien lo lea.
 
 ### El contexto gremial
 

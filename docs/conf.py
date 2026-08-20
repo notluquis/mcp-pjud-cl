@@ -17,7 +17,11 @@ language = "es"
 extensions = [
     "myst_parser",
     # Genera una versión Markdown de cada página, más llms.txt y llms-full.txt.
-    # Es lo que permite que un agente lea la documentación sin atravesar el HTML.
+    #
+    # Se deja porque no cuesta nada y no duplica ningún dato: sale de las mismas páginas. NO
+    # se deja porque conste que alguien lo consuma. Ahrefs midió 137.210 dominios en mayo de
+    # 2026 y el 97% de los `llms.txt` publicados no recibió ninguna petición, así que es una
+    # capacidad y no una audiencia, y no sirve para justificar decisiones de estructura.
     "sphinx_llm.txt",
     # Botón de copiar en cada bloque de código, y pestañas para mostrar la misma llamada
     # desde clientes distintos. Es lo que hace legible una referencia de API.

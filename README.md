@@ -127,6 +127,8 @@ publicar: no es lo recomendado.
 
 | Herramienta | Qué hace |
 |---|---|
+| `listar_cortes` | Las Cortes de Apelaciones con su código |
+| `listar_tribunales` | Los tribunales de una corte con su código, que las búsquedas exigen |
 | `buscar_causa_por_rit` | Busca por rol, en las seis competencias |
 | `buscar_causa_por_nombre` | Busca por nombre de una persona natural |
 | `buscar_causa_por_rut_juridica` | Busca por RUT de una empresa |

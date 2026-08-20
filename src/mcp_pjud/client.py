@@ -26,10 +26,12 @@ from .parser import (
     COMPETENCIAS,
     Actuacion,
     CausaEncontrada,
+    Corte,
     DetalleCausa,
     EstructuraInesperada,
     Liquidacion,
     Notificacion,
+    Tribunal,
     actuaciones_receptor,
     es_aviso_de_captcha,
     es_sin_resultados,
@@ -190,6 +192,15 @@ _MARCA_APM = "APM_DO_NOT_TOUCH"
 #: silencio, que se leería como "no hay más".
 PAGINAS_MAXIMAS = 10
 
+#: Campos que la plataforma vuelve a emitir distintos en cada render de la misma fila. Se
+#: entregan igual, porque son lo único que permite pedir el documento o el detalle, pero NO
+#: cuentan para decidir si dos filas son la misma cosa.
+#:
+#: Medido: el mismo exhorto de C-1156-2026 llega con una referencia en el cuaderno principal y
+#: otra en el de apremio. Deduplicar incluyéndolas informaba dos exhortos donde hay uno.
+_VOLATILES = {"referencia", "documento_referencia"}
+
+
 #: Competencias cuyas búsquedas están verificadas contra el sistema real. La tabla de cómo
 #: leer sus resultados vive en `parser.COMPETENCIAS`; ésta dice cuáles se exponen.
 #:
@@ -213,6 +224,14 @@ PAGINAS_MAXIMAS = 10
 #: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
 #: actuaciones no vivían donde el código creía.
 MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
+#: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
+#: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.
+CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")
+
+#: Cuántas Cortes de Apelaciones devolvió `combosJSON/leeCorte.php` el 20 de agosto de 2026.
+#: Vive acá y no en la prosa porque la referencia lo cita y un número escrito a mano en dos
+#: lugares queda viejo en uno de los dos.
+CORTES_MEDIDAS = 17
 
 
 #: Lo que una lectura del detalle devuelve por fila. `_recorrer_cuadernos` sirve a dos
@@ -510,6 +529,92 @@ class PjudClient(Transporte):
                 "Referer": f"{BASE}/consultaUnificada.php",
             },
         ).text
+
+    def _combos(self, ruta: str, data: dict[str, str]) -> list[dict[str, str]]:
+        """Lee uno de los combos que llenan los desplegables del formulario.
+
+        Cuelgan de la RAÍZ del sitio y no del prefijo `ADIR_`, a diferencia de todo lo demás.
+        Está medido: con el prefijo devuelven 404. Por eso no reusan `_ajax`.
+
+        Devuelven JSON, así que se abre la sesión igual: sin ella no hay cookie y la respuesta
+        no es la lista.
+        """
+        self._prefijo()
+        r = self._req(
+            "POST",
+            f"{BASE}/{ruta}",
+            data=data,
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": f"{BASE}/consultaUnificada.php",
+            },
+        )
+        cuerpo = r.json()
+        if not isinstance(cuerpo, list):
+            raise EstructuraInesperada(
+                f"{ruta} devolvió {type(cuerpo).__name__} en vez de una lista. La estructura "
+                "de la plataforma cambió."
+            )
+        return cuerpo
+
+    def listar_cortes(self) -> list[Corte]:
+        """Las Cortes de Apelaciones con el código que las búsquedas exigen.
+
+        Sin esto el parámetro `corte` había que sabérselo de memoria: no aparecía en ninguna
+        respuesta ni en la documentación, así que quien no lo supiera no podía buscar en
+        apelaciones.
+        """
+        filas = self._combos("combosJSON/leeCorte.php", {"tipoBusqueda": "1"})
+        cortes = [
+            Corte(codigo=int(f["COD_CORTE"]), nombre=" ".join(f["GLS_CORTE"].split()))
+            for f in filas
+            if f.get("COD_CORTE")
+        ]
+        if not cortes:
+            # Una lista vacía se leería como "no hay cortes", y siempre las hay. Es la regla 4.
+            raise EstructuraInesperada(
+                "El listado de cortes vino vacío. Siempre hay cortes, así que la respuesta "
+                "viene truncada o la estructura cambió."
+            )
+        return cortes
+
+    def listar_tribunales(self, competencia: str, corte: int) -> list[Tribunal]:
+        """Los tribunales de una corte, con el código que las búsquedas exigen.
+
+        Es el muro de entrada del proyecto: para buscar en primera instancia hay que pasar
+        `tribunal=162`, y ese número no aparecía en ninguna parte.
+        """
+        nombre = competencia.lower()
+        if nombre not in CON_TRIBUNAL:
+            # Medido el 20 de agosto de 2026 sobre la corte 46, con las seis: suprema devuelve
+            # `null` porque ES la corte y no tiene tribunales debajo, y apelaciones devuelve
+            # 118 juzgados de PRIMERA instancia, que no son con qué se busca ahí. Las dos se
+            # acotan por corte o por nada, así que pedir sus tribunales es una pregunta sin
+            # sentido, y devolver esa lista invitaría a usarla como si fuera `tribunal`.
+            raise EstructuraInesperada(
+                f"{competencia!r} no se acota por tribunal, así que no tiene un listado que "
+                f"sirva para buscar. Se acotan por tribunal: {', '.join(sorted(CON_TRIBUNAL))}."
+            )
+        spec = COMPETENCIAS[nombre]
+        filas = self._combos(
+            "combosJSON/leeTrib.php",
+            {"codCompetencia": str(spec.codigo), "codCorte": str(corte), "tipoBusqueda": "1"},
+        )
+        tribunales = [
+            Tribunal(codigo=int(f["COD_TRIBUNAL"]), nombre=" ".join(f["GLS_TRIBUNAL"].split()))
+            for f in filas
+            if f.get("COD_TRIBUNAL")
+        ]
+        if not tribunales:
+            # Toda corte tiene tribunales debajo. Devolver la lista vacía se leería como que
+            # esa corte no tiene ninguno, y quien la reciba concluiría que el tribunal que
+            # busca no existe. Es la regla 4.
+            raise EstructuraInesperada(
+                f"El listado de tribunales de {competencia} en la corte {corte} vino vacío. "
+                "Toda corte tiene tribunales, así que la respuesta viene truncada o cambió el "
+                "nombre de los campos."
+            )
+        return tribunales
 
     # -- sesión -----------------------------------------------------------------
 
@@ -911,13 +1016,18 @@ class PjudClient(Transporte):
         # cada uno llegarían duplicados. Se deduplica por el contenido, que es correcto tanto
         # si el panel es global como si fuera por cuaderno: en el segundo caso las filas
         # difieren y se conservan todas.
+        #
+        # Menos las referencias, y eso está medido: el MISMO exhorto de C-1156-2026 trae una
+        # referencia distinta en el cuaderno principal y en el de apremio. Son tokens de
+        # render, no identidades, así que incluirlas hacía que una causa que despachó UN
+        # exhorto informara dos.
         def _juntar(leer, declarado):
             if declarado is None:
                 return None
             vistos: dict[str, object] = {}
             for pagina, _ in paginas:
                 for fila in leer(pagina, competencia):
-                    vistos.setdefault(fila.model_dump_json(), fila)
+                    vistos.setdefault(fila.model_dump_json(exclude=_VOLATILES), fila)
             return list(vistos.values())
 
         return DetalleCausa(

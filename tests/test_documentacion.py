@@ -28,6 +28,7 @@ import pytest
 import yaml
 
 from mcp_pjud.client import (
+    CORTES_MEDIDAS,
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
@@ -238,6 +239,10 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
         # Ofrece las que tienen al menos un panel del detalle medido. `penal` no lo tiene, y
         # anunciarla haría que el modelo intente una llamada que siempre se rechaza.
         "obtener_detalle_causa",
+        # Ofrece sólo las que se acotan POR tribunal. Medido: suprema no tiene tribunales
+        # debajo y apelaciones devuelve juzgados de primera instancia que no sirven para
+        # buscar ahí, así que ofrecerlas invita a usar esa lista como si fuera `tribunal`.
+        "listar_tribunales",
     }
     descripciones = [
         p.get("description", "")
@@ -270,8 +275,16 @@ def test_ninguna_herramienta_exige_un_campo_que_su_competencia_no_usa(expuestas)
     sin_acotar = {n for n in MODULOS if COMPETENCIAS[n].acota_por != "tribunal"}
     assert sin_acotar, "si todas exigieran tribunal, este guardia habría que retirarlo"
 
+    # `listar_tribunales` sí puede exigir `corte`, y tiene que hacerlo: ahí no acota una
+    # búsqueda de causas, dice DE QUÉ corte se quieren los tribunales. Con un valor por defecto
+    # una consulta destinada a otra jurisdicción devolvía en silencio los de Concepción, que es
+    # una lista plausible y equivocada.
+    puede_exigir_corte = {"listar_tribunales"}
+
     culpables = {}
     for nombre_h, h in expuestas.items():
+        if nombre_h in puede_exigir_corte:
+            continue
         obligatorios = set((h.input_schema or {}).get("required", []))
         for campo in ("tribunal", "corte"):
             if campo in obligatorios:
@@ -297,7 +310,14 @@ def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
         "antes de llamar cualquier herramienta"
     )
 
+    # `listar_tribunales` recibe `corte` con otro sentido: no acota una búsqueda de causas,
+    # dice de qué corte se quieren los tribunales. Exigirle la frase de la acotación le pondría
+    # al modelo una explicación que no aplica al parámetro que está leyendo.
+    no_acotan = {"listar_tribunales"}
+
     for nombre_h, h in expuestas.items():
+        if nombre_h in no_acotan:
+            continue
         propiedades = (h.input_schema or {}).get("properties", {})
         for campo, exigen in (
             ("tribunal", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal"]),
@@ -1155,6 +1175,45 @@ def test_la_referencia_publica_nombra_todos_los_campos_de_una_actuacion():
     faltan = [c for c in Actuacion.model_fields if f"`{c}`" not in referencia]
     assert not faltan, (
         f"campos de una actuación que el modelo entrega y la referencia no nombra: {faltan}"
+    )
+
+
+def test_el_listado_de_tribunales_exige_la_corte(expuestas):
+    """Con un valor por defecto, una consulta destinada a otra jurisdicción devolvía en
+    silencio los tribunales de esa corte: una lista plausible y equivocada, y el modelo no
+    tiene cómo notar que no preguntó por ésa.
+
+    Es la única herramienta que puede exigir `corte`, porque ahí no acota una búsqueda de
+    causas: dice DE QUÉ corte se quieren los tribunales. Por eso el guardia general la exime,
+    y por eso hace falta éste: sin él, la exención permite volver al valor por defecto.
+    """
+    esquema = expuestas["listar_tribunales"].input_schema or {}
+    assert "corte" in set(esquema.get("required", [])), (
+        "`corte` volvió a ser opcional, y con eso una consulta a otra jurisdicción devuelve "
+        "los tribunales de la corte por defecto sin decirlo"
+    )
+
+
+def test_la_cuenta_de_cortes_que_cita_la_referencia_es_la_medida():
+    """La referencia dice cuántas cortes hay, y es un dato que se escribe a mano.
+
+    Importa: quien lea "17" y reciba 12 no sabe si la plataforma cambió o si la respuesta vino
+    truncada. La fixture es un recorte de la respuesta real y trae la cuenta en el nombre del
+    campo, no en la cantidad de filas guardadas, porque guardar las 17 con nombre y código no
+    agrega nada que este guardia use.
+    """
+    import json
+
+    fixture = json.loads(_texto(RAIZ / "tests" / "fixtures" / "combos_cortes.json"))
+    assert all("COD_CORTE" in c and "GLS_CORTE" in c for c in fixture), (
+        "la fixture de cortes cambió de forma y el cliente la lee por esos dos campos"
+    )
+
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    dicho = re.search(r"\*\*(\d+) cortes\*\*", referencia)
+    assert dicho, "la referencia dejó de decir cuántas cortes hay"
+    assert dicho.group(1) == str(CORTES_MEDIDAS), (
+        f"la referencia dice {dicho.group(1)} cortes y lo medido son {CORTES_MEDIDAS}"
     )
 
 

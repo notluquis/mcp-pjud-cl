@@ -35,3 +35,7 @@ mutants/
 
 # Esquemas generados desde el servidor al construir la documentación.
 docs/_generado/
+
+# Worktrees que las sesiones de agentes crean acá dentro. No son parte del proyecto y
+# lintearlos duplica cada archivo del repositorio.
+.claude/worktrees/

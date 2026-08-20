@@ -14,13 +14,16 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .client import (
+    CON_TRIBUNAL,
     DESCRIPCION,
     INTERVALO_MINIMO,
     MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
     VERSION,
+    Corte,
     PjudClient,
+    Tribunal,
 )
 from .juris import (
     BUSCADORES,
@@ -166,7 +169,7 @@ Competencia = Annotated[
     str,
     Field(description=f"Una de: {', '.join(sorted(MODULOS))}."),
 ]
-Tribunal = Annotated[
+CodigoTribunal = Annotated[
     int | None,
     Field(
         description="Código del tribunal. Obligatorio en las búsquedas de nombre, RUT y "
@@ -202,6 +205,20 @@ CompetenciaConReceptor = Annotated[
     ),
 ]
 
+#: Las competencias que se acotan POR TRIBUNAL, o sea aquellas donde su listado sirve para
+#: buscar. Medido el 20 de agosto de 2026 sobre la corte 46 con las seis: suprema devuelve
+#: `null` porque ES la corte, y apelaciones devuelve 118 juzgados de primera instancia que no
+#: son con qué se busca ahí. Ofrecerlas invitaría a usar esa lista como si fuera `tribunal`.
+_CON_TRIBUNAL = sorted(CON_TRIBUNAL)
+CompetenciaConTribunal = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_TRIBUNAL)}. Son las que se acotan por tribunal, "
+        "o sea aquellas donde este listado sirve para buscar. Suprema no tiene tribunales "
+        "debajo y apelaciones se acota por corte."
+    ),
+]
+
 #: Las competencias con al menos un panel del detalle medido. `penal` no está: ninguno de los
 #: suyos lo está, así que la lectura combinada la rechaza siempre. Ofrecerla en el esquema hace
 #: que el modelo la intente, reciba un error y se lo atribuya a la plataforma.
@@ -227,7 +244,7 @@ CompetenciaConDetalle = Annotated[
     ),
 ]
 
-Corte = Annotated[
+CodigoCorte = Annotated[
     int | None,
     Field(
         description="Código de la corte. Obligatorio en las búsquedas de nombre, RUT y "
@@ -240,6 +257,49 @@ Corte = Annotated[
 
 
 @mcp.tool(
+    title="Listar las Cortes de Apelaciones y su código",
+    annotations=SOLO_LECTURA,
+)
+def listar_cortes() -> list[Corte]:
+    """Las Cortes de Apelaciones con el código que las búsquedas exigen.
+
+    Llamar esto ANTES de buscar por nombre, RUT o fecha en apelaciones: el parámetro `corte`
+    es obligatorio ahí y su valor no aparece en ninguna otra respuesta.
+    """
+    with _cliente() as c:
+        return c.listar_cortes()
+
+
+@mcp.tool(
+    title="Listar los tribunales de una corte y su código",
+    annotations=SOLO_LECTURA,
+)
+def listar_tribunales(
+    corte: Annotated[
+        int,
+        Field(
+            description="Código de la corte, el que entrega `listar_cortes`. Obligatorio: sin "
+            "él habría que elegir una, y devolver los tribunales de otra jurisdicción es una "
+            "lista plausible y equivocada.",
+            ge=1,
+        ),
+    ],
+    competencia: CompetenciaConTribunal = "civil",
+) -> list[Tribunal]:
+    """Los tribunales de una corte, con el código que las búsquedas exigen.
+
+    Llamar esto ANTES de buscar en primera instancia: `tribunal` es obligatorio ahí y su valor
+    no aparece en ninguna otra respuesta, así que sin esto hay que sabérselo de memoria.
+
+    También es la forma de seguir un exhorto. El detalle entrega el tribunal de destino por su
+    NOMBRE, y la búsqueda pide el código: se ubica la corte con `listar_cortes`, se piden sus
+    tribunales acá, y con ese código se busca la causa de destino por su rol.
+    """
+    with _cliente() as c:
+        return c.listar_tribunales(competencia, corte)
+
+
+@mcp.tool(
     title="Buscar causa por rol",
     annotations=SOLO_LECTURA,
 )
@@ -248,8 +308,8 @@ def buscar_causa_por_rit(
     rol: Rol,
     anio: Anio,
     competencia: Competencia = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
@@ -267,8 +327,8 @@ def buscar_causa_por_nombre(
     nombre: Annotated[str, Field(description="Nombres del litigante.")] = "",
     anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
     competencia: Competencia = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas por nombre de litigante.
@@ -293,8 +353,8 @@ def buscar_causa_por_rut_juridica(
     digito_verificador: Annotated[str, Field(description="Dígito verificador: 0-9 o K.")],
     anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
     competencia: Competencia = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Busca causas de una persona jurídica por su RUT.
@@ -316,8 +376,8 @@ def buscar_causa_por_fecha(
     desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
     hasta: Annotated[str, Field(description="Fecha final del rango, DD/MM/AAAA.")],
     competencia: Competencia = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
     """Causas ingresadas en un rango de fechas.
@@ -342,8 +402,8 @@ def obtener_actuaciones_receptor(
     rol: Rol,
     anio: Anio,
     competencia: CompetenciaConReceptor = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
 ) -> list[Actuacion]:
     """Actuaciones del ministro de fe con su fecha real de diligencia.
 
@@ -363,8 +423,8 @@ def obtener_detalle_causa(
     rol: Rol,
     anio: Anio,
     competencia: CompetenciaConDetalle = "civil",
-    tribunal: Tribunal = None,
-    corte: Corte = None,
+    tribunal: CodigoTribunal = None,
+    corte: CodigoCorte = None,
 ) -> DetalleCausa:
     """Historia, litigantes, notificaciones, liquidaciones, materias y exhortos de la causa.
 

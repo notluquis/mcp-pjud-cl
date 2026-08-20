@@ -383,6 +383,44 @@ EXHORTOS_CIVIL = Panel(
     ),
 )
 
+#: El exhorto visto desde el tribunal EXHORTADO: los trámites que el tribunal de origen
+#: despachó junto con él, o sea lo que este tribunal tuvo a la vista.
+#: Medido sobre E-468-2026, que trae seis.
+#:
+#: Este panel es el único que depende de la CAUSA y no de la competencia: sólo lo traen las
+#: causas que SON un exhorto, y en las demás no existe. Por eso su ausencia no se lee acá sino
+#: en `parse_piezas_exhorto`, contra lo que dice la cabecera.
+#:
+#: Los encabezados van con la errata del sitio, que escribe `Támite` y `Fec. Támite` sin la
+#: erre. Se calza con lo que la plataforma emite y no con lo correcto: un parser que busque
+#: `Trámite` no encuentra nada. Si algún día la corrigen esto levanta en vez de devolver vacío,
+#: que es la dirección segura del cambio.
+PIEZAS_EXHORTO_CIVIL = Panel(
+    panel="piezasExhortoCiv",
+    columnas=(
+        "folio",
+        "doc",
+        "cuaderno",
+        "anexo",
+        "etapa",
+        "tramite",
+        "desc_tramite",
+        "fec_tramite",
+        "foja",
+    ),
+    encabezados=(
+        "folio",
+        "doc.",
+        "cuaderno",
+        "anexo",
+        "etapa",
+        "támite",
+        "desc. támite",
+        "fec. támite",
+        "foja",
+    ),
+)
+
 MATERIAS_LABORAL = Panel(
     panel="materiasLab",
     columnas=("codigo", "glosa", "estado", "fecha_termino"),
@@ -1036,6 +1074,173 @@ def parse_exhortos(html_detalle: str, competencia: str = "civil") -> list[Exhort
     ]
 
 
+#: Lo que la cabecera pone en `Proc.` cuando la causa ES un exhorto. Medido sobre E-468-2026.
+#:
+#: Se compara por contención y no por igualdad para no depender del relleno con que el sitio
+#: pinta la celda. Errarle en cualquiera de los dos sentidos no pasa en silencio: en
+#: `parse_piezas_exhorto` esta lectura se contrasta contra la presencia del panel.
+_PROCEDIMIENTO_EXHORTO = "exhorto"
+
+
+def _valor_de_la_cabecera(html_detalle: str, rotulo: str) -> str:
+    """Lo que la cabecera del detalle publica bajo un rótulo. Ej: `Proc.` devuelve `Exhorto`.
+
+    La cabecera no es una tabla de datos: no tiene `id`, no tiene encabezados y cada dato es un
+    `<td>` con su rótulo en un `<strong>` y el valor suelto detrás. Por eso no pasa por `Panel`
+    ni por la validación posicional, que necesitan columnas: se busca el rótulo y se lee la
+    cola del `<strong>`, que es donde cae el valor.
+    """
+    doc = html.fromstring(html_detalle)
+    # Los comentarios de la cabecera traen copias de los valores; sin esto se leen dos veces.
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    buscado = rotulo.rstrip(":").lower()
+    for etiqueta in doc.xpath('//table[contains(@class, "table-titulos")]//td/strong'):
+        if " ".join(etiqueta.text_content().split()).rstrip(":").lower() == buscado:
+            return " ".join((etiqueta.tail or "").split())
+
+    raise EstructuraInesperada(
+        f"La cabecera del detalle no publica {rotulo!r}. Es de donde sale qué clase de causa "
+        "es ésta, y sin ese dato la única forma de saberlo sería deducirlo de qué paneles "
+        "llegaron, que es lo que este módulo no hace."
+    )
+
+
+def causa_es_exhorto(html_detalle: str, competencia: str = "civil") -> bool:
+    """Si ESTA causa es un exhorto: una que otro tribunal abrió acá para practicar diligencias.
+
+    Los dos lados del exhorto se ven desde causas distintas y traen paneles distintos. La que
+    lo ORDENA trae `exhortosCiv` con la fila del despacho; la que lo RECIBE trae
+    `piezasExhortoCiv` con lo que el tribunal de origen le mandó, y no trae el otro.
+
+    Se lee de la cabecera y NO de qué panel llegó, y ésa es la decisión que hace falta. Deducir
+    "no es un exhorto" de que el panel no esté ata la afirmación a que la plataforma no
+    renombre un `id`: el día que lo renombre, la respuesta no diría "no pude leerlo", diría
+    "esta causa no es un exhorto", que es una afirmación falsa y no un error.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.piezas_exhorto is None:
+        raise EstructuraInesperada(
+            f"No está verificado qué pone la cabecera de {competencia} cuando la causa es un "
+            "exhorto. Sólo civil está medida, y responder que no lo es sin haberlo medido "
+            "descarta en silencio las piezas que el tribunal de origen despachó."
+        )
+    return _PROCEDIMIENTO_EXHORTO in _valor_de_la_cabecera(html_detalle, "Proc.").lower()
+
+
+class PiezaExhorto(BaseModel):
+    """Un trámite de la causa de ORIGEN que vino junto con el exhorto.
+
+    NO es una actuación de esta causa, y por eso no comparte tipo con `Actuacion` ni viaja en
+    `historia`: es tramitación que ocurrió en el otro tribunal, antes de que el exhorto llegara,
+    y es lo que el tribunal exhortado tuvo a la vista. Los plazos de esta causa no se computan
+    desde acá.
+    """
+
+    folio: str
+    cuaderno: str = Field(
+        default="", description="Cuaderno de la causa de ORIGEN al que pertenece la pieza."
+    )
+    etapa: str = Field(default="", description="Etapa en que la causa de origen la despachó.")
+    tramite: str = Field(default="", description="Tipo de trámite. Ej: 'Resolución', 'Escrito'.")
+    desc_tramite: str = Field(default="", description="Texto literal de la celda, sin normalizar.")
+    fecha_registro: date | None = Field(
+        default=None,
+        description="Cuándo el tribunal de origen registró el trámite, en ISO 8601.",
+    )
+    fecha_diligencia: date | None = Field(
+        default=None,
+        description="La fecha entre paréntesis, cuando la celda trae las dos. Nula en las seis "
+        "piezas medidas: ahí el sitio publica una sola fecha en esta columna.",
+    )
+    foja: str = Field(default="", description="Foja del expediente de origen.")
+    tiene_documento: bool = Field(description="Si la pieza trae documento descargable.")
+    documento_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta de la plataforma entrega ese documento. NULO si no trae.",
+    )
+    documento_referencia: str | None = Field(
+        default=None,
+        description="La referencia opaca con la que la plataforma identifica ese documento. "
+        "Junto con `documento_ruta` es lo único que permite pedirlo después. NULO si no trae.",
+    )
+
+
+def parse_piezas_exhorto(
+    html_detalle: str, competencia: str = "civil"
+) -> list[PiezaExhorto] | None:
+    """Los trámites que el tribunal de origen despachó junto con el exhorto.
+
+    Devuelve `None` cuando, y sólo cuando, la causa NO es un exhorto: ahí el panel no existe
+    porque la pregunta no aplica. Una lista vacía diría "es un exhorto y no le mandaron nada",
+    que es otra cosa.
+
+    Las dos lecturas se contrastan a propósito, y una contradicción levanta en vez de elegir.
+    No son intercambiables: creerle a la cabecera tiraría piezas que están ahí, y creerle al
+    panel inventaría un exhorto donde el sitio dice que no lo hay. Las dos direcciones pierden,
+    así que la única respuesta honesta es decir que no se entiende la respuesta.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.piezas_exhorto is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se leen las piezas del exhorto en {competencia}. La de "
+            "civil lleva el cuaderno al medio de las nueve columnas, así que leer otra con ese "
+            "mapa correría los campos y la fecha caería en la foja."
+        )
+
+    procedimiento = _valor_de_la_cabecera(html_detalle, "Proc.")
+    doc = html.fromstring(html_detalle)
+    hay_panel = bool(doc.xpath(f'//*[@id="{spec.piezas_exhorto.panel}"]'))
+
+    if _PROCEDIMIENTO_EXHORTO not in procedimiento.lower():
+        if hay_panel:
+            raise EstructuraInesperada(
+                f"La cabecera dice que el procedimiento es {procedimiento!r} y el detalle igual "
+                f"trae el panel {spec.piezas_exhorto.panel!r}. Descartarlo por la cabecera "
+                "tiraría la tramitación que el tribunal de origen despachó, y leerlo igual "
+                "diría que ésta es una causa exhortada cuando el sitio dice que no lo es."
+            )
+        return None
+
+    if not hay_panel:
+        raise EstructuraInesperada(
+            f"La cabecera dice que esta causa es un exhorto ({procedimiento!r}) y el detalle no "
+            f"trae el panel {spec.piezas_exhorto.panel!r}. Devolver la lista vacía se leería "
+            "como que el tribunal de origen no despachó ninguna pieza."
+        )
+
+    piezas = []
+    for celdas, txt in _filas_del_panel(html_detalle, spec.piezas_exhorto):
+        # Misma columna que la `Fec. Trámite` de la Historia, con el nombre mal escrito: puede
+        # traer las dos fechas. Se separan aunque las seis filas medidas traigan una sola,
+        # porque quedarse con la primera es exactamente confundir el registro con la diligencia.
+        registro = diligencia = None
+        if m := _FEC_TRAMITE.search(txt["fec_tramite"]):
+            registro = _fecha(m.group(1))
+            if m.group(2):
+                diligencia = _fecha(m.group(2))
+
+        documento = _documento_de_la_celda(celdas[spec.piezas_exhorto.columnas.index("doc")])
+        piezas.append(
+            PiezaExhorto(
+                folio=txt["folio"],
+                cuaderno=txt["cuaderno"],
+                etapa=txt["etapa"],
+                tramite=txt["tramite"],
+                desc_tramite=txt["desc_tramite"],
+                fecha_registro=registro,
+                fecha_diligencia=diligencia,
+                foja=txt["foja"],
+                tiene_documento=bool(
+                    celdas[spec.piezas_exhorto.columnas.index("doc")].xpath(".//form | .//a")
+                ),
+                documento_ruta=documento[0],
+                documento_referencia=documento[1],
+            )
+        )
+    return piezas
+
+
 def _estado_de_parte(celdas, columnas: tuple[str, ...]) -> str | None:
     """El estado de la parte, que laboral publica como icono y no como texto.
 
@@ -1155,6 +1360,12 @@ class DetalleCausa(BaseModel):
 
     Devolver lista vacía en el primer caso las haría indistinguibles, y "esta competencia no lo
     informa" se leería como "no ocurrió".
+
+    `piezas_exhorto` trae un cuarto caso que esos tres no saben decir. El panel existe en civil,
+    pero sólo en las causas que SON un exhorto: "esta competencia no lo publica" y "esta causa
+    no es un exhorto" son cosas distintas, y meter las dos en `None` borra justo la distinción
+    que la lista de arriba protege. Por eso viaja al lado `causa_es_exhorto`, con el mismo
+    oficio que `causa_encontrada`: nombrar cuál de los dos silencios es éste.
     """
 
     causa_encontrada: bool = Field(
@@ -1190,6 +1401,20 @@ class DetalleCausa(BaseModel):
         description="Causas que este tribunal despachó a otro. Una lista con elementos "
         "significa que parte de la tramitación ocurre en OTRO expediente, y las actuaciones "
         "de esa parte no están acá.",
+    )
+    causa_es_exhorto: bool | None = Field(
+        default=None,
+        description="Si ESTA causa es un exhorto: una que otro tribunal abrió acá para que se "
+        "practiquen diligencias suyas. Sale de la cabecera de la causa, no de qué paneles "
+        "llegaron. NULO significa que la competencia no tiene la pregunta medida, NO que la "
+        "causa no lo sea: sin este campo, `piezas_exhorto` en nulo diría las dos cosas a la vez.",
+    )
+    piezas_exhorto: list[PiezaExhorto] | None = Field(
+        default=None,
+        description="Los trámites que el tribunal de ORIGEN despachó junto con el exhorto, o "
+        "sea lo que este tribunal tuvo a la vista. NO son actuaciones de esta causa y no corren "
+        "sus plazos. Viene en nulo cuando `causa_es_exhorto` no es verdadero, y ese campo dice "
+        "cuál de las dos ausencias es.",
     )
 
 
@@ -1342,6 +1567,13 @@ class Competencia(NamedTuple):
     #: default cierren la lista. El default es `None`, o sea una competencia nueva rechaza los
     #: exhortos hasta que alguien los mida, que es la dirección segura del olvido.
     exhortos: Panel | None = None
+    #: Cómo leer las piezas del exhorto, o `None` mientras no se haya medido.
+    #:
+    #: Declararlo es además declarar que está medido qué pone la cabecera en `Proc.` cuando la
+    #: causa es un exhorto: `causa_es_exhorto` se apoya en el mismo campo. Van juntos porque
+    #: leer el panel sin poder contrastarlo contra la cabecera devuelve la ambigüedad que
+    #: `causa_es_exhorto` existe para deshacer.
+    piezas_exhorto: Panel | None = None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -1394,6 +1626,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         litigantes=LITIGANTES_CIVIL,
         materias=None,
         exhortos=EXHORTOS_CIVIL,
+        piezas_exhorto=PIEZAS_EXHORTO_CIVIL,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,

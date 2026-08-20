@@ -434,8 +434,8 @@ def obtener_detalle_causa(
     multiplica las consultas contra la plataforma sin traer nada nuevo.
 
     NO es el expediente completo. El detalle publica más paneles de los que este servidor sabe
-    leer: los escritos y las piezas del exhorto todavía no están medidos, así que su ausencia
-    acá NO significa que la causa no los tenga.
+    leer: los escritos todavía no están medidos, así que su ausencia acá NO significa que la
+    causa no los tenga.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -444,6 +444,10 @@ def obtener_detalle_causa(
       nunca vienen así: una causa sin partes, o laboral sin materia, no existe, y ahí se
       levanta un error en vez de publicar una lista vacía.
     - Con elementos: lo que hay.
+
+    `piezas_exhorto` es el único que no se rige por eso: su panel sólo existe en las causas que
+    SON un exhorto, así que cuando viene en nulo hay que mirar `causa_es_exhorto` para saber si
+    es porque la causa no lo es o porque la competencia no tiene medida la pregunta.
 
     Cuidado con dos cosas al computar plazos. `fecha_diligencia` de la historia viene en nulo
     salvo en civil y cobranza, y las notificaciones incluyen las NO practicadas, que se

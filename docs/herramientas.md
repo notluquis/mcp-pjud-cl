@@ -265,12 +265,12 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 
 ## `obtener_detalle_causa`
 
-Historia, litigantes, notificaciones, liquidaciones, materias y exhortos, leídos de **una
-sola cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
+Historia, litigantes, notificaciones, liquidaciones, materias y los dos lados del exhorto,
+leídos de **una sola cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
 por defecto.
 
 **No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
-leer: los escritos y las piezas del exhorto todavía no están medidos, así que su ausencia acá
+leer: los escritos todavía no están medidos, así que su ausencia acá
 NO significa que la causa no los tenga.
 
 :::{important} Preferir ésta antes que preguntar por partes
@@ -293,6 +293,20 @@ Cada campo distingue tres estados, y los dos últimos significan cosas distintas
 
 ```{include} _generado/paneles.md
 ```
+
+Y un campo que no es un panel: `causa_es_exhorto`. Existe porque en `piezas_exhorto` el nulo
+podía significar dos cosas, que la competencia no publica el panel o que **esta causa** no es
+un exhorto, y meterlas en el mismo nulo borra la distinción que el resto del modelo protege.
+
+| `causa_es_exhorto` | Qué significa |
+|---|---|
+| nulo | La pregunta no está medida en esta competencia |
+| falso | La causa no es un exhorto, y por eso `piezas_exhorto` viene en nulo |
+| verdadero | Lo es, y `piezas_exhorto` trae lo que el tribunal de origen le mandó |
+
+Sale de la cabecera de la causa, no de que el panel esté presente: deducirlo de la presencia
+ataría la afirmación a que la plataforma no renombre un `id`, y el día que lo renombre la
+respuesta diría "esta causa no es un exhorto" en vez de "no pude leerlo".
 
 El mismo dato como grafo, útil para ver de un vistazo qué competencia sirve para qué pregunta.
 Se genera desde el código igual que la tabla, así que no puede quedar viejo:

@@ -16,6 +16,7 @@ from mcp_pjud.parser import (
     Competencia,
     EstructuraInesperada,
     actuaciones_receptor,
+    causa_es_exhorto,
     parse_cuadernos,
     parse_exhortos,
     parse_historia,
@@ -23,6 +24,7 @@ from mcp_pjud.parser import (
     parse_litigantes,
     parse_materias,
     parse_notificaciones,
+    parse_piezas_exhorto,
     parse_resultados,
 )
 
@@ -951,6 +953,141 @@ def test_los_exhortos_de_una_competencia_sin_medir_se_rechazan(competencia):
         parse_exhortos(
             (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), competencia
         )
+
+
+# -- piezas del exhorto ------------------------------------------------------------
+
+
+def test_las_piezas_traen_la_tramitación_que_el_tribunal_de_origen_despachó():
+    """E-468-2026 ES un exhorto, y sus seis piezas son lo que la causa de origen mandó junto
+    con él: lo que el tribunal exhortado tuvo a la vista.
+
+    El mapa es posicional y este panel es el único con una columna `Cuaderno` al medio, así
+    que reusar el de la Historia correría las nueve columnas y la fecha caería en la foja.
+    """
+    piezas = parse_piezas_exhorto(DETALLE, "civil")
+
+    assert piezas is not None
+    assert len(piezas) == 6
+
+    mandamiento = next(p for p in piezas if p.folio == "1")
+    assert mandamiento.cuaderno == "2", "el cuaderno es el de la causa de ORIGEN"
+    assert mandamiento.etapa == "Mandamiento"
+    assert mandamiento.tramite == "Actuación"
+    assert mandamiento.desc_tramite == "Mandamiento"
+    assert mandamiento.fecha_registro == date(2025, 12, 23)
+    assert mandamiento.foja == "1"
+    assert mandamiento.documento_ruta == "docuS.php"
+    assert mandamiento.documento_referencia == "referencia-ficticia-031"
+
+    # Una de las seis no trae documento: la celda es un icono `fa-ban`, sin formulario ni
+    # enlace. Decir que sí lo trae y no cuál es la mitad inútil del dato.
+    exhortese = next(p for p in piezas if p.desc_tramite == "Exhórtese")
+    assert exhortese.tiene_documento is False
+    assert exhortese.documento_referencia is None
+
+
+def test_una_causa_que_no_es_exhorto_devuelve_nulo_y_no_lista_vacía():
+    """Los dos silencios dicen cosas distintas.
+
+    Lista vacía significaría "esta causa es un exhorto y el tribunal de origen no le mandó
+    ninguna pieza". Lo que pasa en C-1156-2026 es otra cosa: la pregunta no aplica, porque no
+    es un exhorto sino la causa que despacha uno.
+    """
+    assert parse_piezas_exhorto(C1156_PRINCIPAL, "civil") is None
+    assert parse_piezas_exhorto(C1156_APREMIO, "civil") is None
+
+
+def test_si_la_causa_es_un_exhorto_lo_dice_la_cabecera():
+    """Los dos lados del exhorto se ven desde causas distintas: la que lo ordena trae
+    `exhortosCiv`, la que lo recibe trae `piezasExhortoCiv` y no trae el otro."""
+    assert causa_es_exhorto(DETALLE, "civil") is True
+    assert causa_es_exhorto(C1156_PRINCIPAL, "civil") is False
+
+
+def test_un_panel_renombrado_no_se_lee_como_que_la_causa_no_es_un_exhorto():
+    """El modo de falla que decide el contrato de este panel.
+
+    Deducir "no es un exhorto" de que `piezasExhortoCiv` no esté ata la afirmación a que la
+    plataforma no renombre un `id`. El día que lo renombre, la respuesta no diría "no pude
+    leerlo": diría que la causa no es un exhorto, y las seis piezas desaparecerían sin error.
+    La cabecera sigue diciendo `Proc.: Exhorto`, así que se levanta.
+    """
+    renombrado = DETALLE.replace('id="piezasExhortoCiv"', 'id="piezasExhortoCivil"')
+    assert renombrado != DETALLE, "la fixture no se pudo deformar: el test no probaría nada"
+
+    assert causa_es_exhorto(renombrado, "civil") is True
+    with pytest.raises(EstructuraInesperada, match="no trae el panel"):
+        parse_piezas_exhorto(renombrado, "civil")
+
+
+def test_el_panel_en_una_causa_que_la_cabecera_no_declara_exhorto_levanta():
+    """La contradicción no se resuelve en silencio porque las dos salidas pierden datos:
+    creerle a la cabecera tira piezas que están ahí, y creerle al panel inventa un exhorto
+    donde el sitio dice que no lo hay."""
+    injertado = C1156_PRINCIPAL.replace(
+        '<div class="tab-content"',
+        '<div id="piezasExhortoCiv"></div><div class="tab-content"',
+        1,
+    )
+    assert injertado != C1156_PRINCIPAL, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match="igual trae el panel"):
+        parse_piezas_exhorto(injertado, "civil")
+
+
+def test_una_cabecera_sin_el_procedimiento_levanta_en_vez_de_responder_que_no():
+    """El rótulo `Proc.` es la única fuente de la respuesta. Si no está, "no es un exhorto" no
+    es una lectura conservadora: es una afirmación que nadie midió."""
+    sin_rotulo = DETALLE.replace("<strong>Proc.:</strong>", "<strong>Procedimiento:</strong>")
+    assert sin_rotulo != DETALLE, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match=r"no publica 'Proc\.'"):
+        causa_es_exhorto(sin_rotulo, "civil")
+
+
+def test_la_errata_del_sitio_es_la_que_se_calza_y_no_la_ortografía_correcta():
+    """Los encabezados del panel dicen `Támite`, `Desc. Támite` y `Fec. Támite`, sin la erre.
+
+    Se calza con lo que la plataforma emite. Si algún día la corrigen, esto tiene que levantar
+    y no devolver vacío: es el mismo mapa posicional de nueve columnas, y una lista vacía se
+    leería como que el tribunal de origen no despachó nada.
+    """
+    corregido = DETALLE.replace("T&aacute;mite", "Tr&aacute;mite")
+    assert corregido != DETALLE, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match="támite"):
+        parse_piezas_exhorto(corregido, "civil")
+
+
+def test_la_fecha_doble_de_una_pieza_no_se_colapsa_en_una_sola():
+    """`Fec. Támite` es la misma columna que la `Fec. Trámite` de la Historia, con el nombre
+    mal escrito, así que puede traer las dos fechas.
+
+    Las seis piezas medidas traen una sola, y por eso el guardia va sobre una deformación:
+    quedarse con la primera es confundir el registro con la diligencia, que es el error que
+    este proyecto existe para no cometer.
+    """
+    con_doble = DETALLE.replace("<td>23/12/2025</td>", "<td>23/12/2025 (19/12/2025)</td>")
+    assert con_doble != DETALLE, "la fixture no se pudo deformar"
+
+    piezas = parse_piezas_exhorto(con_doble, "civil")
+    assert piezas is not None
+    mandamiento = next(p for p in piezas if p.folio == "1")
+    assert mandamiento.fecha_registro == date(2025, 12, 23)
+    assert mandamiento.fecha_diligencia == date(2025, 12, 19)
+
+
+@pytest.mark.parametrize("competencia", ["cobranza", "laboral", "suprema", "apelaciones"])
+def test_las_piezas_de_una_competencia_sin_medir_se_rechazan(competencia):
+    """Sólo civil está medida. Responder que la causa no es un exhorto sin haber medido qué
+    pone su cabecera descarta en silencio las piezas que el tribunal de origen despachó."""
+    cobranza = (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8")
+
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        parse_piezas_exhorto(cobranza, competencia)
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        causa_es_exhorto(cobranza, competencia)
 
 
 def test_el_estado_de_la_parte_laboral_no_se_pierde_por_venir_como_icono():

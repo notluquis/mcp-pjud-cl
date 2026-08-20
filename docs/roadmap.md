@@ -182,6 +182,32 @@ Lo que falta importa más de lo que parece: mientras no estén, la respuesta del
 el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un
 escrito como que la causa no lo tiene.
 
+#### Los dos lados del exhorto, medidos
+
+Parecía que `piezasExhortoCiv` faltaba a veces. No es eso: **el juego de paneles depende de si
+la causa ES un exhorto**, y las dos mitades se ven desde causas distintas.
+
+| Causa | `Proc.` | `exhortosCiv` | `piezasExhortoCiv` |
+|---|---|---|---|
+| C-1156-2026, 2º Juzgado Civil de Concepción (tribunal 162) | ordinaria | 1 fila | **sin panel** |
+| E-468-2026, 3º Juzgado Civil de Concepción (tribunal 163) | `Exhorto` | 0 filas | **6 filas** |
+
+Medido en vivo el 20 de agosto de 2026, cuatro peticiones. E-468-2026 es ella misma un
+exhorto: su cabecera dice `Proc.: Exhorto`, `Etapa: 0 Exhorto`, y nombra a `C-15411-2025` como
+causa de origen. Sus seis piezas son la tramitación que el tribunal de origen despachó junto
+con el exhorto (`Ordena despachar mandamiento`, `Exhórtese`, `Curso progresivo a los autos`),
+o sea **lo que el tribunal que recibe tuvo a la vista**.
+
+`exhortosCiv` se lee desde el origen y ya está cubierto. `piezasExhortoCiv` se lee desde el
+destino y no lo está, y mapearlo tiene una decisión de contrato antes que de código: hoy
+`None` significa "esta COMPETENCIA no publica el panel", y acá haría falta decir "esta CAUSA
+no es un exhorto", que no es lo mismo. Sobrecargar `None` con los dos sentidos es exactamente
+la distinción que este proyecto existe para no borrar.
+
+Lo que probablemente lo resuelva es la **cabecera de la causa**, que hoy no se lee de ninguna
+competencia: trae `Proc.`, `Etapa`, `Estado Proc.`, `Ubicación` y el tribunal, y de ahí sale si
+la causa es un exhorto sin tener que inferirlo de la presencia de un panel.
+
 **Una petición cada uno, con su intervalo.** Son modales que la plataforma carga aparte, y hay
 que contarlos en el tiempo total:
 

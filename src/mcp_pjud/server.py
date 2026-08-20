@@ -6,22 +6,34 @@ Corporación Administrativa del Poder Judicial.
 
 from __future__ import annotations
 
+import base64
 import os
 from typing import Annotated
+from urllib.parse import quote, urlencode
 
 from mcp.server import MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import (
+    BlobResourceContents,
+    ContentBlock,
+    EmbeddedResource,
+    ResourceLink,
+    TextContent,
+    ToolAnnotations,
+)
 from pydantic import Field
 
 from .client import (
     CON_TRIBUNAL,
     DESCRIPCION,
+    DOCUMENTOS,
     INTERVALO_MINIMO,
+    LIMITE_EMBEBIDO,
     MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
     VERSION,
     Corte,
+    Documento,
     PjudClient,
     Tribunal,
 )
@@ -95,6 +107,13 @@ de {miles(INDEXADAS_MEDIDAS)} indexadas.
 Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o estar
 fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
 como verificada si la búsqueda no la devolvió.
+
+Sobre documentos: `documento_referencia` CADUCA con la sesión en que se leyó, así que se
+usa en el momento y no se guarda para después. Si `obtener_documento` avisa que lo que
+llegó no es un PDF, casi siempre es eso: se vuelve a pedir el detalle de la causa.
+Un documento que llega declarado como escaneo NO se transcribe, ni con OCR propio: una
+transcripción automática de una resolución se ve idéntica a la resolución y no lo es. Se
+informa que es un escaneo y se entrega el archivo.
 
 Las consultas van a ritmo controlado: hasta {RAFAGA_MAXIMA} peticiones seguidas y después
 una cada {INTERVALO_MINIMO:.0f} segundos, que implementa la prohibición de sobrecargar la
@@ -463,6 +482,165 @@ def obtener_detalle_causa(
     """
     with _cliente() as c:
         return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)
+
+
+#: Las competencias cuyo detalle emite formularios de descarga, y qué rutas emite cada una.
+#: Se deriva de la tabla del cliente por la misma razón que `_CON_RECEPTOR` y `_CON_DETALLE`:
+#: ofrecerle al modelo una competencia que el cliente rechaza lo hace intentarla y atribuirle
+#: el fallo a la plataforma. `penal` no publica ninguna.
+_CON_DOCUMENTOS = sorted(DOCUMENTOS)
+_RUTAS_POR_COMPETENCIA = "; ".join(
+    f"{n} ({', '.join(sorted(DOCUMENTOS[n]))})" for n in _CON_DOCUMENTOS
+)
+
+CompetenciaConDocumentos = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_DOCUMENTOS)}. Son aquellas cuyo detalle publica "
+        "documentos descargables. La competencia elige bajo qué módulo del sitio cuelga la "
+        "ruta, así que tiene que ser la MISMA con que se leyó la actuación."
+    ),
+]
+RutaDeDocumento = Annotated[
+    str,
+    Field(
+        description="El campo `documento_ruta` de la actuación, tal cual. Sólo se aceptan las "
+        f"rutas que el detalle de cada competencia emite: {_RUTAS_POR_COMPETENCIA}. Una ruta "
+        "libre convertiría esto en un proxy contra cualquier página del sitio y por eso se "
+        "rechaza.\n\nCuando la actuación trae `documento_ruta` en nulo, el sitio abre ese "
+        "documento con un modal de JavaScript y a qué endpoint llama no está medido: ese "
+        "documento todavía no se puede pedir, y no hay ruta que inventarle."
+    ),
+]
+ReferenciaDeDocumento = Annotated[
+    str,
+    Field(
+        description="El campo `documento_referencia` de la actuación, tal cual. CADUCA: la "
+        "plataforma la emite al dibujar el detalle y no sobrevive a la sesión en que se leyó, "
+        "así que una guardada de antes no devuelve 'no existe', devuelve otra cosa. Si la "
+        "herramienta responde que lo recibido no es un PDF, volver a pedir el detalle de la "
+        "causa y usar la referencia nueva."
+    ),
+]
+
+
+def _uri_del_documento(competencia: str, ruta: str, referencia: str) -> str:
+    """La dirección con que el cliente puede volver a pedir este mismo documento.
+
+    Lleva los tres datos porque el servidor no guarda nada: leerla vuelve a consultar al Poder
+    Judicial, que es lo único compatible con no persistir documentos de terceros.
+    """
+    return "pjud://documento?" + urlencode(
+        {"competencia": competencia, "ruta": ruta, "referencia": referencia}, quote_via=quote
+    )
+
+
+def _resumen(doc: Documento, embebido: bool) -> str:
+    """Lo que se dice del documento en palabras, que es lo único que el modelo lee sin gastar
+    el contexto entero."""
+    if doc.capa_de_texto is None:
+        veredicto = (
+            f"NO se pudo abrir para saber si trae texto ({doc.problema_al_leer}). Eso NO "
+            "significa que sea un escaneo: significa que no se sabe."
+        )
+    elif doc.capa_de_texto:
+        veredicto = "Trae capa de texto, así que es un PDF digital y no una imagen."
+    else:
+        veredicto = (
+            "NO trae capa de texto: es un ESCANEO, o sea una imagen de un documento. Este "
+            "servidor no le pasa OCR y no va a hacerlo: una transcripción automática de una "
+            "resolución se ve idéntica a la resolución y no lo es. Para leerlo hay que abrirlo."
+        )
+    paginas = f"{doc.paginas} página(s)" if doc.paginas is not None else "páginas desconocidas"
+    entrega = (
+        "Viaja completo en esta respuesta."
+        if embebido
+        else "Viaja como enlace y NO como contenido, porque pasa de "
+        f"{LIMITE_EMBEBIDO} bytes. Leerlo con `resources/read` cuesta otra consulta al Poder "
+        "Judicial, así que conviene sólo si hace falta el archivo entero."
+    )
+    return (
+        f"Documento de una causa de {doc.competencia}, entregado por {doc.ruta}. "
+        f"{doc.tamano_bytes} bytes, {doc.tipo_mime}, {paginas}. {veredicto} {entrega}\n\n"
+        "Es un documento de la plataforma, no información oficial validada por este servidor."
+    )
+
+
+@mcp.resource(
+    "pjud://documento{?competencia,ruta,referencia}",
+    name="documento-de-causa",
+    title="Documento de una causa",
+    description="Vuelve a pedirle el documento al Poder Judicial y lo entrega. No hay copia "
+    "guardada: este servidor no persiste documentos de terceros, así que cada lectura es una "
+    "consulta nueva, con su ritmo. La referencia caduca con la sesión en que se leyó.",
+    mime_type="application/pdf",
+)
+def documento_de_causa(competencia: str = "civil", ruta: str = "", referencia: str = "") -> bytes:
+    """El otro extremo del `ResourceLink` que devuelve `obtener_documento`.
+
+    Los tres van con valor por defecto porque son variables de consulta de la plantilla, y el
+    SDK exige que se puedan omitir: un cliente puede pedir la dirección sin alguna. Cuando eso
+    pasa, el cliente rechaza la llamada diciendo qué falta, que es mejor que un valor supuesto.
+    """
+    with _cliente() as c:
+        return c.documento(ruta, referencia, competencia).contenido
+
+
+@mcp.tool(
+    title="Documento de una actuación",
+    annotations=SOLO_LECTURA,
+    # Devuelve bloques de contenido del protocolo y no un modelo de datos: un esquema de
+    # salida armado sobre la unión `ContentBlock` describiría la forma del sobre y no la del
+    # documento, que es lo que a nadie le sirve validar.
+    structured_output=False,
+)
+def obtener_documento(
+    documento_ruta: RutaDeDocumento,
+    documento_referencia: ReferenciaDeDocumento,
+    competencia: CompetenciaConDocumentos = "civil",
+) -> list[ContentBlock]:
+    """El archivo de una actuación: la resolución, el escrito, el certificado o el expediente.
+
+    Los dos primeros parámetros los entrega cada actuación de `obtener_detalle_causa` y de
+    `obtener_actuaciones_receptor`, en `documento_ruta` y `documento_referencia`. No hace falta
+    el rol: la referencia ya identifica el documento.
+
+    Un documento chico viaja completo en la respuesta. Uno grande viaja como ENLACE, con su
+    tamaño, y se lee con `resources/read` sólo si de verdad hace falta: el ebook es el
+    expediente entero, y meterlo en la respuesta gasta el contexto de la conversación en algo
+    que casi nunca se necesita leer completo.
+
+    Si el PDF resulta ser un ESCANEO se dice y se entrega igual. No se le pasa OCR: una
+    transcripción automática de una resolución se ve idéntica a la resolución y no lo es, y
+    eso es peor que no entregar nada, porque no se nota.
+
+    Y si lo que llegó no es un PDF, la herramienta falla en vez de entregarlo. Casi siempre
+    significa que `documento_referencia` caducó: se vuelve a pedir el detalle de la causa y se
+    usa la referencia nueva.
+    """
+    with _cliente() as c:
+        doc = c.documento(documento_ruta, documento_referencia, competencia)
+
+    uri = _uri_del_documento(doc.competencia, doc.ruta, documento_referencia)
+    embebido = doc.tamano_bytes <= LIMITE_EMBEBIDO
+    if embebido:
+        entrega: ContentBlock = EmbeddedResource(
+            resource=BlobResourceContents(
+                uri=uri,
+                mime_type=doc.tipo_mime,
+                blob=base64.b64encode(doc.contenido).decode("ascii"),
+            )
+        )
+    else:
+        entrega = ResourceLink(
+            uri=uri,
+            name="documento-de-causa",
+            title=f"Documento de {doc.competencia} ({doc.ruta})",
+            description=_resumen(doc, embebido=False),
+            mime_type=doc.tipo_mime,
+            size=doc.tamano_bytes,
+        )
+    return [TextContent(type="text", text=_resumen(doc, embebido)), entrega]
 
 
 @mcp.tool(

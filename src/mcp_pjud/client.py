@@ -18,9 +18,12 @@ from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import metadata as _metadata_instalada
 from importlib.metadata import version as _version_instalada
+from io import BytesIO
 from typing import TypeVar
 
 import httpx
+from pydantic import BaseModel, Field
+from pypdf import PdfReader
 
 from .parser import (
     COMPETENCIAS,
@@ -236,6 +239,86 @@ CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tri
 CORTES_MEDIDAS = 17
 
 
+#: Con qué parámetro se pide cada documento, por competencia y por ruta.
+#:
+#: Sale de las respuestas guardadas y no de una lista escrita de memoria: cada formulario del
+#: detalle trae su `action` y su único campo oculto, y `tests/test_client.py` vuelve a
+#: derivarla de las fixtures para que el día que la plataforma renombre un parámetro esto se
+#: entere en vez de pedir el documento con un nombre muerto y recibir una página de error.
+#:
+#: La tabla es además la LISTA BLANCA de rutas, y ésa es su otra mitad. `documento_ruta` llega
+#: desde el modelo, o sea desde texto que este servidor no controla: interpolarla sin
+#: verificarla convertiría la herramienta en un proxy capaz de pedir cualquier `.php` del
+#: sitio, que es otra cosa que entregar un documento de una causa.
+#:
+#: Va por competencia y no por ruta a secas porque `docCertificadoEscrito.php` existe en tres
+#: módulos, y una tabla plana dejaría pedir el de civil bajo el prefijo de cobranza.
+#:
+#: `penal` no aparece: su detalle no emite ningún formulario de documentos.
+DOCUMENTOS: dict[str, dict[str, str]] = {
+    "civil": {
+        "docu.php": "valorEncTxtDmda",
+        "docuN.php": "dtaDoc",
+        "docuS.php": "dtaDoc",
+        "newebookcivil.php": "dtaEbook",
+        "docCertificadoDemanda.php": "dtaCert",
+        "docCertificadoEscrito.php": "dtaCert",
+    },
+    "cobranza": {
+        "docuCobranza.php": "dtaDoc",
+        "docDemandaCobranza.php": "valorDocDmda",
+        "docLiquidacionCobranza.php": "valorLiq",
+        "docOficioCobranza.php": "dtaDocOf",
+        "newebookcobranza.php": "dtaEbook",
+        "docCertificadoEscrito.php": "dtaCert",
+    },
+    "laboral": {
+        "docReformadoLaboral.php": "valorRef",
+        "docReformadoEscritoLaboral.php": "valorRefEsc",
+        "newebooklaboral.php": "dtaEbook",
+        "docCertificadoDemanda.php": "dtaCert",
+        "docCertificadoEscrito.php": "dtaCert",
+    },
+    "apelaciones": {
+        "docCausaApelaciones.php": "valorDoc",
+        "newebookapelaciones.php": "dtaEbook",
+    },
+    "suprema": {
+        "docCausaSuprema.php": "valorFile",
+        "newebooksuprema.php": "dtaEbook",
+    },
+}
+
+#: Cuántos caracteres puede gastar UNA respuesta de este servidor, y de dónde sale el número.
+#:
+#: No es una medición de PDF: este proyecto no ha pedido ninguno todavía, así que inventarle
+#: un tamaño típico sería justo lo que las reglas prohíben. Es una DECISIÓN, y su magnitud
+#: sale del precedente que el propio proyecto ya fijó por el mismo motivo: `JurisClient.texto`
+#: se separó de la búsqueda porque una sentencia de trece páginas son unos veinticinco mil
+#: caracteres, y devolver diez con cada búsqueda serían doscientos cincuenta mil. Ése es el
+#: techo que este servidor ya acepta gastar de una vez en la conversación de quien consulta.
+CARACTERES_DE_UNA_RESPUESTA = 25_000
+
+#: Hasta qué tamaño un documento viaja DENTRO de la respuesta, en bytes.
+#:
+#: Lo único exacto acá es la aritmética: base64 son cuatro caracteres por cada tres bytes, así
+#: que un documento de N bytes ocupa 4N/3 caracteres en la respuesta. El límite es el mayor N
+#: que cabe en `CARACTERES_DE_UNA_RESPUESTA`.
+#:
+#: Deja el enlace como el caso normal y el contenido embebido como la excepción, y eso es
+#: deliberado. Equivocarse hacia el enlace cuesta una lectura más (`resources/read`, que el
+#: cliente hace sólo si de verdad lo necesita); equivocarse hacia el contenido gasta contexto
+#: del abogado y eso no se devuelve.
+LIMITE_EMBEBIDO = CARACTERES_DE_UNA_RESPUESTA * 3 // 4
+
+#: Los cinco primeros bytes de todo PDF. Los seis endpoints de documentos que la plataforma
+#: emite marcan sus enlaces con el icono de PDF, así que cualquier otra cosa que llegue por
+#: ahí no es el documento: es una página de error, un aviso o una sesión vencida. Entregarla
+#: en base64 como si fuera la resolución es el falso positivo que la regla 4 existe para
+#: evitar, y encima uno que nadie nota, porque el cliente ve un archivo y no su contenido.
+_MAGIA_PDF = b"%PDF-"
+
+
 #: Lo que una lectura del detalle devuelve por fila. `_recorrer_cuadernos` sirve a dos
 #: (actuaciones y notificaciones) y sin esto quedaba anotado con una sola: el chequeador de
 #: tipos avisó al agregar la segunda, que es para lo que está.
@@ -264,6 +347,68 @@ class PjudBloqueado(Exception):
     avisar: perder el acceso a la consulta mientras corren plazos en un litigio activo
     es peor que no obtener el dato.
     """
+
+
+class Documento(BaseModel):
+    """Un documento de la causa, con lo poco que se puede decir de él sin interpretarlo.
+
+    El contenido viaja aparte, en `contenido`, y no se serializa: quien decide si el archivo
+    entero cabe en la respuesta o si va como enlace es `server.py`, que es donde se conoce el
+    presupuesto de la conversación.
+    """
+
+    competencia: str
+    ruta: str = Field(description="Qué endpoint de la plataforma entregó el archivo.")
+    tipo_mime: str = Field(description="El tipo declarado por la plataforma en la respuesta.")
+    tamano_bytes: int
+    paginas: int | None = Field(
+        default=None, description="Cuántas páginas trae. NULO si el archivo no se pudo abrir."
+    )
+    capa_de_texto: bool | None = Field(
+        default=None,
+        description="Si del PDF se puede extraer texto. FALSO significa que es un escaneo: "
+        "una imagen de un documento, sin texto detrás.\n\n"
+        "NULO no es falso: significa que el archivo no se pudo abrir (viene cifrado, truncado "
+        "o mal formado) y por lo tanto NO se sabe. Informarlo como escaneo sería afirmar algo "
+        "que no se midió.",
+    )
+    problema_al_leer: str | None = Field(
+        default=None,
+        description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. El "
+        "documento se entrega igual: no poder describirlo no es no tenerlo.",
+    )
+    #: Los bytes tal cual llegaron. Se excluyen de la serialización porque este modelo se
+    #: publica como metadato dentro de la respuesta, y un PDF en base64 ahí adentro es
+    #: exactamente el gasto de contexto que `LIMITE_EMBEBIDO` existe para acotar.
+    contenido: bytes = Field(default=b"", exclude=True, repr=False)
+
+
+def _describir_pdf(contenido: bytes) -> tuple[int | None, bool | None, str | None]:
+    """Cuántas páginas trae y si hay texto que extraer. Nunca hace OCR.
+
+    Detectar el escaneo es barato y transcribirlo es lo que no corresponde: una transcripción
+    automática de una resolución se ve idéntica a la resolución y no lo es. Es peor que la
+    lista vacía de la regla 4, porque la lista vacía se nota y un texto plausible con una
+    palabra cambiada no.
+
+    Corta en la primera página con texto: a un PDF con capa de texto le basta la primera, y a
+    uno escaneado hay que recorrerlo entero para poder afirmar que no la tiene en ninguna.
+
+    El `except` es ancho a propósito, y la razón es cuál es la respuesta segura. `pypdf`
+    levanta media docena de excepciones distintas ante un archivo cifrado, truncado o mal
+    formado, y acotar el catch dejaría escapar la que no se previó. Lo que importa es que
+    ninguna termine en `False`: "no pude abrirlo" y "es un escaneo" son cosas distintas, y
+    confundirlas hace que el servidor afirme sobre un documento algo que no midió.
+    """
+    try:
+        lector = PdfReader(BytesIO(contenido))
+        paginas = len(lector.pages)
+        for pagina in lector.pages:
+            if pagina.extract_text().strip():
+                return paginas, True, None
+        return paginas, False, None
+    except Exception as e:
+        return None, None, f"{type(e).__name__}: {e}"
 
 
 class Transporte:
@@ -872,6 +1017,85 @@ class PjudClient(Transporte):
         return self._ajax(
             f"{modulo}/modal/causa{modulo.capitalize()}.php",
             {"dtaCausa": referencia, "token": self._token or ""},
+        )
+
+    def documento(self, ruta: str, referencia: str, competencia: str = "civil") -> Documento:
+        """Pide UN documento de la causa y lo devuelve tal cual llegó.
+
+        Las dos primeras las entrega cada actuación en `documento_ruta` y
+        `documento_referencia`, y hacen falta las dos: la ruta dice a qué endpoint se pide y
+        con qué parámetro, y la referencia dice cuál documento.
+
+        No hace falta el rol. El endpoint no direcciona por causa: la referencia ya identifica
+        el documento, y la competencia sólo elige bajo qué módulo del sitio cuelga la ruta.
+        Buscar la causa antes serían dos peticiones más contra la plataforma que no verifican
+        nada, porque la referencia se emite al dibujar la página y no es la identidad estable
+        del documento: la misma pieza llega con una distinta en cada cuaderno.
+
+        Y de ahí lo que hay que tener presente al usarla: la referencia vale para la sesión en
+        que se leyó y caduca. Una guardada de ayer no devuelve "no existe", devuelve otra cosa,
+        y por eso este método verifica que lo que llegó SEA un PDF antes de entregarlo.
+        """
+        modulo = self._modulo(competencia)
+        rutas = DOCUMENTOS.get(modulo)
+        if not rutas:
+            raise ValueError(
+                f"En {competencia!r} no está medida ninguna ruta de documentos: su detalle no "
+                "emite formularios de descarga en la respuesta que este proyecto guardó. Se "
+                "rechaza antes de consultar en vez de armar una ruta por analogía con otra "
+                "competencia, que devolvería una página de error indistinguible de un archivo."
+            )
+        parametro = rutas.get(ruta)
+        if parametro is None:
+            raise ValueError(
+                f"La ruta {ruta!r} no es una de las que el detalle de {competencia!r} emite: "
+                f"{', '.join(sorted(rutas))}. Se rechaza en vez de pedirla igual, porque con "
+                "una ruta libre esta herramienta deja de entregar documentos de una causa y "
+                "pasa a ser un proxy contra cualquier página del sitio.\n\n"
+                "Si viene de una actuación, usar su `documento_ruta` tal cual. Cuando esa "
+                "viene en nulo, la fila abre el documento con un modal de JavaScript y a qué "
+                "endpoint llama no está medido: ahí el documento todavía no se puede pedir."
+            )
+        if not referencia:
+            raise ValueError(
+                "Falta `documento_referencia`. Sin ella la plataforma no sabe qué documento "
+                "se pide, y la respuesta a una consulta sin referencia no es el archivo."
+            )
+
+        r = self._req(
+            "GET",
+            f"{BASE}/{self._prefijo()}/{modulo}/documentos/{ruta}",
+            params={parametro: referencia},
+            headers={"Referer": f"{BASE}/consultaUnificada.php"},
+        )
+        contenido = r.content
+        if not contenido.startswith(_MAGIA_PDF):
+            # El aviso, cuando la respuesta es uno, es lo único que distingue "la referencia
+            # caducó" de "la plataforma cambió". Sin él queda un error que no dice qué hacer.
+            aviso = leer_aviso(r.text[:8000])
+            declarado = r.headers.get("content-type") or "tipo no declarado"
+            raise EstructuraInesperada(
+                f"La ruta {ruta!r} no devolvió un PDF sino {len(contenido)} bytes de "
+                f"{declarado!r}"
+                + (f", con el aviso {aviso!r}. " if aviso else ". ")
+                + "Los seis endpoints de documentos entregan PDF, así que esto no es el "
+                "archivo. Lo más probable es que `documento_referencia` haya caducado: se "
+                "emite al dibujar el detalle y no sobrevive a la sesión, así que hay que "
+                "volver a pedir el detalle de la causa y usar la referencia nueva.\n\n"
+                "No se entrega igual. Un archivo que en realidad es una página de error se "
+                "ve como un documento y no lo es, y quien lo reciba no tiene cómo notarlo."
+            )
+
+        paginas, capa, problema = _describir_pdf(contenido)
+        return Documento(
+            competencia=modulo,
+            ruta=ruta,
+            tipo_mime=(r.headers.get("content-type") or "application/pdf").split(";")[0].strip(),
+            tamano_bytes=len(contenido),
+            paginas=paginas,
+            capa_de_texto=capa,
+            problema_al_leer=problema,
+            contenido=contenido,
         )
 
     def actuaciones_receptor(

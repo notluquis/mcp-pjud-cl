@@ -352,6 +352,53 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 ```{include} _generado/obtener_detalle_causa.md
 ```
 
+## `obtener_documento`
+
+El archivo de una actuación: la resolución, el escrito, el certificado o el expediente entero.
+
+| Parámetro | Qué es |
+|---|---|
+| `documento_ruta` | Lo entrega cada actuación. Sólo se aceptan las rutas que la plataforma emite |
+| `documento_referencia` | Lo entrega cada actuación. Identifica el documento |
+| `competencia` | Bajo qué módulo cuelga la ruta. `docCertificadoEscrito.php` existe en tres |
+
+No pide el rol: la referencia ya identifica el documento, y buscar la causa antes serían dos
+peticiones que no verifican nada.
+
+:::{warning} La referencia caduca con la sesión
+Se emite al dibujar la página, no identifica al documento para siempre. Medido: el mismo
+exhorto llega con una referencia distinta en cada cuaderno. Guardarla para usarla mañana
+devuelve cualquier cosa.
+:::
+
+### Chico viaja entero, grande viaja como enlace
+
+Un documento bajo el umbral viene completo en la respuesta. Uno grande viene como **enlace**,
+con su tamaño, y se lee con `resources/read` **sólo si de verdad hace falta**: el ebook es el
+expediente entero, y meterlo en la respuesta gasta el contexto de la conversación en algo que
+casi nunca se lee completo.
+
+El umbral sale de la aritmética de base64, que son cuatro caracteres por cada tres bytes, con
+el techo de una respuesta de texto. Deja el enlace como caso normal y lo embebido como
+excepción, que es el lado barato de equivocarse.
+
+### Un escaneo se declara y NO se transcribe
+
+Si el PDF no trae capa de texto es una imagen, y eso se dice. **No se le pasa OCR**: una
+transcripción automática de una resolución se ve idéntica a la resolución y no lo es, y eso es
+peor que una lista vacía, porque la lista vacía se nota.
+
+Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
+texto no es lo mismo que saber que no tiene.
+
+### El recurso `pjud://documento`
+
+Es el otro extremo del enlace. Leerlo **vuelve a consultar** al Poder Judicial, con su
+intervalo: no hay copia guardada de nada, que es la regla 5 del proyecto.
+
+```{include} _generado/obtener_documento.md
+```
+
 ## `buscar_jurisprudencia`
 
 Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para

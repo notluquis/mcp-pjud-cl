@@ -31,19 +31,31 @@ cubren:
 """
 
 import asyncio
+import base64
 import re
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import unquote
 
 import httpx
 import jsonschema
 import pytest
 from mcp.client import Client
-from mcp.types import CallToolResult, Tool
+from mcp.types import (
+    BlobResourceContents,
+    CallToolResult,
+    EmbeddedResource,
+    ResourceLink,
+    Tool,
+)
 
 from mcp_pjud import server as servidor
-from mcp_pjud.client import PjudClient
+from mcp_pjud.client import LIMITE_EMBEBIDO, PjudClient
 from mcp_pjud.parser import SIN_RESULTADOS, EstructuraInesperada, parse_resultados
+
+# Los PDF de prueba y su constructor viven en test_client.py, que es donde se prueba lo que
+# hacen. Acá interesa otra cosa: en qué forma cruzan el protocolo.
+from .test_client import PDF_CON_TEXTO, PDF_ESCANEADO, _pdf
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -368,4 +380,273 @@ def test_las_actuaciones_de_receptor_no_llegan_como_lista_vacia(
     )
     assert "historiaCiv" in texto, (
         f"el modelo tiene que ver QUÉ no se pudo leer, y el mensaje no lo dice: {texto}"
+    )
+
+
+# -- documentos: qué forma cruza el protocolo ------------------------------------
+#
+# Acá lo que se mide no es el parseo sino el SOBRE. Un documento puede viajar de dos maneras
+# que la especificación distingue, y elegir mal no produce un error: produce una respuesta
+# correcta que gasta el contexto de la conversación en un expediente que nadie pidió leer.
+
+
+def _documento(
+    contenido: bytes | None = None,
+    *,
+    texto: str | None = None,
+    tipo: str = "application/pdf",
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Doble del sitio para el camino de documentos: la sesión y el endpoint del archivo."""
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        url = str(peticion.url)
+        if url.endswith("sesion-consultaunificada.php"):
+            return httpx.Response(200, text="")
+        if "consultaUnificada.php" in url and "/documentos/" not in url:
+            return httpx.Response(200, text=PORTADA)
+        if "/civil/documentos/docuN.php" in url:
+            if texto is not None:
+                return httpx.Response(200, text=texto, headers={"content-type": tipo})
+            return httpx.Response(200, content=contenido, headers={"content-type": tipo})
+        raise AssertionError(f"petición no prevista por el doble: {peticion.method} {url}")
+
+    return responder
+
+
+def _con_doble(
+    monkeypatch: pytest.MonkeyPatch, responder: Callable[[httpx.Request], httpx.Response]
+) -> None:
+    monkeypatch.setattr(servidor, "_CONTACTO", "test@example.cl")
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def fabricar(contacto: str) -> PjudClient:
+        cliente = PjudClient(contacto)
+        cliente._http = httpx.Client(transport=httpx.MockTransport(responder))
+        return cliente
+
+    monkeypatch.setattr(servidor, "PjudClient", fabricar)
+
+
+#: Con la forma que tienen de verdad. La plataforma emite estas referencias como JWT, y eso
+#: importa acá y no en el cliente: el enlace que devuelve la herramienta las lleva dentro de
+#: una dirección, así que tienen que sobrevivir ida y vuelta por la plantilla del recurso. Con
+#: un `ref-123` de fantasía, que no trae un solo carácter que haya que codificar, este camino
+#: quedaba verde sin haberse ejercitado nunca.
+REFERENCIA = "eyJhbGciOiJIUzI1NiJ9.eyJkb2MiOiIxMi0zNCJ9.abc-_XYZ123"
+
+
+def _pedir_documento(referencia: str = REFERENCIA) -> CallToolResult:
+    async def ida_y_vuelta() -> CallToolResult:
+        async with Client(servidor.mcp) as cliente:
+            return await cliente.call_tool(
+                "obtener_documento",
+                {
+                    "documento_ruta": "docuN.php",
+                    "documento_referencia": referencia,
+                    "competencia": "civil",
+                },
+            )
+
+    return asyncio.run(ida_y_vuelta())
+
+
+def test_un_documento_chico_viaja_completo_en_la_respuesta(monkeypatch: pytest.MonkeyPatch):
+    """El caso en que embeber vale la pena: una resolución de una página que el modelo tiene
+    que leer ahora, no un puntero que exige otra vuelta."""
+    _con_doble(monkeypatch, _documento(PDF_CON_TEXTO))
+
+    resultado = _pedir_documento()
+
+    assert not resultado.is_error, f"la llamada con datos buenos falló: {_texto(resultado)}"
+    embebidos = [b for b in resultado.content if isinstance(b, EmbeddedResource)]
+    assert len(embebidos) == 1, (
+        f"un documento de {len(PDF_CON_TEXTO)} bytes tiene que viajar embebido, y llegaron "
+        f"{[b.type for b in resultado.content]}"
+    )
+    recurso = embebidos[0].resource
+    assert isinstance(recurso, BlobResourceContents), (
+        "un PDF es binario: va como blob y no como texto, que sería una versión de él"
+    )
+    assert base64.b64decode(recurso.blob) == PDF_CON_TEXTO, "el archivo llegó alterado"
+
+
+def test_un_documento_largo_viaja_como_enlace_y_no_como_contenido(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """El ebook es el expediente entero, y meterlo en la respuesta gasta el contexto del
+    abogado en algo que casi nunca hace falta leer completo.
+
+    `ResourceLink` trae el tamaño, así que quien lo recibe puede decidir ANTES de gastarlo.
+    Eso es lo que lo separa de mandar el PDF y esperar que a nadie le explote la ventana.
+    """
+    grande = _pdf(b"BT /F1 12 Tf 20 100 Td (X) Tj ET\n" * 2000)
+    assert len(grande) > LIMITE_EMBEBIDO, "el caso de prueba tiene que pasar el umbral"
+    _con_doble(monkeypatch, _documento(grande))
+
+    resultado = _pedir_documento()
+
+    assert not resultado.is_error, f"la llamada con datos buenos falló: {_texto(resultado)}"
+    enlaces = [b for b in resultado.content if isinstance(b, ResourceLink)]
+    assert len(enlaces) == 1, (
+        f"un documento de {len(grande)} bytes tiene que viajar como enlace, y llegaron "
+        f"{[b.type for b in resultado.content]}"
+    )
+    assert enlaces[0].size == len(grande), (
+        "el enlace sin tamaño no sirve para decidir: es lo único que el cliente tiene para "
+        f"saber qué le va a costar leerlo, y llegó {enlaces[0].size!r}"
+    )
+    assert not [b for b in resultado.content if isinstance(b, EmbeddedResource)], (
+        "el enlace viajó Y el contenido también, o sea el umbral no ahorró nada"
+    )
+    # Y que el base64 no se haya colado por ningún otro lado del sobre, que es la forma en que
+    # este ahorro se pierde sin que ninguna aserción de arriba se entere.
+    entero = resultado.model_dump_json()
+    assert base64.b64encode(grande[:600]).decode() not in entero, (
+        "el archivo viajó igual, en algún otro bloque de la respuesta"
+    )
+
+
+def test_el_enlace_se_puede_leer_y_vuelve_a_consultar_al_poder_judicial(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Un `ResourceLink` que nadie puede leer es un puntero a la nada.
+
+    Y se lee volviendo a consultar, no de una copia: este servidor no persiste documentos de
+    terceros. El guardia mira las dos cosas, porque una implementación que guardara el archivo
+    devolvería exactamente el mismo blob y pasaría la primera mitad.
+    """
+    grande = _pdf(b"BT /F1 12 Tf 20 100 Td (X) Tj ET\n" * 2000)
+    peticiones: list[str] = []
+    base = _documento(grande)
+
+    def contando(peticion: httpx.Request) -> httpx.Response:
+        peticiones.append(str(peticion.url))
+        return base(peticion)
+
+    _con_doble(monkeypatch, contando)
+
+    resultado = _pedir_documento()
+    enlace = next(b for b in resultado.content if isinstance(b, ResourceLink))
+    del peticiones[:]
+
+    async def leer():
+        async with Client(servidor.mcp) as cliente:
+            return await cliente.read_resource(enlace.uri)
+
+    leido = asyncio.run(leer())
+
+    assert leido.contents, f"leer el enlace no devolvió nada: {leido}"
+    contenido = leido.contents[0]
+    assert isinstance(contenido, BlobResourceContents), f"el PDF llegó como {type(contenido)}"
+    assert base64.b64decode(contenido.blob) == grande
+    pedida = [u for u in peticiones if "/documentos/docuN.php" in u]
+    assert pedida, (
+        "leer el enlace no volvió a consultar al Poder Judicial, así que el documento quedó "
+        f"guardado en alguna parte: {peticiones}"
+    )
+    assert REFERENCIA in unquote(pedida[0]), (
+        f"la referencia no sobrevivió el viaje por la dirección del enlace: {pedida[0]}"
+    )
+
+
+@pytest.mark.parametrize(
+    "referencia",
+    [
+        REFERENCIA,
+        # Lo que la plataforma emite hoy son JWT, y con ese alfabeto no hay nada que
+        # codificar: la dirección se arma igual de bien concatenando a mano. La referencia es
+        # OPACA, o sea el proyecto no tiene contrato sobre su formato, así que el día que
+        # traiga un `&` la concatenación parte la dirección en dos parámetros y el documento
+        # que se pide es otro. Este caso es lo que hace que codificarla no sea decoración.
+        "a&referencia=otra&b=1",
+        "con espacio y signo+igual=",
+        "#fragmento/con/barras?y=cola",
+    ],
+)
+def test_la_referencia_sobrevive_el_viaje_por_la_direccion_del_enlace(referencia: str):
+    """La plantilla del recurso es la que tiene que volver a sacar los tres datos intactos.
+
+    Se mide contra el mismo parser de plantillas que usa el servidor al atender la lectura, y
+    no contra una expectativa escrita a mano: lo que importa es qué extrae ÉL, no qué creemos
+    que dice la RFC.
+    """
+    from mcp.shared.uri_template import UriTemplate
+
+    uri = servidor._uri_del_documento("civil", "docuN.php", referencia)
+    extraidos = UriTemplate.parse("pjud://documento{?competencia,ruta,referencia}").match(uri)
+
+    assert extraidos == {
+        "competencia": "civil",
+        "ruta": "docuN.php",
+        "referencia": referencia,
+    }, f"la dirección {uri!r} no vuelve a dar los mismos tres datos: {extraidos}"
+
+
+def test_lo_que_no_es_un_pdf_llega_como_error_y_no_como_documento(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """La referencia caduca con la sesión, y una vencida responde HTTP 200 con una página.
+
+    Si eso llegara al modelo como un archivo, el abogado recibiría algo que se ve como la
+    resolución y es un aviso de sesión expirada. Es el falso positivo de la regla 4 con otra
+    cara: no una lista vacía, un documento que no lo es.
+    """
+    aviso = '<html><script>swal("Aviso", "La sesion ha expirado");</script></html>'
+    _con_doble(monkeypatch, _documento(texto=aviso, tipo="text/html"))
+
+    resultado = _pedir_documento("ref-vencida")
+
+    texto = _texto(resultado)
+    assert resultado.is_error, f"una página de error llegó como documento: {resultado.content}"
+    assert not [b for b in resultado.content if isinstance(b, EmbeddedResource | ResourceLink)], (
+        "vino marcado como error y con el archivo adentro igual"
+    )
+    assert "petición no prevista" not in texto, (
+        f"el error salió del doble y no del cliente: {texto}"
+    )
+    assert "La sesion ha expirado" in texto, (
+        f"el modelo tiene que ver el aviso para saber que hay que repetir el detalle: {texto}"
+    )
+
+
+def test_un_pdf_ilegible_no_se_describe_como_escaneo(monkeypatch: pytest.MonkeyPatch):
+    """El mismo falso positivo que el cliente cuida, en el lugar donde el modelo lo lee.
+
+    Lo que llega al modelo es el bloque de texto, no el campo: si el resumen dijera "es un
+    escaneo" de un archivo cifrado o truncado, el abogado recibiría una afirmación sobre el
+    documento que este servidor nunca midió, y no tendría cómo notarlo.
+    """
+    truncado = PDF_CON_TEXTO[:120]
+    _con_doble(monkeypatch, _documento(truncado))
+
+    resultado = _pedir_documento()
+
+    texto = _texto(resultado)
+    assert not resultado.is_error, f"no poder describirlo no es no tenerlo: {texto}"
+    assert "ESCANEO" not in texto, (
+        f"un archivo que no se pudo abrir se informó como escaneo: {texto}"
+    )
+    assert "no se sabe" in texto, f"el resumen tiene que decir que NO se sabe, no callarlo: {texto}"
+    assert [b for b in resultado.content if isinstance(b, EmbeddedResource)], (
+        "el documento se entrega igual: no poder describirlo no es no tenerlo"
+    )
+
+
+def test_un_escaneo_se_declara_en_palabras_y_no_se_transcribe(monkeypatch: pytest.MonkeyPatch):
+    """Lo que el modelo lee del sobre es el bloque de texto, así que el veredicto tiene que
+    estar ahí y no sólo en un campo.
+
+    Y tiene que decir que NO se le pasa OCR: sin eso, el modelo con una herramienta de OCR a
+    mano lo transcribe por su cuenta y presenta el resultado como el texto de la resolución.
+    """
+    _con_doble(monkeypatch, _documento(PDF_ESCANEADO))
+
+    resultado = _pedir_documento()
+
+    texto = _texto(resultado)
+    assert not resultado.is_error, f"un escaneo se entrega igual: {texto}"
+    assert "ESCANEO" in texto, f"el veredicto no llegó en palabras: {texto}"
+    assert "OCR" in texto, f"el sobre no dice que no se transcribe: {texto}"
+    assert [b for b in resultado.content if isinstance(b, EmbeddedResource)], (
+        "declarar que es un escaneo no es negarse a entregarlo"
     )

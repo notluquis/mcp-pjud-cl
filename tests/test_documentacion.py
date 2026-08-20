@@ -1046,6 +1046,51 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
         )
 
 
+def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
+    """Las dos se escribían a mano copiando lo que dice `parser.COMPETENCIAS`.
+
+    La de paneles ya había quedado vieja: decía "las mismas cinco" y "sólo cobranza", frases
+    que hay que reescribir cada vez que una competencia gana un panel y que nadie reescribe.
+    Ahora las emite `docs/conf.py` al construir, igual que los esquemas.
+
+    El guardia no compara la prosa contra el código, que es lo que se acaba de retirar: corre
+    el generador y exige que ninguna competencia ni ningún panel se caiga de la tabla, y que
+    la referencia siga incluyéndolas en vez de volver a escribirlas.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_conf_docs", RAIZ / "docs" / "conf.py")
+    assert spec is not None
+    assert spec.loader is not None
+    conf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(conf)
+    conf._generar_tablas(None)
+
+    generado = RAIZ / "docs" / "_generado"
+    acotacion = _texto(generado / "acotacion.md")
+    paneles = _texto(generado / "paneles.md")
+
+    for nombre in MODULOS:
+        assert f"`{nombre}`" in acotacion, f"{nombre!r} se cayó de la tabla de acotación"
+
+    for campo in ("historia", "litigantes", "notificaciones", "liquidaciones", "materias"):
+        fila = next((f for f in paneles.splitlines() if f.startswith(f"| `{campo}`")), None)
+        assert fila, f"la tabla de paneles no tiene fila para {campo!r}"
+        cuales = {n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None}
+        for nombre in cuales:
+            assert f"`{nombre}`" in fila, f"{nombre!r} publica {campo!r} y la tabla no lo dice"
+        for nombre in set(MODULOS) - cuales:
+            assert f"`{nombre}`" not in fila, (
+                f"la tabla dice que {nombre!r} publica {campo!r} y el código dice que no"
+            )
+
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    for archivo in ("acotacion", "paneles"):
+        assert f"_generado/{archivo}.md" in referencia, (
+            f"la referencia dejó de incluir {archivo}.md, así que volvió a escribirla a mano"
+        )
+
+
 def test_el_readme_nombra_todas_las_herramientas_que_el_servidor_expone(expuestas):
     """La portada listaba dos de ocho y decía "Ambas", así que además de incompleta afirmaba
     que eso era todo.

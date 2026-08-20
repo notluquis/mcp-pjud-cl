@@ -35,10 +35,15 @@ jobs:
         with:
           persist-credentials: false
 
-      # `TRAFICO_TOKEN` es un token de grano fino con permiso de administración de solo
-      # lectura, que es el que la API de tráfico exige. Si no está configurado se intenta
-      # igual con el token del workflow y el paso falla diciendo por qué, en vez de guardar
-      # una foto vacía que se leería como "no hubo tráfico".
+      # `TRAFICO_TOKEN` hace falta y está medido que hace falta: la primera corrida de este
+      # workflow, con el token del propio workflow, recibió `Resource not accessible by
+      # integration (HTTP 403)`. La API de tráfico exige acceso de escritura al repositorio,
+      # y `permissions:` no tiene una clave que lo conceda, así que ningún ajuste de permisos
+      # acá lo arregla: tiene que ser un token de grano fino con `Administration: read`.
+      #
+      # Sin el secreto esto falla todos los días, y está bien que falle: cada día que no
+      # corre es un día de tráfico que caduca y se pierde. Un aviso silencioso se leería como
+      # que el repositorio no tuvo visitas.
       - name: Tomar la foto
         env:
           GH_TOKEN: ${{ secrets.TRAFICO_TOKEN || github.token }}

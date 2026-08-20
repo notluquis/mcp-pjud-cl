@@ -516,7 +516,8 @@ ReferenciaDeDocumento = Annotated[
     str,
     Field(
         description="El campo `documento_referencia` de la actuación, tal cual. CADUCA: la "
-        "plataforma la emite al dibujar el detalle y no sobrevive a la sesión en que se leyó, "
+        "plataforma la emite al dibujar el detalle y es un token firmado, no un identificador "
+        "de sesión: está medido que sirve desde otra sesión. Cuánto dura no se midió, "
         "así que una guardada de antes no devuelve 'no existe', devuelve otra cosa. Si la "
         "herramienta responde que lo recibido no es un PDF, volver a pedir el detalle de la "
         "causa y usar la referencia nueva."
@@ -543,8 +544,25 @@ def _resumen(doc: Documento, embebido: bool) -> str:
             f"NO se pudo abrir para saber si trae texto ({doc.problema_al_leer}). Eso NO "
             "significa que sea un escaneo: significa que no se sabe."
         )
+    elif (
+        doc.paginas_con_texto is not None
+        and doc.paginas is not None
+        and (0 < doc.paginas_con_texto < doc.paginas)
+    ):
+        # Un expediente que mezcla resoluciones digitales con anexos escaneados es lo normal.
+        # Decir "trae capa de texto" a secas hacía que quien lo leyera diera por transcribible
+        # un documento del que una parte son imágenes, y las páginas que faltan no se pueden
+        # citar: es el falso negativo de siempre, repartido por página.
+        faltan = doc.paginas - doc.paginas_con_texto
+        veredicto = (
+            f"Es MIXTO: {doc.paginas_con_texto} de {doc.paginas} páginas traen texto y las "
+            f"otras {faltan} son imágenes. Lo que dicen esas {faltan} NO se puede citar desde "
+            "acá, y este servidor no les pasa OCR."
+        )
     elif doc.capa_de_texto:
-        veredicto = "Trae capa de texto, así que es un PDF digital y no una imagen."
+        veredicto = (
+            "Todas sus páginas traen capa de texto, así que es un PDF digital y no una imagen."
+        )
     else:
         veredicto = (
             "NO trae capa de texto: es un ESCANEO, o sea una imagen de un documento. Este "
@@ -572,7 +590,8 @@ def _resumen(doc: Documento, embebido: bool) -> str:
     title="Documento de una causa",
     description="Vuelve a pedirle el documento al Poder Judicial y lo entrega. No hay copia "
     "guardada: este servidor no persiste documentos de terceros, así que cada lectura es una "
-    "consulta nueva, con su ritmo. La referencia caduca con la sesión en que se leyó.",
+    "consulta nueva, con su ritmo. La referencia es un token firmado: sirve desde otra sesión, "
+    "y cuánto dura no está medido.",
     mime_type="application/pdf",
 )
 def documento_de_causa(competencia: str = "civil", ruta: str = "", referencia: str = "") -> bytes:

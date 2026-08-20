@@ -26,7 +26,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   origen a una causa exhortada, y si la causa es un exhorto o no.
 - Herramienta `obtener_documento`: el archivo de una actuación. Uno chico viaja entero y uno
   grande como enlace, así que el expediente completo no gasta el contexto de la conversación.
-- Un PDF sin capa de texto se declara escaneo y se entrega igual, sin transcribirlo.
+- Un PDF sin capa de texto se declara escaneo y se entrega igual, sin transcribirlo. Uno
+  mixto dice cuántas de sus páginas traen texto, porque las otras no se pueden citar.
 - Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
   campo del detalle, la cadena de peticiones y qué activa la detención total.
 

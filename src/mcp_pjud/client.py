@@ -364,10 +364,19 @@ class Documento(BaseModel):
     paginas: int | None = Field(
         default=None, description="Cuántas páginas trae. NULO si el archivo no se pudo abrir."
     )
+    paginas_con_texto: int | None = Field(
+        default=None,
+        description="De cuántas páginas se pudo extraer texto. Comparar con `paginas`: si es "
+        "menor y mayor que cero, el documento es MIXTO, y las páginas que faltan son imágenes "
+        "cuyo contenido no se puede citar. NULO si el archivo no se pudo abrir.",
+    )
     capa_de_texto: bool | None = Field(
         default=None,
-        description="Si del PDF se puede extraer texto. FALSO significa que es un escaneo: "
-        "una imagen de un documento, sin texto detrás.\n\n"
+        description="Si de ALGUNA página se pudo extraer texto. FALSO significa que ninguna "
+        "tiene, o sea es un escaneo: una imagen de un documento, sin texto detrás.\n\n"
+        "Verdadero NO significa que todo el documento sea legible. Un expediente que mezcla "
+        "resoluciones digitales con anexos escaneados es lo normal, y para eso está "
+        "`paginas_con_texto`.\n\n"
         "NULO no es falso: significa que el archivo no se pudo abrir (viene cifrado, truncado "
         "o mal formado) y por lo tanto NO se sabe. Informarlo como escaneo sería afirmar algo "
         "que no se midió.",
@@ -383,7 +392,7 @@ class Documento(BaseModel):
     contenido: bytes = Field(default=b"", exclude=True, repr=False)
 
 
-def _describir_pdf(contenido: bytes) -> tuple[int | None, bool | None, str | None]:
+def _describir_pdf(contenido: bytes) -> tuple[int | None, int | None, str | None]:
     """Cuántas páginas trae y si hay texto que extraer. Nunca hace OCR.
 
     Detectar el escaneo es barato y transcribirlo es lo que no corresponde: una transcripción
@@ -403,10 +412,12 @@ def _describir_pdf(contenido: bytes) -> tuple[int | None, bool | None, str | Non
     try:
         lector = PdfReader(BytesIO(contenido))
         paginas = len(lector.pages)
-        for pagina in lector.pages:
-            if pagina.extract_text().strip():
-                return paginas, True, None
-        return paginas, False, None
+        # Se cuentan las páginas CON texto en vez de cortar en la primera. Un expediente que
+        # mezcla resoluciones digitales con anexos escaneados es lo normal, y cortar hacía que
+        # una sola página con texto declarara todo el archivo digital: quien leyera eso daría
+        # por transcribible un documento del que la mitad son imágenes.
+        con_texto = sum(1 for pagina in lector.pages if pagina.extract_text().strip())
+        return paginas, con_texto, None
     except Exception as e:
         return None, None, f"{type(e).__name__}: {e}"
 
@@ -1032,9 +1043,14 @@ class PjudClient(Transporte):
         nada, porque la referencia se emite al dibujar la página y no es la identidad estable
         del documento: la misma pieza llega con una distinta en cada cuaderno.
 
-        Y de ahí lo que hay que tener presente al usarla: la referencia vale para la sesión en
-        que se leyó y caduca. Una guardada de ayer no devuelve "no existe", devuelve otra cosa,
-        y por eso este método verifica que lo que llegó SEA un PDF antes de entregarlo.
+        Lo que sí hay que tener presente, y está medido: la referencia es un token firmado y
+        NO un identificador de sesión. Sirve desde una sesión distinta de la que la emitió,
+        así que el flujo normal, leer el detalle con una herramienta y pedir el documento con
+        otra, funciona. Cuánto dura el token no se midió.
+
+        Una referencia que la plataforma ya no acepte no devuelve "no existe": devuelve una
+        página de error con HTTP 200, y por eso este método verifica que lo que llegó SEA un
+        PDF antes de entregarlo.
         """
         modulo = self._modulo(competencia)
         rutas = DOCUMENTOS.get(modulo)
@@ -1080,20 +1096,21 @@ class PjudClient(Transporte):
                 + (f", con el aviso {aviso!r}. " if aviso else ". ")
                 + "Los seis endpoints de documentos entregan PDF, así que esto no es el "
                 "archivo. Lo más probable es que `documento_referencia` haya caducado: se "
-                "emite al dibujar el detalle y no sobrevive a la sesión, así que hay que "
+                "emite al dibujar el detalle, así que conviene pedir el documento cerca de "
                 "volver a pedir el detalle de la causa y usar la referencia nueva.\n\n"
                 "No se entrega igual. Un archivo que en realidad es una página de error se "
                 "ve como un documento y no lo es, y quien lo reciba no tiene cómo notarlo."
             )
 
-        paginas, capa, problema = _describir_pdf(contenido)
+        paginas, con_texto, problema = _describir_pdf(contenido)
         return Documento(
             competencia=modulo,
             ruta=ruta,
             tipo_mime=(r.headers.get("content-type") or "application/pdf").split(";")[0].strip(),
             tamano_bytes=len(contenido),
             paginas=paginas,
-            capa_de_texto=capa,
+            paginas_con_texto=con_texto,
+            capa_de_texto=None if con_texto is None else con_texto > 0,
             problema_al_leer=problema,
             contenido=contenido,
         )

@@ -650,3 +650,20 @@ def test_un_escaneo_se_declara_en_palabras_y_no_se_transcribe(monkeypatch: pytes
     assert [b for b in resultado.content if isinstance(b, EmbeddedResource)], (
         "declarar que es un escaneo no es negarse a entregarlo"
     )
+
+
+def test_un_pdf_mixto_se_declara_mixto_y_no_digital(monkeypatch: pytest.MonkeyPatch):
+    """Lo que el modelo lee del sobre es el bloque de texto, no el campo.
+
+    Decir "trae capa de texto" a secas sobre un expediente que mezcla resoluciones digitales
+    con anexos escaneados hace que dé por transcribible un documento del que una parte son
+    imágenes, y lo que dicen esas páginas no se puede citar desde acá.
+    """
+    from tests.test_client import PDF_MIXTO
+
+    _con_doble(monkeypatch, _documento(PDF_MIXTO))
+
+    texto = _texto(_pedir_documento())
+    assert "MIXTO" in texto, f"el veredicto no distingue el mixto: {texto}"
+    assert "1 de 2" in texto, f"no dice cuántas páginas traen texto: {texto}"
+    assert "no se puede citar" in texto.lower(), f"no advierte qué no se puede citar: {texto}"

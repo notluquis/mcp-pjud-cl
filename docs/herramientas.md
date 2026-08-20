@@ -365,10 +365,16 @@ El archivo de una actuación: la resolución, el escrito, el certificado o el ex
 No pide el rol: la referencia ya identifica el documento, y buscar la causa antes serían dos
 peticiones que no verifican nada.
 
-:::{warning} La referencia caduca con la sesión
-Se emite al dibujar la página, no identifica al documento para siempre. Medido: el mismo
-exhorto llega con una referencia distinta en cada cuaderno. Guardarla para usarla mañana
-devuelve cualquier cosa.
+:::{note} La referencia NO muere con la sesión
+Se emite al dibujar la página y el mismo documento llega con una distinta en cada render, así
+que **no es la identidad estable** del archivo. Pero es un token firmado y no un identificador
+de sesión: **medido el 20 de agosto de 2026**, sirve desde una sesión distinta de la que la
+emitió, así que el flujo normal, leer el detalle con una herramienta y pedir el documento con
+otra, funciona.
+
+Cuánto dura no está medido. Pedir el documento cerca de leer la actuación sigue siendo lo
+prudente, y una referencia que la plataforma ya no acepte devuelve una página de error con
+HTTP 200, no un "no existe": por eso se verifica que lo que llegó sea un PDF.
 :::
 
 ### Chico viaja entero, grande viaja como enlace
@@ -387,6 +393,11 @@ excepción, que es el lado barato de equivocarse.
 Si el PDF no trae capa de texto es una imagen, y eso se dice. **No se le pasa OCR**: una
 transcripción automática de una resolución se ve idéntica a la resolución y no lo es, y eso es
 peor que una lista vacía, porque la lista vacía se nota.
+
+Y un documento **mixto** se declara mixto. Un expediente que agrega anexos escaneados a
+resoluciones digitales es lo normal, y decir "trae capa de texto" a secas haría dar por
+transcribible un archivo del que una parte son imágenes: `paginas_con_texto` dice cuántas, y lo
+que dicen las otras no se puede citar desde acá.
 
 Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
 texto no es lo mismo que saber que no tiene.

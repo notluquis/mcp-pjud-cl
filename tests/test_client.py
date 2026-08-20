@@ -1696,8 +1696,42 @@ def _pdf(flujo: bytes, con_fuente: bool = True) -> bytes:
     return bytes(salida)
 
 
+def _pdf_mixto() -> bytes:
+    """Dos páginas: la primera con texto, la segunda una imagen.
+
+    Es lo normal en un expediente que agrega anexos escaneados a resoluciones digitales, y es
+    el caso que un recorrido que corta en la primera página con texto no puede distinguir de
+    un PDF enteramente digital.
+    """
+    con_texto = b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET"
+    sin_texto = b"0 0 100 100 re f"
+    objetos = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 5 0 R"
+        b"/Resources<</Font<</F1 7 0 R>>>>>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 6 0 R/Resources<<>>>>",
+        b"<</Length " + str(len(con_texto)).encode() + b">>stream\n" + con_texto + b"\nendstream",
+        b"<</Length " + str(len(sin_texto)).encode() + b">>stream\n" + sin_texto + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    salida = bytearray(b"%PDF-1.4\n")
+    desplazamientos = []
+    for i, cuerpo in enumerate(objetos, start=1):
+        desplazamientos.append(len(salida))
+        salida += str(i).encode() + b" 0 obj" + cuerpo + b"endobj\n"
+    xref = len(salida)
+    salida += b"xref\n0 " + str(len(objetos) + 1).encode() + b"\n0000000000 65535 f \n"
+    for d in desplazamientos:
+        salida += f"{d:010d} 00000 n \n".encode()
+    salida += b"trailer<</Size " + str(len(objetos) + 1).encode() + b"/Root 1 0 R>>\n"
+    salida += b"startxref\n" + str(xref).encode() + b"\n%%EOF\n"
+    return bytes(salida)
+
+
 PDF_CON_TEXTO = _pdf(b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET")
 PDF_ESCANEADO = _pdf(b"0 0 100 100 re f", con_fuente=False)
+PDF_MIXTO = _pdf_mixto()
 
 
 def _cliente_de_documentos(respuesta: httpx.Response) -> tuple[PjudClient, list[httpx.Request]]:
@@ -1878,4 +1912,21 @@ def test_el_umbral_de_lo_embebido_no_gasta_mas_que_una_respuesta_de_texto():
     assert en_base64 <= CARACTERES_DE_UNA_RESPUESTA, (
         f"{LIMITE_EMBEBIDO} bytes son {en_base64} caracteres en base64, y el techo que este "
         f"servidor ya acepta gastar de una vez son {CARACTERES_DE_UNA_RESPUESTA}"
+    )
+
+
+def test_un_pdf_mixto_no_se_declara_entero_digital(monkeypatch):
+    """Un expediente que mezcla resoluciones digitales con anexos escaneados es lo normal.
+
+    Cortar en la primera página con texto hacía que una sola declarara todo el archivo
+    digital, y quien leyera eso daría por transcribible un documento del que una parte son
+    imágenes. Es el falso negativo de siempre, repartido por página.
+    """
+    from mcp_pjud.client import _describir_pdf
+
+    paginas, con_texto, problema = _describir_pdf(PDF_MIXTO)
+    assert problema is None, problema
+    assert paginas == 2, paginas
+    assert con_texto == 1, (
+        f"se extrajo texto de {con_texto} de {paginas} páginas, y el documento es mixto"
     )

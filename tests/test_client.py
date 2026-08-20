@@ -683,6 +683,8 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
     inventada = Competencia(
         99,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        litigantes=None,
+        materias=None,
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=False,

@@ -317,6 +317,51 @@ HISTORIA_LABORAL = Historia(
     ),
 )
 
+#: Los litigantes de cada competencia. Medidos sobre las fixtures de las cinco.
+#:
+#: Civil llama `Participante` a lo que las otras cuatro llaman `Sujeto`, y laboral agrega dos
+#: columnas que ninguna otra publica: si la parte tiene abogado defensor, y un estado. Por eso
+#: hay cinco constantes y no una: leer laboral con el mapa de las demás correría el RUT al
+#: campo del sujeto.
+LITIGANTES_CIVIL = Panel(
+    panel="litigantesCiv",
+    columnas=("sujeto", "rut", "persona", "nombre"),
+    encabezados=("participante", "rut", "persona", "nombre o razón social"),
+)
+
+LITIGANTES_COBRANZA = Panel(
+    panel="litigantesCob",
+    columnas=("sujeto", "rut", "persona", "nombre"),
+    encabezados=("sujeto", "rut", "persona", "nombre o razón social"),
+)
+
+LITIGANTES_SUPREMA = Panel(
+    panel="litigantesSup",
+    columnas=("sujeto", "rut", "persona", "nombre"),
+    encabezados=("sujeto", "rut", "persona", "nombre o razón social"),
+)
+
+LITIGANTES_APELACIONES = Panel(
+    panel="litigantesApe",
+    columnas=("sujeto", "rut", "persona", "nombre"),
+    encabezados=("sujeto", "rut", "persona", "nombre o razón social"),
+)
+
+LITIGANTES_LABORAL = Panel(
+    panel="litigantesLab",
+    columnas=("estado", "abogado_defensor", "sujeto", "rut", "persona", "nombre"),
+    encabezados=("est.", "abog. defensor", "sujeto", "rut", "persona", "nombre o razón social"),
+)
+
+#: Las materias de una causa laboral: qué se litiga, con su estado y su fecha de término.
+#: Medida sobre `O-364-2020`, que trae nueve.
+MATERIAS_LABORAL = Panel(
+    panel="materiasLab",
+    columnas=("codigo", "glosa", "estado", "fecha_termino"),
+    encabezados=("código", "glosa de materia", "estado", "fecha término"),
+)
+
+
 #: Columnas de la tabla de Historia en civil. Se conserva el nombre porque hay tests y
 #: comentarios que lo referencian; la fuente única es `HISTORIA_CIVIL.columnas`.
 COLUMNAS = HISTORIA_CIVIL.columnas
@@ -751,6 +796,90 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
     return liquidaciones
 
 
+class Litigante(BaseModel):
+    """Una parte de la causa, con su calidad procesal.
+
+    Trae RUT de personas naturales. Es lo que la plataforma publica y lo que identifica a una
+    parte sin ambigüedad, y por eso se entrega: dos personas pueden llamarse igual. Quien
+    conecte este servidor debe saber que recibe datos personales de terceros.
+    """
+
+    sujeto: str = Field(
+        description="Calidad procesal. Ej: 'DTE.' demandante, 'DDO.' demandado, 'RECURRIDO'."
+    )
+    nombre: str = Field(description="Nombre o razón social, tal como lo publica el sitio.")
+    rut: str = Field(
+        default="", description="RUT con dígito verificador, como lo publica el sitio."
+    )
+    persona: str = Field(
+        default="", description="Si es persona 'NATURAL' o 'JURIDICA', según el sitio."
+    )
+    abogado_defensor: str | None = Field(
+        default=None, description="Si tiene abogado defensor. Sólo laboral publica la columna."
+    )
+    estado: str | None = Field(default=None, description="Estado de la parte. Sólo en laboral.")
+
+
+class Materia(BaseModel):
+    """Una materia de la causa: qué se está litigando."""
+
+    codigo: str = Field(
+        description="Código de la materia en la nomenclatura del sitio. Ej: 'L021'."
+    )
+    glosa: str = Field(description="Qué es. Ej: 'Despido injustificado', 'Feriado legal'.")
+    estado: str = Field(default="", description="Estado de esa materia. Ej: 'Sentencia'.")
+    fecha_termino: date | None = Field(
+        default=None, description="Fecha de término de la materia, en ISO 8601."
+    )
+
+
+def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
+    """Quiénes son parte en la causa y con qué calidad.
+
+    Una causa sin litigantes publicados no existe, pero el panel puede venir vacío por lo mismo
+    que el resto: respuesta truncada o estructura cambiada. Se devuelve lo que haya, y quien
+    decida sobre eso tiene el resto de la respuesta para contrastar.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.litigantes is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se leen los litigantes en {competencia}. Leerlos con el "
+            "mapa de otra competencia devolvería el RUT en el campo del sujeto, que se ve "
+            "plausible y es falso."
+        )
+    return [
+        Litigante(
+            sujeto=txt["sujeto"],
+            nombre=txt["nombre"],
+            rut=txt["rut"],
+            persona=txt["persona"],
+            abogado_defensor=txt.get("abogado_defensor") or None,
+            estado=txt.get("estado") or None,
+        )
+        for _celdas, txt in _filas_del_panel(html_detalle, spec.litigantes)
+    ]
+
+
+def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Materia]:
+    """Qué se litiga en la causa. Sólo laboral publica el panel."""
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.materias is None:
+        raise EstructuraInesperada(
+            f"La competencia {competencia!r} no publica materias: sólo laboral tiene el panel. "
+            "Leerlo en otra devolvería una lista vacía, que se leería como que la causa no "
+            "tiene materias."
+        )
+    return [
+        Materia(
+            codigo=txt["codigo"],
+            glosa=txt["glosa"],
+            estado=txt["estado"],
+            fecha_termino=_fecha(txt["fecha_termino"]),
+        )
+        for _celdas, txt in _filas_del_panel(html_detalle, spec.materias)
+    ]
+
+
 def actuaciones_receptor(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -850,6 +979,10 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Cómo leer su panel de litigantes: quiénes son parte y con qué calidad procesal.
+    litigantes: Panel | None
+    #: Cómo leer su panel de materias, o `None` si la competencia no lo publica.
+    materias: Panel | None
     #: Cómo leer su panel de liquidaciones, o `None` si no lo publica.
     liquidaciones: Liquidaciones | None
     #: Cómo leer su panel de notificaciones, o `None` mientras no se haya medido.
@@ -904,6 +1037,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
+        litigantes=LITIGANTES_SUPREMA,
+        materias=None,
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=False,
@@ -923,6 +1058,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
+        litigantes=LITIGANTES_APELACIONES,
+        materias=None,
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
@@ -935,6 +1072,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        litigantes=LITIGANTES_CIVIL,
+        materias=None,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,
@@ -947,6 +1086,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        litigantes=LITIGANTES_LABORAL,
+        materias=MATERIAS_LABORAL,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,
@@ -959,6 +1100,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        litigantes=None,
+        materias=None,
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
@@ -971,6 +1114,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        litigantes=LITIGANTES_COBRANZA,
+        materias=None,
         liquidaciones=LIQUIDACIONES_COBRANZA,
         notificaciones=NOTIFICACIONES_COBRANZA,
         rol_con_libro=False,

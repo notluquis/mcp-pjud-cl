@@ -17,6 +17,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Búsqueda de causas en **suprema** y **Cortes de Apelaciones** | Las cuatro búsquedas de cada una. Lo que las bloqueaba era `radio-group`, el radio RIT/RUC del formulario, que las otras cuatro competencias toleran ausente |
 | Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
+| Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
 | Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
@@ -149,10 +150,11 @@ compara el formulario enviado contra lo que ella declara.
   carta van con un día de diferencia. Civil publica otra cosa: el panel se llama
   `notificacionesCiv`, tiene ocho columnas y **una sola** fecha.
 
-  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia. Y
-  las dos causas civiles disponibles traen cero filas, así que no hay con qué validar el
-  parseo de civil. Exponerlo ahora sería adivinar. Lo bueno es que no cuesta peticiones: los
-  dos paneles ya vienen en la respuesta del detalle que el cliente pide.
+  Es la lección de cobranza repetida: mismo concepto, estructura distinta por competencia.
+  **Resuelto en la 0.4.0**, cuando apareció una causa civil con tres notificaciones reales y
+  se pudo medir en vez de adivinar: los dos paneles se leen, cada uno con sus columnas, y
+  `fecha_notificacion` va nula donde la competencia no la publica en vez de copiar la de
+  trámite.
 
 - **Laboral, penal, suprema y apelaciones no tienen receptor.** En todo el sitio sólo existen
   `receptorCivil` y `receptorCobranza`. Queda declarado en la tabla y se rechaza antes de
@@ -173,13 +175,38 @@ cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuest
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
 - `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
 - `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
-- `piezasExhortoCiv`: falta, y no por costo. El panel trae seis filas reales en una respuesta
-  y **no existe** en las dos de C-1156, que sí traen el exhorto. Cuándo lo renderiza el sitio
-  no está entendido, y mapearlo con esa duda haría fallar una causa que hoy funciona
+- `piezasExhortoCiv`: entendido y sin mapear. Se lee desde el otro lado del exhorto, y lo que
+  falta no es medirlo sino decidir el contrato. Ver abajo
 
 Lo que falta importa más de lo que parece: mientras no estén, la respuesta del detalle NO es
 el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un
 escrito como que la causa no lo tiene.
+
+#### Los dos lados del exhorto, medidos
+
+Parecía que `piezasExhortoCiv` faltaba a veces. No es eso: **el juego de paneles depende de si
+la causa ES un exhorto**, y las dos mitades se ven desde causas distintas.
+
+| Causa | `Proc.` | `exhortosCiv` | `piezasExhortoCiv` |
+|---|---|---|---|
+| C-1156-2026, 2º Juzgado Civil de Concepción (tribunal 162) | ordinaria | 1 fila | **sin panel** |
+| E-468-2026, 3º Juzgado Civil de Concepción (tribunal 163) | `Exhorto` | 0 filas | **6 filas** |
+
+Medido en vivo el 20 de agosto de 2026, cuatro peticiones. E-468-2026 es ella misma un
+exhorto: su cabecera dice `Proc.: Exhorto`, `Etapa: 0 Exhorto`, y nombra a `C-15411-2025` como
+causa de origen. Sus seis piezas son la tramitación que el tribunal de origen despachó junto
+con el exhorto (`Ordena despachar mandamiento`, `Exhórtese`, `Curso progresivo a los autos`),
+o sea **lo que el tribunal que recibe tuvo a la vista**.
+
+`exhortosCiv` se lee desde el origen y ya está cubierto. `piezasExhortoCiv` se lee desde el
+destino y no lo está, y mapearlo tiene una decisión de contrato antes que de código: hoy
+`None` significa "esta COMPETENCIA no publica el panel", y acá haría falta decir "esta CAUSA
+no es un exhorto", que no es lo mismo. Sobrecargar `None` con los dos sentidos es exactamente
+la distinción que este proyecto existe para no borrar.
+
+Lo que probablemente lo resuelva es la **cabecera de la causa**, que hoy no se lee de ninguna
+competencia: trae `Proc.`, `Etapa`, `Estado Proc.`, `Ubicación` y el tribunal, y de ahí sale si
+la causa es un exhorto sin tener que inferirlo de la presencia de un panel.
 
 **Una petición cada uno, con su intervalo.** Son modales que la plataforma carga aparte, y hay
 que contarlos en el tiempo total:
@@ -286,9 +313,9 @@ fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué 
 | Buscador | Estado |
 |---|---|
 | Corte Suprema | **Verificado.** `id_buscador` 528 |
-| Corte de Apelaciones | Mapeado, sin ejecutar |
+| Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias |
 | Civiles | Mapeado, sin ejecutar |
-| Laborales | Mapeado, sin ejecutar |
+| Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema |
 | Penales | Mapeado, sin ejecutar |
 | Familia | Mapeado, sin ejecutar |
 | Cobranza | Mapeado, sin ejecutar |

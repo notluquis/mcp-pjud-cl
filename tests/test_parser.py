@@ -19,6 +19,8 @@ from mcp_pjud.parser import (
     parse_cuadernos,
     parse_historia,
     parse_liquidaciones,
+    parse_litigantes,
+    parse_materias,
     parse_notificaciones,
     parse_resultados,
 )
@@ -813,3 +815,72 @@ def test_una_competencia_que_no_liquida_se_rechaza():
     hay deuda liquidada, y eso es distinto de que la competencia no lo publique."""
     with pytest.raises(EstructuraInesperada, match="no publica liquidaciones"):
         parse_liquidaciones(NOTIF_CIVIL, "civil")
+
+
+# -- litigantes y materias ------------------------------------------------------
+
+
+def test_los_litigantes_se_leen_en_las_cinco_competencias():
+    """Civil llama `Participante` a lo que las otras cuatro llaman `Sujeto`.
+
+    Es la razón de que haya cinco constantes y no una: si compartieran encabezados, la lectura
+    de civil fallaría contra una respuesta perfectamente válida.
+    """
+    esperado = {
+        ("civil", DETALLE): 5,
+        ("cobranza", NOTIF_COBRANZA): 4,
+        ("laboral", DETALLE_LABORAL): 4,
+        ("suprema", DETALLE_SUPREMA): 7,
+        ("apelaciones", DETALLE_APELACIONES): 1,
+    }
+    for (competencia, detalle), cuantos in esperado.items():
+        litigantes = parse_litigantes(detalle, competencia)
+        assert len(litigantes) == cuantos, f"{competencia} trajo {len(litigantes)}"
+        assert all(x.sujeto and x.nombre for x in litigantes), (
+            f"en {competencia} hay litigantes sin calidad procesal o sin nombre"
+        )
+
+
+def test_laboral_publica_dos_columnas_que_ninguna_otra_trae():
+    """Agrega `Est.` y `Abog. Defensor` ADELANTE, así que corre todo lo demás dos lugares.
+
+    Leerlo con el mapa de las otras cuatro pondría el estado en el campo del sujeto y el
+    abogado en el del RUT: cuatro campos plausibles y todos equivocados.
+    """
+    laboral = parse_litigantes(DETALLE_LABORAL, "laboral")
+    assert all(x.abogado_defensor is not None for x in laboral)
+    assert {x.abogado_defensor for x in laboral} <= {"Sí", "No"}
+    assert all(x.rut and "-" in x.rut for x in laboral), (
+        "el RUT quedó corrido: las columnas de laboral no están donde el mapa dice"
+    )
+
+    civil = parse_litigantes(DETALLE, "civil")
+    assert all(x.abogado_defensor is None for x in civil), "civil no publica esa columna"
+
+
+def test_las_materias_dicen_que_se_litiga():
+    materias = parse_materias(DETALLE_LABORAL, "laboral")
+    assert len(materias) == 9
+    glosas = {m.glosa for m in materias}
+    assert "Despido injustificado" in glosas
+    assert all(m.codigo.startswith("L") for m in materias)
+    assert all(m.fecha_termino is not None for m in materias)
+
+
+def test_las_materias_de_una_competencia_que_no_las_publica_se_rechazan():
+    """Sólo laboral tiene el panel. En las demás la lista vacía se leería como que la causa
+    no tiene materias, que es distinto de que la competencia no las publique."""
+    with pytest.raises(EstructuraInesperada, match="no publica materias"):
+        parse_materias(DETALLE, "civil")
+
+
+def test_leer_los_litigantes_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():
+    with pytest.raises(EstructuraInesperada, match="litigantesCiv"):
+        parse_litigantes(DETALLE_LABORAL, "civil")
+    with pytest.raises(EstructuraInesperada, match="litigantesLab"):
+        parse_litigantes(DETALLE, "laboral")
+
+
+def test_penal_no_tiene_litigantes_medidos():
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        parse_litigantes(DETALLE, "penal")

@@ -1523,9 +1523,7 @@ def test_el_listado_de_tribunales_manda_el_codigo_de_la_competencia_pedida(monke
     cuerpo = pedidos[0][1].decode()
     assert f"codCompetencia={COMPETENCIAS['civil'].codigo}" in cuerpo, cuerpo
     assert "codCorte=46" in cuerpo, cuerpo
-    assert [(t.codigo, t.nombre) for t in tribunales] == [
-        (163, "3º Juzgado Civil de Concepción")
-    ]
+    assert [(t.codigo, t.nombre) for t in tribunales] == [(163, "3º Juzgado Civil de Concepción")]
 
 
 def test_una_competencia_que_el_servidor_no_consulta_se_rechaza_sin_gastar_peticion(monkeypatch):

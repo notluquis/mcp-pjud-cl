@@ -143,7 +143,14 @@ def _generar_tablas(app):
         encoding="utf-8",
     )
 
-    paneles = ("historia", "litigantes", "notificaciones", "liquidaciones", "materias")
+    paneles = (
+        "historia",
+        "litigantes",
+        "notificaciones",
+        "liquidaciones",
+        "materias",
+        "exhortos",
+    )
     filas = []
     for campo in paneles:
         cuales = [n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None]

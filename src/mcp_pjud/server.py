@@ -215,6 +215,7 @@ _CON_DETALLE = sorted(
             COMPETENCIAS[n].notificaciones,
             COMPETENCIAS[n].liquidaciones,
             COMPETENCIAS[n].materias,
+            COMPETENCIAS[n].exhortos,
         )
     )
 )
@@ -365,7 +366,7 @@ def obtener_detalle_causa(
     tribunal: Tribunal = None,
     corte: Corte = None,
 ) -> DetalleCausa:
-    """Historia, litigantes, notificaciones, liquidaciones y materias de la causa.
+    """Historia, litigantes, notificaciones, liquidaciones, materias y exhortos de la causa.
 
     Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y lo hace
     con una sola cadena de peticiones. Preferir esta herramienta antes que preguntar por
@@ -390,6 +391,9 @@ def obtener_detalle_causa(
     historial. Sumarlas informa una deuda inflada varias veces.
 
     Los litigantes traen RUT de personas naturales: son datos personales de terceros.
+
+    Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente: el exhorto
+    abre una causa nueva en el tribunal destino, y las actuaciones de esa parte NO están acá.
     """
     with _cliente() as c:
         return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)

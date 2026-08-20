@@ -171,7 +171,10 @@ cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuest
 - `notificacionesCiv`: con su propio estado y su propia fecha de trámite. **Hecho**
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
 - `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
-- `exhortosCiv` y `piezasExhortoCiv`: el exhorto visto desde el tribunal de origen. Falta
+- `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
+- `piezasExhortoCiv`: falta, y no por costo. El panel trae seis filas reales en una respuesta
+  y **no existe** en las dos de C-1156, que sí traen el exhorto. Cuándo lo renderiza el sitio
+  no está entendido, y mapearlo con esa duda haría fallar una causa que hoy funciona
 
 Lo que falta importa más de lo que parece: mientras no estén, la respuesta del detalle NO es
 el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un
@@ -594,7 +597,7 @@ petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
 | `litigantesCiv` | `Participante`, `Rut`, `Persona`, `Nombre o Razón Social`. **Cubierto** |
 | `escritosCiv` | `Doc.`, `Anexo`, `Fecha de Ingreso`, `Tipo Escrito`, `Solicitante` |
 | `notificacionesCiv` | `ROL`, `Est. Notif.`, `Tipo Notif.`, `Fecha Trámite`, `Tipo Part.`, `Nombre`, `Trámite`, `Obs. Fallida`. **Cubierto** |
-| `exhortosCiv` | `Rol Origen`, `Tipo Exhorto`, `Rol Destino`, `Fecha Ordena Exhorto`, `Fecha Ingreso Exhorto`, `Tribunal Destino`, `Estado Exhorto` |
+| `exhortosCiv` | `Rol Origen`, `Tipo Exhorto`, `Rol Destino`, `Fecha Ordena Exhorto`, `Fecha Ingreso Exhorto`, `Tribunal Destino`, `Estado Exhorto`. **Cubierto** |
 | `piezasExhortoCiv` | `Folio`, `Doc.`, `Cuaderno`, `Anexo`, `Etapa`, `Támite`, `Desc. Támite`, `Fec. Támite`, `Foja` |
 
 Tres advertencias que sólo se ven mirando la respuesta:

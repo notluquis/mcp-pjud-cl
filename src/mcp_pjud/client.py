@@ -35,6 +35,7 @@ from .parser import (
     es_sin_resultados,
     leer_aviso,
     parse_cuadernos,
+    parse_exhortos,
     parse_historia,
     parse_liquidaciones,
     parse_litigantes,
@@ -925,6 +926,7 @@ class PjudClient(Transporte):
             notificaciones=_juntar(parse_notificaciones, spec.notificaciones),
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),
             materias=_juntar(parse_materias, spec.materias),
+            exhortos=_juntar(parse_exhortos, spec.exhortos),
         )
 
     def _recorrer_cuadernos(

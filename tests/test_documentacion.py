@@ -749,6 +749,7 @@ def test_la_lectura_combinada_solo_ofrece_competencias_con_algun_panel(expuestas
                 COMPETENCIAS[n].notificaciones,
                 COMPETENCIAS[n].liquidaciones,
                 COMPETENCIAS[n].materias,
+                COMPETENCIAS[n].exhortos,
             )
         )
     }
@@ -1073,7 +1074,14 @@ def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
     for nombre in MODULOS:
         assert f"`{nombre}`" in acotacion, f"{nombre!r} se cayó de la tabla de acotación"
 
-    for campo in ("historia", "litigantes", "notificaciones", "liquidaciones", "materias"):
+    for campo in (
+        "historia",
+        "litigantes",
+        "notificaciones",
+        "liquidaciones",
+        "materias",
+        "exhortos",
+    ):
         fila = next((f for f in paneles.splitlines() if f.startswith(f"| `{campo}`")), None)
         assert fila, f"la tabla de paneles no tiene fila para {campo!r}"
         cuales = {n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None}

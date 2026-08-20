@@ -1391,3 +1391,46 @@ def test_una_causa_que_no_aparece_no_se_confunde_con_una_competencia_sin_paneles
         "que la competencia no publica ninguno"
     )
     assert detalle.historia is None
+
+
+def test_el_detalle_trae_el_exhorto_una_vez_aunque_los_dos_cuadernos_lo_repitan(monkeypatch):
+    """El panel de exhortos NO lleva el cuaderno en la fila, y C-1156 lo publica idéntico en
+    los dos: sin deduplicar, el mismo exhorto llegaría dos veces y se leería como dos causas
+    despachadas.
+
+    Y el campo importa por lo que significa: si trae algo, parte de la tramitación ocurre en
+    OTRO expediente. Un plazo que corre por una diligencia exhortada no se computa desde acá.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(str(peticion.url))
+        return httpx.Response(200, text=paginas[min(len(pedidos) - 1, len(paginas) - 1)])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("C", 9001, 2026, tribunal=162)
+
+    assert detalle.exhortos is not None, "civil publica el panel: no puede venir en nulo"
+    assert len(detalle.exhortos) == 1, (
+        f"el mismo exhorto viene en los dos cuadernos y llegó {len(detalle.exhortos)} veces"
+    )
+    assert detalle.exhortos[0].rol_destino == "E-875-2026"
+    assert detalle.exhortos[0].tribunal_destino == "1º Juzgado Civil de Chillán"
+
+
+@pytest.mark.parametrize("competencia", ["cobranza", "laboral"])
+def test_el_detalle_de_una_competencia_sin_exhortos_medidos_los_deja_en_nulo(
+    competencia, monkeypatch
+):
+    """Nulo y lista vacía dicen cosas distintas: "acá no se informa" contra "no despachó
+    ninguno". Sólo civil tiene el panel medido."""
+    from mcp_pjud.parser import COMPETENCIAS
+
+    assert COMPETENCIAS[competencia].exhortos is None

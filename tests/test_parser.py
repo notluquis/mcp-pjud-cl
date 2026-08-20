@@ -17,6 +17,7 @@ from mcp_pjud.parser import (
     EstructuraInesperada,
     actuaciones_receptor,
     parse_cuadernos,
+    parse_exhortos,
     parse_historia,
     parse_liquidaciones,
     parse_litigantes,
@@ -905,3 +906,48 @@ def test_un_panel_de_litigantes_sin_filas_no_se_publica_como_causa_sin_partes():
 
     with pytest.raises(EstructuraInesperada, match="ninguna fila"):
         parse_litigantes(vaciado, "civil")
+
+
+# -- exhortos ----------------------------------------------------------------------
+
+
+def test_el_exhorto_dice_a_qué_causa_del_otro_tribunal_hay_que_ir():
+    """Un exhorto abre una causa NUEVA en el tribunal destino, y las actuaciones de la
+    diligencia viven allá.
+
+    Sin `rol_destino` y `tribunal_destino` la respuesta diría que hay un exhorto y no dónde
+    buscarlo, que es la mitad inútil del dato: quien compute un plazo por una diligencia
+    exhortada tiene que ir al otro expediente.
+    """
+    exhortos = parse_exhortos(C1156_PRINCIPAL, "civil")
+
+    assert len(exhortos) == 1
+    e = exhortos[0]
+    assert e.rol_origen == "C-1156-2026"
+    assert e.rol_destino == "E-875-2026"
+    assert e.tribunal_destino == "1º Juzgado Civil de Chillán"
+    assert e.tipo == "Exhorto"
+    assert e.estado == "Generado"
+    assert e.fecha_orden == date(2026, 3, 18)
+    assert e.fecha_ingreso == date(2026, 3, 18)
+
+
+def test_una_causa_sin_exhortos_devuelve_lista_vacía_y_no_levanta():
+    """Cero exhortos es una respuesta, no un fallo: la mayoría de las causas no despacha
+    ninguno.
+
+    Por eso este panel NO lleva el guardia de cero filas que sí llevan los litigantes, donde
+    una causa sin partes no existe. Está medido sobre las cuatro respuestas civiles guardadas:
+    dos traen el panel con encabezados y ninguna fila.
+    """
+    assert parse_exhortos(DETALLE, "civil") == []
+
+
+@pytest.mark.parametrize("competencia", ["cobranza", "laboral", "suprema", "apelaciones"])
+def test_los_exhortos_de_una_competencia_sin_medir_se_rechazan(competencia):
+    """Leerlos con el mapa de civil devolvería el tribunal destino en el campo del tipo: se ve
+    plausible y es falso. Sólo civil está medida."""
+    with pytest.raises(EstructuraInesperada, match="No está verificado"):
+        parse_exhortos(
+            (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), competencia
+        )

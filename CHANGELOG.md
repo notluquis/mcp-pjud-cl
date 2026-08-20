@@ -18,6 +18,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- `tests/test_protocolo.py`: llama las herramientas a través de una sesión MCP real, en
+  memoria y sin red. Comprueba que el mensaje de `EstructuraInesperada` llegue al modelo, que
+  una búsqueda sin coincidencias no se parezca a un parseo roto, y que el contenido
+  estructurado valide contra el esquema anunciado.
+- `jsonschema` pasa a estar declarado en las dependencias de desarrollo. Funcionaba por venir
+  con `mcp`, y apoyarse en eso es depender de una decisión ajena.
+
+
+### Agregado
+
 - Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué
   fecha. Es la única competencia que liquida el crédito.
 - El monto viene en dos campos: `monto` en pesos para calcular, y `monto_publicado` con el

@@ -56,6 +56,11 @@ dev = [
     "hypothesis>=6.165.10",
     "ty>=0.0.72",
     "lxml-stubs>=0.5.1",
+    # `tests/test_protocolo.py` valida el contenido estructurado contra el esquema que el
+    # servidor anuncia. Funciona sin declararlo, porque `mcp` lo arrastra, y por eso mismo se
+    # declara: apoyarse en una dependencia transitiva es depender de una decisión ajena que
+    # puede cambiar sin aviso, y el test moriría con un ImportError que no dice nada.
+    "jsonschema>=4.20",
 ]
 
 [build-system]

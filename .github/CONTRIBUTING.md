@@ -58,7 +58,7 @@ Estas salen de para qué existe el proyecto, no de gusto personal:
    excepción. Una lista vacía se lee como "no hubo actuaciones", y eso hace perder plazos.
    Este es el error que el proyecto entero existe para evitar.
 
-5. **Sin persistencia por defecto.** Se consulta y se devuelve. Ver
+5. **Sin persistencia de datos de terceros.** Se consulta y se devuelve. Ver
    [ACCEPTABLE_USE.md](../ACCEPTABLE_USE.md) sobre datos de terceros.
 
 ### Todo cambio de lógica deja un test que puede fallar

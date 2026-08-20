@@ -84,7 +84,7 @@ uv sync --all-groups
 uv run pytest              # sin red
 uv run ruff check . && uv run ruff format --check .
 uv run ty check            # sin chequeador de tipos pasaban firmas que reventaban
-uv run sphinx-build -b html docs docs/_build/html
+uv run sphinx-build -W -b html docs docs/_build/html   # -W: un aviso es un error
 uv run zizmor .github/workflows/ .github/dependabot.yml
 uv run mutmut run          # testing de mutación, lento
 ```

@@ -84,7 +84,11 @@ jobs:
         run: uv run ty check
 
       - name: Documentación
-        run: uv run sphinx-build -b html docs docs/_build/html
+        # `-W` convierte los avisos en errores, y sin eso una reorganización rota pasa: se
+        # midió sacando una página del `toctree` y dejando dos referencias muertas, y el
+        # comando salía en 0 con tres avisos que nadie iba a leer en el registro de CI.
+        # El árbol actual ya pasa con `-W`, así que se enciende sin deuda previa.
+        run: uv run sphinx-build -W -b html docs docs/_build/html
 
   workflows:
     name: Analizar los propios workflows

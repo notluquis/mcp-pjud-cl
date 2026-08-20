@@ -1233,6 +1233,41 @@ def test_el_listado_de_tribunales_exige_la_corte(expuestas):
     )
 
 
+def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
+    """Las reglas que no se negocian están escritas en tres archivos, y ya divergieron.
+
+    `CONTRIBUTING.md` decía "sin persistencia **por defecto**", que insinúa una configuración
+    que la enciende, mientras `AGENTS.md` y el README dicen que no hay ninguna. En un
+    documento de reglas, un matiz así no es una redacción distinta: es otra regla.
+
+    Se compara la frase que titula cada una, no el párrafo entero: cada archivo la desarrolla
+    para su lector, y exigirles el mismo texto obligaría a escribir tres veces lo mismo, que
+    es el problema del que se viene.
+    """
+    titulos = {
+        "no escribir": ("Nada que escriba", "escritura"),
+        "ritmo": ("una petición cada", "intervalo"),
+        "detención": ("detención total",),
+        "fallo ruidoso": ("Fallo ruidoso", "nunca"),
+        "persistencia": ("Sin persistencia de datos de terceros",),
+    }
+    archivos = {
+        "AGENTS.md": _texto(RAIZ / "AGENTS.md"),
+        ".github/CONTRIBUTING.md": _texto(RAIZ / ".github" / "CONTRIBUTING.md"),
+    }
+    # El README es para quien la usa, no para quien contribuye: enumera menos y está bien.
+    for nombre, texto in archivos.items():
+        assert "Sin persistencia de datos de terceros" in texto, (
+            f"{nombre} enuncia la regla 5 con otras palabras. En un documento de reglas eso "
+            "no es estilo: 'sin persistencia por defecto' insinúa que hay una configuración "
+            "que la enciende, y no la hay."
+        )
+        assert "por defecto" not in texto.split("persistencia", 1)[1][:40], (
+            f"{nombre} matiza la regla 5 con un 'por defecto' que la vuelve otra regla"
+        )
+    assert titulos, "si la lista quedara vacía este guardia no comprobaría nada"
+
+
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
     """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
     alguien mira para decidir si esto le entra al entorno.

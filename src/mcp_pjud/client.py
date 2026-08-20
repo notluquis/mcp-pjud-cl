@@ -31,6 +31,7 @@ from .parser import (
     Liquidacion,
     Notificacion,
     actuaciones_receptor,
+    causa_es_exhorto,
     es_aviso_de_captcha,
     es_sin_resultados,
     leer_aviso,
@@ -41,6 +42,7 @@ from .parser import (
     parse_litigantes,
     parse_materias,
     parse_notificaciones,
+    parse_piezas_exhorto,
     parse_resultados,
     siguiente_pagina,
     total_declarado,
@@ -869,7 +871,8 @@ class PjudClient(Transporte):
         pide", y la implementación había derivado de su propio plan.
 
         Un panel que la competencia no publica viaja en nulo y no en lista vacía: "acá no se
-        informa" y "no ocurrió" son cosas distintas.
+        informa" y "no ocurrió" son cosas distintas. Y `piezas_exhorto` agrega una tercera, que
+        no depende de la competencia sino de la causa, así que la nombra `causa_es_exhorto`.
         """
         spec = COMPETENCIAS[self._modulo(competencia)]
         paneles = (
@@ -907,16 +910,26 @@ class PjudClient(Transporte):
             for pagina, nombre in paginas:
                 historia.extend(parse_historia(pagina, nombre, competencia))
 
-        # Los demás paneles no llevan el cuaderno en la fila, así que si el sitio los repite en
-        # cada uno llegarían duplicados. Se deduplica por el contenido, que es correcto tanto
-        # si el panel es global como si fuera por cuaderno: en el segundo caso las filas
-        # difieren y se conservan todas.
+        # Los demás paneles no llevan el cuaderno de ESTA causa en la fila, así que si el sitio
+        # los repite en cada uno llegarían duplicados. Se deduplica por el contenido, que es
+        # correcto tanto si el panel es global como si fuera por cuaderno: en el segundo caso
+        # las filas difieren y se conservan todas.
+        #
+        # Las piezas del exhorto son la excepción aparente: traen una columna `Cuaderno`, pero
+        # es el de la causa de ORIGEN, no el que se está recorriendo acá. La deduplicación por
+        # contenido sigue siendo la correcta.
         def _juntar(leer, declarado):
             if declarado is None:
                 return None
             vistos: dict[str, object] = {}
             for pagina, _ in paginas:
-                for fila in leer(pagina, competencia):
+                filas = leer(pagina, competencia)
+                # Sólo `parse_piezas_exhorto` devuelve nulo, y significa que la causa no es un
+                # exhorto. Propagarlo es lo correcto: una lista vacía acá diría "es un exhorto
+                # y el tribunal de origen no le mandó ninguna pieza".
+                if filas is None:
+                    return None
+                for fila in filas:
                     vistos.setdefault(fila.model_dump_json(), fila)
             return list(vistos.values())
 
@@ -927,6 +940,13 @@ class PjudClient(Transporte):
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),
             materias=_juntar(parse_materias, spec.materias),
             exhortos=_juntar(parse_exhortos, spec.exhortos),
+            # De la cabecera y no de que el panel de piezas haya llegado: es lo único que
+            # distingue "esta competencia no publica el panel" de "esta causa no es un
+            # exhorto", y sin esa distinción `piezas_exhorto` en nulo diría las dos cosas.
+            causa_es_exhorto=(
+                causa_es_exhorto(primera, competencia) if spec.piezas_exhorto else None
+            ),
+            piezas_exhorto=_juntar(parse_piezas_exhorto, spec.piezas_exhorto),
         )
 
     def _recorrer_cuadernos(

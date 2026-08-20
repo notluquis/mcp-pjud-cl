@@ -13,11 +13,26 @@
 # La clave lleva guion BAJO. Con guion medio el archivo se lee sin error y no hace nada, que
 # es la peor forma de equivocarse en una configuración: parece puesta.
 #
-# Y esto NO silencia el chequeo de la aplicación de GitHub: está medido, sigue en rojo con el
-# archivo puesto y bien escrito. Este archivo lo lee `ggshield`, la herramienta de línea de
-# comandos; la aplicación se configura desde su panel, donde hay que marcar los dos hallazgos
-# como falsos positivos a mano. Se deja igual porque quien corra `ggshield` localmente sí lo
-# usa, y porque el motivo queda escrito donde se busca.
+# **Probablemente esto NO silencie el chequeo de la aplicación de GitHub, y conviene saberlo
+# antes de perder una tarde.** La documentación de GitGuardian ubica este archivo bajo
+# "Developer Tools", o sea lo lee `ggshield`, la herramienta de línea de comandos, y su página
+# de reglas de exclusión describe sólo el panel.
+#
+# Se dice "probablemente" porque NO está medido, y el intento de medirlo no sirvió: la
+# aplicación escanea los commits del pull request, no el árbol, así que un pull request que no
+# toca `uv.lock` sale verde con o sin este archivo. La prueba de verdad es el próximo que suba
+# una dependencia. Hasta entonces esto es lo que dice la documentación, no lo que se comprobó.
+#
+# Las exclusiones de la plataforma viven en otro lado y no se versionan:
+#
+#   https://dashboard.gitguardian.com/settings/secrets/filepath-exclusions
+#
+# Ahí se agrega `uv.lock` como ruta excluida. Acepta un subconjunto de glob (`*`, `**`, barras
+# normales) y se aplica **hacia atrás**: los hallazgos que ya están en el tablero desaparecen
+# solos, no hay que cerrarlos uno por uno.
+#
+# Este archivo se deja igual por dos razones: quien corra `ggshield` localmente sí lo usa, y
+# porque el próximo que vea el chequeo en rojo va a abrir esto antes que el panel.
 version: 2
 
 secret:

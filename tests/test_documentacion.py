@@ -1107,6 +1107,16 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
         "detalle_causa_civil.html": (0, True),
     }
 
+    # El diagrama dibujaba una flecha de C-1156 a E-468 como si fueran los dos extremos del
+    # mismo exhorto. No lo son: E-468 tiene como origen a C-15411-2025. Por eso el guardia
+    # comprueba los roles y el tribunal, no sólo cuántas filas hay.
+    despachado = parse_exhortos(_texto(FIXT / "c1156_principal.html"), "civil")[0]
+    assert (despachado.rol_origen, despachado.rol_destino) == ("C-1156-2026", "E-875-2026")
+    assert despachado.tribunal_destino == "1º Juzgado Civil de Chillán"
+    assert "C-15411-2025" in _texto(FIXT / "detalle_causa_civil.html"), (
+        "E-468-2026 ya no nombra a su causa de origen, y el diagrama la dibuja"
+    )
+
     for nombre, (exhortos, tiene_piezas) in esperado.items():
         texto = _texto(FIXT / nombre)
         assert len(parse_exhortos(texto, "civil")) == exhortos, (
@@ -1121,12 +1131,16 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
     # El diagrama repite las mismas cifras que la tabla, así que es un lugar más donde pueden
     # quedar viejas. Se exige que las diga, no que las dibuje de alguna forma concreta.
     hoja = _texto(RAIZ / "docs" / "roadmap.md")
-    diagrama = hoja.split("subgraph origen", 1)[1].split("```", 1)[0]
+    diagrama = hoja.split("#### Los dos lados del exhorto", 1)[1].split("```", 2)[1]
     for exigido in (
-        "exhortosCiv<br/>1 fila",
-        "piezasExhortoCiv<br/>SIN PANEL",
-        "exhortosCiv<br/>0 filas",
-        "piezasExhortoCiv<br/>6 filas",
+        "C-1156-2026",
+        "E-875-2026",
+        "C-15411-2025",
+        "E-468-2026",
+        "exhortosCiv: 1 fila",
+        "piezasExhortoCiv: SIN PANEL",
+        "exhortosCiv: 0 filas",
+        "piezasExhortoCiv: 6 filas",
     ):
         assert exigido in diagrama, (
             f"el diagrama de los dos lados del exhorto ya no dice {exigido!r}, y las fixtures "

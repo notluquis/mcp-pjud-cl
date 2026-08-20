@@ -217,17 +217,21 @@ o sea **lo que el tribunal que recibe tuvo a la vista**.
 
 ```mermaid
 graph LR
-  subgraph origen["C-1156-2026 · 2º Juzgado Civil de Concepción"]
-    O1["exhortosCiv<br/>1 fila"]
-    O2["piezasExhortoCiv<br/>SIN PANEL"]
+  subgraph medido1["MEDIDO · el lado del origen"]
+    A["C-1156-2026<br/>2º Juz. Civil de Concepción<br/><br/>exhortosCiv: 1 fila<br/>piezasExhortoCiv: SIN PANEL"]
   end
-  subgraph destino["E-468-2026 · 3º Juzgado Civil de Concepción"]
-    D1["exhortosCiv<br/>0 filas"]
-    D2["piezasExhortoCiv<br/>6 filas"]
+  A -->|"despacha"| B["E-875-2026<br/>1º Juz. Civil de Chillán<br/><i>no consultada</i>"]
+
+  C["C-15411-2025<br/><i>no consultada</i>"] -->|"despacha"| D
+  subgraph medido2["MEDIDO · el lado del destino"]
+    D["E-468-2026<br/>3º Juz. Civil de Concepción<br/><br/>exhortosCiv: 0 filas<br/>piezasExhortoCiv: 6 filas"]
   end
-  origen -->|"despacha E-875-2026<br/>a Chillán"| destino
-  D2 -.->|"son la tramitación<br/>que el origen mandó"| O1
 ```
+
+**Son dos exhortos distintos, no los dos extremos de uno.** C-1156-2026 despacha E-875-2026,
+que no se consultó; E-468-2026 tiene como origen a C-15411-2025, que tampoco. Lo que se midió
+es un ejemplar de cada lado, y con eso alcanza para la conclusión: qué paneles trae depende de
+si la causa ES un exhorto, no de cuál exhorto sea.
 
 `exhortosCiv` se lee desde el origen y ya está cubierto. `piezasExhortoCiv` se lee desde el
 destino y no lo está, y mapearlo tiene una decisión de contrato antes que de código: hoy

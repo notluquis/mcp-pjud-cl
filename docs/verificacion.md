@@ -34,8 +34,8 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
 | Las cuatro capacidades nuevas, de punta a punta | 20 de agosto de 2026, **10 peticiones y todas 200**: 17 cortes, 24 tribunales en Concepción, el detalle de C-1156-2026 con su exhorto, y el documento del folio 9 (975.006 bytes, 1 página, sin capa de texto: un escaneo) |
-| **La arista del exhorto, seguida entera** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán; `listar_tribunales` sobre la corte 45 lo resuelve a **código 145**, que es con lo que se busca esa causa. Era el dato que faltaba |
-| La georreferencia de una actuación | 20 de agosto de 2026, C-1156-2026: tres actuaciones georreferenciadas, y el modal devuelve coordenadas, precisión en metros y la fecha del dispositivo con hora. El parámetro es `valGeoRef` |
+| La arista del exhorto, **resuelta y no recorrida** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán, y `listar_tribunales` sobre la corte 45 lo resuelve a código 145. Con eso la búsqueda es posible, pero **E-875-2026 no se consultó**: lo medido es que el dato que faltaba ya está, no que la causa de destino responda |
+| La georreferencia de una actuación | Ver la sección propia más abajo |
 | El monitor de salas está en otro host y NO comparte cortafuegos | `salas.pjud.cl` responde `Server: Apache`, sin la cookie `TS<hex>` de F5 que sí traen la Oficina Judicial Virtual y el buscador de fallos |
 | Los códigos de tribunal y de corte | Ver la sección propia más abajo |
 | Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
@@ -253,7 +253,9 @@ si la causa ES un exhorto, no de cuál exhorto sea.
 | `civil/documentos/docCertificadoDemanda.php` | `dtaCert` | Certificado de envío de la demanda |
 | `civil/documentos/docCertificadoEscrito.php` | `dtaCert` | Certificado de envío de un escrito |
 
-Mapeadas leyendo la respuesta guardada de C-1156-2026. **Ninguna ejecutada**, así que vale la
+Mapeadas leyendo la respuesta guardada de C-1156-2026. De las seis, **sólo `docuN.php` se
+ejecutó** (folio 9 de esa causa, 975.006 bytes, un escaneo de una página); las otras cinco
+siguen sin ejecutarse, así que vale la
 regla de siempre: se mide antes de exponerla.
 
 ## Cómo se mapearon los endpoints
@@ -262,3 +264,35 @@ No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de
 `consultaUnificada.php`, donde el sitio nombra 189 veces un `.php`, o sea 102 rutas distintas.
 Ése es el método a repetir cuando la plataforma cambie, y las dos cifras salen de contarlas
 sobre la fixture, no de recordarlas.
+
+## Qué devuelve la georreferencia
+
+Medido el 20 de agosto de 2026 sobre C-1156-2026. que tiene **seis**
+actuaciones georreferenciadas, tres en cada cuaderno:
+
+| Dato | Ejemplo medido |
+|---|---|
+| Coordenadas | Latitud y longitud con siete decimales. **No se transcriben acá**: ver abajo |
+| Precisión | 6 metros |
+| **Fecha del dispositivo** | **`27-03-2026 17:40`** |
+
+Hay seis rutas, una por competencia más una unificada, bajo `ADIR_nnn/<competencia>/modal/`. El
+parámetro es `valGeoRef` y la referencia viaja en el `onclick` de la celda, igual que la de los
+documentos, y es un token firmado del mismo tipo.
+
+**La fecha del dispositivo es el hallazgo, y no es un detalle.** Este proyecto existe por la
+distinción entre la fecha de registro y la de diligencia. Ésta es una TERCERA fuente, la del
+aparato del ministro de fe, y es la única que trae **hora**. En la actuación medida coincide con
+`fecha_diligencia`, que es lo que uno esperaría, y por eso mismo sirve: es una fuente
+independiente con la que contrastar la que corre los plazos.
+
+Si se implementa, `discrepancia_fechas` tendría que contemplarla, y la hora es dato nuevo que
+hoy no se entrega en ninguna parte.
+
+**Las coordenadas no se copian a esta página, y eso es parte del hallazgo.** Siete decimales
+sitúan un punto con precisión de centímetros: es la dirección exacta donde un ministro de fe
+practicó una diligencia en una causa real, o sea el domicilio de una persona que es parte en un
+juicio. Versionarlas acá sería persistir un dato de terceros en el repositorio, que es la regla
+5, y hacerlo en el archivo que explica por qué no se hace.
+
+Se describe la forma del dato, que es lo que hace falta para implementarlo, y no su valor.

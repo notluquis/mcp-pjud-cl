@@ -1253,32 +1253,46 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
     que la enciende, mientras `AGENTS.md` y el README dicen que no hay ninguna. En un
     documento de reglas, un matiz así no es una redacción distinta: es otra regla.
 
-    Se compara la frase que titula cada una, no el párrafo entero: cada archivo la desarrolla
-    para su lector, y exigirles el mismo texto obligaría a escribir tres veces lo mismo, que
-    es el problema del que se viene.
+    Se comprueba que cada regla esté presente por su idea y no por su párrafo: cada archivo la
+    desarrolla para su lector, y exigirles el mismo texto obligaría a escribir tres veces lo
+    mismo, que es el problema del que se viene.
+
+    La primera versión de este guardia recorría un diccionario que nunca consumía y terminaba
+    en `assert titulos`, que sólo comprobaba que un literal no estuviera vacío: las reglas 1 a
+    4 podían divergir enteras y seguía verde. Es exactamente el error que este proyecto
+    persigue, cometido en el guardia que venía a evitarlo.
     """
-    titulos = {
-        "no escribir": ("Nada que escriba", "escritura"),
-        "ritmo": ("una petición cada", "intervalo"),
-        "detención": ("detención total",),
-        "fallo ruidoso": ("Fallo ruidoso", "nunca"),
-        "persistencia": ("Sin persistencia de datos de terceros",),
+    #: Cada regla, por las palabras sin las que deja de ser esa regla. No es el párrafo: es lo
+    #: que no puede faltar.
+    REGLAS = {
+        "1. no escribir": ("ingreso", "modificaci"),
+        "2. el ritmo": ("cada 5 segundos", "cláusula CUARTA"),
+        "3. detención total": ("403", "429", "detención total"),
+        "4. fallo ruidoso": ("lista vacía", "plazos"),
+        "5. sin persistencia": ("Sin persistencia de datos de terceros",),
     }
     archivos = {
         "AGENTS.md": _texto(RAIZ / "AGENTS.md"),
         ".github/CONTRIBUTING.md": _texto(RAIZ / ".github" / "CONTRIBUTING.md"),
     }
     # El README es para quien la usa, no para quien contribuye: enumera menos y está bien.
+
+    faltantes = {}
     for nombre, texto in archivos.items():
-        assert "Sin persistencia de datos de terceros" in texto, (
-            f"{nombre} enuncia la regla 5 con otras palabras. En un documento de reglas eso "
-            "no es estilo: 'sin persistencia por defecto' insinúa que hay una configuración "
-            "que la enciende, y no la hay."
-        )
+        plano = " ".join(texto.split())
+        for regla, señas in REGLAS.items():
+            ausentes = [s for s in señas if s.lower() not in plano.lower()]
+            if ausentes:
+                faltantes[f"{nombre} / {regla}"] = ausentes
+    assert not faltantes, (
+        f"Reglas que un documento enuncia sin lo que las define: {faltantes}. En un documento "
+        "de reglas eso no es estilo, es otra regla."
+    )
+
+    for nombre, texto in archivos.items():
         assert "por defecto" not in texto.split("persistencia", 1)[1][:40], (
             f"{nombre} matiza la regla 5 con un 'por defecto' que la vuelve otra regla"
         )
-    assert titulos, "si la lista quedara vacía este guardia no comprobaría nada"
 
 
 #: Encabezados que la hoja de ruta publicó y que se movieron a otra página al partirla. Un
@@ -1295,6 +1309,75 @@ ANCLAS_HEREDADAS = (
     "Qué más existe",
     "Hallazgos de OpenSSF Scorecard que siguen abiertos",
 )
+
+
+#: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
+#: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
+#: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se
+#: contradigan, que es el modo de falla real.
+AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
+
+
+def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
+    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
+
+    No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
+    Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa,
+    que es lo que pasa siempre con un dato repetido tres veces.
+
+    Y va con la fecha pegada por el mismo motivo que las cifras de latencia: una medición sin
+    fecha invita a tomarla por permanente, y ésta describe una tecnología de este año.
+    """
+    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
+    citan = [d for d in donde if AHREFS["dominios"] in _texto(RAIZ / d)]
+    assert citan, "ninguna página cita el estudio, y tres lo citaban"
+
+    for d in citan:
+        # Con los espacios normalizados: en `conf.py` la cita va en un comentario envuelto y
+        # la fecha queda partida en dos líneas. Se comprobó rompiéndolo así.
+        texto = " ".join(_texto(RAIZ / d).split())
+        for clave, valor in AHREFS.items():
+            assert valor in texto, (
+                f"{d} cita el estudio sin su {clave} ({valor}). Las tres copias tienen que "
+                "decir lo mismo, porque ninguna se puede verificar contra el código."
+            )
+
+
+def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
+    """Tres afirmaciones verificables entraron sin guardia: cuántas actuaciones tienen
+    georreferencia, cuántas rutas hay y con qué parámetro se piden.
+
+    La primera entró mal, y es la peor forma de entrar mal en este proyecto: decía tres, que
+    son las del cuaderno principal, y son seis contando el de apremio. Es el falso negativo
+    que originó todo esto, cometido en su propia documentación.
+    """
+    fixtures = RAIZ / "tests" / "fixtures"
+    refs = set()
+    for nombre in ("c1156_principal.html", "c1156_apremio.html"):
+        refs |= set(re.findall(r"geoReferencia\('([^']+)'\)", _texto(fixtures / nombre)))
+    assert len(refs) >= 2, "las fixtures dejaron de traer georreferencias"
+
+    # Anclado a la página que OWNS el dato, no a las dos: se comprobó rompiéndolo con la
+    # concatenación puesta y quedaba verde, porque la copia de la otra página lo rescataba.
+    hoja = _texto(RAIZ / "docs" / "verificacion.md")
+    numeros = {3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho"}
+    assert f"**{numeros[len(refs)]}**" in hoja or str(len(refs)) in hoja, (
+        f"las fixtures traen {len(refs)} actuaciones georreferenciadas entre los dos "
+        "cuadernos, y la documentación dice otra cosa"
+    )
+
+    # Las rutas y el parámetro salen del JavaScript versionado, no de una lista a mano.
+    js = _texto(fixtures / "consultaUnificada.html")
+    rutas = set(re.findall(r"([\w/]*modal/geoReferencia\w*\.php)", js))
+    assert rutas, "la fixture dejó de traer las rutas de georreferencia"
+    assert f"{len(rutas)} rutas" in hoja or numeros.get(len(rutas), "") in hoja, (
+        f"son {len(rutas)} rutas de georreferencia y la documentación dice otra cosa"
+    )
+    parametro = re.search(r"geoReferenciaCivil\.php'.{0,400}?data\s*:\s*\{\s*(\w+)", js, re.S)
+    assert parametro, "la fixture dejó de mostrar con qué parámetro se pide la georreferencia"
+    assert f"`{parametro.group(1)}`" in hoja, (
+        f"la georreferencia se pide con {parametro.group(1)!r} y la documentación dice otra cosa"
+    )
 
 
 def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():

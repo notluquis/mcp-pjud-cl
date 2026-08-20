@@ -267,27 +267,7 @@ cada cuaderno, así que la deduplicación las ignora a propósito.
 ### 0.7b: la georreferencia — medida, y trae una tercera fecha
 
 Hoy la Historia sólo dice si una actuación tiene georreferencia. Detrás del modal hay más de lo
-que esta página suponía. Medido el 20 de agosto de 2026 sobre C-1156-2026, que tiene tres
-actuaciones georreferenciadas:
-
-| Dato | Ejemplo medido |
-|---|---|
-| Coordenadas | `-36.7894544, -73.0467343` |
-| Precisión | 6 metros |
-| **Fecha del dispositivo** | **`27-03-2026 17:40`** |
-
-Hay seis rutas, una por competencia más una unificada, bajo `ADIR_nnn/<competencia>/modal/`. El
-parámetro es `valGeoRef` y la referencia viaja en el `onclick` de la celda, igual que la de los
-documentos, y es un token firmado del mismo tipo.
-
-**La fecha del dispositivo es el hallazgo, y no es un detalle.** Este proyecto existe por la
-distinción entre la fecha de registro y la de diligencia. Ésta es una TERCERA fuente, la del
-aparato del ministro de fe, y es la única que trae **hora**. En la actuación medida coincide con
-`fecha_diligencia`, que es lo que uno esperaría, y por eso mismo sirve: es una fuente
-independiente con la que contrastar la que corre los plazos.
-
-Si se implementa, `discrepancia_fechas` tendría que contemplarla, y la hora es dato nuevo que
-hoy no se entrega en ninguna parte.
+que esta página suponía. Lo medido está en {doc}`verificacion`.
 
 **Y trae fotos y videos.** El modal tiene tres pestañas: `mapasGeoRef`, `imagenesGeoRef` y
 `videosGeoRef`. En la actuación medida las dos últimas vienen vacías, pero existen, y una

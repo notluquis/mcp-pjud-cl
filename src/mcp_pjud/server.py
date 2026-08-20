@@ -374,7 +374,7 @@ def obtener_detalle_causa(
     multiplica las consultas contra la plataforma sin traer nada nuevo.
 
     NO es el expediente completo. El detalle publica más paneles de los que este servidor sabe
-    leer: los escritos, los exhortos y sus piezas todavía no están medidos, así que su ausencia
+    leer: los escritos y las piezas del exhorto todavía no están medidos, así que su ausencia
     acá NO significa que la causa no los tenga.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:

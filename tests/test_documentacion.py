@@ -1113,6 +1113,36 @@ def test_el_diagrama_de_la_detencion_nombra_todo_lo_que_la_detiene():
     assert "NO detiene" in pagina, "el diagrama dejó de decir que un timeout no detiene"
 
 
+def test_toda_pagina_publicada_lleva_el_enlace_al_repositorio():
+    """`source_repository` pone "Ver código fuente" arriba a la derecha y sólo en las páginas
+    de contenido: la portada queda sin ninguna forma de llegar al repositorio.
+
+    Quien evalúa si este software le sirve necesita ver el código, la licencia y quién lo
+    mantiene, y si no encuentra el enlace en la primera página asume que no lo hay. `Furo`
+    ofrece `footer_icons` justo para eso, así que no hay que inventarlo.
+
+    El guardia mira la configuración del tema y no el HTML construido, porque construir la
+    documentación entera dentro de un test la haría lenta sin decir nada más.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_conf_tema", RAIZ / "docs" / "conf.py")
+    assert spec is not None
+    assert spec.loader is not None
+    conf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(conf)
+
+    iconos = conf.html_theme_options.get("footer_icons", [])
+    assert iconos, (
+        "sin `footer_icons` la portada publicada no tiene ninguna forma de llegar al "
+        "repositorio: `source_repository` sólo aparece en las páginas de contenido"
+    )
+    repos = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["urls"]["Repositorio"]
+    assert any(i.get("url", "").rstrip("/") == repos.rstrip("/") for i in iconos), (
+        f"el icono del pie apunta a otra parte y el paquete declara {repos!r}"
+    )
+
+
 def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real():
     """La hoja de ruta nombraba UNA ruta de documentos y la respuesta trae seis.
 

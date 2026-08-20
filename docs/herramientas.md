@@ -231,6 +231,26 @@ Cada campo distingue tres estados, y los dos últimos significan cosas distintas
 ```{include} _generado/paneles.md
 ```
 
+El mismo dato como grafo, útil para ver de un vistazo qué competencia sirve para qué pregunta.
+Se genera desde el código igual que la tabla, así que no puede quedar viejo:
+
+```{include} _generado/paneles-grafo.md
+```
+
+Y los tres estados que hay que respetar al informar. La rama de la izquierda es la que este
+proyecto existe para no borrar: "acá no se informa" no es "no ocurrió".
+
+```mermaid
+graph TD
+  P["Se pide el detalle"] --> E{"¿la búsqueda<br/>encontró el rol?"}
+  E -->|no| NF["causa_encontrada: false<br/>y TODO lo demás en nulo"]
+  E -->|sí| C{"¿esta competencia<br/>publica el panel?"}
+  C -->|no| N["nulo<br/>la pregunta no tiene respuesta acá"]
+  C -->|sí| F{"¿el panel<br/>trae filas?"}
+  F -->|no| V["lista vacía<br/>ES una respuesta: no ocurrió"]
+  F -->|sí| D["las filas"]
+```
+
 :::{warning} Al computar plazos
 `fecha_diligencia` de la historia viene en **nulo** salvo en civil y cobranza. Y las
 notificaciones incluyen las **no practicadas**, que se distinguen por su `estado`: una fila

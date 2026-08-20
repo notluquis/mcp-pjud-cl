@@ -47,6 +47,7 @@ docs = [
     "sphinx-llm>=1.0.0",
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.7.0",
+    "sphinxcontrib-mermaid>=1.0",
 ]
 dev = [
     "pytest>=8.3",

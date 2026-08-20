@@ -647,6 +647,14 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
         for p in citan
         if peor not in _texto(p) and p.name != "CHANGELOG.md"
     ]
+    # El diagrama de la detención total cita el peor caso para justificar por qué un timeout
+    # NO detiene el proceso. Es un dato repetido más, y si el techo se vuelve a medir hay que
+    # redibujarlo: sin esto, el diagrama seguiría diciendo un número que ya no es.
+    assert peor in _texto(RAIZ / "docs" / "cumplimiento.md"), (
+        f"el diagrama de la detención total ya no cita el peor caso medido ({peor} s), que es "
+        "lo que justifica que un timeout no detenga el proceso"
+    )
+
     assert not sin_el_peor, (
         f"Páginas que citan la latencia típica sin el peor caso medido: {sin_el_peor}. "
         f"Sola, la de {busqueda} s invita a repetir el error de tomar una muestra por techo; "
@@ -1077,6 +1085,34 @@ def test_el_contrato_no_llama_sin_medir_a_un_panel_que_ya_entrega(expuestas):
         )
 
 
+def test_el_diagrama_de_la_detencion_nombra_todo_lo_que_la_detiene():
+    """El diagrama nombraba `ReadError` y `ConnectError`, que son dos subclases, y la constante
+    son dos clases BASE que cubren más: también la escritura cortada y el protocolo roto.
+
+    Quien diagnostique por qué quedó bloqueado el proceso lee esta página, y un diagrama que
+    enumera de menos manda a buscar la causa donde no está. La fuente es la constante.
+    """
+    from mcp_pjud.client import _RECHAZO_DE_CONEXION
+
+    pagina = _texto(RAIZ / "docs" / "cumplimiento.md")
+    # Acotado al bloque del diagrama y no a la página entera: la prosa de al lado nombra las
+    # mismas clases, así que mirar todo dejaba pasar un diagrama que enumeraba de menos. Se vio
+    # rompiéndolo: la primera versión de este guardia seguía verde con el error puesto.
+    diagrama = pagina.split("```mermaid", 1)[1].split("```", 1)[0]
+    for clase in _RECHAZO_DE_CONEXION:
+        assert clase.__name__ in diagrama, (
+            f"{clase.__name__} activa la detención total y el diagrama no lo nombra"
+        )
+
+    import httpx
+
+    assert httpx.TimeoutException not in _RECHAZO_DE_CONEXION, (
+        "si los timeouts pasaran a detener, el diagrama diría lo contrario de lo que hace el "
+        "código: una consulta lenta y normal dejaría el servidor detenido"
+    )
+    assert "NO detiene" in pagina, "el diagrama dejó de decir que un timeout no detiene"
+
+
 def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
     """La página afirmaba en un párrafo que no se entendía cuándo aparece `piezasExhortoCiv` y
     en el de al lado que sí, con la explicación. Dos respuestas incompatibles a la misma
@@ -1099,6 +1135,16 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
         "detalle_causa_civil.html": (0, True),
     }
 
+    # El diagrama dibujaba una flecha de C-1156 a E-468 como si fueran los dos extremos del
+    # mismo exhorto. No lo son: E-468 tiene como origen a C-15411-2025. Por eso el guardia
+    # comprueba los roles y el tribunal, no sólo cuántas filas hay.
+    despachado = parse_exhortos(_texto(FIXT / "c1156_principal.html"), "civil")[0]
+    assert (despachado.rol_origen, despachado.rol_destino) == ("C-1156-2026", "E-875-2026")
+    assert despachado.tribunal_destino == "1º Juzgado Civil de Chillán"
+    assert "C-15411-2025" in _texto(FIXT / "detalle_causa_civil.html"), (
+        "E-468-2026 ya no nombra a su causa de origen, y el diagrama la dibuja"
+    )
+
     for nombre, (exhortos, tiene_piezas) in esperado.items():
         texto = _texto(FIXT / nombre)
         assert len(parse_exhortos(texto, "civil")) == exhortos, (
@@ -1110,7 +1156,26 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
             f"ruta dice lo contrario"
         )
 
-    antes = _texto(RAIZ / "docs" / "roadmap.md").split("#### Los dos lados del exhorto", 1)[0]
+    # El diagrama repite las mismas cifras que la tabla, así que es un lugar más donde pueden
+    # quedar viejas. Se exige que las diga, no que las dibuje de alguna forma concreta.
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    diagrama = hoja.split("#### Los dos lados del exhorto", 1)[1].split("```", 2)[1]
+    for exigido in (
+        "C-1156-2026",
+        "E-875-2026",
+        "C-15411-2025",
+        "E-468-2026",
+        "exhortosCiv: 1 fila",
+        "piezasExhortoCiv: SIN PANEL",
+        "exhortosCiv: 0 filas",
+        "piezasExhortoCiv: 6 filas",
+    ):
+        assert exigido in diagrama, (
+            f"el diagrama de los dos lados del exhorto ya no dice {exigido!r}, y las fixtures "
+            "siguen diciendo eso"
+        )
+
+    antes = hoja.split("#### Los dos lados del exhorto", 1)[0]
     assert "no está entendido" not in antes[-1500:], (
         "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
         "párrafo siguiente lo explica: dos respuestas a la misma pregunta"

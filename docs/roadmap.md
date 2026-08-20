@@ -17,6 +17,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Búsqueda de causas en **suprema** y **Cortes de Apelaciones** | Las cuatro búsquedas de cada una. Lo que las bloqueaba era `radio-group`, el radio RIT/RUC del formulario, que las otras cuatro competencias toleran ausente |
 | Qué exige cada competencia para acotar | `tribunal` en las cuatro de primera instancia, `corte` en apelaciones (avisa "Por favor seleccione una Corte"), nada en suprema |
 | Buscador de fallos de Cortes de Apelaciones | Rol 1504-2019, tres sentencias. Dos consultas al mismo buscador tardaron 115,6 s y 177,0 s |
+| Los códigos de tribunal | 20 de agosto de 2026: `combosJSON/leeTrib.php` con competencia 3 y corte 46 devolvió JSON con 24 tribunales y su código. Confirma 162 como 2º Juzgado Civil de Concepción y 163 como 3º, que hasta entonces se habían deducido |
 | Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
 | Códigos de cobranza | Competencia 6, tribunal `1332` (Jdo. de Cobranza Laboral y Previsional de Concepción), tipos de causa `A C D E J L P R` |
 | Entrada pública sin Clave Única | `sesion-consultaunificada.php` → 200 |
@@ -275,6 +276,12 @@ parámetro oculto que lleva una referencia opaca, igual que el resto del sitio:
 Mapeadas leyendo la respuesta guardada de C-1156-2026. **Ninguna ejecutada**, así que vale la
 regla de siempre: se mide antes de exponerla.
 
+**Y hasta ahora la respuesta no decía cuál documento.** `tiene_documento` era un booleano: la
+actuación informaba que HAY documento y no CUÁL, y con eso no se puede pedir. La referencia
+estaba en la misma celda, en el campo `dtaDoc` del formulario, y se descartaba. Corregido: cada
+actuación trae su `documento_referencia`, que es lo único que permite pedir el archivo sin
+volver a consultar el detalle entero.
+
 #### Cómo se devuelve un documento sin reventar el contexto
 
 El ebook es el expediente completo. Meterlo en la respuesta de una herramienta, aunque sea en
@@ -322,6 +329,33 @@ Traer un PDF a disco cambia el perfil de retención del proyecto y entra de llen
 21.719. La regla 5 dice que no se persisten datos de terceros, así que si un documento se
 guarda, lo guarda quien llama y no este servidor: ruta elegida por el usuario, consentimiento
 explícito por llamada, y nada escrito por defecto.
+
+### 0.7a: los códigos de tribunal, que hoy hay que saberse de memoria
+
+**Es el muro de entrada del proyecto y no estaba anotado.** Para buscar una causa en primera
+instancia hay que pasar `tribunal=162`, y ese número no aparece en ninguna parte de la
+respuesta ni de esta documentación: quien no lo sepa no puede usar el servidor.
+
+No estaba mapeado porque los combos se llenan por AJAX, así que leer el HTML de
+`consultaUnificada.php` no los muestra. Están en el JavaScript:
+
+| Ruta | Método | Parámetros | Devuelve |
+|---|---|---|---|
+| `combosJSON/leeCorte.php` | POST | `tipoBusqueda` | Las cortes con su código |
+| `combosJSON/leeTrib.php` | POST | `codCompetencia`, `codCorte`, `tipoBusqueda` | Los tribunales de esa corte con su código |
+
+**Medido el 20 de agosto de 2026**: con competencia 3 y corte 46 responde JSON con 24
+tribunales, cada uno `{"COD_TRIBUNAL": "163", "GLS_TRIBUNAL": "3º Juzgado Civil de
+Concepción"}`. Las rutas cuelgan de la raíz del sitio y NO del prefijo `ADIR_`, que es lo
+primero que se intentó y devuelve 404.
+
+Con esto se cierra el único lugar donde este proyecto adivinó: el código 163 se dedujo porque
+162 era el 2º Juzgado y salió bien, que es exactamente la forma de acertar que la regla de
+"medir antes de exponer" existe para no aceptar. Ahora está medido.
+
+Y es lo que hace **seguible** la arista del exhorto: hoy `tribunal_destino` es un nombre
+("1º Juzgado Civil de Chillán") y la búsqueda exige un entero, así que un modelo que lee la
+respuesta no puede ir a buscar la causa de destino aunque tenga su rol.
 
 ### 0.7b: la georreferencia, que hoy es sólo un sí o un no
 

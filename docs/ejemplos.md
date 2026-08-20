@@ -29,7 +29,9 @@ obtener_actuaciones_receptor(tipo="C", rol=1156, anio=2026, tribunal=162, corte=
   "fecha_registro": "2026-03-31",
   "discrepancia_fechas": false,
   "georreferenciado": true,
-  "tiene_documento": true
+  "tiene_documento": true,
+  "documento_ruta": "docuN.php",
+  "documento_referencia": "hHkPqx0yRb2..."
 }
 ```
 

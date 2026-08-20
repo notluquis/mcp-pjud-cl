@@ -1143,6 +1143,59 @@ def test_toda_pagina_publicada_lleva_el_enlace_al_repositorio():
     )
 
 
+def test_la_referencia_publica_nombra_todos_los_campos_de_una_actuacion():
+    """La tabla de campos y los ejemplos se escriben a mano, así que un campo nuevo entra al
+    modelo y no a la página: quien consulte la referencia no descubre justo el dato nuevo.
+
+    Pasó con `documento_referencia`, que es lo único que permite pedir un documento.
+    """
+    from mcp_pjud.parser import Actuacion
+
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    faltan = [c for c in Actuacion.model_fields if f"`{c}`" not in referencia]
+    assert not faltan, (
+        f"campos de una actuación que el modelo entrega y la referencia no nombra: {faltan}"
+    )
+
+
+def test_los_codigos_de_tribunal_que_cita_la_documentacion_son_los_medidos():
+    """La hoja de ruta afirma que 162 es el 2º Juzgado Civil de Concepción y 163 el 3º.
+
+    Antes de esta medición el 163 estaba DEDUCIDO: se supuso que seguía al 162 y salió bien,
+    que es justo la forma de acertar que la regla de medir antes de exponer existe para no
+    aceptar. Ahora hay una respuesta real recortada como fixture y la prosa se compara contra
+    ella en vez de repetirse a sí misma.
+
+    Se comprueba por cercanía: donde la página nombra un tribunal medido, su código tiene que
+    estar cerca. La primera versión de este guardia comparaba presencia suelta en toda la
+    página y no podía fallar, y se supo cambiándole el número a la prosa.
+    """
+    import json
+
+    medidos = {
+        t["COD_TRIBUNAL"]: t["GLS_TRIBUNAL"]
+        for t in json.loads(_texto(RAIZ / "tests" / "fixtures" / "combos_tribunales.json"))
+    }
+    assert medidos, "la fixture de tribunales quedó vacía"
+
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    citados = {c: n for c, n in medidos.items() if n in hoja}
+    assert citados, "la hoja de ruta dejó de nombrar los tribunales medidos"
+
+    for codigo, nombre in citados.items():
+        cerca = False
+        desde = 0
+        while (i := hoja.find(nombre, desde)) != -1:
+            if codigo in hoja[max(0, i - 120) : i + len(nombre) + 120]:
+                cerca = True
+                break
+            desde = i + 1
+        assert cerca, (
+            f"la hoja de ruta nombra {nombre!r} y en ninguna de sus menciones dice que su "
+            f"código es {codigo}, que es el medido"
+        )
+
+
 def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real():
     """La hoja de ruta nombraba UNA ruta de documentos y la respuesta trae seis.
 

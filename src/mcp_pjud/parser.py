@@ -482,6 +482,17 @@ class Actuacion(BaseModel):
         "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
     )
     tiene_documento: bool = Field(description="Si el folio trae documento descargable.")
+    documento_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta de la plataforma entrega ese documento. Cada competencia usa la "
+        "suya. NULO cuando la actuación no trae documento.",
+    )
+    documento_referencia: str | None = Field(
+        default=None,
+        description="La referencia opaca con la que la plataforma identifica ese documento. "
+        "Junto con `documento_ruta` es lo único que permite pedirlo después: sin ellas se sabe "
+        "que el documento existe y no cuál es. NULO cuando la actuación no trae documento.",
+    )
 
     @property
     def es_actuacion_receptor(self) -> bool:
@@ -593,6 +604,61 @@ def _filas_del_panel(html_detalle: str, spec: Panel) -> Iterator[tuple[list, dic
         )
 
 
+#: La referencia que un modal de JavaScript lleva como único argumento, para las filas que
+#: abren el documento así en vez de con un formulario.
+#:
+#: Anclado al inicio y con el nombre acotado a una función suelta a propósito. La primera
+#: versión aceptaba cualquier llamada dentro del `onclick`, y las filas que SÍ traen formulario
+#: llevan `$(this).closest("form").submit()`: de ahí sacaba `"form"` como si fuera la
+#: referencia del documento. Un valor plausible y falso, que es peor que no traer ninguno.
+_REFERENCIA_EN_MODAL = re.compile(r"^\s*([A-Za-z_]\w*)\(\s*['\"]([^'\"]+)['\"]\s*\)\s*;?\s*$")
+
+
+def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
+    """Con qué se pide el documento de una actuación: su ruta y su referencia.
+
+    Antes se leía únicamente si el formulario existía, o sea la respuesta decía que HAY
+    documento y no CUÁL, y con eso no se puede pedir: quien lo quisiera tendría que volver a
+    consultar el detalle entero para encontrarlo.
+
+    Se lee del formulario y NO de una tabla por competencia, y eso importa: cada una nombra
+    esto a su manera, y una tabla escrita a mano tendría que acertarle a las cinco y envejecer
+    con la sexta. Medido sobre las fixtures:
+
+    | Competencia | Campo | Ruta |
+    |---|---|---|
+    | civil | `dtaDoc` | `docuN.php` |
+    | cobranza | `dtaDoc` | `docuCobranza.php` |
+    | laboral | `valorRef` | `docReformadoLaboral.php` |
+    | apelaciones | `valorDoc` | `docCausaApelaciones.php` |
+    | suprema | `valorFile` | `docCausaSuprema.php` |
+
+    La primera versión de esta función buscaba `dtaDoc` a secas, que es el nombre de civil, y
+    devolvía nulo en las otras cuatro con `tiene_documento` en verdadero. O sea el falso
+    negativo que vino a arreglar, reintroducido para cuatro competencias.
+
+    Se devuelven tal cual y sin interpretar: la referencia es opaca y versionada por sesión.
+    """
+    for formulario in celda.iter("form"):
+        ruta = (formulario.get("action") or "").rsplit("/", 1)[-1] or None
+        for oculto in formulario.iter("input"):
+            nombre, valor = oculto.get("name"), oculto.get("value")
+            # El certificado de envío es otro documento, y en varias competencias viaja en la
+            # misma fila. Confundirlos entregaría el certificado como si fuera la resolución.
+            if nombre and valor and nombre != "dtaCert":
+                return ruta, valor
+
+    # Y algunas filas no traen formulario: abren el documento con un modal de JavaScript que
+    # lleva la referencia como argumento. Está medido en laboral, en la fila del texto de la
+    # demanda. La referencia se rescata igual, y la ruta queda nula a propósito: el nombre de
+    # la función no es un endpoint, y a cuál llama no está medido. Inventarlo sería adivinar.
+    for enlace in celda.iter("a"):
+        m = _REFERENCIA_EN_MODAL.match(enlace.get("onclick") or "")
+        if m:
+            return None, m.group(2)
+    return None, None
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -654,6 +720,7 @@ def _fila_a_actuacion(
     if diligencia is None:
         diligencia = desde_desc
 
+    documento = _documento_de_la_celda(celdas[columnas.index("doc")])
     return Actuacion(
         folio=txt["folio"],
         # `etapa` y `georref` no existen en todas: suprema no publica ninguna de las dos.
@@ -682,6 +749,8 @@ def _fila_a_actuacion(
             else False
         ),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
+        documento_ruta=documento[0],
+        documento_referencia=documento[1],
     )
 
 

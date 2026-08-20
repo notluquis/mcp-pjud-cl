@@ -1015,3 +1015,105 @@ def test_un_icono_de_estado_irreconocible_levanta_en_vez_de_volver_nulo():
 
     with pytest.raises(EstructuraInesperada, match="estado de la parte"):
         parse_litigantes(H.tostring(doc, encoding="unicode"), "laboral")
+
+
+@pytest.mark.parametrize(
+    ("competencia", "fixture"),
+    [
+        ("civil", "c1156_principal.html"),
+        ("cobranza", "detalle_cobranza.html"),
+        ("laboral", "detalle_laboral.html"),
+        ("apelaciones", "detalle_apelaciones.html"),
+        ("suprema", "detalle_suprema.html"),
+    ],
+)
+def test_la_actuacion_dice_cual_documento_tiene_y_no_solo_que_tiene_uno(competencia, fixture):
+    """`tiene_documento` decía que HAY documento y no CUÁL, y con eso no se puede pedir.
+
+    Va sobre las CINCO competencias y no sólo civil, porque la primera versión buscaba el
+    campo `dtaDoc`, que es el nombre de civil, y devolvía nulo en las otras cuatro con
+    `tiene_documento` en verdadero: el mismo falso negativo que vino a arreglar, reintroducido.
+    Cada competencia lo nombra a su manera (`valorRef`, `valorDoc`, `valorFile`) y usa su
+    propia ruta, así que se lee del formulario y no de una tabla escrita a mano.
+
+    Laboral trae además una fila que abre el documento con un modal de JavaScript en vez de un
+    formulario, y ahí la referencia viaja como argumento.
+    """
+    html_detalle = (FIXTURES / fixture).read_text(encoding="utf-8")
+    actuaciones = parse_historia(html_detalle, competencia=competencia)
+
+    con_doc = [a for a in actuaciones if a.tiene_documento]
+    assert con_doc, f"la fixture de {competencia} dejó de traer actuaciones con documento"
+
+    sin_referencia = [a.folio for a in con_doc if not a.documento_referencia]
+    assert not sin_referencia, (
+        f"en {competencia} hay folios que dicen tener documento y no dicen cuál: {sin_referencia}"
+    )
+    # No basta con que traiga ALGO, y se supo rompiéndolo: una versión de esto sacaba `"form"`
+    # del `onclick` que envía el formulario y lo entregaba como referencia. Las fixtures están
+    # anonimizadas con un prefijo conocido, así que un valor que no lo lleve es basura.
+    basura = [
+        a.documento_referencia
+        for a in con_doc
+        if "referencia-" not in (a.documento_referencia or "")
+    ]
+    assert not basura, (
+        f"en {competencia} la referencia del documento no salió del sitio: {basura[:3]}"
+    )
+    for a in actuaciones:
+        if not a.tiene_documento:
+            assert a.documento_referencia is None
+
+
+def test_dos_actuaciones_no_comparten_la_referencia_de_su_documento():
+    """Si todas devolvieran la misma, se estaría leyendo la de otra actuación y entregando el
+    documento equivocado, que se ve plausible y es falso."""
+    con_doc = [a for a in parse_historia(C1156_PRINCIPAL) if a.tiene_documento]
+    referencias = [a.documento_referencia for a in con_doc]
+    assert len(set(referencias)) == len(referencias), f"referencias repetidas: {referencias}"
+
+
+def test_el_onclick_que_envia_el_formulario_no_se_lee_como_una_referencia():
+    """Las filas que traen formulario llevan `$(this).closest("form").submit()` en el enlace.
+
+    La primera versión del respaldo aceptaba cualquier llamada dentro del `onclick`, y de ahí
+    sacaba `"form"` como si fuera la referencia del documento. Un valor plausible y falso, que
+    es peor que no traer ninguno.
+
+    En la práctica no se alcanzaba, porque el formulario responde antes, así que esto es
+    defensa en profundidad y se prueba donde sí se alcanza: en la función.
+    """
+    from mcp_pjud.parser import _documento_de_la_celda
+
+    celda = H.fromstring(
+        """<td><a href="#" onclick='$(this).closest("form").submit();'>x</a></td>"""
+    )
+    assert _documento_de_la_celda(celda) == (None, None)
+
+
+def test_el_documento_que_abre_un_modal_deja_la_ruta_nula_y_no_inventada():
+    """Laboral trae una fila que abre el documento con un modal en vez de un formulario, y ahí
+    la referencia viaja como argumento.
+
+    La ruta queda nula a propósito: el nombre de la función de JavaScript no es un endpoint, y
+    a cuál llama no está medido. Devolverlo como ruta sería adivinar.
+    """
+    from mcp_pjud.parser import _documento_de_la_celda
+
+    celda = H.fromstring("""<td><a onclick="textoDemandaLaboral('REF-9');">x</a></td>""")
+    assert _documento_de_la_celda(celda) == (None, "REF-9")
+
+
+def test_el_certificado_de_envio_no_se_entrega_como_si_fuera_la_resolucion():
+    """Varias competencias traen el certificado en la misma fila, con el campo `dtaCert`.
+
+    Confundirlos entregaría el certificado de envío como si fuera la resolución: dos documentos
+    distintos, y el que importa para un plazo es la resolución.
+    """
+    from mcp_pjud.parser import _documento_de_la_celda
+
+    celda = H.fromstring(
+        """<td><form action="x/docCertificadoEscrito.php">
+        <input type="hidden" name="dtaCert" value="CERT"></form></td>"""
+    )
+    assert _documento_de_la_celda(celda) == (None, None)

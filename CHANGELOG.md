@@ -16,17 +16,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Campos `documento_ruta` y `documento_referencia` en las actuaciones: con qué pedir el
+  documento. Antes sólo se decía que existía.
+- Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
+  campo del detalle, la cadena de peticiones y qué activa la detención total.
+
 ### Corregido
 
 - El estado de la parte en laboral llegaba siempre nulo: el sitio lo publica como icono y no
   como texto. Ahora viaja la clase del icono, sin interpretar.
 - Un panel de materias con encabezados y cero filas se publicaba como lista vacía, que se lee
   como que la causa no litiga nada.
-
-### Agregado
-
-- Diagramas en la documentación: qué panel publica cada competencia, los tres estados de un
-  campo del detalle, la cadena de peticiones y qué activa la detención total.
 
 ## [0.6.0] - 2026-08-20
 

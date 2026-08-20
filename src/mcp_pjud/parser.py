@@ -355,6 +355,34 @@ LITIGANTES_LABORAL = Panel(
 
 #: Las materias de una causa laboral: qué se litiga, con su estado y su fecha de término.
 #: Medida sobre `O-364-2020`, que trae nueve.
+#: El exhorto visto desde el tribunal de ORIGEN: la causa que este tribunal despachó a otro.
+#: Medido sobre C-1156-2026, que despacha E-875-2026 al 1º Juzgado Civil de Chillán.
+#:
+#: Cero filas es una respuesta legítima acá, y por eso no lleva el guardia que sí tienen los
+#: litigantes: la mayoría de las causas no despacha ningún exhorto. Se midió: dos de las cuatro
+#: respuestas civiles guardadas traen el panel con encabezados y ninguna fila.
+EXHORTOS_CIVIL = Panel(
+    panel="exhortosCiv",
+    columnas=(
+        "rol_origen",
+        "tipo",
+        "rol_destino",
+        "fecha_orden",
+        "fecha_ingreso",
+        "tribunal_destino",
+        "estado",
+    ),
+    encabezados=(
+        "rol origen",
+        "tipo exhorto",
+        "rol destino",
+        "fecha ordena exhorto",
+        "fecha ingreso exhorto",
+        "tribunal destino",
+        "estado exhorto",
+    ),
+)
+
 MATERIAS_LABORAL = Panel(
     panel="materiasLab",
     columnas=("codigo", "glosa", "estado", "fecha_termino"),
@@ -807,6 +835,30 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
     return liquidaciones
 
 
+class Exhorto(BaseModel):
+    """Una causa que este tribunal despachó a otro para que practique una diligencia.
+
+    Se ve desde el tribunal de ORIGEN: `rol_destino` es la causa que se abrió en el otro
+    tribunal, y ahí viven las actuaciones que este expediente no muestra. Un plazo que corre
+    por una diligencia exhortada NO se computa desde acá.
+    """
+
+    rol_origen: str = Field(description="El rol de esta causa, la que ordena el exhorto.")
+    rol_destino: str = Field(description="El rol que la causa recibió en el tribunal destino.")
+    tribunal_destino: str = Field(description="Tribunal que debe practicar la diligencia.")
+    tipo: str = Field(default="", description="Tipo de exhorto, según el sitio.")
+    estado: str | None = Field(
+        default=None,
+        description="Estado del exhorto. Medido: 'Generado'. Otros valores no se conocen.",
+    )
+    fecha_orden: date | None = Field(
+        default=None, description="Cuándo el tribunal ordenó despacharlo."
+    )
+    fecha_ingreso: date | None = Field(
+        default=None, description="Cuándo ingresó al tribunal destino."
+    )
+
+
 class Litigante(BaseModel):
     """Una parte de la causa, con su calidad procesal.
 
@@ -842,6 +894,35 @@ class Materia(BaseModel):
     fecha_termino: date | None = Field(
         default=None, description="Fecha de término de la materia, en ISO 8601."
     )
+
+
+def parse_exhortos(html_detalle: str, competencia: str = "civil") -> list[Exhorto]:
+    """Las causas que este tribunal despachó a otro.
+
+    Cero filas es una respuesta, no un fallo: la mayoría de las causas no despacha ninguno.
+    Está medido sobre las cuatro respuestas civiles guardadas, dos con el panel vacío y dos
+    con la misma fila. Por eso este panel NO lleva el guardia de cero filas que sí llevan los
+    litigantes, donde una causa sin partes no existe.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.exhortos is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se leen los exhortos en {competencia}. Leerlos con el "
+            "mapa de otra competencia devolvería el tribunal destino en el campo del tipo, "
+            "que se ve plausible y es falso."
+        )
+    return [
+        Exhorto(
+            rol_origen=txt["rol_origen"],
+            rol_destino=txt["rol_destino"],
+            tribunal_destino=txt["tribunal_destino"],
+            tipo=txt["tipo"],
+            estado=txt["estado"] or None,
+            fecha_orden=_fecha(txt["fecha_orden"]),
+            fecha_ingreso=_fecha(txt["fecha_ingreso"]),
+        )
+        for _celdas, txt in _filas_del_panel(html_detalle, spec.exhortos)
+    ]
 
 
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
@@ -943,6 +1024,12 @@ class DetalleCausa(BaseModel):
     )
     materias: list[Materia] | None = Field(
         default=None, description="Qué se litiga. Sólo laboral publica el panel."
+    )
+    exhortos: list[Exhorto] | None = Field(
+        default=None,
+        description="Causas que este tribunal despachó a otro. Una lista con elementos "
+        "significa que parte de la tramitación ocurre en OTRO expediente, y las actuaciones "
+        "de esa parte no están acá.",
     )
 
 
@@ -1089,6 +1176,12 @@ class Competencia(NamedTuple):
     #: más es más difícil de notar que rechazar de menos: no gasta una petición, no deja rastro
     #: y se ve igual que "no hay causas".
     acota_por: str | None
+    #: Cómo leer su panel de exhortos despachados, o `None` mientras no se haya medido.
+    #:
+    #: Va al final y con valor por defecto porque `NamedTuple` exige que los campos con
+    #: default cierren la lista. El default es `None`, o sea una competencia nueva rechaza los
+    #: exhortos hasta que alguien los mida, que es la dirección segura del olvido.
+    exhortos: Panel | None = None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -1140,6 +1233,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
         litigantes=LITIGANTES_CIVIL,
         materias=None,
+        exhortos=EXHORTOS_CIVIL,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,

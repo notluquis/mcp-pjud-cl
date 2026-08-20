@@ -202,9 +202,13 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 
 ## `obtener_detalle_causa`
 
-Todo lo que el expediente publica, leído de **una sola cadena de peticiones**: historia,
-litigantes, notificaciones, liquidaciones y materias. Recorre todos los cuadernos, no sólo el
-que la plataforma muestra por defecto.
+Historia, litigantes, notificaciones, liquidaciones, materias y exhortos, leídos de **una
+sola cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
+por defecto.
+
+**No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
+leer: los escritos y las piezas del exhorto todavía no están medidos, así que su ausencia acá
+NO significa que la causa no los tenga.
 
 :::{important} Preferir ésta antes que preguntar por partes
 Los paneles vienen juntos en la misma respuesta HTML. Pedirlos por separado multiplica las
@@ -229,6 +233,10 @@ notificaciones incluyen las **no practicadas**, que se distinguen por su `estado
 pendiente no hizo correr ningún plazo.
 
 Los litigantes traen **RUT de personas naturales**: son datos personales de terceros.
+
+Y si `exhortos` trae algo, parte de la tramitación ocurre en **otro expediente**: el exhorto
+abre una causa nueva en el tribunal destino, con su propio rol, y las actuaciones de esa parte
+no están acá. Un plazo que corre por una diligencia exhortada no se computa desde esta causa.
 :::
 
 | Parámetro | Tipo | Descripción |

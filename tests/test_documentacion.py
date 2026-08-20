@@ -749,6 +749,7 @@ def test_la_lectura_combinada_solo_ofrece_competencias_con_algun_panel(expuestas
                 COMPETENCIAS[n].notificaciones,
                 COMPETENCIAS[n].liquidaciones,
                 COMPETENCIAS[n].materias,
+                COMPETENCIAS[n].exhortos,
             )
         )
     }
@@ -1046,6 +1047,36 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
         )
 
 
+def test_el_contrato_no_llama_sin_medir_a_un_panel_que_ya_entrega(expuestas):
+    """La advertencia de que el detalle no es el expediente completo enumera los paneles que
+    faltan, y esa lista se escribe a mano.
+
+    Al exponer `exhortos` quedó contradiciéndose a ocho líneas de distancia: el título
+    prometía el campo y el aviso seguía diciendo que no estaba medido. Un modelo que lee eso
+    ignora una lista vacía legítima, o presenta el campo como incompleto.
+
+    El guardia se ata al modelo: cualquier campo que alguna competencia declare es un panel
+    que se entrega, y no puede aparecer en la frase de lo que falta.
+    """
+    from mcp_pjud.parser import DetalleCausa
+
+    contrato = (expuestas["obtener_detalle_causa"].description or "").lower()
+    aviso = contrato.split("no es el expediente completo", 1)[1].split("\n\n", 1)[0]
+
+    entregados = {
+        campo
+        for campo in DetalleCausa.model_fields
+        if campo != "causa_encontrada"
+        and any(getattr(COMPETENCIAS[n], campo, None) is not None for n in MODULOS)
+    }
+    assert entregados, "si ningún panel estuviera medido, la herramienta no debería existir"
+
+    for campo in entregados:
+        assert campo not in aviso, (
+            f"el contrato entrega {campo!r} y el aviso lo nombra entre los paneles sin medir"
+        )
+
+
 def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
     """Las dos se escribían a mano copiando lo que dice `parser.COMPETENCIAS`.
 
@@ -1073,7 +1104,14 @@ def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
     for nombre in MODULOS:
         assert f"`{nombre}`" in acotacion, f"{nombre!r} se cayó de la tabla de acotación"
 
-    for campo in ("historia", "litigantes", "notificaciones", "liquidaciones", "materias"):
+    for campo in (
+        "historia",
+        "litigantes",
+        "notificaciones",
+        "liquidaciones",
+        "materias",
+        "exhortos",
+    ):
         fila = next((f for f in paneles.splitlines() if f.startswith(f"| `{campo}`")), None)
         assert fila, f"la tabla de paneles no tiene fila para {campo!r}"
         cuales = {n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None}

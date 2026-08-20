@@ -20,6 +20,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Campo `exhortos` en el detalle de causa civil: qué causas despachó este tribunal a otro, con
+  el rol y el tribunal destino donde viven esas actuaciones.
 - La rama `estadisticas` guarda una foto diaria del tráfico, que GitHub retiene sólo catorce
   días, y publica un resumen legible al abrirla.
 

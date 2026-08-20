@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.5.1] - 2026-08-20
+
 ### Agregado
 
 - La rama `estadisticas` guarda una foto diaria del tráfico, que GitHub retiene sólo catorce
@@ -219,7 +221,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.5.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.1
 [0.5.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.5.0
 [0.4.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.4.0
 [0.3.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.3.0

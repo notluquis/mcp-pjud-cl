@@ -235,6 +235,9 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
     # medido. Exigirles la lista completa las haría anunciar opciones que siempre fallan.
     sin_todas_las_competencias = {
         "obtener_actuaciones_receptor",
+        # Ofrece las que tienen al menos un panel del detalle medido. `penal` no lo tiene, y
+        # anunciarla haría que el modelo intente una llamada que siempre se rechaza.
+        "obtener_detalle_causa",
     }
     descripciones = [
         p.get("description", "")
@@ -726,6 +729,46 @@ def test_la_herramienta_de_actuaciones_solo_ofrece_lo_que_funciona(expuestas):
     for otra in set(MODULOS) - sirven:
         assert otra not in ofrecidas, (
             f"el esquema ofrece {otra!r} como opción y la llamada siempre falla"
+        )
+
+
+def test_la_lectura_combinada_solo_ofrece_competencias_con_algun_panel(expuestas):
+    """`obtener_detalle_causa` está en `sin_todas_las_competencias`, así que el guardia general
+    no la mira, y sin este quedaría sin ninguno.
+
+    Ofrecerle `penal` al modelo, que no tiene un solo panel medido, lo hace intentar una
+    llamada que el cliente rechaza siempre y atribuirle el fallo a la plataforma.
+    """
+    sirven = {
+        n
+        for n in MODULOS
+        if any(
+            (
+                COMPETENCIAS[n].historia,
+                COMPETENCIAS[n].litigantes,
+                COMPETENCIAS[n].notificaciones,
+                COMPETENCIAS[n].liquidaciones,
+                COMPETENCIAS[n].materias,
+            )
+        )
+    }
+    assert sirven, "si ninguna competencia tuviera paneles, la herramienta no debería existir"
+    assert set(MODULOS) - sirven, (
+        "si todas tuvieran algún panel, este alias sobra y hay que usar el general"
+    )
+
+    descripcion = (
+        (expuestas["obtener_detalle_causa"].input_schema or {})
+        .get("properties", {})
+        .get("competencia", {})
+        .get("description", "")
+    )
+    ofrecidas = descripcion.split("Una de: ", 1)[-1].split(".", 1)[0]
+    for buena in sirven:
+        assert buena in ofrecidas, f"{buena!r} tiene paneles medidos y el esquema no la ofrece"
+    for otra in set(MODULOS) - sirven:
+        assert otra not in ofrecidas, (
+            f"el esquema ofrece {otra!r} y la lectura combinada la rechaza siempre"
         )
 
 
@@ -1278,7 +1321,20 @@ def test_el_detalle_combinado_advierte_lo_que_cuesta_un_plazo(expuestas):
     assert herramienta is not None, "la lectura combinada del detalle ya no está expuesta"
 
     contrato = herramienta.description or ""
-    for exigido in ("fecha_diligencia", "no practicadas", "estado", "personales"):
+    for exigido in (
+        "fecha_diligencia",
+        "no practicadas",
+        "estado",
+        "personales",
+        # Este se perdió de verdad: lo llevaba `obtener_liquidaciones_causa`, y al retirarla
+        # el aviso se fue con ella. Sumar las liquidaciones informa una deuda varias veces
+        # más grande que la real.
+        "NO se suman",
+        # El título decía "detalle completo" y el contrato no desmentía nada. Un modelo que
+        # lo lee así informa "la causa no tiene escritos" cuando lo que pasa es que este
+        # servidor no sabe leer ese panel.
+        "NO es el expediente completo",
+    ):
         assert exigido.lower() in contrato.lower(), (
             f"el contrato de la lectura combinada no menciona {exigido!r}, y sin eso el "
             "modelo informa un dato que no puede afirmar"

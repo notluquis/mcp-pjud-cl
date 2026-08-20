@@ -1224,3 +1224,27 @@ def test_un_panel_que_la_competencia_no_publica_viaja_en_nulo_y_no_vacio(monkeyp
         "civil SÍ publica el panel de notificaciones y esta causa no tiene ninguna: eso es "
         "una lista vacía, que es una respuesta, y no un nulo"
     )
+
+
+def test_una_causa_que_no_aparece_no_se_confunde_con_una_competencia_sin_paneles(monkeypatch):
+    """Sin marca explícita, los dos casos viajan idénticos: todos los campos en nulo.
+
+    Y significan cosas opuestas. "No encontré la causa" es una respuesta sobre el rol pedido;
+    "esta competencia no publica ese panel" es una respuesta sobre la competencia. Una causa
+    civil reservada o inexistente se habría informado como que civil no publica historia ni
+    litigantes ni notificaciones, que es falso.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    sin_coincidencias = (
+        "<tr><td colspan='8'>No se han encontrado resultados con los datos ingresados. "
+        "Recuerde que las causas reservadas no se muestran en la consulta unificada.</td></tr>"
+    )
+    c, _ = _capturando(sin_coincidencias)
+
+    detalle = c.detalle_causa("C", 9999, 2026, tribunal=162)
+
+    assert detalle.causa_encontrada is False, (
+        "la causa no apareció y el resultado no lo dice: todos los campos en nulo se leen como "
+        "que la competencia no publica ninguno"
+    )
+    assert detalle.historia is None

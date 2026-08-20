@@ -202,6 +202,30 @@ CompetenciaConReceptor = Annotated[
     ),
 ]
 
+#: Las competencias con al menos un panel del detalle medido. `penal` no está: ninguno de los
+#: suyos lo está, así que la lectura combinada la rechaza siempre. Ofrecerla en el esquema hace
+#: que el modelo la intente, reciba un error y se lo atribuya a la plataforma.
+_CON_DETALLE = sorted(
+    n
+    for n in MODULOS
+    if any(
+        (
+            COMPETENCIAS[n].historia,
+            COMPETENCIAS[n].litigantes,
+            COMPETENCIAS[n].notificaciones,
+            COMPETENCIAS[n].liquidaciones,
+            COMPETENCIAS[n].materias,
+        )
+    )
+)
+CompetenciaConDetalle = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_DETALLE)}. Son aquellas con al menos un panel del "
+        "detalle medido contra una respuesta real."
+    ),
+]
+
 Corte = Annotated[
     int | None,
     Field(
@@ -330,23 +354,27 @@ def obtener_actuaciones_receptor(
 
 
 @mcp.tool(
-    title="Detalle completo de la causa",
+    title="Detalle de la causa: historia, partes y notificaciones",
     annotations=SOLO_LECTURA,
 )
 def obtener_detalle_causa(
     tipo: Tipo,
     rol: Rol,
     anio: Anio,
-    competencia: Competencia = "civil",
+    competencia: CompetenciaConDetalle = "civil",
     tribunal: Tribunal = None,
     corte: Corte = None,
 ) -> DetalleCausa:
-    """Todo lo que el expediente publica: historia, litigantes, notificaciones y más.
+    """Historia, litigantes, notificaciones, liquidaciones y materias de la causa.
 
     Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y lo hace
     con una sola cadena de peticiones. Preferir esta herramienta antes que preguntar por
     partes: los paneles vienen juntos en la misma respuesta, así que pedirlos por separado
     multiplica las consultas contra la plataforma sin traer nada nuevo.
+
+    NO es el expediente completo. El detalle publica más paneles de los que este servidor sabe
+    leer: los escritos, los exhortos y sus piezas todavía no están medidos, así que su ausencia
+    acá NO significa que la causa no los tenga.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -357,6 +385,9 @@ def obtener_detalle_causa(
     Cuidado con dos cosas al computar plazos. `fecha_diligencia` de la historia viene en nulo
     salvo en civil y cobranza, y las notificaciones incluyen las NO practicadas, que se
     distinguen por su `estado`.
+
+    Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
+    historial. Sumarlas informa una deuda inflada varias veces.
 
     Los litigantes traen RUT de personas naturales: son datos personales de terceros.
     """

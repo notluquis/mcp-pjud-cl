@@ -884,3 +884,24 @@ def test_leer_los_litigantes_con_el_mapa_de_otra_competencia_no_pasa_en_silencio
 def test_penal_no_tiene_litigantes_medidos():
     with pytest.raises(EstructuraInesperada, match="No está verificado"):
         parse_litigantes(DETALLE, "penal")
+
+
+def test_un_panel_de_litigantes_sin_filas_no_se_publica_como_causa_sin_partes():
+    """Toda causa tiene partes: es lo que la hace una causa.
+
+    Un panel con encabezados y cero filas es una respuesta truncada o una estructura que
+    cambió. Devolver la lista vacía publicaría "esta causa no tiene partes", que no existe, y
+    es la misma anomalía que la Historia ya rechaza.
+    """
+    import re as _re
+
+    vaciado = _re.sub(
+        r'(<div[^>]*id="litigantesCiv".*?<table.*?</thead>).*?(</table>)',
+        r"\1\2",
+        DETALLE,
+        flags=_re.S,
+    )
+    assert vaciado != DETALLE, "la fixture no se pudo vaciar: el test no probaría nada"
+
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_litigantes(vaciado, "civil")

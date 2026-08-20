@@ -838,7 +838,7 @@ class PjudClient(Transporte):
 
         causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
         if not causas:
-            return DetalleCausa()
+            return DetalleCausa(causa_encontrada=False)
 
         primera = self.detalle(self._causa_pedida(causas, tipo, rol, anio).referencia, competencia)
         cuadernos = parse_cuadernos(primera)

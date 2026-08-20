@@ -752,15 +752,26 @@ def _monto(txt: str) -> int | None:
 
 
 class Liquidacion(BaseModel):
-    """Una liquidación del crédito en un juicio de cobranza."""
+    """Una liquidación del crédito en un juicio de cobranza.
 
-    fecha: date | None = Field(default=None, description="Fecha de la liquidación, en ISO 8601.")
+    Una causa acumula liquidaciones sucesivas: la MÁS RECIENTE es la vigente y las anteriores
+    son el historial. NO se suman. La causa medida fue de $4.481.885 en 2019 a $24.563.365 en
+    2022, así que sumarlas informaría una deuda inflada varias veces.
+    """
+
+    fecha: date | None = Field(
+        default=None,
+        description="Fecha de la liquidación, en ISO 8601. Ordena el historial: la más reciente "
+        "es la vigente y las anteriores NO se suman a ella.",
+    )
     cuaderno: str = Field(default="", description="Cuaderno al que corresponde.")
     estado: str = Field(default="", description="Estado de la liquidación. Ej: 'Firmado'.")
     monto: int | None = Field(
         default=None,
-        description="Monto líquido en pesos, sin separadores. NULO si no se pudo leer con la "
-        "forma medida: nulo NO es cero, y cero sería una deuda saldada.",
+        description="Monto líquido en pesos, sin separadores. Es el total adeudado A ESA "
+        "FECHA, no un cargo que se sume a los demás: la deuda vigente es el monto de la "
+        "liquidación más reciente. NULO si no se pudo leer con la forma medida, y nulo NO es "
+        "cero, que sería una deuda saldada.",
     )
     monto_publicado: str = Field(
         description="El monto tal como lo imprime el sitio, ej: '$24.563.365.-'. Se conserva "
@@ -847,7 +858,7 @@ def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Liti
             "mapa de otra competencia devolvería el RUT en el campo del sujeto, que se ve "
             "plausible y es falso."
         )
-    return [
+    litigantes = [
         Litigante(
             sujeto=txt["sujeto"],
             nombre=txt["nombre"],
@@ -858,6 +869,16 @@ def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Liti
         )
         for _celdas, txt in _filas_del_panel(html_detalle, spec.litigantes)
     ]
+    if not litigantes:
+        # Toda causa tiene partes: es lo que la hace una causa. Un panel con encabezados y cero
+        # filas es una respuesta truncada o una estructura que cambió, y devolver la lista
+        # vacía publicaría "esta causa no tiene partes", que no existe.
+        raise EstructuraInesperada(
+            f"El panel de litigantes de {competencia} tiene encabezados y ninguna fila. Toda "
+            "causa tiene partes, así que la respuesta viene truncada o la estructura cambió. "
+            "No se devuelve la lista vacía porque se leería como que la causa no tiene partes."
+        )
+    return litigantes
 
 
 def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Materia]:
@@ -895,6 +916,12 @@ class DetalleCausa(BaseModel):
     informa" se leería como "no ocurrió".
     """
 
+    causa_encontrada: bool = Field(
+        default=True,
+        description="Falso cuando la búsqueda no dio con el rol pedido. En ese caso TODOS los "
+        "demás campos vienen en nulo por no haber causa que leer, NO porque la competencia no "
+        "publique esos paneles: sin este campo las dos situaciones se verían iguales.",
+    )
     historia: list[Actuacion] | None = Field(
         default=None,
         description="Todas las actuaciones, de todos los cuadernos. NULO si la competencia no "

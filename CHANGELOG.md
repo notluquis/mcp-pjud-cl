@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué
+  fecha. Es la única competencia que liquida el crédito.
+- El monto viene en dos campos: `monto` en pesos para calcular, y `monto_publicado` con el
+  texto tal como aparece en el expediente. `monto` va nulo si el sitio publicó otra forma, y
+  nulo no es cero.
+
+
 ## [0.4.0] - 2026-08-19
 
 ### Agregado

@@ -292,6 +292,41 @@ causas civiles medidas traen el panel vacío. Acá una lista vacía **sí** es u
 ```{include} _generado/obtener_notificaciones_causa.md
 ```
 
+## `obtener_liquidaciones_causa`
+
+Cuánto se debe en un juicio de cobranza y a qué fecha. Es la única competencia que liquida el
+crédito, y hasta ahora esa pregunta no se contestaba.
+
+Una causa acumula liquidaciones sucesivas. La medida fue así:
+
+| Fecha | Estado | Monto |
+|---|---|---|
+| 28/07/2022 | Firmado | $24.563.365.- |
+| 06/11/2020 | Firmado | $12.680.528.- |
+| 28/03/2019 | Firmado | $4.481.885.- |
+
+La más reciente es la vigente. Las anteriores son el historial, **no deudas que se sumen**.
+
+:::{note} Dos campos para el monto, a propósito
+`monto` viene en pesos y sin separadores, listo para calcular. Va en **nulo** si el sitio
+publicó algo con otra forma, y nulo no es cero: cero sería una deuda saldada.
+
+`monto_publicado` trae siempre el texto tal como aparece en el expediente, que es contra lo que
+alguien va a comparar.
+:::
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `tipo` | str | Letra del rol |
+| `rol` | int | Número, sin la letra ni el año |
+| `anio` | int | Año, cuatro dígitos |
+| `competencia` | str | Sólo `cobranza` publica el panel |
+| `tribunal` | int, opcional | Código del tribunal |
+| `corte` | int, opcional | **Omitir salvo certeza** |
+
+```{include} _generado/obtener_liquidaciones_causa.md
+```
+
 ## `buscar_jurisprudencia`
 
 Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para

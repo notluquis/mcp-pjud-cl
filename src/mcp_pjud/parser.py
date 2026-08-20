@@ -123,6 +123,26 @@ NOTIFICACIONES_LABORAL = Notificaciones(
 )
 
 
+class Liquidaciones(NamedTuple):
+    """Cómo leer el panel de liquidaciones de una competencia."""
+
+    panel: str
+    columnas: tuple[str, ...]
+    encabezados: tuple[str, ...]
+
+
+#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#:
+#: Responde la pregunta que da sentido a un juicio de cobro y que hasta ahora no se contestaba:
+#: cuánto se debe y a qué fecha. La causa medida trae tres liquidaciones sucesivas, de
+#: $4.481.885 en 2019 a $24.563.365 en 2022.
+LIQUIDACIONES_COBRANZA = Liquidaciones(
+    panel="liquidacionCob",
+    columnas=("documento", "fecha", "cuaderno", "estado", "monto"),
+    encabezados=("fecha liquidación", "cuaderno", "estado", "monto líquido"),
+)
+
+
 #: La de cobranza, medida pidiendo un detalle real el 17 de agosto de 2026.
 #:
 #: La diferencia con civil no es que le falten columnas: reemplaza `Foja` por `Estado Firma`
@@ -570,6 +590,97 @@ def parse_notificaciones(html_detalle: str, competencia: str = "civil") -> list[
     return notificaciones
 
 
+#: `$24.563.365.-` como lo publica el sitio: peso chileno, punto como separador de miles y un
+#: `.-` al final. Sin decimales, que es como se liquida en pesos.
+_MONTO = re.compile(r"\$\s*([\d.]+)")
+
+
+def _monto(txt: str) -> int | None:
+    """El monto en pesos, o `None` si no tiene la forma medida.
+
+    Devolver `None` y no cero: cero es una deuda saldada y esto es "no se pudo leer". Y ante
+    una coma tampoco se adivina, porque significaría decimales donde se midió que no los hay,
+    o un separador distinto, y las dos lecturas difieren en tres órdenes de magnitud.
+    """
+    if "," in txt:
+        return None
+    m = _MONTO.search(txt)
+    if not m:
+        return None
+    digitos = m.group(1).replace(".", "")
+    return int(digitos) if digitos.isdigit() else None
+
+
+class Liquidacion(BaseModel):
+    """Una liquidación del crédito en un juicio de cobranza."""
+
+    fecha: date | None = Field(default=None, description="Fecha de la liquidación, en ISO 8601.")
+    cuaderno: str = Field(default="", description="Cuaderno al que corresponde.")
+    estado: str = Field(default="", description="Estado de la liquidación. Ej: 'Firmado'.")
+    monto: int | None = Field(
+        default=None,
+        description="Monto líquido en pesos, sin separadores. NULO si no se pudo leer con la "
+        "forma medida: nulo NO es cero, y cero sería una deuda saldada.",
+    )
+    monto_publicado: str = Field(
+        description="El monto tal como lo imprime el sitio, ej: '$24.563.365.-'. Se conserva "
+        "porque es lo que aparece en el expediente y es contra lo que alguien va a comparar."
+    )
+
+
+def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> list[Liquidacion]:
+    """Las liquidaciones del crédito. Sólo cobranza las publica.
+
+    Una causa puede no tener ninguna liquidada todavía, así que la lista vacía es una respuesta
+    legítima y no un fallo.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.liquidaciones is None:
+        raise EstructuraInesperada(
+            f"La competencia {competencia!r} no publica liquidaciones: sólo cobranza tiene el "
+            "panel. Leerlo en otra devolvería una lista vacía, que se leería como que no hay "
+            "deuda liquidada."
+        )
+
+    doc = html.fromstring(html_detalle)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    panes = doc.xpath(f'//*[@id="{spec.liquidaciones.panel}"]')
+    if not panes:
+        raise EstructuraInesperada(
+            f"No existe el panel {spec.liquidaciones.panel!r} en el detalle de causa. "
+            "La estructura de la Oficina Judicial Virtual cambió."
+        )
+    tablas = panes[0].xpath(".//table")
+    if not tablas:
+        raise EstructuraInesperada(f"El panel {spec.liquidaciones.panel!r} no trae ninguna tabla.")
+
+    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
+    for esperado in spec.liquidaciones.encabezados:
+        if not any(esperado in h for h in encabezados):
+            raise EstructuraInesperada(
+                f"Falta la columna {esperado!r} en las liquidaciones. Encabezados: {encabezados}"
+            )
+
+    columnas = spec.liquidaciones.columnas
+    liquidaciones = []
+    for fila in tablas[0].xpath(".//tr"):
+        celdas = _celdas(fila)
+        if len(celdas) < len(columnas):
+            continue
+        txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
+        liquidaciones.append(
+            Liquidacion(
+                fecha=_fecha(txt["fecha"]),
+                cuaderno=txt["cuaderno"],
+                estado=txt["estado"],
+                monto=_monto(txt["monto"]),
+                monto_publicado=txt["monto"],
+            )
+        )
+    return liquidaciones
+
+
 def actuaciones_receptor(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -669,6 +780,8 @@ class Competencia(NamedTuple):
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este
     #: proyecto existe para evitar, y la razón por la que se separa del campo anterior.
     receptor_en_historia: bool
+    #: Cómo leer su panel de liquidaciones, o `None` si no lo publica.
+    liquidaciones: Liquidaciones | None
     #: Cómo leer su panel de notificaciones, o `None` mientras no se haya medido.
     notificaciones: Notificaciones | None
     #: Si el rol que el listado publica lleva el LIBRO adelante en vez de una letra.
@@ -721,6 +834,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "tribunal": 6,
         },
+        liquidaciones=None,
         notificaciones=None,
         rol_con_libro=False,
         campos_rit={"conTipoBus": "0"},
@@ -739,6 +853,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "estado": 5,
             "ubicacion": 7,
         },
+        liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
         campos_rit={"conTipoBusApe": "0"},
@@ -750,6 +865,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "civil": Competencia(
         3,
         {"rol": 1, "fecha_ingreso": 2, "caratulado": 3, "tribunal": 4},
+        liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,
         campos_rit={},
@@ -761,6 +877,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "laboral": Competencia(
         4,
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
+        liquidaciones=None,
         notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,
         campos_rit={},
@@ -772,6 +889,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "penal": Competencia(
         5,
         {"rol": 1, "tribunal": 2, "ruc": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
         campos_rit={"radio-groupPenal": "1"},
@@ -783,6 +901,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
     "cobranza": Competencia(
         6,
         {"rol": 1, "ruc": 2, "tribunal": 3, "caratulado": 4, "fecha_ingreso": 5, "estado": 6},
+        liquidaciones=LIQUIDACIONES_COBRANZA,
         notificaciones=NOTIFICACIONES_COBRANZA,
         rol_con_libro=False,
         campos_rit={},

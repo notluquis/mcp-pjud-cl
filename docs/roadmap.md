@@ -157,17 +157,25 @@ compara el formulario enviado contra lo que ella declara.
   `receptorCivil` y `receptorCobranza`. Queda declarado en la tabla y se rechaza antes de
   gastar una petición.
 
-### 0.5: el resto del detalle de causa
+### 0.5: el resto del detalle de causa — hecho parcialmente
 
 `webscrapthings` cubre esto desde 2025 y un abogado lo espera. Se divide en dos, porque el
 costo no es el mismo:
 
-**Sin peticiones nuevas.** Ya vienen en la respuesta del detalle que el cliente pide:
+**Sin peticiones nuevas.** Ya vienen en la respuesta del detalle que el cliente pide, y ése
+era el punto: `obtener_detalle_causa` los lee todos de una sola cadena. Preguntar las cuatro
+cosas de una causa con dos cuadernos costaba dieciséis peticiones y ahora cuesta cuatro.
 
-- `litigantesCiv`: quiénes son parte y con qué calidad
-- `escritosCiv`: los presentados, y cuáles siguen por resolver
-- `notificacionesCiv`: con su propio estado y su propia fecha de trámite
-- `exhortosCiv` y `piezasExhortoCiv`: el exhorto visto desde el tribunal de origen
+- `litigantesCiv`: quiénes son parte y con qué calidad. **Hecho**, en las cinco competencias
+  con detalle mapeado
+- `notificacionesCiv`: con su propio estado y su propia fecha de trámite. **Hecho**
+- `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
+- `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
+- `exhortosCiv` y `piezasExhortoCiv`: el exhorto visto desde el tribunal de origen. Falta
+
+Lo que falta importa más de lo que parece: mientras no estén, la respuesta del detalle NO es
+el expediente completo, y su contrato tiene que decirlo para que nadie lea la ausencia de un
+escrito como que la causa no lo tiene.
 
 **Una petición cada uno, con su intervalo.** Son modales que la plataforma carga aparte, y hay
 que contarlos en el tiempo total:
@@ -195,7 +203,7 @@ requiera consentimiento explícito por llamada, y ruta de destino elegida por el
 ### 0.8: el detalle de las competencias ya buscables — hecho, salvo penal
 
 Las cuatro se pidieron y se midieron sobre una causa real. Tres quedaron mapeadas y expuestas
-por `obtener_historia_causa`; penal no, y la razón es la de siempre.
+por `obtener_detalle_causa`; penal no, y la razón es la de siempre.
 
 | Competencia | Panel | Qué la distingue |
 |---|---|---|
@@ -209,9 +217,9 @@ la causa medida no trae ninguna fila: declarar sus columnas sería escribir un m
 comprobó. Hace falta encontrar una causa penal con historia y volver a medir.
 
 **Ninguna de las cuatro tiene receptor.** La palabra no aparece ni una vez en las tres
-respuestas mapeadas, y ninguna fila trae la fecha doble. Por eso `obtener_historia_causa`
-existe: en esas competencias la pregunta que origina el proyecto no tiene respuesta, y sin ella
-lo único disponible ahí era la búsqueda.
+respuestas mapeadas, y ninguna fila trae la fecha doble. Por eso la historia se lee aparte de
+las actuaciones del receptor: en esas competencias la pregunta que origina el proyecto no tiene
+respuesta, y sin ella lo único disponible ahí era la búsqueda.
 
 Un detalle del recorrido que conviene no perder: el nombre del panel se guarda completo y no
 como sufijo. Antes el código anteponía `historia`, lo que funcionaba con dos competencias que se
@@ -382,8 +390,9 @@ Verificado el 17 de agosto de 2026, en los dos hosts:
 | `/robots.txt` | `Disallow: /` | 404, no publica |
 
 No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de
-`consultaUnificada.php`, que es donde el sitio declara sus 169 rutas. Ese es el método a
-repetir cuando la plataforma cambie.
+`consultaUnificada.php`, donde el sitio nombra 189 veces un `.php`, o sea 102 rutas distintas.
+Ése es el método a repetir cuando la plataforma cambie, y las dos cifras salen de contarlas
+sobre la fixture, no de recordarlas.
 
 La ausencia de `security.txt` refuerza lo que ya dice la política de seguridad: no hay canal
 publicado de divulgación de vulnerabilidades, así que va directo a la Corporación
@@ -520,8 +529,8 @@ Es el que más pestañas cubre, y ahí está lo aprovechable:
 |---|---|
 | `#Historia` | `historiaCiv`, cubierto |
 | Selector de cuadernos | cubierto |
-| `#Litigantes` | `litigantesCiv`, **no** |
-| `#Notificaciones` | `notificacionesCiv`, **no** |
+| `#Litigantes` | `litigantesCiv`, cubierto |
+| `#Notificaciones` | `notificacionesCiv`, cubierto |
 | `#Escritos` | `escritosCiv`, **no** |
 | `#Exhorto` | `exhortosCiv`, **no** |
 | `#Diligencias` en laboral, con descarga de PDF | sin equivalente, **no** |
@@ -573,17 +582,18 @@ re-descubrirlos.
 
 #### Los paneles del detalle que ya llegan y se tiran
 
-Lo más barato que queda por hacer. El detalle de causa devuelve **una sola respuesta** que trae
-todos estos paneles, y hoy sólo se lee `historiaCiv`. Cubrirlos no cuesta ni una petición más.
+El detalle de causa devuelve **una sola respuesta** que trae todos estos paneles. Cubrirlos no
+cuesta ni una petición más, y por eso fueron lo primero. Quedan los dos del exhorto y los
+escritos.
 
 Conviene no confundirlos con los modales de la sección siguiente: aquéllos **sí** cuestan una
 petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
 
 | Panel | Columnas exactas |
 |---|---|
-| `litigantesCiv` | `Participante`, `Rut`, `Persona`, `Nombre o Razón Social` |
+| `litigantesCiv` | `Participante`, `Rut`, `Persona`, `Nombre o Razón Social`. **Cubierto** |
 | `escritosCiv` | `Doc.`, `Anexo`, `Fecha de Ingreso`, `Tipo Escrito`, `Solicitante` |
-| `notificacionesCiv` | `ROL`, `Est. Notif.`, `Tipo Notif.`, `Fecha Trámite`, `Tipo Part.`, `Nombre`, `Trámite`, `Obs. Fallida` |
+| `notificacionesCiv` | `ROL`, `Est. Notif.`, `Tipo Notif.`, `Fecha Trámite`, `Tipo Part.`, `Nombre`, `Trámite`, `Obs. Fallida`. **Cubierto** |
 | `exhortosCiv` | `Rol Origen`, `Tipo Exhorto`, `Rol Destino`, `Fecha Ordena Exhorto`, `Fecha Ingreso Exhorto`, `Tribunal Destino`, `Estado Exhorto` |
 | `piezasExhortoCiv` | `Folio`, `Doc.`, `Cuaderno`, `Anexo`, `Etapa`, `Támite`, `Desc. Támite`, `Fec. Támite`, `Foja` |
 
@@ -592,19 +602,19 @@ Tres advertencias que sólo se ven mirando la respuesta:
 - **`piezasExhortoCiv` trae los encabezados con errata**: dice `Támite` y `Fec. Támite`, sin la
   erre. Un parser que busque `Trámite` no encuentra nada y devuelve vacío. Hay que calzar con
   el texto que la plataforma emite, no con el correcto.
-- **`notificacionesCiv` tiene su propia `Fecha Trámite`.** Dicho con precisión: eso es lo que
-  dice el encabezado, y de ahí no se sigue que se comporte como la de la historia. **No hay
-  ninguna fila real observada**, así que si trae o no el formato de fecha doble está sin medir.
-  Por el nombre de sus columnas (`Est. Notif.`, `Obs. Fallida`) parece responder "¿la
-  notificación resultó?", que sería la pregunta anterior a "¿cuándo corre el plazo?", pero eso
-  es una inferencia sobre nombres y hay que verificarla antes de construir encima.
+- **`notificacionesCiv` tiene su propia `Fecha Trámite`, y no se comporta como la de la
+  historia.** La inferencia por el nombre de las columnas (`Est. Notif.`, `Obs. Fallida`) era
+  que respondía "¿la notificación resultó?", la pregunta anterior a "¿cuándo corre el plazo?",
+  y midiéndola resultó ser eso: tres filas reales, ninguna con el formato de fecha doble. La
+  advertencia que queda es otra: **incluye las NO practicadas**, que se distinguen por
+  `estado`, y una fila pendiente no hizo correr ningún plazo.
 - **`litigantesCiv` trae RUT de personas naturales.** Es el panel con más carga de datos
   personales de todo el detalle, y su fixture tendrá que anonimizarse como el resto.
 
 Estado de la evidencia: `exhortosCiv` está verificado con datos reales (C-1156-2026 despacha
-E-875-2026 al 1º Juzgado Civil de Chillán, estado `Generado`). De `notificacionesCiv` y
-`escritosCiv` se conoce la estructura, pero **las causas de la muestra los traen vacíos**: no
-hay fila real que sirva de fixture todavía.
+E-875-2026 al 1º Juzgado Civil de Chillán, estado `Generado`). De `escritosCiv` se conoce la
+estructura, pero **las causas de la muestra lo traen vacío**: no hay fila real que sirva de
+fixture todavía.
 
 #### Modales de la Oficina Judicial Virtual sin usar
 

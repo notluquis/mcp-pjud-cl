@@ -1046,6 +1046,31 @@ def test_el_detalle_mapeado_no_sigue_figurando_entre_las_rutas_sin_ejecutar():
         )
 
 
+def test_la_cuenta_de_rutas_de_la_plataforma_es_la_de_la_fixture():
+    """La hoja de ruta afirmaba 169 rutas y son otra cosa: 189 menciones de un `.php`, o sea
+    102 distintas.
+
+    El número venía de una medición vieja y nadie podía notar que había envejecido, porque
+    estaba escrito a mano en la prosa. La fuente está versionada, así que se cuenta.
+
+    Y son dos números, no uno: cuántas veces el JavaScript nombra un `.php` y cuántas rutas
+    distintas hay detrás. Confundirlos es lo que hace parecer que la plataforma tiene casi el
+    doble de superficie de la que tiene.
+    """
+    javascript = (RAIZ / "tests" / "fixtures" / "consultaUnificada.html").read_text(
+        encoding="utf-8", errors="replace"
+    )
+    menciones = re.findall(r"[\w./-]+\.php", javascript)
+    texto = _texto(RAIZ / "docs" / "roadmap.md")
+
+    assert f"{len(menciones)} veces" in texto, (
+        f"la fixture nombra un .php {len(menciones)} veces y la hoja de ruta dice otra cosa"
+    )
+    assert f"{len(set(menciones))} rutas distintas" in texto, (
+        f"son {len(set(menciones))} rutas distintas y la hoja de ruta dice otra cosa"
+    )
+
+
 def test_las_notas_de_la_version_salen_del_changelog_y_no_de_la_plantilla_de_github():
     """`--generate-notes` imprime "What's Changed" y "by X in Y", en inglés y sin opción.
 

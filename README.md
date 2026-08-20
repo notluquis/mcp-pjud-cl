@@ -120,17 +120,24 @@ El transporte es stdio: no abre puertos ni escucha en la red.
 
 `@stable` apunta siempre a la última versión publicada, así que se actualiza sola al instalar.
 Si prefieres quedarte en una versión concreta, cambia esa referencia por la etiqueta, por
-ejemplo `@v0.4.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
+ejemplo `@v0.5.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
 publicar: no es lo recomendado.
 
 ## Herramientas
 
 | Herramienta | Qué hace |
 |---|---|
-| `buscar_causa_por_rit` | Busca causas por rol en la consulta pública |
+| `buscar_causa_por_rit` | Busca por rol, en las seis competencias |
+| `buscar_causa_por_nombre` | Busca por nombre de una persona natural |
+| `buscar_causa_por_rut_juridica` | Busca por RUT de una empresa |
+| `buscar_causa_por_fecha` | Busca por fecha de ingreso |
 | `obtener_actuaciones_receptor` | Actuaciones del ministro de fe con su fecha real de diligencia |
+| `obtener_detalle_causa` | Historia, litigantes, notificaciones, liquidaciones y materias, de una sola cadena y recorriendo todos los cuadernos |
+| `buscar_jurisprudencia` | Busca sentencias en el buscador de fallos |
+| `obtener_texto_sentencia` | El texto completo de una sentencia |
 
-Ambas anotadas como `readOnlyHint` y `destructiveHint: false` en el protocolo.
+Todas anotadas como `readOnlyHint` y `destructiveHint: false` en el protocolo. No hay ninguna
+que escriba: [por qué](https://mcp-pjud-cl.readthedocs.io/es/latest/cumplimiento.html).
 [Referencia completa de campos](https://mcp-pjud-cl.readthedocs.io/es/latest/herramientas.html)
 y [ejemplos resueltos](https://mcp-pjud-cl.readthedocs.io/es/latest/ejemplos.html).
 

@@ -271,11 +271,19 @@ y `exempt`. Lo valida `script/hassfest/quality_scale.py` en CI, y **`exempt` exi
 obligatorio**:
 
 ```python
-vol.Schema({
-    vol.Required("status"): "exempt",
-    vol.Required("comment"): str,
-})
+vol.Schema(
+    {
+        vol.Required("status"): "exempt",
+        vol.Required("comment"): str,
+    }
+)
 ```
+
+(El bloque de arriba salió reformateado al subirlo, y eso es un hallazgo en sí: **`ruff format`
+formatea los bloques de Python dentro de los `.md`**, medido con la versión 0.16.3 de este
+repositorio. O sea el nivel 1 de 4.3 ya tiene un aliado que nadie había notado: un ejemplo de
+Python en la prosa ya está sujeto al mismo formateador que el código, y romperlo pone la suite
+en rojo. Aplica sólo al formato, no a que el ejemplo corra.)
 
 Trasladado acá: el estado por competencia podría vivir en un archivo legible por máquina donde
 declarar «no cubierta» **obliga a escribir por qué**, con `verificacion.md` generada desde ahí.

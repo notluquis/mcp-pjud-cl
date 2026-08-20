@@ -9,8 +9,12 @@
 # un archivo que `uv` reescribe entero en cada resolución. Y el costo de no excluirlo sí es
 # real: un guardia que falla cada vez que cambia una dependencia enseña a ignorarlo, y ése es
 # el que después deja pasar el secreto de verdad.
+#
+# La clave lleva guion BAJO. Con guion medio el archivo se lee sin error y no hace nada, que
+# es la peor forma de equivocarse en una configuración: parece puesta.
 version: 2
 
 secret:
-  ignored-paths:
+  ignored_paths:
     - uv.lock
+    - "**/uv.lock"

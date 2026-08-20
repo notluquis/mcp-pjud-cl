@@ -16,13 +16,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- La rama `estadisticas` guarda una foto diaria del tráfico, que GitHub retiene sólo catorce
+  días, y publica un resumen legible al abrirla.
+
 ### Corregido
 
 - Un corte de conexión no activaba la detención total: un cortafuegos que rechaza a nivel de
   red no manda un 403, corta la conexión, y eso llegaba como error de transporte. ([#34])
 - El cortafuegos también rechaza con HTTP 200, mandando un desafío de F5 BIG-IP APM en vez de
   la página. Se tomaba por bueno y el fallo aparecía recién en la petición siguiente. ([#34])
-- Las estadísticas de tráfico dejaban de contar las descargas pasadas las 30 versiones publicadas, porque la consulta no paginaba.
+- Las estadísticas de tráfico dejaban de contar las descargas pasadas las 30 versiones
+  publicadas, porque la consulta no paginaba.
 
 ## [0.5.0] - 2026-08-20
 

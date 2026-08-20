@@ -18,12 +18,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
-- `tests/test_protocolo.py`: llama las herramientas a través de una sesión MCP real, en
-  memoria y sin red. Comprueba que el mensaje de `EstructuraInesperada` llegue al modelo, que
-  una búsqueda sin coincidencias no se parezca a un parseo roto, y que el contenido
-  estructurado valide contra el esquema anunciado.
-- `jsonschema` pasa a estar declarado en las dependencias de desarrollo. Funcionaba por venir
-  con `mcp`, y apoyarse en eso es depender de una decisión ajena.
+- `tests/test_protocolo.py`: verifica a través de una sesión MCP real que lo que el parser
+  rechaza le llegue al modelo como error y no como lista vacía.
+- `jsonschema` pasa a estar declarado en las dependencias de desarrollo.
 
 
 ### Agregado

@@ -36,9 +36,10 @@ from pathlib import Path
 
 import httpx
 
-# `jsonschema` no está declarado en las dependencias de este proyecto y aun así se puede
-# importar: es dependencia dura de `mcp` (`mcp -> jsonschema>=4.20.0`), que sí lo está. O sea
-# no puede faltar donde el servidor funcione.
+# `jsonschema` viene igual con `mcp`, que lo declara como dependencia dura, así que este
+# import funcionaría sin ponerlo en el grupo `dev`. Está declarado de todas formas: apoyarse en
+# una dependencia transitiva es depender de una decisión ajena que puede cambiar sin aviso, y
+# el día que cambie esto moriría con un `ImportError` que no explica nada.
 import jsonschema
 import pytest
 from mcp.client import Client

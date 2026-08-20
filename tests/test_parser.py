@@ -761,8 +761,10 @@ def test_las_liquidaciones_de_cobranza_traen_monto_y_fecha():
 
     montos = [liq.monto for liq in liquidaciones]
     assert montos == [24563365, 12680528, 4481885]
-    assert all(liq.fecha is not None for liq in liquidaciones)
-    assert liquidaciones[0].fecha > liquidaciones[-1].fecha, "vienen de la más nueva a la más vieja"
+
+    fechas = [liq.fecha for liq in liquidaciones]
+    assert None not in fechas, "toda liquidación medida trae fecha"
+    assert fechas == sorted(fechas, reverse=True), "vienen de la más nueva a la más vieja"
     assert liquidaciones[0].monto_publicado == "$24.563.365.-"
     assert all(liq.estado == "Firmado" for liq in liquidaciones)
 

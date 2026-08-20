@@ -900,6 +900,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "hypothesis" },
+    { name = "jsonschema" },
     { name = "lxml-stubs" },
     { name = "mutmut" },
     { name = "pytest" },
@@ -927,6 +928,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.165.10" },
+    { name = "jsonschema", specifier = ">=4.20" },
     { name = "lxml-stubs", specifier = ">=0.5.1" },
     { name = "mutmut", specifier = ">=3.2" },
     { name = "pytest", specifier = ">=8.3" },

@@ -1376,6 +1376,57 @@ def test_las_entradas_del_registro_de_cambios_son_breves():
     )
 
 
+def test_las_entradas_del_registro_de_cambios_no_pasan_de_dos_frases():
+    """El de arriba cuenta líneas, así que atrapa el desborde y no el contenido.
+
+    Es su límite conocido, está escrito en `AGENTS.md`, y aun así se coló tres veces: una
+    viñeta que cabe justo en cuatro líneas y dedica dos frases al mecanismo pasa sin
+    problema. La tercera la encontró una revisión, no el guardia.
+
+    Contar frases lo cierra. Antes de escribirlo se midió contra el registro entero, porque
+    un guardia con falso positivo enseña a ignorarlo, que es peor que no tenerlo: de las 79
+    viñetas, 58 tienen una frase y 21 tienen dos.
+
+    Los dos falsos positivos que aparecieron midiendo, y que por eso se descuentan: `art. 9
+    inc. 3 de la Ley 20.886`, que obliga a descontar la abreviatura también cuando la sigue un
+    número, y la referencia final `([#11], [#21])`, que va después del punto y no es una frase.
+    """
+    FRASES_MAXIMAS = 2
+
+    def contar(cuerpo: str) -> int:
+        # Fuera lo que trae puntos y no termina frase: código, enlaces, versiones, montos y
+        # abreviaturas legales, que acá son frecuentes y todas llevan punto.
+        limpio = re.sub(r"`[^`]*`", "X", cuerpo)
+        limpio = re.sub(r"\[[^\]]*\]\([^)]*\)", "X", limpio)
+        limpio = re.sub(r"\d[\d.]*\d", "N", limpio)
+        limpio = re.sub(r"\b[A-Za-zÁÉÍÓÚáéíóúñÑ]{1,4}\.\s*(?=[a-záéíóúñ0-9])", "X ", limpio)
+        return len(re.findall(r"[.!?](?=\s|$)", limpio.strip()))
+
+    actual: list[str] = []
+    viñetas: list[str] = []
+    for linea in _texto(RAIZ / "CHANGELOG.md").splitlines():
+        if linea.startswith("- "):
+            if actual:
+                viñetas.append(" ".join(actual))
+            actual = [linea[2:]]
+        elif actual and linea.startswith("  "):
+            actual.append(linea.strip())
+        else:
+            if actual:
+                viñetas.append(" ".join(actual))
+            actual = []
+    if actual:
+        viñetas.append(" ".join(actual))
+
+    assert len(viñetas) > 50, "el recolector dejó de reconocer las viñetas del registro"
+
+    largas = {v[:70]: contar(v) for v in viñetas if contar(v) > FRASES_MAXIMAS}
+    assert not largas, (
+        f"Entradas del registro con más de {FRASES_MAXIMAS} frases: {largas}. El registro "
+        "dice QUÉ cambió; el mecanismo y el diagnóstico van en el commit y en el PR."
+    )
+
+
 def test_ninguna_version_del_registro_repite_una_seccion():
     """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
 

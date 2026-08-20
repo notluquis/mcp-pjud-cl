@@ -26,14 +26,22 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "notluquis/mcp-pjud-cl")
 DESTINO = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "datos")
 
 
-def api(ruta: str):
+def api(ruta: str, paginar: bool = False):
     """Una lectura de la API. Sin reintento: si falla, la foto de hoy no sale y se ve.
 
     Fallar es lo correcto acá. Guardar una foto a medias la dejaría indistinguible de un día
     sin tráfico, y ese cero se arrastraría para siempre en el CSV sin que nada avise.
     """
+    orden = ["gh", "api", f"repos/{REPO}/{ruta}".rstrip("/")]
+    if paginar:
+        # `gh api` trae 30 elementos por página y no avisa que hay más. Sin esto, pasadas 30
+        # versiones dejarían de contarse las descargas de las viejas, en silencio, que es la
+        # misma truncación callada que el resto del proyecto levanta en vez de esconder.
+        # `--slurp` junta las páginas en un arreglo de arreglos, y no se puede combinar con
+        # `--jq` para aplanarlo: `gh` lo rechaza. Se aplana acá.
+        orden += ["--paginate", "--slurp"]
     salida = subprocess.run(  # noqa: S603
-        ["gh", "api", f"repos/{REPO}/{ruta}"],  # noqa: S607
+        orden,
         capture_output=True,
         text=True,
         check=False,
@@ -47,7 +55,8 @@ def api(ruta: str):
                 "'Administration: read'.\n\n" + salida.stderr
             )
         raise SystemExit(f"La API falló en {ruta!r}:\n{salida.stderr}")
-    return json.loads(salida.stdout)
+    datos = json.loads(salida.stdout)
+    return [x for pagina in datos for x in pagina] if paginar else datos
 
 
 def guardar(nombre: str, campos: list[str], filas: list[dict], claves: list[str]) -> int:
@@ -69,6 +78,135 @@ def guardar(nombre: str, campos: list[str], filas: list[dict], claves: list[str]
         for clave in sorted(previas):
             escritor.writerow(previas[clave])
     return len(previas)
+
+
+def _leer(nombre: str) -> list[dict[str, str]]:
+    archivo = DESTINO / nombre
+    if not archivo.exists():
+        return []
+    with archivo.open(encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def resumen(hoy: str) -> None:
+    """Arma el resumen que se lee en la rama, a partir de los CSV ya mezclados.
+
+    Se llama `README.md` porque GitHub renderiza el README de la rama que uno esté mirando:
+    es lo que aparece solo al abrir `estadisticas`, sin que nadie tenga que saber que hay CSV.
+
+    Se arma desde los archivos y no desde la respuesta de la API a propósito. Los CSV son los
+    que tienen el historial completo; la respuesta sólo trae catorce días, y un resumen que
+    dijera "todo lo registrado" leyendo de ahí mentiría más cada día que pasa.
+    """
+    trafico = _leer("trafico.csv")
+    con_datos = [f for f in trafico if any(int(f[c]) for c in f if c != "fecha")]
+    ultimos = trafico[-14:]
+
+    def suma(filas: list[dict[str, str]], campo: str) -> int:
+        return sum(int(f[campo]) for f in filas)
+
+    desde = con_datos[0]["fecha"] if con_datos else "todavía nada"
+    lineas = [
+        "# Estadísticas de mcp-pjud-cl",
+        "",
+        f"Foto del {hoy}. **Generado, no editar a mano**: lo reescribe el flujo",
+        "`estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.",
+        "",
+        "## Cómo leer esto antes de leerlo",
+        "",
+        "**Los clones NO son instalaciones.** A un repositorio público recién creado lo clonan",
+        "decenas de servicios que leen el flujo de eventos de GitHub: espejos, escáneres de",
+        "seguridad, indexadores. Se ve en la serie de más abajo: el día que este repositorio se",
+        "hizo público hubo cientos de clones desde cientos de orígenes distintos, con **un**",
+        "visitante único. Ninguna persona hizo eso.",
+        "",
+        "**Las descargas de archivos publicados van a marcar cero para siempre.** La",
+        "instalación documentada es `uvx --from git+https://…`, que clona: nunca toca el",
+        "`.whl` ni el `.tar.gz`. El contador de GitHub mide algo que este proyecto no usa.",
+        "",
+        "## General",
+        "",
+        "| Período | Vistas | Únicas | Clones | Únicos |",
+        "|---|---|---|---|---|",
+        f"| Últimos 14 días | {suma(ultimos, 'vistas')} | {suma(ultimos, 'vistas_unicas')} | "
+        f"{suma(ultimos, 'clones')} | {suma(ultimos, 'clones_unicos')} |",
+        f"| Todo lo registrado, desde el {desde} | {suma(trafico, 'vistas')} | "
+        f"{suma(trafico, 'vistas_unicas')} | {suma(trafico, 'clones')} | "
+        f"{suma(trafico, 'clones_unicos')} |",
+        "",
+        "Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.",
+        "Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.",
+        "",
+        "## Popularidad",
+        "",
+        "| Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |",
+        "|---|---|---|---|---|",
+        *(
+            f"| {f['foto']} | {f['estrellas']} | {f['forks']} | {f['suscriptores']} | "
+            f"{f['incidencias_abiertas']} |"
+            for f in reversed(_leer("popularidad.csv"))
+        ),
+        "",
+        "Estas cuatro no caducan, pero GitHub sólo entrega el número de hoy: la serie hay que",
+        "construirla. Es la única parte de esto que no se puede recuperar mirando después.",
+        "",
+        "## Por versión",
+        "",
+        "| Versión | Archivo | Descargas |",
+        "|---|---|---|",
+    ]
+
+    descargas = _leer("descargas.csv")
+    foto_descargas = max((d["foto"] for d in descargas), default="")
+    lineas += [
+        f"| {d['version']} | `{d['archivo']}` | {d['descargas']} |"
+        for d in sorted(
+            (d for d in descargas if d["foto"] == foto_descargas),
+            key=lambda d: (d["version"], d["archivo"]),
+            reverse=True,
+        )
+    ]
+
+    for titulo, nombre, columna in (
+        ("De dónde llegan", "referentes.csv", "referente"),
+        ("Qué miran", "rutas.csv", "ruta"),
+    ):
+        filas = _leer(nombre)
+        foto = max((f["foto"] for f in filas), default="")
+        lineas += [
+            "",
+            f"## {titulo}",
+            "",
+            f"Acumulado de los catorce días hasta el {foto}. GitHub no lo entrega por día, así",
+            "que restar dos fotos para inferirlo daría un número inventado.",
+            "",
+            f"| {columna.capitalize()} | Vistas | Únicas |",
+            "|---|---|---|",
+        ]
+        lineas += [
+            f"| `{f[columna]}` | {f['vistas']} | {f['unicas']} |"
+            for f in sorted(
+                (f for f in filas if f["foto"] == foto),
+                key=lambda f: int(f["vistas"]),
+                reverse=True,
+            )
+        ]
+
+    lineas += [
+        "",
+        "## La serie completa",
+        "",
+        "| Fecha | Vistas | Únicas | Clones | Únicos |",
+        "|---|---|---|---|---|",
+    ]
+    lineas += [
+        f"| {f['fecha']} | {f['vistas']} | {f['vistas_unicas']} | {f['clones']} | "
+        f"{f['clones_unicos']} |"
+        for f in reversed(con_datos)
+    ]
+    lineas += ["", "Los días sin nada no se listan. El dato crudo está en `trafico.csv`."]
+
+    (DESTINO / "README.md").write_text("\n".join(lineas) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -130,7 +268,7 @@ def main() -> None:
             "archivo": a["name"],
             "descargas": a["download_count"],
         }
-        for v in api("releases")
+        for v in api("releases", paginar=True)
         for a in v["assets"]
     ]
     guardar(
@@ -140,7 +278,26 @@ def main() -> None:
         ["foto", "version", "archivo"],
     )
 
+    # Estrellas y forks NO caducan, pero GitHub sólo entrega el número de hoy: la serie hay
+    # que construirla. Es la única parte de esto que no se puede recuperar mirando después.
+    repo = api("")
+    guardar(
+        "popularidad.csv",
+        ["foto", "estrellas", "forks", "suscriptores", "incidencias_abiertas"],
+        [
+            {
+                "foto": hoy,
+                "estrellas": repo["stargazers_count"],
+                "forks": repo["forks_count"],
+                "suscriptores": repo["subscribers_count"],
+                "incidencias_abiertas": repo["open_issues_count"],
+            }
+        ],
+        ["foto"],
+    )
+
     total = sum(int(d["descargas"]) for d in descargas)
+    resumen(hoy)
     print(f"{dias} días de tráfico guardados. Descargas de archivos publicados: {total}.")
 
 

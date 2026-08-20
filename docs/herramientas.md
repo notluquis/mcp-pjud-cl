@@ -352,6 +352,64 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 ```{include} _generado/obtener_detalle_causa.md
 ```
 
+## `obtener_documento`
+
+El archivo de una actuación: la resolución, el escrito, el certificado o el expediente entero.
+
+| Parámetro | Qué es |
+|---|---|
+| `documento_ruta` | Lo entrega cada actuación. Sólo se aceptan las rutas que la plataforma emite |
+| `documento_referencia` | Lo entrega cada actuación. Identifica el documento |
+| `competencia` | Bajo qué módulo cuelga la ruta. `docCertificadoEscrito.php` existe en tres |
+
+No pide el rol: la referencia ya identifica el documento, y buscar la causa antes serían dos
+peticiones que no verifican nada.
+
+:::{note} La referencia NO muere con la sesión
+Se emite al dibujar la página y el mismo documento llega con una distinta en cada render, así
+que **no es la identidad estable** del archivo. Pero es un token firmado y no un identificador
+de sesión: **medido el 20 de agosto de 2026**, sirve desde una sesión distinta de la que la
+emitió, así que el flujo normal, leer el detalle con una herramienta y pedir el documento con
+otra, funciona.
+
+Cuánto dura no está medido. Pedir el documento cerca de leer la actuación sigue siendo lo
+prudente, y una referencia que la plataforma ya no acepte devuelve una página de error con
+HTTP 200, no un "no existe": por eso se verifica que lo que llegó sea un PDF.
+:::
+
+### Chico viaja entero, grande viaja como enlace
+
+Un documento bajo el umbral viene completo en la respuesta. Uno grande viene como **enlace**,
+con su tamaño, y se lee con `resources/read` **sólo si de verdad hace falta**: el ebook es el
+expediente entero, y meterlo en la respuesta gasta el contexto de la conversación en algo que
+casi nunca se lee completo.
+
+El umbral sale de la aritmética de base64, que son cuatro caracteres por cada tres bytes, con
+el techo de una respuesta de texto. Deja el enlace como caso normal y lo embebido como
+excepción, que es el lado barato de equivocarse.
+
+### Un escaneo se declara y NO se transcribe
+
+Si el PDF no trae capa de texto es una imagen, y eso se dice. **No se le pasa OCR**: una
+transcripción automática de una resolución se ve idéntica a la resolución y no lo es, y eso es
+peor que una lista vacía, porque la lista vacía se nota.
+
+Y un documento **mixto** se declara mixto. Un expediente que agrega anexos escaneados a
+resoluciones digitales es lo normal, y decir "trae capa de texto" a secas haría dar por
+transcribible un archivo del que una parte son imágenes: `paginas_con_texto` dice cuántas, y lo
+que dicen las otras no se puede citar desde acá.
+
+Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
+texto no es lo mismo que saber que no tiene.
+
+### El recurso `pjud://documento`
+
+Es el otro extremo del enlace. Leerlo **vuelve a consultar** al Poder Judicial, con su
+intervalo: no hay copia guardada de nada, que es la regla 5 del proyecto.
+
+```{include} _generado/obtener_documento.md
+```
+
 ## `buscar_jurisprudencia`
 
 Sentencias de la Corte Suprema desde el Buscador Unificado de Fallos. Sirve sobre todo para

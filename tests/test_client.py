@@ -1660,3 +1660,273 @@ def test_la_pregunta_del_exhorto_no_se_responde_en_una_competencia_sin_medir(mon
     assert detalle.causa_es_exhorto is None
     assert detalle.piezas_exhorto is None
     assert detalle.liquidaciones, "y el resto de la lectura sigue funcionando"
+
+
+# -- documentos ------------------------------------------------------------------
+
+
+def _pdf(flujo: bytes, con_fuente: bool = True) -> bytes:
+    """Un PDF mínimo pero VÁLIDO, con su tabla de referencias cruzadas bien calculada.
+
+    Se arma acá y no se guarda como fixture por dos razones. La primera es que no hay ninguno
+    real que guardar: este proyecto todavía no le pidió un documento a la plataforma, e
+    inventar una fixture "real" sería afirmar algo que no se midió. La segunda es que lo que
+    estos tests distinguen es una propiedad del archivo (que tenga o no texto extraíble) y así
+    se controla exactamente, sin depender de qué trajo un PDF cualquiera.
+    """
+    fuente = b"/Resources<</Font<</F1 5 0 R>>>>" if con_fuente else b"/Resources<<>>"
+    objetos = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R" + fuente + b">>",
+        b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    salida = bytearray(b"%PDF-1.4\n")
+    desplazamientos = []
+    for i, cuerpo in enumerate(objetos, start=1):
+        desplazamientos.append(len(salida))
+        salida += str(i).encode() + b" 0 obj" + cuerpo + b"endobj\n"
+    xref = len(salida)
+    salida += b"xref\n0 " + str(len(objetos) + 1).encode() + b"\n0000000000 65535 f \n"
+    for d in desplazamientos:
+        salida += f"{d:010d} 00000 n \n".encode()
+    salida += b"trailer<</Size " + str(len(objetos) + 1).encode() + b"/Root 1 0 R>>\n"
+    salida += b"startxref\n" + str(xref).encode() + b"\n%%EOF\n"
+    return bytes(salida)
+
+
+def _pdf_mixto() -> bytes:
+    """Dos páginas: la primera con texto, la segunda una imagen.
+
+    Es lo normal en un expediente que agrega anexos escaneados a resoluciones digitales, y es
+    el caso que un recorrido que corta en la primera página con texto no puede distinguir de
+    un PDF enteramente digital.
+    """
+    con_texto = b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET"
+    sin_texto = b"0 0 100 100 re f"
+    objetos = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 5 0 R"
+        b"/Resources<</Font<</F1 7 0 R>>>>>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 6 0 R/Resources<<>>>>",
+        b"<</Length " + str(len(con_texto)).encode() + b">>stream\n" + con_texto + b"\nendstream",
+        b"<</Length " + str(len(sin_texto)).encode() + b">>stream\n" + sin_texto + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    salida = bytearray(b"%PDF-1.4\n")
+    desplazamientos = []
+    for i, cuerpo in enumerate(objetos, start=1):
+        desplazamientos.append(len(salida))
+        salida += str(i).encode() + b" 0 obj" + cuerpo + b"endobj\n"
+    xref = len(salida)
+    salida += b"xref\n0 " + str(len(objetos) + 1).encode() + b"\n0000000000 65535 f \n"
+    for d in desplazamientos:
+        salida += f"{d:010d} 00000 n \n".encode()
+    salida += b"trailer<</Size " + str(len(objetos) + 1).encode() + b"/Root 1 0 R>>\n"
+    salida += b"startxref\n" + str(xref).encode() + b"\n%%EOF\n"
+    return bytes(salida)
+
+
+PDF_CON_TEXTO = _pdf(b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET")
+PDF_ESCANEADO = _pdf(b"0 0 100 100 re f", con_fuente=False)
+PDF_MIXTO = _pdf_mixto()
+
+
+def _cliente_de_documentos(respuesta: httpx.Response) -> tuple[PjudClient, list[httpx.Request]]:
+    pedidas: list[httpx.Request] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidas.append(peticion)
+        return respuesta
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+    return c, pedidas
+
+
+def test_la_tabla_de_documentos_es_la_que_emiten_las_respuestas_reales():
+    """`DOCUMENTOS` dice con qué parámetro se pide cada documento, y eso NO se puede escribir
+    de memoria: son cinco competencias que nombran lo mismo de siete maneras distintas.
+
+    Pedir un documento con el nombre de parámetro de otra competencia no falla con un error:
+    la plataforma responde una página, y una página guardada como PDF se ve como un documento.
+    Por eso el guardia deriva la tabla entera de las fixtures y la compara, en las dos
+    direcciones: una ruta que el sitio emite y la tabla no tiene es un documento que este
+    servidor no puede entregar, y una que la tabla tiene y el sitio no emite es una inventada.
+    """
+    from mcp_pjud.client import DOCUMENTOS
+
+    emitidas: dict[str, dict[str, str]] = {}
+    for fixture in sorted(FIXTURES.glob("*.html")):
+        html = fixture.read_text(encoding="utf-8")
+        for formulario in re.finditer(
+            r'<form[^>]*action="[^"]*?(\w+)/documentos/([\w.-]+\.php)"[^>]*>(.*?)</form>',
+            html,
+            re.S,
+        ):
+            modulo, ruta, cuerpo = formulario.groups()
+            nombres = re.findall(r"""name=['"](\w+)['"]""", cuerpo)
+            assert nombres, f"{fixture.name}: {ruta!r} ya no muestra con qué parámetro se pide"
+            emitidas.setdefault(modulo, {})[ruta] = nombres[0]
+
+    assert len(emitidas) >= 5, f"las fixtures dejaron de traer formularios: {sorted(emitidas)}"
+    assert emitidas == DOCUMENTOS, (
+        "la tabla de documentos del cliente ya no es la que emiten las respuestas guardadas.\n"
+        f"Emiten: {emitidas}\nLa tabla dice: {DOCUMENTOS}"
+    )
+
+
+def test_una_ruta_que_la_plataforma_no_emite_se_rechaza_antes_de_consultar():
+    """`documento_ruta` llega desde el modelo, así que es texto que este servidor no controla.
+
+    Sin la lista blanca, la herramienta deja de entregar documentos de una causa y pasa a ser
+    un proxy capaz de pedir cualquier `.php` del sitio bajo la sesión de este cliente, con su
+    contacto en el User-Agent. Se rechaza sin gastar una petición.
+
+    La tercera ruta de la lista es la trampa que una tabla plana no atraparía: existe, pero en
+    otra competencia. Pedirla bajo el prefijo de civil es pedir una ruta que no existe.
+    """
+    c = _sin_red()
+    for ruta in ("../../consultaUnificada.php", "docuInventado.php", "docCausaSuprema.php"):
+        with pytest.raises(ValueError, match="no es una de las que el detalle"):
+            c.documento(ruta, "referencia-cualquiera", "civil")
+
+
+def test_una_competencia_sin_documentos_medidos_se_rechaza_antes_de_consultar():
+    """`penal` no emite un solo formulario de descarga en su detalle. Armarle una ruta por
+    analogía con civil devolvería una página de error, no un archivo."""
+    c = _sin_red()
+    with pytest.raises(ValueError, match="ninguna ruta de documentos"):
+        c.documento("docuN.php", "referencia-cualquiera", "penal")
+
+
+def test_el_documento_se_pide_con_el_parametro_que_esa_ruta_usa():
+    """Cada competencia nombra el parámetro a su manera, y la ruta cuelga de su propio módulo.
+
+    Sin esto, pedir el documento de una actuación de suprema con el nombre de civil manda
+    `dtaDoc` donde el sitio espera `valorFile`, y lo que vuelve no es el documento.
+    """
+    c, pedidas = _cliente_de_documentos(
+        httpx.Response(200, content=PDF_CON_TEXTO, headers={"content-type": "application/pdf"})
+    )
+
+    c.documento("docCausaSuprema.php", "ref-123", "suprema")
+
+    url = pedidas[-1].url
+    assert url.path.endswith("/ADIR_1/suprema/documentos/docCausaSuprema.php"), (
+        f"la ruta se armó mal: {url}"
+    )
+    assert dict(url.params) == {"valorFile": "ref-123"}, (
+        f"suprema pide el documento con `valorFile` y se mandó {dict(url.params)}"
+    )
+
+
+def test_un_pdf_con_texto_se_declara_con_capa_de_texto():
+    c, _ = _cliente_de_documentos(
+        httpx.Response(200, content=PDF_CON_TEXTO, headers={"content-type": "application/pdf"})
+    )
+
+    doc = c.documento("docuN.php", "ref-123")
+
+    assert doc.capa_de_texto is True
+    assert doc.paginas == 1
+    assert doc.tamano_bytes == len(PDF_CON_TEXTO)
+    assert doc.contenido == PDF_CON_TEXTO, "el documento tiene que llegar tal cual"
+
+
+def test_un_pdf_sin_capa_de_texto_se_declara_escaneo_y_se_entrega_igual():
+    """Detectarlo es barato y transcribirlo es lo que no corresponde.
+
+    El documento se entrega igual: decir que es un escaneo no es negarse a darlo.
+    """
+    c, _ = _cliente_de_documentos(
+        httpx.Response(200, content=PDF_ESCANEADO, headers={"content-type": "application/pdf"})
+    )
+
+    doc = c.documento("docuN.php", "ref-123")
+
+    assert doc.capa_de_texto is False
+    assert doc.contenido == PDF_ESCANEADO, "un escaneo se entrega igual, sólo que declarado"
+
+
+def test_un_pdf_que_no_se_puede_abrir_no_se_declara_escaneo():
+    """Es el falso positivo de esta herramienta, y es de los que no se notan.
+
+    "No pude abrir el archivo" y "es un escaneo" son cosas distintas. Con `not capa_de_texto`
+    en vez de `capa_de_texto is False`, un PDF cifrado o truncado se informaría como escaneo,
+    o sea el servidor afirmaría sobre el documento algo que nunca midió. Es la misma familia
+    de error que la lista vacía de la regla 4, con la diferencia de que acá la afirmación
+    suena razonable.
+    """
+    truncado = PDF_CON_TEXTO[:120]
+    assert truncado.startswith(b"%PDF-"), "tiene que pasar el control de magia para medir esto"
+    c, _ = _cliente_de_documentos(
+        httpx.Response(200, content=truncado, headers={"content-type": "application/pdf"})
+    )
+
+    doc = c.documento("docuN.php", "ref-123")
+
+    assert doc.capa_de_texto is None, (
+        "no se pudo abrir, así que no se sabe: FALSO acá sería declarar un escaneo que nadie midió"
+    )
+    assert doc.problema_al_leer, "hay que decir por qué no se pudo abrir"
+    assert doc.contenido == truncado, "no poder describirlo no es no tenerlo"
+
+
+def test_una_respuesta_que_no_es_pdf_no_se_entrega_como_documento():
+    """La referencia caduca con la sesión, así que ésta es la respuesta que de verdad va a
+    llegar cuando alguien guarde una y la use mañana.
+
+    Y llega con HTTP 200. Entregarla en base64 produce un archivo que se ve como un documento
+    y es una página de error, y quien lo reciba no tiene cómo notarlo.
+    """
+    aviso = '<html><script>swal("Aviso", "La sesion ha expirado");</script></html>'
+    c, _ = _cliente_de_documentos(
+        httpx.Response(200, text=aviso, headers={"content-type": "text/html"})
+    )
+
+    with pytest.raises(EstructuraInesperada) as levantada:
+        c.documento("docuN.php", "ref-vencida")
+
+    mensaje = str(levantada.value)
+    assert "La sesion ha expirado" in mensaje, (
+        f"el aviso es lo único que distingue una referencia vencida de un cambio del sitio, "
+        f"y no viajó: {mensaje}"
+    )
+    assert "detalle" in mensaje, f"el mensaje tiene que decir qué hacer: {mensaje}"
+
+
+def test_el_umbral_de_lo_embebido_no_gasta_mas_que_una_respuesta_de_texto():
+    """El número no está medido contra ningún PDF, porque no hay ninguno medido: es una
+    decisión, y lo que este guardia ata es su ARITMÉTICA contra el techo que la justifica.
+
+    Sin esto, subir `LIMITE_EMBEBIDO` a un número cómodo dejaría todo verde y el ebook entero
+    viajaría dentro de la respuesta.
+    """
+    from mcp_pjud.client import CARACTERES_DE_UNA_RESPUESTA, LIMITE_EMBEBIDO
+
+    en_base64 = -(-LIMITE_EMBEBIDO // 3) * 4
+    assert en_base64 <= CARACTERES_DE_UNA_RESPUESTA, (
+        f"{LIMITE_EMBEBIDO} bytes son {en_base64} caracteres en base64, y el techo que este "
+        f"servidor ya acepta gastar de una vez son {CARACTERES_DE_UNA_RESPUESTA}"
+    )
+
+
+def test_un_pdf_mixto_no_se_declara_entero_digital(monkeypatch):
+    """Un expediente que mezcla resoluciones digitales con anexos escaneados es lo normal.
+
+    Cortar en la primera página con texto hacía que una sola declarara todo el archivo
+    digital, y quien leyera eso daría por transcribible un documento del que una parte son
+    imágenes. Es el falso negativo de siempre, repartido por página.
+    """
+    from mcp_pjud.client import _describir_pdf
+
+    paginas, con_texto, problema = _describir_pdf(PDF_MIXTO)
+    assert problema is None, problema
+    assert paginas == 2, paginas
+    assert con_texto == 1, (
+        f"se extrajo texto de {con_texto} de {paginas} páginas, y el documento es mixto"
+    )

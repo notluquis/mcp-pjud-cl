@@ -22,6 +22,14 @@ dependencies = [
     "httpx>=0.28",
     "lxml>=5.3",
     "pydantic>=2.10",
+    # Sólo para saber si un PDF trae capa de texto y cuántas páginas tiene. La licencia
+    # decide y no la velocidad: PyMuPDF es entre 8 y 12 veces más rápida y va bajo AGPL-3.0,
+    # que enlazada desde una rueda distribuida bajo PolyForm Strict pone las dos licencias en
+    # conflicto. `pypdf` es BSD-3 y Python puro, o sea tampoco arrastra binarios.
+    #
+    # No se usa para OCR, y no porque falte: una transcripción automática de una resolución
+    # se ve idéntica a la resolución y no lo es.
+    "pypdf>=6.0",
 ]
 
 [project.urls]

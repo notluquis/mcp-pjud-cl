@@ -134,6 +134,7 @@ publicar: no es lo recomendado.
 | `buscar_causa_por_rut_juridica` | Busca por RUT de una empresa |
 | `buscar_causa_por_fecha` | Busca por fecha de ingreso |
 | `obtener_actuaciones_receptor` | Actuaciones del ministro de fe con su fecha real de diligencia |
+| `obtener_documento` | El archivo de una actuación: resolución, escrito, certificado o el expediente entero |
 | `obtener_detalle_causa` | Historia, litigantes, notificaciones, liquidaciones y materias, de una sola cadena y recorriendo todos los cuadernos |
 | `buscar_jurisprudencia` | Busca sentencias en el buscador de fallos |
 | `obtener_texto_sentencia` | El texto completo de una sentencia |

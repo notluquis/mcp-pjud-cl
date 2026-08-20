@@ -243,6 +243,9 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
         # debajo y apelaciones devuelve juzgados de primera instancia que no sirven para
         # buscar ahí, así que ofrecerlas invita a usar esa lista como si fuera `tribunal`.
         "listar_tribunales",
+        # Ofrece las que emiten formularios de descarga. `penal` no emite ninguno, así que no
+        # hay ruta que ofrecerle: la llamada se rechaza siempre. Guardia propio abajo.
+        "obtener_documento",
     }
     descripciones = [
         p.get("description", "")
@@ -758,6 +761,42 @@ def test_la_herramienta_de_actuaciones_solo_ofrece_lo_que_funciona(expuestas):
         assert otra not in ofrecidas, (
             f"el esquema ofrece {otra!r} como opción y la llamada siempre falla"
         )
+
+
+def test_la_herramienta_de_documentos_solo_ofrece_lo_que_la_plataforma_emite(expuestas):
+    """Misma trampa que en actuaciones, con otra tabla: `DOCUMENTOS`.
+
+    Ofrecerle `penal` al modelo lo haría pedir un documento de una competencia cuyo detalle no
+    emite ni un formulario de descarga, y el rechazo saldría de este servidor sin que la
+    plataforma se entere. Y en la otra dirección: si mañana se mide una competencia nueva y el
+    esquema no la nombra, el modelo no va a intentarla nunca.
+
+    La ruta se verifica igual de estricto, y ése es el otro motivo del guardia: `documento_ruta`
+    llega desde el modelo, así que la descripción tiene que nombrar las rutas aceptadas. Sin
+    esa lista el modelo inventa una, la herramienta la rechaza, y parece una falla del sitio.
+    """
+    from mcp_pjud.client import DOCUMENTOS
+
+    assert DOCUMENTOS, "si ninguna competencia emitiera documentos, la herramienta sobraría"
+
+    propiedades = (expuestas["obtener_documento"].input_schema or {}).get("properties", {})
+    competencia = propiedades["competencia"].get("description", "")
+    for nombre in DOCUMENTOS:
+        assert nombre in competencia, (
+            f"{nombre!r} emite documentos y el esquema no la ofrece: el modelo no la va a usar"
+        )
+    for nombre in set(MODULOS) - set(DOCUMENTOS):
+        assert nombre not in competencia, (
+            f"el esquema ofrece {nombre!r} y su detalle no emite ningún formulario de "
+            "descarga, así que esa llamada termina siempre en error"
+        )
+
+    ruta = propiedades["documento_ruta"].get("description", "")
+    for rutas in DOCUMENTOS.values():
+        for nombre in rutas:
+            assert nombre in ruta, (
+                f"la plataforma entrega documentos por {nombre!r} y el esquema no la nombra"
+            )
 
 
 def test_la_lectura_combinada_solo_ofrece_competencias_con_algun_panel(expuestas):

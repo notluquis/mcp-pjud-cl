@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Campo `documento_referencia` en las actuaciones: con qué pedir el documento. Antes sólo se
+  decía que existía.
+
 ### Corregido
 
 - El estado de la parte en laboral llegaba siempre nulo: el sitio lo publica como icono y no

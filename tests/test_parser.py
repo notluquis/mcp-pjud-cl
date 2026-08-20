@@ -1015,3 +1015,29 @@ def test_un_icono_de_estado_irreconocible_levanta_en_vez_de_volver_nulo():
 
     with pytest.raises(EstructuraInesperada, match="estado de la parte"):
         parse_litigantes(H.tostring(doc, encoding="unicode"), "laboral")
+
+
+def test_la_actuacion_dice_cual_documento_tiene_y_no_solo_que_tiene_uno():
+    """`tiene_documento` decía que HAY documento y no CUÁL, y con eso no se puede pedir.
+
+    La celda trae el formulario a `documentos/docuN.php` con la referencia en `dtaDoc`, y se
+    leía únicamente si el formulario existía. Quien quisiera el documento tendría que volver a
+    consultar el detalle entero para encontrarlo, o sea la petición ya hecha se desperdiciaba.
+
+    Cada fila trae la suya: si todas devolvieran la misma, se estaría leyendo la de otra
+    actuación.
+    """
+    actuaciones = parse_historia(C1156_PRINCIPAL)
+    con_doc = [a for a in actuaciones if a.tiene_documento]
+    assert con_doc, "la fixture dejó de traer actuaciones con documento"
+
+    for a in con_doc:
+        assert a.documento_referencia, f"el folio {a.folio} dice que tiene documento y no dice cuál"
+    referencias = [a.documento_referencia for a in con_doc]
+    assert len(set(referencias)) == len(referencias), (
+        f"dos actuaciones comparten referencia de documento: {referencias}"
+    )
+
+    for a in actuaciones:
+        if not a.tiene_documento:
+            assert a.documento_referencia is None

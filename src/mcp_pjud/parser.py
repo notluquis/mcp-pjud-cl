@@ -482,6 +482,12 @@ class Actuacion(BaseModel):
         "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
     )
     tiene_documento: bool = Field(description="Si el folio trae documento descargable.")
+    documento_referencia: str | None = Field(
+        default=None,
+        description="La referencia opaca con la que la plataforma identifica ese documento. "
+        "Es lo único que permite pedirlo después: sin ella se sabe que el documento existe y "
+        "no cuál es. NULO cuando la actuación no trae documento.",
+    )
 
     @property
     def es_actuacion_receptor(self) -> bool:
@@ -593,6 +599,23 @@ def _filas_del_panel(html_detalle: str, spec: Panel) -> Iterator[tuple[list, dic
         )
 
 
+def _referencia_de_documento(celda) -> str | None:
+    """La referencia con la que se pide el documento de una actuación.
+
+    La celda trae un formulario a `documentos/docuN.php` con un solo campo oculto, `dtaDoc`,
+    y ahí va la referencia. Antes se leía únicamente si el formulario existía, o sea la
+    respuesta decía que HAY documento y no CUÁL, y con eso no se puede pedir: quien quisiera
+    el documento tendría que volver a consultar el detalle entero para encontrarlo.
+
+    Se devuelve tal cual y sin interpretar. Es opaca y versionada por sesión, igual que el
+    resto de las referencias del sitio.
+    """
+    for oculto in celda.iter("input"):
+        if oculto.get("name") == "dtaDoc":
+            return oculto.get("value") or None
+    return None
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -682,6 +705,7 @@ def _fila_a_actuacion(
             else False
         ),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
+        documento_referencia=_referencia_de_documento(celdas[columnas.index("doc")]),
     )
 
 

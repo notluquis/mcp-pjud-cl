@@ -111,5 +111,49 @@ def _generar_esquemas(app):
         )
 
 
+# -- tablas de competencias, generadas desde `parser.COMPETENCIAS` ----------------
+#
+# Mismo motivo que los esquemas, y con más razón: estas dos tablas se escribían a mano y
+# se copiaban de la tabla del código, así que cada competencia nueva obligaba a recordar
+# tocarlas. La de paneles ya había quedado vieja una vez.
+
+
+def _generar_tablas(app):
+    import pathlib
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parents[1] / "src"))
+
+    from mcp_pjud.client import MODULOS
+    from mcp_pjud.parser import COMPETENCIAS
+
+    destino = pathlib.Path(__file__).parent / "_generado"
+    destino.mkdir(exist_ok=True)
+
+    def lista(nombres):
+        return ", ".join(f"`{n}`" for n in sorted(nombres))
+
+    filas = []
+    for exige, campo in (("`tribunal`", "tribunal"), ("`corte`", "corte"), ("nada", None)):
+        cuales = [n for n in MODULOS if COMPETENCIAS[n].acota_por == campo]
+        if cuales:
+            filas.append(f"| {lista(cuales)} | {exige} |")
+    (destino / "acotacion.md").write_text(
+        "| Competencia | Exige |\n|---|---|\n" + "\n".join(filas) + "\n",
+        encoding="utf-8",
+    )
+
+    paneles = ("historia", "litigantes", "notificaciones", "liquidaciones", "materias")
+    filas = []
+    for campo in paneles:
+        cuales = [n for n in MODULOS if getattr(COMPETENCIAS[n], campo) is not None]
+        filas.append(f"| `{campo}` | {lista(cuales) if cuales else 'ninguna todavía'} |")
+    (destino / "paneles.md").write_text(
+        "| Campo | Dónde existe |\n|---|---|\n" + "\n".join(filas) + "\n",
+        encoding="utf-8",
+    )
+
+
 def setup(app):
     app.connect("builder-inited", _generar_esquemas)
+    app.connect("builder-inited", _generar_tablas)

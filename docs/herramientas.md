@@ -63,11 +63,8 @@ Devuelve una lista de causas con `rol`, `fecha_ingreso`, `caratulado`, `tribunal
 Las tres búsquedas de abajo (nombre, RUT y fecha) exigen acotar, y **con qué depende de la
 competencia**. Está medido una por una contra el sistema real:
 
-| Competencia | Exige |
-|---|---|
-| `civil`, `laboral`, `cobranza`, `penal` | `tribunal` |
-| `apelaciones` | `corte` |
-| `suprema` | nada |
+```{include} _generado/acotacion.md
+```
 
 En apelaciones la plataforma responde *"Por favor seleccione una Corte para la búsqueda"* y no
 entrega resultados. En suprema las tres andan sin corte ni tribunal.
@@ -223,13 +220,8 @@ Cada campo distingue tres estados, y los dos últimos significan cosas distintas
 | **lista vacía** | El panel existe y no trae filas. Es una respuesta |
 | **con elementos** | Lo que hay |
 
-| Campo | Dónde existe |
-|---|---|
-| `historia` | civil, cobranza, laboral, suprema, apelaciones |
-| `litigantes` | las mismas cinco |
-| `notificaciones` | civil, cobranza, laboral |
-| `liquidaciones` | sólo cobranza |
-| `materias` | sólo laboral |
+```{include} _generado/paneles.md
+```
 
 :::{warning} Al computar plazos
 `fecha_diligencia` de la historia viene en **nulo** salvo en civil y cobranza. Y las

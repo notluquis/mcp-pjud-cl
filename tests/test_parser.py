@@ -951,3 +951,67 @@ def test_los_exhortos_de_una_competencia_sin_medir_se_rechazan(competencia):
         parse_exhortos(
             (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), competencia
         )
+
+
+def test_el_estado_de_la_parte_laboral_no_se_pierde_por_venir_como_icono():
+    """La columna `Est.` de laboral no trae texto: trae `<i class="fa fa-check-square-o">`.
+
+    Leerla con `text_content()` daba cadena vacía, que se normalizaba a nulo, y el nulo ya
+    significa "esta competencia no publica el dato". O sea el dato existía y se informaba como
+    ausente: el falso negativo de siempre, en un campo chico.
+
+    Se devuelve la clase sin interpretar. Hay UN solo valor observado en las cuatro filas
+    medidas, así que traducirlo a "vigente" o "notificado" sería inventar el mapa.
+    """
+    partes = parse_litigantes(
+        (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8"), "laboral"
+    )
+    assert partes, "la fixture laboral dejó de traer litigantes"
+    assert all(p.estado == "fa-check-square-o" for p in partes), (
+        f"estados leídos: {[p.estado for p in partes]}"
+    )
+    assert all("fa-lg" not in (p.estado or "") for p in partes), (
+        "`fa-lg` es el tamaño del icono, no el estado"
+    )
+
+
+def test_donde_la_competencia_no_publica_el_estado_de_la_parte_va_nulo():
+    """Civil no tiene la columna, y ahí el nulo SÍ significa "acá no se informa". Es la
+    distinción que el arreglo de arriba no puede borrar."""
+    partes = parse_litigantes(DETALLE, "civil")
+    assert partes, "la fixture civil dejó de traer litigantes"
+    assert all(p.estado is None for p in partes)
+
+
+def test_una_causa_laboral_sin_materias_no_se_publica_como_que_no_litiga_nada():
+    """La materia es QUÉ se litiga, y es lo que el tribunal registra al ingresar la causa.
+
+    Encabezados y cero filas es una respuesta truncada o una estructura que cambió. Devolver
+    la lista vacía publicaría "esta causa no litiga nada", que no existe.
+    """
+    doc = H.fromstring((FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8"))
+    panel = doc.xpath('//*[@id="materiasLab"]')[0]
+    filas = panel.xpath(".//tbody/tr")
+    assert filas, "la fixture laboral dejó de traer materias y el recorte no prueba nada"
+    for fila in filas:
+        fila.getparent().remove(fila)
+
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_materias(H.tostring(doc, encoding="unicode"), "laboral")
+
+
+def test_un_icono_de_estado_irreconocible_levanta_en_vez_de_volver_nulo():
+    """Es el mismo falso negativo, una capa más abajo.
+
+    Si el sitio cambia el icono por algo sin clase `fa-`, o lo deja vacío, devolver `None`
+    diría "esta competencia no publica el estado" cuando sí lo publica. La columna existe: que
+    no se pueda leer es una estructura que cambió, no un dato ausente.
+    """
+    doc = H.fromstring((FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8"))
+    iconos = doc.xpath('//*[@id="litigantesLab"]//tbody//i')
+    assert iconos, "la fixture laboral dejó de traer el icono de estado"
+    for icono in iconos:
+        icono.set("class", "glyphicon glyphicon-ok")
+
+    with pytest.raises(EstructuraInesperada, match="estado de la parte"):
+        parse_litigantes(H.tostring(doc, encoding="unicode"), "laboral")

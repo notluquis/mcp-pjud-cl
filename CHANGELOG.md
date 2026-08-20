@@ -24,6 +24,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   litigantes traen RUT de personas naturales.
 - La liquidación del crédito en cobranza: cuánto se debe y a qué fecha. El monto viene en dos
   campos, uno en pesos para calcular y otro con el texto tal como aparece en el expediente.
+- Campo `causa_encontrada`: distingue una causa que no aparece de una competencia que no
+  publica ese panel. Antes las dos respondían con todo en nulo.
 
 ### Cambiado
 

@@ -16,6 +16,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Insertar o reordenar una columna en el sitio corría los datos sin que nada avisara. Los
+  encabezados ahora se comparan por cantidad y posición.
+- `tests/test_resistencia.py`: deforma las fixtures como podría deformarlas la plataforma y
+  exige el fallo ruidoso. Dieciocho de sus cuarenta y cinco casos pasaban en silencio.
+
+
 ### Agregado
 
 - Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué

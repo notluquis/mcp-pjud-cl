@@ -87,7 +87,16 @@ NOTIFICACIONES_CIVIL = Notificaciones(
         "tramite",
         "observacion",
     ),
-    encabezados=("est. notif.", "tipo notif.", "fecha trámite", "tipo part."),
+    encabezados=(
+        "rol",
+        "est. notif.",
+        "tipo notif.",
+        "fecha trámite",
+        "tipo part.",
+        "nombre",
+        "trámite",
+        "obs. fallida",
+    ),
 )
 
 #: La de cobranza. Medida sobre `C-208-2019`.
@@ -109,7 +118,15 @@ NOTIFICACIONES_COBRANZA = Notificaciones(
         "tipo_parte",
         "nombre",
     ),
-    encabezados=("tip.not.", "est.not.", "fec.not.", "fec.tram.", "tip.part."),
+    encabezados=(
+        "tip.not.",
+        "est.not.",
+        "fec.not.",
+        "fec.tram.",
+        "trámite",
+        "tip.part.",
+        "nombre",
+    ),
 )
 
 #: La de laboral. Medida sobre `O-364-2020`.
@@ -119,7 +136,14 @@ NOTIFICACIONES_COBRANZA = Notificaciones(
 NOTIFICACIONES_LABORAL = Notificaciones(
     panel="notificacionesLab",
     columnas=("estado", "fec_tramite", "tipo_parte", "nombre", "tramite", "observacion"),
-    encabezados=("estado notif.", "fecha trámite", "tipo parte"),
+    encabezados=(
+        "estado notif.",
+        "fecha trámite",
+        "tipo parte",
+        "nombre",
+        "trámite",
+        "obs. fallida",
+    ),
 )
 
 
@@ -139,7 +163,13 @@ class Liquidaciones(NamedTuple):
 LIQUIDACIONES_COBRANZA = Liquidaciones(
     panel="liquidacionCob",
     columnas=("documento", "fecha", "cuaderno", "estado", "monto"),
-    encabezados=("fecha liquidación", "cuaderno", "estado", "monto líquido"),
+    encabezados=(
+        "liquidación",
+        "fecha liquidación",
+        "cuaderno",
+        "estado",
+        "monto líquido",
+    ),
 )
 
 
@@ -163,7 +193,17 @@ HISTORIA_COBRANZA = Historia(
         "fec_tramite",
         "georref",
     ),
-    encabezados=("folio", "desc. trámite", "estado firma", "fec. trámite", "georref."),
+    encabezados=(
+        "folio",
+        "doc.",
+        "anexo",
+        "etapa",
+        "trámite",
+        "desc. trámite",
+        "estado firma",
+        "fec. trámite",
+        "georref.",
+    ),
 )
 
 #: La de civil, medida sobre respuestas reales.
@@ -180,7 +220,17 @@ HISTORIA_CIVIL = Historia(
         "foja",
         "georref",
     ),
-    encabezados=("folio", "desc. trámite", "fec. trámite", "georref."),
+    encabezados=(
+        "folio",
+        "doc.",
+        "anexo",
+        "etapa",
+        "trámite",
+        "desc. trámite",
+        "fec. trámite",
+        "foja",
+        "georref.",
+    ),
 )
 
 #: La de suprema. Medida sobre `135500-2020`.
@@ -202,7 +252,18 @@ HISTORIA_SUPREMA = Historia(
         "sala",
         "estado",
     ),
-    encabezados=("folio", "fecha trámite", "des. trámite", "salas"),
+    encabezados=(
+        "folio",
+        "doc.",
+        "anexo",
+        "año",
+        "fecha trámite",
+        "trámite",
+        "des. trámite",
+        "correlativo",
+        "salas",
+        "estado",
+    ),
 )
 
 #: La de las Cortes de Apelaciones. Medida sobre `Exhorto-1504-2019`.
@@ -223,7 +284,17 @@ HISTORIA_APELACIONES = Historia(
         "estado",
         "georref",
     ),
-    encabezados=("folio", "descripción", "fecha", "georeferencia"),
+    encabezados=(
+        "folio",
+        "doc.",
+        "anexo",
+        "trámite",
+        "descripción",
+        "fecha",
+        "sala",
+        "estado",
+        "georeferencia",
+    ),
 )
 
 #: La de laboral. Medida sobre `O-364-2020`.
@@ -243,7 +314,17 @@ HISTORIA_LABORAL = Historia(
         "estado",
         "georref",
     ),
-    encabezados=("folio", "desc. trámite", "fecha trámite", "georref."),
+    encabezados=(
+        "folio",
+        "doc.",
+        "anexos",
+        "etapa",
+        "trámite",
+        "desc. trámite",
+        "fecha trámite",
+        "estado",
+        "georref.",
+    ),
 )
 
 #: Columnas de la tabla de Historia en civil. Se conserva el nombre porque hay tests y
@@ -368,6 +449,34 @@ def _fecha(txt: str) -> date | None:
     return None if parsed in _FECHAS_CENTINELA else parsed
 
 
+def _validar_encabezados(encabezados: list[str], esperados: tuple[str, ...], panel: str) -> None:
+    """Compara los encabezados por CANTIDAD y POSICIÓN, no por pertenencia.
+
+    La versión anterior sólo exigía que ciertos textos estuvieran presentes en alguna parte, y
+    con eso dos cambios del sitio pasaban enteros: insertar una columna al medio (los exigidos
+    siguen ahí y las filas traen una celda de más) y permutar dos columnas (ni siquiera cambia
+    la cantidad). En los dos casos el mapa posicional corre los campos posteriores.
+
+    Lo que se entrega entonces no se ve roto: se ve como una fila con otros valores. En la
+    Historia eso deja `fecha_diligencia` en nulo y el trámite corrido, con lo que
+    `actuaciones_receptor` devuelve lista vacía SIN error. Medido con `tests/test_resistencia.py`:
+    diez de los cuarenta y cinco casos de deformación pasaban en silencio.
+    """
+    if len(encabezados) != len(esperados):
+        raise EstructuraInesperada(
+            f"El panel {panel!r} trae {len(encabezados)} columnas y se esperaban "
+            f"{len(esperados)}. La estructura cambió: leerla igual correría los campos "
+            f"posteriores. Encabezados: {encabezados}"
+        )
+    for i, (esperado, real) in enumerate(zip(esperados, encabezados, strict=True)):
+        if esperado not in real:
+            raise EstructuraInesperada(
+                f"En el panel {panel!r} la columna {i} dice {real!r} y se esperaba "
+                f"{esperado!r}. Las columnas están en otro orden o se renombraron, y el "
+                f"mapeo es posicional. Encabezados: {encabezados}"
+            )
+
+
 def _celdas(fila) -> list:
     return fila.xpath("./td")
 
@@ -401,11 +510,7 @@ def parse_historia(
         raise EstructuraInesperada(f"El panel {panel!r} no contiene ninguna tabla.")
 
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    for esperado in spec.historia.encabezados:
-        if not any(esperado in h for h in encabezados):
-            raise EstructuraInesperada(
-                f"Falta la columna {esperado!r} en Historia. Encabezados: {encabezados}"
-            )
+    _validar_encabezados(encabezados, spec.historia.encabezados, panel)
 
     actuaciones = []
     for fila in tablas[0].xpath(".//tr"):
@@ -558,12 +663,7 @@ def parse_notificaciones(html_detalle: str, competencia: str = "civil") -> list[
         raise EstructuraInesperada(f"El panel {spec.notificaciones.panel!r} no trae ninguna tabla.")
 
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    for esperado in spec.notificaciones.encabezados:
-        if not any(esperado in h for h in encabezados):
-            raise EstructuraInesperada(
-                f"Falta la columna {esperado!r} en las notificaciones de {competencia}. "
-                f"Encabezados: {encabezados}"
-            )
+    _validar_encabezados(encabezados, spec.notificaciones.encabezados, spec.notificaciones.panel)
 
     columnas = spec.notificaciones.columnas
     notificaciones = []
@@ -656,11 +756,7 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
         raise EstructuraInesperada(f"El panel {spec.liquidaciones.panel!r} no trae ninguna tabla.")
 
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    for esperado in spec.liquidaciones.encabezados:
-        if not any(esperado in h for h in encabezados):
-            raise EstructuraInesperada(
-                f"Falta la columna {esperado!r} en las liquidaciones. Encabezados: {encabezados}"
-            )
+    _validar_encabezados(encabezados, spec.liquidaciones.encabezados, spec.liquidaciones.panel)
 
     columnas = spec.liquidaciones.columnas
     liquidaciones = []

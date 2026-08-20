@@ -197,9 +197,14 @@ def test_panel_sin_tabla_levanta_excepcion():
 
 def test_columna_faltante_levanta_excepcion():
     """Si el Poder Judicial renombra o quita una columna, hay que enterarse.
-    Devolver una lista vacía haría creer que no hubo actuaciones."""
+    Devolver una lista vacía haría creer que no hubo actuaciones.
+
+    El mensaje cambió al pasar la validación de pertenencia a posición: ahora dice cuántas
+    columnas llegaron contra cuántas se esperaban, porque quitar una desplaza a todas las
+    siguientes y eso es lo que hay que reportar, no cuál falta.
+    """
     sin_georref = _historia("").replace("<th>Georref.</th>", "")
-    with pytest.raises(EstructuraInesperada, match="georref"):
+    with pytest.raises(EstructuraInesperada, match="columnas y se esperaban"):
         parse_historia(sin_georref)
 
 

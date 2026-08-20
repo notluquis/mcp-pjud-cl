@@ -16,6 +16,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- **Una columna nueva o reordenada en el sitio corría los datos sin que nada avisara.** Los
+  encabezados se validaban por pertenencia y las filas se descartaban sólo si traían MENOS
+  celdas de las esperadas, así que insertar o permutar columnas pasaba entero y el mapeo
+  posicional entregaba los campos corridos. Ahora se comparan por cantidad y posición.
+- `tests/test_resistencia.py`: deforma las fixtures como podría deformarlas la plataforma y
+  exige `EstructuraInesperada`. Diez de sus cuarenta y cinco casos pasaban en silencio.
+
+
 ### Agregado
 
 - Herramienta `obtener_liquidaciones_causa`: cuánto se debe en un juicio de cobranza y a qué

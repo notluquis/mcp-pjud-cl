@@ -1,0 +1,73 @@
+name: estadisticas
+
+# La API de tráfico de GitHub retiene **catorce días** y no hay forma de pedirle más: lo que
+# no se guarde antes de que caduque se pierde. Por eso esto corre a diario y no a demanda.
+#
+# Las fotos van a una rama huérfana y no a `main`: son un commit por día, y en la rama
+# principal enterrarían el historial del código bajo ruido diario.
+
+on:
+  schedule:
+    - cron: "20 5 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: estadisticas
+  cancel-in-progress: false
+
+jobs:
+  guardar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `TRAFICO_TOKEN` es un token de grano fino con permiso de administración de solo
+      # lectura, que es el que la API de tráfico exige. Si no está configurado se intenta
+      # igual con el token del workflow y el paso falla diciendo por qué, en vez de guardar
+      # una foto vacía que se leería como "no hubo tráfico".
+      - name: Tomar la foto
+        env:
+          GH_TOKEN: ${{ secrets.TRAFICO_TOKEN || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git fetch origin estadisticas:estadisticas 2>/dev/null || true
+          if git rev-parse --verify estadisticas >/dev/null 2>&1; then
+            git worktree add datos estadisticas
+          else
+            git worktree add --detach datos
+            git -C datos checkout --orphan estadisticas
+            git -C datos rm -rf . >/dev/null 2>&1 || true
+          fi
+          python3 .github/scripts/estadisticas.py datos
+
+      - name: Guardar si cambió
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd datos
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Sin cambios: la foto de hoy es igual a la anterior."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore: foto del tráfico del $(date -u +%F)"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              estadisticas:estadisticas

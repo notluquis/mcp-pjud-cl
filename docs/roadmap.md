@@ -22,6 +22,7 @@ está **mapeado en el código de la plataforma pero nunca ejecutado**.
 | Derivación de prefijo de rutas y token | Tres sesiones distintas, token distinto en cada una |
 | Búsqueda por RIT en civil | E-468-2026 y C-1156-2026 |
 | Detalle de causa | Ambas causas |
+| La lectura combinada del detalle | C-1156-2026 el 20 de agosto de 2026: 6 peticiones, todas 200, con los dos cuadernos, 23 actuaciones, 6 litigantes, cero notificaciones y el exhorto a Chillán. `liquidaciones` y `materias` llegaron en nulo, que es lo correcto: civil no publica esos paneles |
 | Cuadernos múltiples | C-1156-2026: principal + apremio |
 | Actuaciones de receptor con fecha doble | 8 actuaciones en E-468-2026, 6 en C-1156-2026 |
 | Los cuatro tipos de diligencia documentados | Presentes en E-468-2026 |

@@ -213,7 +213,11 @@ NO significa que la causa no los tenga.
 :::{important} Preferir ésta antes que preguntar por partes
 Los paneles vienen juntos en la misma respuesta HTML. Pedirlos por separado multiplica las
 consultas contra la plataforma sin traer nada nuevo: preguntar cuatro cosas de una causa con
-dos cuadernos costaba **dieciséis** peticiones donde bastan **cuatro**.
+dos cuadernos costaba **dieciséis** peticiones donde bastan **cuatro**, sin contar en ninguno
+de los dos las dos que abren la sesión.
+
+Medido de punta a punta contra la plataforma el 20 de agosto de 2026, con C-1156-2026: **seis
+peticiones**, todas 200, con los dos cuadernos y el exhorto incluidos.
 :::
 
 Cada campo distingue tres estados, y los dos últimos significan cosas distintas:

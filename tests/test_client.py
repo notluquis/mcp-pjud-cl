@@ -1330,7 +1330,9 @@ def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
 
     assert len(pedidos) == 4, (
         f"leer el detalle completo de una causa de dos cuadernos costó {len(pedidos)} "
-        f"peticiones: la búsqueda, el detalle y un cuaderno cada uno son cuatro"
+        f"peticiones: la búsqueda, el detalle y un cuaderno cada uno son cuatro. Acá la "
+        f"sesión ya está abierta; desde un cliente frío son seis, y así se midió contra la "
+        f"plataforma real"
     )
     assert detalle.historia, "la historia no puede venir vacía"
     assert detalle.litigantes, "los litigantes tampoco"

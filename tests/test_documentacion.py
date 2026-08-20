@@ -1465,6 +1465,59 @@ def test_las_entradas_del_registro_de_cambios_no_pasan_de_dos_frases():
     )
 
 
+def test_la_ultima_version_publicada_no_gana_entradas_despues_de_publicarse():
+    """Una entrada nueva va a `[No publicado]`, no a la versión de arriba.
+
+    Pasó: publicar consiste en insertar la versión nueva justo debajo de `[No publicado]`, así
+    que el cambio siguiente ancló su viñeta en el texto de al lado y quedó archivada bajo una
+    versión **ya etiquetada**. El registro afirmaba que 0.5.1 traía un campo que se agregó
+    después, mientras la publicación en GitHub, generada al etiquetar, decía la verdad.
+
+    Se cuentan viñetas y no se compara el texto: corregir la redacción de una versión
+    publicada es legítimo, agregarle contenido no.
+
+    Sólo se mira la última publicada. Las anteriores cambiaron de tamaño en la reescritura del
+    registro, que fue deliberada, y guardarlas obligaría a una lista de excepciones escrita a
+    mano que envejece sola.
+    """
+    texto = _texto(RAIZ / "CHANGELOG.md")
+
+    def viñetas_por_version(contenido: str) -> dict[str, int]:
+        cuenta = {}
+        for tramo in re.split(r"^## (?=\[)", contenido, flags=re.M)[1:]:
+            m = re.match(r"\[(\d+\.\d+\.\d+)\]", tramo)
+            if m:
+                cuenta[m.group(1)] = len([x for x in tramo.splitlines() if x.startswith("- ")])
+        return cuenta
+
+    ahora = viñetas_por_version(texto)
+    assert ahora, "el registro no declara ninguna versión publicada"
+    ultima = max(ahora, key=lambda v: tuple(int(x) for x in v.split(".")))
+
+    # S603: el argumento no es entrada externa, es una versión que este mismo archivo acaba de
+    # leer del registro y que ya calzó contra \d+\.\d+\.\d+.
+    publicado = subprocess.run(  # noqa: S603
+        ["git", "show", f"v{ultima}:CHANGELOG.md"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if publicado.returncode != 0:
+        # La etiqueta se crea DESPUÉS de mezclar el cambio que sube la versión, así que en el
+        # pull request que la publica todavía no existe. No hay nada que comparar y no es un
+        # fallo: al pasar por `main` ya existe y el guardia muerde.
+        pytest.skip(f"la etiqueta v{ultima} todavía no existe")
+
+    antes = viñetas_por_version(publicado.stdout).get(ultima)
+    assert antes is not None, f"la etiqueta v{ultima} no traía su propia sección en el registro"
+    assert ahora[ultima] <= antes, (
+        f"la versión {ultima} tenía {antes} entradas al publicarse y ahora tiene "
+        f"{ahora[ultima]}. Lo nuevo va en `[No publicado]`: la publicación en GitHub se generó "
+        "al etiquetar y ya no dice lo mismo que el archivo."
+    )
+
+
 def test_ninguna_version_del_registro_repite_una_seccion():
     """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
 

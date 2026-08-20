@@ -61,8 +61,16 @@ otra respuesta ni en esta página. Sin esta herramienta hay que sabérselo de me
 
 | Parámetro | Qué es |
 |---|---|
-| `competencia` | Cuál de las seis. Los códigos de tribunal difieren entre competencias |
-| `corte` | Código de la corte, el que entrega `listar_cortes` |
+| `corte` | **Obligatorio.** Código de la corte, el que entrega `listar_cortes` |
+| `competencia` | Sólo las que se acotan por tribunal. Los códigos difieren entre competencias |
+
+`corte` no tiene valor por defecto a propósito: con uno, una consulta destinada a otra
+jurisdicción devolvería en silencio los tribunales de Concepción, que es una lista plausible y
+equivocada.
+
+Suprema y apelaciones no se ofrecen, y está medido por qué: suprema devuelve `null` porque
+**es** la corte y no tiene tribunales debajo, y apelaciones devuelve 118 juzgados de primera
+instancia, que no son con qué se busca ahí.
 
 | Campo | Tipo | Qué es |
 |---|---|---|

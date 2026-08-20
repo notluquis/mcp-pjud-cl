@@ -1526,12 +1526,21 @@ def test_el_listado_de_tribunales_manda_el_codigo_de_la_competencia_pedida(monke
     assert [(t.codigo, t.nombre) for t in tribunales] == [(163, "3º Juzgado Civil de Concepción")]
 
 
-def test_una_competencia_que_el_servidor_no_consulta_se_rechaza_sin_gastar_peticion(monkeypatch):
-    """Es la regla de siempre: rechazar antes de consultar, no adivinar el código."""
+@pytest.mark.parametrize("competencia", ["suprema", "apelaciones", "familia"])
+def test_una_competencia_sin_tribunales_utiles_se_rechaza_sin_gastar_peticion(
+    competencia, monkeypatch
+):
+    """No es sólo que la competencia no exista: es que la pregunta no tiene sentido.
+
+    Medido el 20 de agosto de 2026 sobre la corte 46: suprema devuelve `null` porque ES la
+    corte y no tiene tribunales debajo, y apelaciones devuelve 118 juzgados de PRIMERA
+    instancia, que no son con qué se busca ahí. Devolver esa lista invitaría a usarla como si
+    fuera `tribunal`, y la búsqueda no encontraría nada.
+    """
     c, pedidos = _cliente_de_combos(monkeypatch, [])
-    with pytest.raises(EstructuraInesperada, match="no es una competencia"):
-        c.listar_tribunales("familia", 46)
-    assert not pedidos, "no debe salir ninguna petición para una competencia que no se consulta"
+    with pytest.raises(EstructuraInesperada, match="no se acota por tribunal"):
+        c.listar_tribunales(competencia, 46)
+    assert not pedidos, "no debe salir ninguna petición para una competencia sin tribunales"
 
 
 def test_un_listado_de_cortes_vacio_levanta_en_vez_de_publicarse(monkeypatch):
@@ -1547,4 +1556,16 @@ def test_una_respuesta_que_no_es_una_lista_levanta(monkeypatch):
     claves como si fueran tribunales."""
     c, _ = _cliente_de_combos(monkeypatch, {"error": "sesion expirada"})
     with pytest.raises(EstructuraInesperada, match="en vez de una lista"):
+        c.listar_tribunales("civil", 46)
+
+
+def test_un_listado_de_tribunales_vacio_levanta_en_vez_de_publicarse(monkeypatch):
+    """Toda corte tiene tribunales debajo. La lista vacía se leería como que esa corte no tiene
+    ninguno, y quien la reciba concluiría que el tribunal que busca no existe.
+
+    Pasa también si la plataforma renombra `COD_TRIBUNAL`: el filtro descartaría todas las
+    filas y el resultado sería idéntico a una corte sin tribunales.
+    """
+    c, _ = _cliente_de_combos(monkeypatch, [{"OTRO_NOMBRE": "163", "GLS_TRIBUNAL": "x"}])
+    with pytest.raises(EstructuraInesperada, match="vino vacío"):
         c.listar_tribunales("civil", 46)

@@ -1,0 +1,9 @@
+[
+  {"COD_CORTE": "10", "GLS_CORTE": "C.A. de Arica"},
+  {"COD_CORTE": "11", "GLS_CORTE": "C.A. de Iquique"},
+  {"COD_CORTE": "15", "GLS_CORTE": "C.A. de Antofagasta"},
+  {"COD_CORTE": "20", "GLS_CORTE": "C.A. de Copiapó"},
+  {"COD_CORTE": "25", "GLS_CORTE": "C.A. de La Serena"},
+  {"COD_CORTE": "30", "GLS_CORTE": "C.A. de Valparaíso"},
+  {"COD_CORTE": "46", "GLS_CORTE": "C.A. de Concepción"}
+]

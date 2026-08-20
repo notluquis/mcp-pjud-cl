@@ -14,6 +14,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .client import (
+    CON_TRIBUNAL,
     DESCRIPCION,
     INTERVALO_MINIMO,
     MODULOS,
@@ -204,6 +205,20 @@ CompetenciaConReceptor = Annotated[
     ),
 ]
 
+#: Las competencias que se acotan POR TRIBUNAL, o sea aquellas donde su listado sirve para
+#: buscar. Medido el 20 de agosto de 2026 sobre la corte 46 con las seis: suprema devuelve
+#: `null` porque ES la corte, y apelaciones devuelve 118 juzgados de primera instancia que no
+#: son con qué se busca ahí. Ofrecerlas invitaría a usar esa lista como si fuera `tribunal`.
+_CON_TRIBUNAL = sorted(CON_TRIBUNAL)
+CompetenciaConTribunal = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_TRIBUNAL)}. Son las que se acotan por tribunal, "
+        "o sea aquellas donde este listado sirve para buscar. Suprema no tiene tribunales "
+        "debajo y apelaciones se acota por corte."
+    ),
+]
+
 #: Las competencias con al menos un panel del detalle medido. `penal` no está: ninguno de los
 #: suyos lo está, así que la lectura combinada la rechaza siempre. Ofrecerla en el esquema hace
 #: que el modelo la intente, reciba un error y se lo atribuya a la plataforma.
@@ -260,10 +275,16 @@ def listar_cortes() -> list[Corte]:
     annotations=SOLO_LECTURA,
 )
 def listar_tribunales(
-    competencia: Competencia = "civil",
     corte: Annotated[
-        int, Field(description="Código de la corte, el que entrega `listar_cortes`.", ge=1)
-    ] = 46,
+        int,
+        Field(
+            description="Código de la corte, el que entrega `listar_cortes`. Obligatorio: sin "
+            "él habría que elegir una, y devolver los tribunales de otra jurisdicción es una "
+            "lista plausible y equivocada.",
+            ge=1,
+        ),
+    ],
+    competencia: CompetenciaConTribunal = "civil",
 ) -> list[Tribunal]:
     """Los tribunales de una corte, con el código que las búsquedas exigen.
 

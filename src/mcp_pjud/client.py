@@ -200,6 +200,7 @@ PAGINAS_MAXIMAS = 10
 #: otra en el de apremio. Deduplicar incluyéndolas informaba dos exhortos donde hay uno.
 _VOLATILES = {"referencia", "documento_referencia"}
 
+
 #: Competencias cuyas búsquedas están verificadas contra el sistema real. La tabla de cómo
 #: leer sus resultados vive en `parser.COMPETENCIAS`; ésta dice cuáles se exponen.
 #:
@@ -223,6 +224,14 @@ _VOLATILES = {"referencia", "documento_referencia"}
 #: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
 #: actuaciones no vivían donde el código creía.
 MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
+#: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
+#: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.
+CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")
+
+#: Cuántas Cortes de Apelaciones devolvió `combosJSON/leeCorte.php` el 20 de agosto de 2026.
+#: Vive acá y no en la prosa porque la referencia lo cita y un número escrito a mano en dos
+#: lugares queda viejo en uno de los dos.
+CORTES_MEDIDAS = 17
 
 
 #: Lo que una lectura del detalle devuelve por fila. `_recorrer_cuadernos` sirve a dos
@@ -575,21 +584,37 @@ class PjudClient(Transporte):
         Es el muro de entrada del proyecto: para buscar en primera instancia hay que pasar
         `tribunal=162`, y ese número no aparecía en ninguna parte.
         """
-        spec = COMPETENCIAS.get(competencia.lower())
-        if spec is None or competencia.lower() not in MODULOS:
+        nombre = competencia.lower()
+        if nombre not in CON_TRIBUNAL:
+            # Medido el 20 de agosto de 2026 sobre la corte 46, con las seis: suprema devuelve
+            # `null` porque ES la corte y no tiene tribunales debajo, y apelaciones devuelve
+            # 118 juzgados de PRIMERA instancia, que no son con qué se busca ahí. Las dos se
+            # acotan por corte o por nada, así que pedir sus tribunales es una pregunta sin
+            # sentido, y devolver esa lista invitaría a usarla como si fuera `tribunal`.
             raise EstructuraInesperada(
-                f"{competencia!r} no es una competencia que este servidor consulte. "
-                f"Disponibles: {', '.join(sorted(MODULOS))}."
+                f"{competencia!r} no se acota por tribunal, así que no tiene un listado que "
+                f"sirva para buscar. Se acotan por tribunal: {', '.join(sorted(CON_TRIBUNAL))}."
             )
+        spec = COMPETENCIAS[nombre]
         filas = self._combos(
             "combosJSON/leeTrib.php",
             {"codCompetencia": str(spec.codigo), "codCorte": str(corte), "tipoBusqueda": "1"},
         )
-        return [
+        tribunales = [
             Tribunal(codigo=int(f["COD_TRIBUNAL"]), nombre=" ".join(f["GLS_TRIBUNAL"].split()))
             for f in filas
             if f.get("COD_TRIBUNAL")
         ]
+        if not tribunales:
+            # Toda corte tiene tribunales debajo. Devolver la lista vacía se leería como que
+            # esa corte no tiene ninguno, y quien la reciba concluiría que el tribunal que
+            # busca no existe. Es la regla 4.
+            raise EstructuraInesperada(
+                f"El listado de tribunales de {competencia} en la corte {corte} vino vacío. "
+                "Toda corte tiene tribunales, así que la respuesta viene truncada o cambió el "
+                "nombre de los campos."
+            )
+        return tribunales
 
     # -- sesión -----------------------------------------------------------------
 

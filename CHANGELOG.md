@@ -18,12 +18,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- **Una columna nueva o reordenada en el sitio corría los datos sin que nada avisara.** Los
-  encabezados se validaban por pertenencia y las filas se descartaban sólo si traían MENOS
-  celdas de las esperadas, así que insertar o permutar columnas pasaba entero y el mapeo
-  posicional entregaba los campos corridos. Ahora se comparan por cantidad y posición.
+- Insertar o reordenar una columna en el sitio corría los datos sin que nada avisara. Los
+  encabezados ahora se comparan por cantidad y posición.
 - `tests/test_resistencia.py`: deforma las fixtures como podría deformarlas la plataforma y
-  exige `EstructuraInesperada`. Diez de sus cuarenta y cinco casos pasaban en silencio.
+  exige el fallo ruidoso. Dieciocho de sus cuarenta y cinco casos pasaban en silencio.
 
 
 ### Agregado

@@ -23,13 +23,25 @@ from mcp_pjud.parser import (
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+
+def _historia(html_detalle: str, competencia: str):
+    """`parse_historia` toma el CUADERNO como segundo posicional, no la competencia.
+
+    Pasarle la competencia ahí dejaba `competencia="civil"` por defecto, así que los cuatro
+    paneles no civiles levantaban por no encontrar `historiaCiv`, antes de mirar siquiera la
+    deformación. Veinte aserciones de este archivo pasaban por la razón equivocada: el guardia
+    no podía fallar, que es justo lo que este archivo existe para detectar en otros.
+    """
+    return parse_historia(html_detalle, competencia=competencia)
+
+
 #: Cada panel mapeado, con la fixture que lo contiene y la función que lo lee.
 PANELES = [
-    ("historiaCiv", "detalle_causa_civil", "civil", parse_historia),
-    ("historiaCob", "detalle_cobranza", "cobranza", parse_historia),
-    ("movimientosSup", "detalle_suprema", "suprema", parse_historia),
-    ("movimientosApe", "detalle_apelaciones", "apelaciones", parse_historia),
-    ("movimientoLab", "detalle_laboral", "laboral", parse_historia),
+    ("historiaCiv", "detalle_causa_civil", "civil", _historia),
+    ("historiaCob", "detalle_cobranza", "cobranza", _historia),
+    ("movimientosSup", "detalle_suprema", "suprema", _historia),
+    ("movimientosApe", "detalle_apelaciones", "apelaciones", _historia),
+    ("movimientoLab", "detalle_laboral", "laboral", _historia),
     ("notificacionesCiv", "detalle_civil_notificaciones", "civil", parse_notificaciones),
     ("notificacionCob", "detalle_cobranza", "cobranza", parse_notificaciones),
     ("notificacionesLab", "detalle_laboral", "laboral", parse_notificaciones),

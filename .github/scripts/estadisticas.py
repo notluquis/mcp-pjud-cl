@@ -26,14 +26,22 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "notluquis/mcp-pjud-cl")
 DESTINO = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "datos")
 
 
-def api(ruta: str):
+def api(ruta: str, paginar: bool = False):
     """Una lectura de la API. Sin reintento: si falla, la foto de hoy no sale y se ve.
 
     Fallar es lo correcto acá. Guardar una foto a medias la dejaría indistinguible de un día
     sin tráfico, y ese cero se arrastraría para siempre en el CSV sin que nada avise.
     """
+    orden = ["gh", "api", f"repos/{REPO}/{ruta}"]
+    if paginar:
+        # `gh api` trae 30 elementos por página y no avisa que hay más. Sin esto, pasadas 30
+        # versiones dejarían de contarse las descargas de las viejas, en silencio, que es la
+        # misma truncación callada que el resto del proyecto levanta en vez de esconder.
+        # `--slurp` junta las páginas en un arreglo de arreglos, y no se puede combinar con
+        # `--jq` para aplanarlo: `gh` lo rechaza. Se aplana acá.
+        orden += ["--paginate", "--slurp"]
     salida = subprocess.run(  # noqa: S603
-        ["gh", "api", f"repos/{REPO}/{ruta}"],  # noqa: S607
+        orden,
         capture_output=True,
         text=True,
         check=False,
@@ -47,7 +55,8 @@ def api(ruta: str):
                 "'Administration: read'.\n\n" + salida.stderr
             )
         raise SystemExit(f"La API falló en {ruta!r}:\n{salida.stderr}")
-    return json.loads(salida.stdout)
+    datos = json.loads(salida.stdout)
+    return [x for pagina in datos for x in pagina] if paginar else datos
 
 
 def guardar(nombre: str, campos: list[str], filas: list[dict], claves: list[str]) -> int:
@@ -130,7 +139,7 @@ def main() -> None:
             "archivo": a["name"],
             "descargas": a["download_count"],
         }
-        for v in api("releases")
+        for v in api("releases", paginar=True)
         for a in v["assets"]
     ]
     guardar(

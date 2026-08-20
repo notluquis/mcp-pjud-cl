@@ -18,12 +18,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- Un corte de conexión no activaba la detención total. Un cortafuegos que rechaza a nivel de
-  red no manda un 403: corta la conexión, y eso llegaba como error de transporte. Quien
-  envolviera las llamadas en un reintento seguía golpeando un cortafuegos que ya lo rechazó.
-  ([#34])
+- Un corte de conexión no activaba la detención total: un cortafuegos que rechaza a nivel de
+  red no manda un 403, corta la conexión, y eso llegaba como error de transporte. ([#34])
 - El cortafuegos también rechaza con HTTP 200, mandando un desafío de F5 BIG-IP APM en vez de
   la página. Se tomaba por bueno y el fallo aparecía recién en la petición siguiente. ([#34])
+- Las estadísticas de tráfico dejaban de contar las descargas pasadas las 30 versiones publicadas, porque la consulta no paginaba.
 
 ## [0.5.0] - 2026-08-20
 

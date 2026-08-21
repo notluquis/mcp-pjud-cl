@@ -277,10 +277,10 @@ Doc. Ida | Doc. Vta. | Estado Diligencia | RIT | RUC | Tipo Diligencia | Fecha T
 Dos cosas que hay que mirar antes de leerlo: si `Fecha Trámite` trae el formato de fecha doble
 como en civil, y qué significa `Responsable`, que probablemente identifica al receptor.
 
-Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver la
-lista vacía que la Historia produciría: esa lista se leería como "no hubo actuaciones" cuando
-lo cierto es "no las estoy leyendo". Es el mismo falso negativo que motivó el proyecto, y
-estuvo brevemente dentro de él.
+Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver lo
+que la Historia produciría, que son esas tres filas sin fecha: una lista parcial que se leería
+como el total. Es el mismo falso negativo que motivó el proyecto, y estuvo brevemente dentro
+de él.
 
 ### El calendario de días hábiles: la pieza que falta para cerrar el círculo
 

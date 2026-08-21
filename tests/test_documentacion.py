@@ -2118,10 +2118,18 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
     assert nombradas, "la fixture de cobranza dejó de nombrar receptores en su Historia"
 
     fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+    # Dos formas de decir lo mismo, y la segunda se coló en la misma página que la corregía:
+    # afirmar que nunca las nombra, y afirmar que leerla daría una lista VACÍA. La lista sería
+    # parcial, que es la diferencia entera.
+    contradicciones = (
+        r"nunca [\"']?Actuaci[oó]n Receptor",
+        r"lista vac[ií]a que la Historia produc",
+        r"devolver la lista vac[ií]a[^.]{0,40}cobranza",
+    )
     culpables = {
         f.name
         for f in fuentes
-        if re.search(r"nunca [\"']?Actuaci[oó]n Receptor", " ".join(_texto(f).split()))
+        if any(re.search(p, " ".join(_texto(f).split())) for p in contradicciones)
     }
     assert not culpables, (
         f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "

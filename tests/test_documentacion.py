@@ -314,6 +314,50 @@ def test_los_topes_declarados_coinciden_con_el_codigo():
     )
 
 
+#: Los bytes del único documento que este proyecto pidió: folio 9 de C-1156-2026, una página
+#: escaneada. No sale de ninguna constante porque es una medición y no una decisión, así que
+#: vive acá y el guardia exige que `verificacion.md` la siga declarando.
+BYTES_DEL_DOCUMENTO_MEDIDO = 975_006
+
+
+def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
+    """Esa página razona sobre el presupuesto de una respuesta y sobre cuántas veces lo pasa un
+    documento medido. Las dos cifras son derivadas, no copiadas, y por eso quedan viejas sin que
+    nadie las toque: basta con mover `CARACTERES_DE_UNA_RESPUESTA` para que la página describa
+    una aritmética que ya no es la del código.
+
+    Se ancla también la medición de origen. Una página que deriva de una cifra que
+    `verificacion.md` dejó de declarar está razonando sobre algo que el proyecto ya no afirma.
+    """
+    from mcp_pjud.client import CARACTERES_DE_UNA_RESPUESTA
+
+    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
+    # Cuatro caracteres por cada tres bytes, redondeando hacia arriba: es la aritmética de
+    # base64 que la propia página explica.
+    en_base64 = -(-BYTES_DEL_DOCUMENTO_MEDIDO // 3) * 4
+    veces = en_base64 // CARACTERES_DE_UNA_RESPUESTA
+
+    faltan = [
+        cifra
+        for cifra in (
+            miles(BYTES_DEL_DOCUMENTO_MEDIDO),
+            miles(CARACTERES_DE_UNA_RESPUESTA),
+            miles(en_base64),
+            f"**{veces}**",
+        )
+        if cifra not in pagina
+    ]
+    assert not faltan, (
+        f"la investigación de documentos no cita estas cifras vigentes: {faltan}. "
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes son {miles(en_base64)} caracteres en "
+        f"base64, o sea {veces} veces los {miles(CARACTERES_DE_UNA_RESPUESTA)} de una respuesta."
+    )
+
+    assert miles(BYTES_DEL_DOCUMENTO_MEDIDO) in _texto(RAIZ / "docs" / "verificacion.md"), (
+        "la investigación deriva de una medición que verificacion.md ya no declara"
+    )
+
+
 # -- lo que la documentación promete que está verificado -------------------------
 
 

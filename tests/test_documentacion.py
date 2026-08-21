@@ -62,6 +62,24 @@ def _texto(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def _registro() -> str:
+    return _texto(RAIZ / "CHANGELOG.md")
+
+
+def _versiones_del_registro(contenido: str | None = None) -> list[str]:
+    """Las versiones publicadas, de la más nueva a la más vieja por semver.
+
+    Vive acá porque la expresión estaba escrita cuatro veces en este archivo, y un cambio de
+    formato del encabezado obligaba a acertarle a las cuatro: basta olvidar una para que un
+    guardia deje de morder en silencio. Y el orden se decide por número y no por posición en
+    el archivo, para que un encabezado insertado donde no va no cambie qué es "la última".
+    """
+    versiones = re.findall(
+        r"^## \[(\d+\.\d+\.\d+)\]", _registro() if contenido is None else contenido, re.M
+    )
+    return sorted(versiones, key=lambda v: tuple(int(n) for n in v.split(".")), reverse=True)
+
+
 # -- la referencia contra el servidor -------------------------------------------
 
 
@@ -738,11 +756,18 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
     # Su sección SIN PUBLICAR es otra cosa y sí se mira: todavía no fechó nada, así que una
     # cifra a medias entrando ahí es una cifra a medias que se va a publicar. Excluir el
     # archivo entero la dejaba pasar.
+    # Y publicar vaciaba ese tramo: la operación consiste en insertar `## [x.y.z]` justo
+    # debajo, así que la sección sin publicar quedaba vacía y la excepción volvía a cubrir el
+    # archivo entero, justo cuando esas viñetas pasan a ser lo publicado. Se mira el tramo sin
+    # publicar MÁS el de la versión más nueva, que es lo que este pull request está escribiendo.
+    def _tramos_vivos(contenido: str) -> str:
+        tramos = re.split(r"^## (?=\[)", contenido, flags=re.M)[1:]
+        return "".join(tramos[:2])
+
     def fechada(p) -> bool:
         if p.name != "CHANGELOG.md":
             return False
-        sin_publicar = _texto(p).split("## [No publicado]", 1)[-1].split("\n## [", 1)[0]
-        return peor in _texto(p) or busqueda not in sin_publicar
+        return peor in _texto(p) or busqueda not in _tramos_vivos(_texto(p))
 
     sin_el_peor = [
         str(p.relative_to(RAIZ)) for p in citan if peor not in _texto(p) and not fechada(p)
@@ -1098,14 +1123,16 @@ def test_todo_lo_que_declara_una_version_dice_la_misma():
         f"la guía muestra un User-Agent que no es el que el servidor envía (mcp-pjud/{version})"
     )
 
-    etiqueta = f"@v{version}"
+    # Se miran TODAS las menciones y no si la buena está presente. `instalacion.md` trae dos, y
+    # con "está presente" bastaba actualizar una: la otra seguía ofreciendo un bloque para pegar
+    # que instala la versión anterior, o sea sin las correcciones que esa misma release anuncia.
     for archivo in ("README.md", "docs/instalacion.md"):
-        texto = _texto(RAIZ / archivo)
-        if "@v" not in texto:
-            continue
-        assert etiqueta in texto, (
-            f"{archivo} recomienda fijar una versión distinta de la publicada: la instalación "
-            f"fijada apuntaría a una etiqueta que no existe. Debe decir {etiqueta}"
+        ajenas = {
+            v for v in re.findall(r"@v(\d+\.\d+\.\d+)", _texto(RAIZ / archivo)) if v != version
+        }
+        assert not ajenas, (
+            f"{archivo} recomienda fijar {sorted(ajenas)} y la versión publicada es {version}. "
+            "Quien pegue ese bloque instala una versión sin las correcciones de ésta."
         )
 
     # Lo que el servidor publica en `server/discover`, que la especificación de MCP exige
@@ -1128,6 +1155,15 @@ def test_todo_lo_que_declara_una_version_dice_la_misma():
     assert f"version: {version}" in citation, (
         f"CITATION.cff atribuye una versión distinta de {version}"
     )
+    # La fecha es el otro dato repetido, y el que ya falló una vez: sin esto `CITATION.cff`
+    # puede atribuir la publicación a un día en que no ocurrió, y es lo que se cita.
+    fecha = re.search(
+        rf"^## \[{re.escape(version)}\] - (\d{{4}}-\d{{2}}-\d{{2}})", _registro(), re.M
+    )
+    assert fecha, f"el registro no fecha la versión {version}"
+    assert f"date-released: '{fecha.group(1)}'" in citation, (
+        f"el registro fecha {version} el {fecha.group(1)} y CITATION.cff dice otra cosa"
+    )
 
 
 def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
@@ -1141,7 +1177,7 @@ def test_la_version_del_paquete_es_la_ultima_del_registro_de_cambios():
     versión y su registro diciendo que es otra. Quien instale desde el índice ve la primera.
     """
     version = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["version"]
-    publicadas = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", _texto(RAIZ / "CHANGELOG.md"), re.M)
+    publicadas = _versiones_del_registro()
     assert publicadas, "el registro de cambios no declara ninguna versión publicada"
     assert publicadas[0] == version, (
         f"`pyproject.toml` dice {version} y la última anotada en el registro es "
@@ -2267,6 +2303,43 @@ def test_la_ultima_version_publicada_no_gana_entradas_despues_de_publicarse():
         f"la versión {ultima} tenía {antes} entradas al publicarse y ahora tiene "
         f"{ahora[ultima]}. Lo nuevo va en `[No publicado]`: la publicación en GitHub se generó "
         "al etiquetar y ya no dice lo mismo que el archivo."
+    )
+
+
+def test_cada_version_del_registro_enlaza_a_su_publicacion():
+    """Publicar consiste en insertar un encabezado, y las referencias del final se olvidan.
+
+    Cuando pasa, el encabezado de la versión nueva deja de enlazar a su release y `[No
+    publicado]` sigue comparando contra la anterior, o sea muestra como pendiente todo lo que
+    esa versión ya publicó. Las dos cosas se derivan del propio archivo.
+    """
+    registro = _registro()
+    versiones = _versiones_del_registro(registro)
+    assert versiones, "el registro dejó de tener versiones"
+
+    # Que la referencia exista no basta: apuntando a la etiqueta anterior el encabezado enlaza
+    # a la release equivocada y el archivo se ve correcto. Ya pasó con `[0.1.0]`.
+    referencias = dict(re.findall(r"^\[(\d+\.\d+\.\d+)\]: (\S+)$", registro, re.M))
+    # 0.1.0 es anterior a que se etiquetara nada: su `v0.1.0` nunca existió, así que enlaza al
+    # commit a propósito. Es una excepción histórica y cerrada, no un patrón que se pueda repetir.
+    mal = {
+        v: referencias.get(v)
+        for v in versiones
+        if v != "0.1.0" and not (referencias.get(v) or "").endswith(f"/releases/tag/v{v}")
+    }
+    assert not mal, (
+        f"estas versiones no enlazan a su propia publicación: {mal}. Al publicar hay que "
+        "agregar `[x.y.z]: .../releases/tag/vx.y.z` al final del archivo."
+    )
+
+    # La base sale del propio archivo y no se escribe otra vez: ya son cuatro copias y por eso
+    # `docs/_bloques.py` centraliza la del bloque de configuración.
+    base = next(iter(referencias.values())).split("/releases/")[0]
+    ultima = versiones[0]
+    esperado = f"[No publicado]: {base}/compare/v{ultima}...HEAD"
+    assert esperado in registro, (
+        f"`[No publicado]` no compara contra la última versión publicada ({ultima}), así que "
+        "muestra como pendiente lo que esa versión ya publicó."
     )
 
 

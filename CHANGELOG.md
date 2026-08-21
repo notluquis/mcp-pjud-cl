@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- La publicación de 0.8.0 falló al etiquetar: `publicar.yml` clonaba superficial y ahí se cae
+  un guardia que lee un commit anterior. Arreglado también en `mutacion.yml`, donde el fallo
+  habría sido mudo.
+
 ## [0.8.0] - 2026-08-21
 
 ### Agregado

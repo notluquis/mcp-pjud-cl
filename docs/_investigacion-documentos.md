@@ -571,12 +571,15 @@ porque no hay copia guardada de nada.
 
 ## Lo que falta medir
 
-Lo único medido sobre un documento real del Poder Judicial es su **tamaño**: los 975.006 bytes
-del folio 9 de C-1156-2026, que están en {doc}`verificacion` y son de donde cuelga la
-recomendación. Todo lo demás de esta página, la extracción de texto, la reserialización de
-imágenes y el rasterizado, se probó sobre archivos sintéticos armados acá, porque **no hay
-ningún PDF del Poder Judicial en `tests/fixtures/`**. Alcanzan para mostrar la forma del
-problema, no su magnitud exacta. Falta, en este orden:
+De un documento real del Poder Judicial se midieron **tres cosas**, todas del folio 9 de
+C-1156-2026 y todas en {doc}`verificacion`: que pesa 975.006 bytes, que tiene una página, y que
+no trae capa de texto. De las tres cuelga la recomendación y no sólo del tamaño: lo que la hace
+fuerte es que sea el peor caso en el archivo más chico posible.
+
+Lo que **sí** es sintético son los experimentos: la extracción de imágenes incrustadas, la
+reserialización y el rasterizado se probaron sobre archivos armados acá, porque **no hay ningún
+PDF del Poder Judicial en `tests/fixtures/`** y no se guarda uno por la regla 5. Alcanzan para
+mostrar la forma del problema, no su magnitud exacta. Falta, en este orden:
 
 - **Qué llega de verdad al modelo cuando este servidor entrega un PDF.** Es el supuesto del que
   cuelga todo lo demás y no está documentado por ningún cliente.

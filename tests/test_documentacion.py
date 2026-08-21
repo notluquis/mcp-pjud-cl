@@ -398,9 +398,11 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     nombrados = sorted(
         {
             base
+            # La consulta NO se descarta: un `download.php?archivo=escrito.pdf` nombra el
+            # documento justo ahí, y cortar en el `?` borraba la evidencia antes de mirarla.
             for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", detalles)
-            if "." in (base := valor.split("?")[0].split("#")[0].rsplit("/", 1)[-1])
-            and base.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+            for trozo in re.split(r"[?&=/#]", valor)
+            if "." in (base := trozo) and base.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
         }
     )
     assert nombrados == ["icono_PDF.png", "pagLoad.gif"], (
@@ -464,9 +466,12 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
             f"verificacion.md dejó de declarar que el folio medido es {afirmacion!r}, y la "
             "investigación deriva de que sea una hoja escaneada y no sólo de su tamaño"
         )
-    for afirmacion in ("una página", "sin capa de texto"):
-        assert afirmacion in " ".join(pagina.split()), (
-            f"la investigación dejó de decir que el folio medido es {afirmacion!r}"
+    # En la sección de alcance, no en cualquier parte de la página: "una página" aparece en
+    # varios párrafos y rescataba la afirmación aunque el alcance dijera otra cosa.
+    alcance = " ".join(pagina.split("## Lo que falta medir")[1].split("Falta, en este")[0].split())
+    for afirmacion in ("tiene una página", "no trae capa de texto"):
+        assert afirmacion in alcance, (
+            f"el alcance de la investigación dejó de decir que el folio medido {afirmacion!r}"
         )
 
     # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento

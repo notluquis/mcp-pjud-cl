@@ -47,6 +47,8 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
+from .conftest import CARACTERES_DE_UNA_SENTENCIA
+
 #: Para derivar la fecha corta de la larga en vez de escribir las dos al lado.
 _MESES = (
     "enero",
@@ -251,10 +253,6 @@ _EN_PALABRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis
 #: salen de ninguna constante, porque son una medición y no una decisión: viven acá, y el
 #: guardia exige que las tres copias de la documentación digan los mismos cinco.
 PRECISIONES_MEDIDAS = ("6,0", "10,04", "26,68", "56,22", "103,13")
-
-#: Lo que mide la sentencia de trece páginas con la que se decidió separar el texto de la
-#: búsqueda. Misma razón: es una medición.
-CARACTERES_DE_UNA_SENTENCIA = 25_473
 
 
 def test_la_referencia_dice_cuantas_herramientas_hay_de_verdad(expuestas):

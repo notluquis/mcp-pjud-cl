@@ -584,7 +584,7 @@ def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
         # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no
         # se escribe al lado: un `or` con la fecha de hoy es lo que dejaba pasar la copia vieja.
         m = re.fullmatch(r"(\d{1,2}) de (\w+) de (\d{4})", FECHA_MEDICION)
-        assert m, f"`FECHA_MEDICION` dejó de tener la forma que este guardia sabe derivar"
+        assert m, "`FECHA_MEDICION` dejó de tener la forma que este guardia sabe derivar"
         corta = f"{int(m[1]):02d}-{_MESES.index(m[2].lower()) + 1:02d}-{m[3]}"
         assert FECHA_MEDICION in t or corta in t, (
             f"{p.relative_to(RAIZ)} cita la medición con una fecha que no es {FECHA_MEDICION!r} "

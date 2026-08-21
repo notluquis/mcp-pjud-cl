@@ -1978,6 +1978,33 @@ def test_pedir_la_georreferencia_de_una_competencia_que_no_la_publica_no_gasta_p
     assert not salieron, "no debe salir ninguna petición para una competencia sin la columna"
 
 
+def test_una_competencia_sin_historia_medida_no_se_rechaza_como_si_no_publicara(monkeypatch):
+    """Penal y Suprema se rechazan igual, pero por razones distintas y no se pueden decir con
+    la misma frase. De Suprema está medido que su Historia no trae la columna; de Penal no hay
+    Historia medida, así que afirmar que no la publica sería publicar un negativo que nadie
+    verificó, con la ruta declarada al lado."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        salieron.append(str(peticion.url))
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada) as e:
+        c.georreferencia("REF-1", "penal")
+    dicho = str(e.value)
+    assert "no está medida" in dicho, "el rechazo de penal debe decir que no se midió"
+    assert "no publica la columna" not in dicho, (
+        "penal no tiene Historia medida: decir que no publica la columna afirma una medición "
+        "que no existe"
+    )
+    assert not salieron, "no debe salir ninguna petición"
+
+
 def test_la_referencia_de_georreferencia_llega_desde_la_actuacion():
     """El circuito completo sin red: la actuación trae con qué pedir su georreferencia.
 

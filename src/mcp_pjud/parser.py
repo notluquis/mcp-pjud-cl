@@ -1416,15 +1416,23 @@ def parse_georreferencia(html_modal: str) -> Georreferencia:
             "margen es la mitad del dato, y es la mitad que no permite contrastar un plazo."
         )
     fecha, hora, precision, intentos = m.groups()
+    dia = _fecha(fecha.replace("-", "/"))
+    if dia is None:
+        # El panel trae una fecha con el formato correcto y un día que no existe, como
+        # `31-02-2026`. Devolverla en nulo publicaría `existe=true` sin fecha, y esa es
+        # justamente la tercera fuente por la que esta herramienta existe: sin ella no hay con
+        # qué contrastar la que corre los plazos, y el nulo se leería como "el sitio no la trae".
+        raise EstructuraInesperada(
+            f"El panel de georreferencia trae {fecha!r} como fecha del dispositivo, que no es "
+            "una fecha. Se levanta en vez de entregarla en nulo, porque un nulo se leería como "
+            "que el sitio no la publica y esta es la única fecha con hora del proyecto."
+        )
     return Georreferencia(
         existe=True,
         latitud=float(valores["latitud"]),
         longitud=float(valores["longitud"]),
         precision_metros=float(precision.replace(",", ".")),
-        # El panel escribe la fecha con guiones y el resto del sitio con barras. Se normaliza
-        # acá y no en `_fecha`, porque ese ayudante lee las fechas de las tablas y aflojarlo
-        # haría que aceptara formatos que esas tablas nunca emiten.
-        fecha_dispositivo=_fecha(fecha.replace("-", "/")),
+        fecha_dispositivo=dia,
         hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
         intentos=int(intentos),
     )

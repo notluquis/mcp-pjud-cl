@@ -261,14 +261,25 @@ CORTES_MEDIDAS = 17
 #: declara seis rutas: una por competencia más una unificada que este proyecto no usa, porque
 #: la referencia viene de una fila que ya sabe de qué competencia es.
 #:
-#: `suprema` no está porque su tabla de Historia no publica la columna de georreferencia, así
-#: que no hay referencia que pedir. Eso se deriva de `COMPETENCIAS` y no se escribe acá.
-GEORREFERENCIA: dict[str, str] = {
+#: Están las cinco que el sitio declara, incluida `penal`, porque esta tabla dice qué ruta usa
+#: cada una y no cuáles se ofrecen. Qué se ofrece se deriva de la tabla de competencias, más
+#: abajo: `suprema` no publica la columna en su Historia y `penal` no tiene Historia medida, así
+#: que para las dos no puede existir una referencia que pedir. Escribirlo a mano acá dejaba a
+#: `penal` anunciada como opción válida y siempre en error.
+_RUTAS_GEORREFERENCIA: dict[str, str] = {
     "civil": "civil/modal/geoReferenciaCivil.php",
     "cobranza": "cobranza/modal/geoReferenciaCobranza.php",
     "laboral": "laboral/modal/geoReferenciaLaboral.php",
     "apelaciones": "apelaciones/modal/geoReferenciaApelaciones.php",
     "penal": "penal/modal/geoReferenciaPenal.php",
+}
+
+#: Las que de verdad pueden entregar una georreferencia: publican la columna en su tabla de
+#: Historia Y tienen ruta declarada. Sale de las dos fuentes y no de una lista escrita a mano.
+GEORREFERENCIA: dict[str, str] = {
+    n: ruta
+    for n, ruta in _RUTAS_GEORREFERENCIA.items()
+    if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
 }
 
 DOCUMENTOS: dict[str, dict[str, str]] = {
@@ -805,10 +816,22 @@ class PjudClient(Transporte):
         nombre = competencia.lower()
         ruta = GEORREFERENCIA.get(nombre)
         if ruta is None:
-            raise EstructuraInesperada(
+            # Las dos razones para no ofrecerla se rechazan igual, pero no significan lo
+            # mismo y no se pueden decir con la misma frase. En `suprema` está medido que su
+            # Historia no trae la columna; en `penal` no está medida la Historia, así que
+            # decir "no la publica" sería publicar un negativo que nadie verificó.
+            medida = COMPETENCIAS.get(nombre) is not None and COMPETENCIAS[nombre].historia
+            motivo = (
                 f"{competencia!r} no publica la columna de georreferencia en su tabla de "
-                f"Historia, así que no hay referencia que pedir. La publican: "
-                f"{', '.join(sorted(GEORREFERENCIA))}."
+                "Historia, así que no hay referencia que pedir."
+                if medida
+                else f"La tabla de Historia de {competencia!r} no está medida, así que no se "
+                "sabe si publica la columna de georreferencia ni de dónde saldría la "
+                "referencia. Se rechaza por no verificada, NO porque esté comprobado que no "
+                "la tenga."
+            )
+            raise EstructuraInesperada(
+                f"{motivo} Verificadas: {', '.join(sorted(GEORREFERENCIA))}."
             )
         if not referencia:
             raise EstructuraInesperada(

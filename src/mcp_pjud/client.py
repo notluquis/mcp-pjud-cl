@@ -1225,14 +1225,15 @@ class PjudClient(Transporte):
             )
         if not spec.receptor_en_historia:
             raise ValueError(
-                f"En {competencia!r} las diligencias del ministro de fe NO están en la tabla "
-                "de Historia: viven en un panel propio (`diligenciaCob`) con otra estructura, "
-                "que este proyecto todavía no lee. Medido sobre una respuesta real: los "
-                "trámites de Historia son 'Actuación', 'Resolución' y 'Escrito', nunca "
-                "'Actuación Receptor'.\n\n"
-                "Se rechaza en vez de devolver la lista vacía que la Historia produciría, "
-                "porque esa lista se leería como 'no hubo actuaciones' cuando lo cierto es "
-                "'no las estoy leyendo'."
+                f"En {competencia!r} las diligencias del ministro de fe viven en un panel "
+                "propio (`diligenciaCob`) con otra estructura, que este proyecto todavía no "
+                "lee.\n\n"
+                "Su tabla de Historia SÍ nombra algunas: medido sobre una respuesta real, tres "
+                "filas dicen 'Actuacion - Receptor', sin tilde y con guion, y ninguna trae "
+                "fecha de diligencia. O sea leerla de ahí no daría una lista vacía sino una "
+                "PARCIAL y sin el dato que se busca, y una lista parcial es peor que una vacía "
+                "porque se ve completa.\n\n"
+                "Se rechaza por eso, y no por falta de filas."
             )
         return self._recorrer_cuadernos(
             tipo, rol, anio, competencia, tribunal, corte, actuaciones_receptor

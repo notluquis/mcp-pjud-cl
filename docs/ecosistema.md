@@ -259,8 +259,14 @@ tiene forma de dato.
 ### Las diligencias de cobranza viven en su propio panel
 
 Medido sobre una respuesta real, y corrige lo que esta misma hoja afirmó antes: en cobranza las
-diligencias del ministro de fe **no están en la tabla de Historia**. Sus trámites son
-`Actuación`, `Resolución` y `Escrito`, nunca "Actuación Receptor".
+diligencias del ministro de fe viven en un panel propio.
+
+Su tabla de Historia **sí nombra algunas**, y ésa es la trampa: tres filas dicen
+`Actuacion - Receptor`, sin tilde y con guion, y **ninguna trae fecha de diligencia**. Leerlas
+de ahí no daría una lista vacía sino una **parcial y sin el dato que se busca**, que es peor,
+porque una lista parcial se ve completa. Además `TRAMITE_RECEPTOR` busca `actuación receptor`,
+así que ni siquiera las reconocería: hoy eso no importa porque la competencia se rechaza antes,
+y no se toca el marcador para no dejar una rama que no puede ejecutarse.
 
 Están en `diligenciaCob`, que tiene estructura propia:
 

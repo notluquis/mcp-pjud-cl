@@ -86,7 +86,10 @@ ninguna de las dos, y ésa es la razón de existir de esta herramienta. Si
 en vez de elegir una.
 
 `georreferenciado: false` significa que la actuación NO tiene registro georreferenciado
-(art. 9 inc. 3 Ley 20.886), lo que puede ser jurídicamente relevante. No omitir el dato.
+(art. 9 inc. 3 Ley 20.886) SÓLO en las competencias que publican esa columna: civil,
+cobranza, laboral y apelaciones. En suprema el falso significa que no hay dónde mirar. Y
+`true` significa que el sitio la ofrece, no que exista: está medido que una de seis abre un
+panel vacío. No omitir el dato, y no afirmar más de lo que dice.
 
 Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba
 que la causa no exista.

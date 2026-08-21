@@ -1421,6 +1421,35 @@ def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
             )
 
 
+def test_la_directiva_no_afirma_de_la_georreferencia_mas_que_el_modelo():
+    """La directiva es lo que el modelo lee ANTES de cualquier llamada, así que una afirmación
+    de más ahí pesa más que en cualquier otro lugar.
+
+    Decía que `false` prueba que el registro no está, sin más. Suprema no publica la columna,
+    así que su falso significa que no hay dónde mirar, y confundirlos hace concluir que una
+    diligencia no se georreferenció cuando lo que pasa es que esa competencia no lo informa.
+
+    Las competencias se sacan de la tabla, no de una lista escrita a mano.
+    """
+    from mcp_pjud.server import DIRECTIVA
+
+    con_columna = sorted(
+        n
+        for n in MODULOS
+        if COMPETENCIAS[n].historia and "georref" in COMPETENCIAS[n].historia.columnas
+    )
+    assert con_columna, "si ninguna publicara la columna, el campo no debería existir"
+    assert set(MODULOS) - set(con_columna), (
+        "si todas la publicaran, la salvedad sobra y hay que retirarla de la directiva"
+    )
+
+    for nombre in con_columna:
+        assert nombre in DIRECTIVA, (
+            f"{nombre!r} publica la columna de georreferencia y la directiva no lo nombra, así "
+            "que el modelo no puede saber dónde su `false` significa ausencia"
+        )
+
+
 def _numero(n: int) -> str:
     """El número en palabras, para comparar contra prosa.
 

@@ -340,11 +340,33 @@ def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
     # rescataba una declaración cambiada), después miraba dos páginas y se le escapaban las de
     # `uso`, `index` e `instalacion`. Cualquier nombre de licencia que no sea el declarado es
     # una contradicción, esté donde esté.
+    # Cualquier nombre de licencia, no sólo los que empiezan con PolyForm: si una declaración
+    # cambiara a MIT o Apache-2.0 no entraba en el barrido y el guardia quedaba verde con las
+    # dos instrucciones contradiciéndose.
+    OTRAS_LICENCIAS = (
+        r"PolyForm [A-Z]\w+ \d+\.\d+\.\d+",
+        r"\bMIT\b",
+        r"\bApache[- ]2\.0\b",
+        r"\bBSD-[23]-Clause\b",
+        r"\bGPL-[23]\.0\b",
+        r"\bAGPL-3\.0\b",
+        r"\bMPL-2\.0\b",
+        r"\bLGPL-[23]\.[01]\b",
+        r"\bUnlicense\b",
+        r"\bCC0-1\.0\b",
+    )
+    # Se miran sólo las líneas de PROSA: una fila de tabla que dice "PyMuPDF | AGPL-3.0" habla
+    # de la licencia de un tercero y no de bajo cuál se distribuye esto. La declaración de
+    # este software siempre es una frase, nunca una celda.
     ajenas = {}
     for pagina in PROSA:
+        prosa = "\n".join(
+            linea for linea in _texto(pagina).splitlines() if not linea.lstrip().startswith("|")
+        )
         otras = {
             m.group(0)
-            for m in re.finditer(r"PolyForm [A-Z]\w+ \d+\.\d+\.\d+", _texto(pagina))
+            for patron in OTRAS_LICENCIAS
+            for m in re.finditer(patron, prosa)
             if m.group(0) != nombre
         }
         # `licencia.md` compara a propósito con las otras variantes de PolyForm para explicar
@@ -575,9 +597,14 @@ def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
     # Se barre la prosa Y el código: `juris.py` repite la fecha y las dos cifras en el
     # docstring de su módulo, y ahí es donde vive la constante, así que era la copia con más
     # posibilidades de quedar vieja sin que nadie la mirara.
+    # `juris.py` va SIEMPRE, no sólo si ya trae la cifra vigente: al volver a medir, su
+    # docstring puede conservar juntas las dos cifras y la fecha viejas, no contener el total
+    # nuevo, caer en el `continue` y dejar la suite verde. Es la copia que vive junto a la
+    # constante, o sea la que más fácil se queda atrás.
+    obligatorias = {RAIZ / "src" / "mcp_pjud" / "juris.py"}
     for p in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
         t = " ".join(_texto(p).split())
-        if miles(INDEXADAS_MEDIDAS) not in t:
+        if miles(INDEXADAS_MEDIDAS) not in t and p not in obligatorias:
             continue
         # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no
         # se escribe al lado: un `or` con la fecha de hoy es lo que dejaba pasar la copia vieja.

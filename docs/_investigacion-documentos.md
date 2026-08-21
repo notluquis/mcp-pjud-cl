@@ -305,8 +305,9 @@ tres cosas que la hacían atractiva.
 **Uno: no devuelve los bytes originales.** `_xobj_to_image` termina siempre en
 `img.save(img_byte_arr, format=image_format)`, o sea el stream sale reserializado por Pillow y
 no copiado del archivo. Comprobado con una hoja carta a 200 ppp guardada como JPEG dentro de un
-PDF: el JPEG suelto pesa 194.825 bytes, lo que `page.images[0].data` devuelve pesa 194.758, y
-los dos SHA-256 no coinciden. Para JPEG el código conserva los coeficientes con
+PDF: **los dos SHA-256 no coinciden**, y el tamaño tampoco (el suelto pesaba unos 194.8 KB y lo
+devuelto unos setenta bytes menos). Lo que sostiene el argumento es la primera mitad: el hash
+distinto prueba que hubo reserialización, y el tamaño exacto depende de la versión de Pillow. Para JPEG el código conserva los coeficientes con
 `quality="keep"`, así que la imagen no se degrada, pero el archivo que sale no es el que entró.
 
 **Dos: el formato que sale puede no servir.** El filtro decide la extensión: `DCTDecode` sale
@@ -324,6 +325,15 @@ que arrastra `Pillow`, hoy no instalado acá. Y `JBIG2Decode` se resuelve con
 si falta convierte el escaneo en un error. JBIG2 es un filtro común en escaneos de documentos,
 así que es un caso a soportar y no una rareza.
 
+:::{note}
+Las cifras de esta sección y de la siguiente salen de un experimento **sintético y de una sola
+corrida**, hecho el 20 de agosto de 2026 con la versión de `pypdf` que el proyecto instala y
+`Pillow` traído sólo para eso. No se reproducen en un test a propósito: hacerlo obligaría a
+declarar `pypdf[image]`, `Pillow` y un motor de rasterizado como dependencias, que es justo lo
+que esta página concluye que no conviene hacer. Lo que sí queda anclado es la aritmética, que
+es la mitad que puede quedar vieja por un cambio del código.
+:::
+
 ### Rasterizar la página: la licencia decide, otra vez
 
 `pypdf` no rasteriza. Es Python puro, no trae motor de dibujo, y renderizar obliga a traer uno.
@@ -339,9 +349,10 @@ licencia de estilo BSD. Lo que cuesta no es la licencia sino la forma: a diferen
 que es Python puro, trae un binario precompilado por plataforma, así que la rueda de este
 proyecto pasaría a depender de uno.
 
-Y aunque se traiga ese motor, rasterizar no resuelve el problema de contexto. Medido sobre la hoja de 200 ppp reducida al borde largo de 1568 píxeles: al cincuenta
-por ciento de calidad son 81.566 bytes, o sea 108.756 caracteres en base64, todavía **más de
-cuatro veces** el presupuesto de una respuesta. La imagen sale barata en tokens y cara en
+Y aunque se traiga ese motor, rasterizar no resuelve el problema de contexto. Medido sobre la
+hoja sintética de 200 ppp reducida al borde largo de 1568 píxeles, guardada como JPEG al
+cincuenta por ciento de calidad: **81.566 bytes**, o sea **108.756 caracteres** en base64,
+todavía **más de 4 veces** el presupuesto de una respuesta. La imagen sale barata en tokens y cara en
 caracteres, y son dos presupuestos distintos que tiran para lados opuestos.
 
 ## El límite del OCR, argumentado

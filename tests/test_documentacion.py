@@ -378,6 +378,23 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
         "la investigación deriva de una medición que verificacion.md ya no declara"
     )
 
+    # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento
+    # sintético que no se reproduce acá, pero lo que se hace CON ellos es aritmética contra el
+    # presupuesto, o sea la mitad que sí queda vieja si alguien mueve la constante o edita la
+    # cifra sin recalcular las otras dos.
+    m = re.search(r"\*\*([\d.]+) bytes\*\*, o sea \*\*([\d.]+) caracteres\*\*", pagina)
+    assert m, "la página dejó de decir cuánto pesa la hoja rasterizada y cuánto ocupa en base64"
+    bytes_raster = int(m.group(1).replace(".", ""))
+    en_base64_raster = -(-bytes_raster // 3) * 4
+    assert m.group(2).replace(".", "") == str(en_base64_raster), (
+        f"{m.group(1)} bytes son {miles(en_base64_raster)} caracteres en base64, no {m.group(2)}"
+    )
+    veces_raster = en_base64_raster // CARACTERES_DE_UNA_RESPUESTA
+    assert f"**más de {veces_raster} veces**" in pagina, (
+        f"la hoja rasterizada pasa {veces_raster} veces el presupuesto de una respuesta y la "
+        "página dice otra cosa"
+    )
+
 
 # -- lo que la documentación promete que está verificado -------------------------
 

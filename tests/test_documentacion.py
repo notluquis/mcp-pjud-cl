@@ -228,6 +228,77 @@ def test_todo_trabajo_que_corre_la_suite_clona_la_historia_completa():
     )
 
 
+#: Los radios de precisión que devolvió la única causa donde se midió la georreferencia. No
+#: salen de ninguna constante, porque son una medición y no una decisión: viven acá, y el
+#: guardia exige que las tres copias de la documentación digan los mismos cinco.
+PRECISIONES_MEDIDAS = ("6,0", "10,04", "26,68", "56,22", "103,13")
+
+#: Lo que mide la sentencia de trece páginas con la que se decidió separar el texto de la
+#: búsqueda. Misma razón: es una medición.
+CARACTERES_DE_UNA_SENTENCIA = 25_473
+
+
+def test_las_precisiones_medidas_dicen_lo_mismo_en_las_tres_copias():
+    """Cinco cifras escritas a mano en tres lugares, y ninguna las comparaba.
+
+    `herramientas` las repite dos veces (en la tabla de campos y en el aviso) y `verificacion`
+    una. Corregir una y dejar las otras es lo que la regla de dato repetido persigue, y acá
+    además decide qué tan lejos del punto pudo estar el ministro de fe.
+    """
+    copias = {
+        "herramientas.md (tabla)": _texto(RAIZ / "docs" / "herramientas.md").split(
+            "`precision_metros`"
+        )[1][:200],
+        "herramientas.md (aviso)": _texto(RAIZ / "docs" / "herramientas.md").split(
+            "Medidas en una sola causa:"
+        )[1][:200],
+        "verificacion.md": _texto(RAIZ / "docs" / "verificacion.md").split(
+            "Medidas en una sola causa:"
+        )[1][:200],
+    }
+    faltan = {
+        donde: [p for p in PRECISIONES_MEDIDAS if p not in texto] for donde, texto in copias.items()
+    }
+    faltan = {k: v for k, v in faltan.items() if v}
+    assert not faltan, (
+        f"estas copias no citan las precisiones medidas: {faltan}. Son "
+        f"{' · '.join(PRECISIONES_MEDIDAS)} metros, y las tres tienen que decir lo mismo."
+    )
+
+
+def test_la_aritmetica_de_diez_sentencias_sale_de_la_sentencia_medida():
+    """Las dos páginas razonan lo mismo con distinta precisión, y el producto es derivado.
+
+    `roadmap` cita los 25.473 caracteres exactos y `herramientas` los redondea, pero las dos
+    concluyen con el mismo "devolver diez serían 250.000". Si se vuelve a medir la sentencia,
+    ese producto queda viejo en los dos lados sin que nadie lo mire.
+    """
+    redondeado = round(CARACTERES_DE_UNA_SENTENCIA, -3)
+    # El piso que las dos páginas citan, redondeado hacia abajo al múltiplo de diez mil.
+    piso = (CARACTERES_DE_UNA_SENTENCIA * 10) // 10_000 * 10_000
+
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    assert f"{miles(CARACTERES_DE_UNA_SENTENCIA)} caracteres" in hoja, (
+        f"la hoja de ruta dejó de citar los {miles(CARACTERES_DE_UNA_SENTENCIA)} caracteres "
+        "de la sentencia medida"
+    )
+    # Con la cifra exacta al lado, el producto NO puede escribirse como si fuera exacto: son
+    # 254.730 y no 250.000. La hoja lo dice como piso, que es lo que sí es cierto.
+    assert f"serían más de {miles(piso)}" in hoja, (
+        f"la hoja de ruta cita la sentencia exacta y presenta el producto como {miles(piso)} "
+        f"redondos. Diez son {miles(CARACTERES_DE_UNA_SENTENCIA * 10)}."
+    )
+
+    # La referencia redondea la entrada, así que su producto sí es exacto.
+    ref = _texto(RAIZ / "docs" / "herramientas.md")
+    assert f"unos {miles(redondeado)} caracteres" in ref, (
+        f"la referencia redondea la sentencia medida a otra cosa que {miles(redondeado)}"
+    )
+    assert f"serían {miles(redondeado * 10)}" in ref, (
+        f"la referencia parte de {miles(redondeado)} y no concluye {miles(redondeado * 10)}"
+    )
+
+
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):
     """La referencia afirma que todas están anotadas como solo lectura. Es verificable, así
     que se verifica en vez de confiar en que siga siendo cierto."""

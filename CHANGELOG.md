@@ -21,6 +21,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El rechazo de `obtener_actuaciones_receptor` en cobranza explicaba una razón falsa: decía que
   la Historia nunca nombra receptores y los nombra tres veces. Se rechaza igual, y el mensaje
   ahora dice por qué de verdad.
+- La hoja de ruta presentaba como exacto un producto que no lo es: diez sentencias de 25.473
+  caracteres son más de 250.000, no 250.000.
 - Los workflows que corren la suite clonan la historia completa. Sin ella la publicación se
   caía al etiquetar.
 

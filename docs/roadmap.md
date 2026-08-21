@@ -385,7 +385,7 @@ del proyecto entero.
 - **Texto completo: hecho**, con la forma que la decisión exigía. Está en
   `obtener_texto_sentencia`, aparte de la búsqueda y de a una sentencia por llamada. La razón
   es medible: una sentencia de trece páginas son 25.473 caracteres, así que devolver diez con
-  cada búsqueda serían 250.000. La búsqueda entrega `texto_preview` y la extensión en palabras
+  cada búsqueda serían más de 250.000. La búsqueda entrega `texto_preview` y la extensión en palabras
   y páginas, que suele bastar para decidir si vale pedir el resto.
 
   Sobre los datos personales: la respuesta declara `anonimizada` y `fuente`, o sea si lo

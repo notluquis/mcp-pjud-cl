@@ -466,12 +466,21 @@ def test_ninguna_otra_pagina_cita_la_medicion_a_medias():
 
 
 def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
-    """Una cifra medida sin fecha no se puede evaluar: quien la lea no sabe si sigue vigente."""
+    """Una cifra medida sin fecha no se puede evaluar: quien la lea no sabe si sigue vigente.
+
+    Sin alternativas, y ésa es la corrección: antes aceptaba también `"16-08-2026"` y
+    `"16 de agosto"` escritos a mano, así que volver a medir movía `FECHA_MEDICION` y las
+    páginas se quedaban con la fecha vieja en verde. Un `or` que nombra el valor de hoy no es
+    una tolerancia de formato: es el guardia rescatando justo la copia que vino a atrapar.
+
+    Lo que sí hace falta es normalizar los espacios, porque la fecha se parte entre líneas.
+    """
     for p in PROSA:
-        t = _texto(p)
+        t = " ".join(_texto(p).split())
         if miles(INDEXADAS_MEDIDAS) in t:
-            assert FECHA_MEDICION in t or "16-08-2026" in t or "16 de agosto" in t, (
-                f"{p.relative_to(RAIZ)} cita la medición sin decir cuándo se hizo"
+            assert FECHA_MEDICION in t, (
+                f"{p.relative_to(RAIZ)} cita la medición con una fecha que no es "
+                f"{FECHA_MEDICION!r}, que es cuándo se midió"
             )
 
 
@@ -2890,6 +2899,43 @@ def test_ninguna_version_del_registro_repite_una_seccion():
     assert not repetidas, (
         f"Versiones del registro con una sección repetida: {repetidas}. La publicación copia "
         "el tramo entero, así que el encabezado saldría dos veces en la página."
+    )
+
+
+#: Lo que el contrato de cada herramienta NO puede perder, porque sin eso el modelo informa
+#: algo que no puede afirmar. Cada entrada nombra un aviso, no una redacción: se busca el
+#: término, así que reescribir el párrafo alrededor no rompe nada y borrarlo sí.
+AVISOS_QUE_NO_SE_PUEDEN_PERDER = {
+    "obtener_actuaciones_receptor": (
+        # La razón de existir del proyecto, y su contrato se podía vaciar entero sin que nada
+        # se pusiera en rojo: `obtener_detalle_causa` tenía guardia y ésta no.
+        "fecha_diligencia",
+        "fecha_registro",
+        "plazos",
+        "ebook",
+    ),
+    "buscar_jurisprudencia": ("ocultas", "no_entregadas", "subconjunto"),
+    "obtener_documento": ("escaneo", "OCR", "no es un PDF"),
+    "obtener_georreferencia": ("precision_metros", "hora", "existe"),
+}
+
+
+@pytest.mark.parametrize("nombre", sorted(AVISOS_QUE_NO_SE_PUEDEN_PERDER))
+def test_el_contrato_de_cada_herramienta_conserva_sus_avisos(expuestas, nombre):
+    """Lo que el modelo lee antes de llamar es lo único que le dice qué NO puede afirmar.
+
+    `obtener_detalle_causa` ya tenía este guardia. Las demás no, y eso incluía a
+    `obtener_actuaciones_receptor`, que `AGENTS.md` llama la razón de existir del proyecto:
+    su descripción entera se podía reemplazar por "Devuelve una lista" y la suite seguía
+    verde. Sin ese contrato, un modelo devuelve `fecha_registro` creyendo que corre plazos.
+    """
+    herramienta = expuestas.get(nombre)
+    assert herramienta is not None, f"{nombre} ya no está expuesta"
+    contrato = (herramienta.description or "").lower()
+    faltan = [a for a in AVISOS_QUE_NO_SE_PUEDEN_PERDER[nombre] if a.lower() not in contrato]
+    assert not faltan, (
+        f"el contrato de {nombre} dejó de mencionar {faltan}, y sin eso el modelo informa "
+        "un dato que no puede afirmar"
     )
 
 

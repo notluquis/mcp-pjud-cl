@@ -37,6 +37,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Historia completa: la suite corre acá y un guardia compara los anclajes de la
+          # hoja de ruta contra un commit anterior. Con el clon superficial ese guardia falla
+          # y la publicación se cae, que es lo que pasó al etiquetar 0.8.0.
+          fetch-depth: 0
 
       # Caché desactivada a propósito, y de forma explícita porque el valor por defecto
       # la activa en runners de GitHub. En un flujo que publica artefactos, una caché

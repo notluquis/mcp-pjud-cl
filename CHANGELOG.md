@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Los workflows que corren la suite clonan la historia completa. Sin ella la publicación se
+  caía al etiquetar.
+
 ## [0.8.0] - 2026-08-21
 
 ### Agregado

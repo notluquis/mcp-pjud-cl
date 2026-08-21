@@ -182,6 +182,38 @@ def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
     )
 
 
+def test_todo_trabajo_que_corre_la_suite_clona_la_historia_completa():
+    """Un guardia de la suite lee un commit anterior, así que con clon superficial se cae.
+
+    Ya pasó dos veces con el mismo modo de falla. La primera se arregló sólo en `tests.yml`,
+    y `publicar.yml` quedó igual: al etiquetar 0.8.0 la publicación entera falló ahí. En
+    `mutacion.yml` el fallo habría sido mudo, porque el paso termina en `|| true`.
+
+    Se mira por TRABAJO y no por archivo, y por lo que el trabajo hace y no por su nombre:
+    `tests.yml` tiene tres, y a dos de ellos (zizmor y el barrido de endpoints) la historia
+    no les hace falta. Si mañana aparece otro que corra la suite, entra solo.
+    """
+    import yaml
+
+    sin_historia = []
+    for wf in sorted((RAIZ / ".github" / "workflows").glob("*.yml")):
+        for nombre, trabajo in (yaml.safe_load(_texto(wf)).get("jobs") or {}).items():
+            pasos = trabajo.get("steps") or []
+            corre = any(re.search(r"\b(pytest|mutmut run)\b", p.get("run") or "") for p in pasos)
+            if not corre:
+                continue
+            checkouts = [p for p in pasos if "actions/checkout" in (p.get("uses") or "")]
+            assert checkouts, f"{wf.name}:{nombre} corre la suite y no hace checkout"
+            if any((p.get("with") or {}).get("fetch-depth") != 0 for p in checkouts):
+                sin_historia.append(f"{wf.name}:{nombre}")
+
+    assert not sin_historia, (
+        f"estos trabajos corren la suite con un clon superficial: {sin_historia}. El guardia "
+        "de anclajes de la hoja de ruta lee un commit anterior y ahí falla. Hace falta "
+        "`fetch-depth: 0`."
+    )
+
+
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):
     """La referencia afirma que todas están anotadas como solo lectura. Es verificable, así
     que se verifica en vez de confiar en que siga siendo cierto."""

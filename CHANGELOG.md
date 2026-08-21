@@ -16,7 +16,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-## [0.8.0] - 2026-08-21
+## [0.8.0] - 2026-08-20
 
 ### Agregado
 
@@ -43,9 +43,18 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Cada página publicada declara de qué trata, y la portada nombra sus dos lecturas en vez de
   hablarle sólo a quien va a computar un plazo.
 - La hoja de ruta se partió en tres: lo medido va a `verificacion`, el ecosistema a
-  `ecosistema`, y queda un plan de versiones que por fin es eso. Los 34 anclajes que la
-  página publicó se conservan, así que ningún enlace guardado a un fragmento queda apuntando
-  al vacío.
+  `ecosistema`, y queda un plan de versiones. Los anclajes que publicaba se conservan.
+
+### Corregido
+
+- **`georreferenciado: false` no probaba que la diligencia no se georreferenciara.** En
+  suprema significa que la competencia no publica la columna. Quien haya informado una
+  ausencia de georreferencia sobre una causa de suprema con 0.7.0 o anterior tiene que
+  revisarlo: el art. 9 inc. 3 de la Ley 20.886 la vuelve alegable.
+- **`docuN.php` y `docuS.php` estaban al revés.** `docuS.php` es la resolución y `docuN.php`
+  el escrito, así que `documento_ruta` nombraba el tipo equivocado.
+- `obtener_georreferencia` deja de ofrecerse en `penal`, donde no puede existir una referencia
+  que pedir, y distingue "no publica la columna" de "no está medida".
 
 ## [0.7.0] - 2026-08-20
 

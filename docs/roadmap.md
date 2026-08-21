@@ -392,8 +392,12 @@ del proyecto entero.
   entregado es la versión con los datos suprimidos por el tribunal y de cuál de los dos campos
   salió. Y si la sentencia existe pero está reservada, se levanta en vez de devolver un texto
   vacío que se leería como una sentencia sin contenido.
-- **Paginación.** El buscador pagina por desplazamiento numérico, no por identificador opaco
-  como la consulta de causas, así que es más simple. Falta el mismo guardia de truncación.
+- **Paginación: no existe.** Medido leyendo la petición: `offset_paginacion` va fijo en `0`,
+  así que la coincidencia número 251 es inalcanzable, no sólo la que quede fuera de `filas`.
+  Lo que sí se cerró es el falso negativo, que era lo urgente: el resultado declara
+  `no_entregadas`, y la referencia ya no afirma que `ocultas` en cero quiera decir lista
+  completa. Exponer el desplazamiento queda pendiente y requiere medirlo contra la
+  plataforma.
 - **Una cuenta.** Con credenciales del Poder Judicial se verían más sentencias. Queda fuera:
   este proyecto consulta lo que es público sin identificarse como funcionario.
 

@@ -107,7 +107,13 @@ def test_los_campos_de_completitud_estan_documentados(expuestas):
     una lista. Si sale del modelo o de la página, la herramienta se lee como si entregara
     todo, que es justo el defecto que motivó el proyecto."""
     salida = (expuestas["buscar_jurisprudencia"].output_schema or {}).get("properties", {})
-    for campo in ("visibles", "coincidencias", "ocultas", "condiciones_de_publicacion"):
+    for campo in (
+        "visibles",
+        "coincidencias",
+        "ocultas",
+        "no_entregadas",
+        "condiciones_de_publicacion",
+    ):
         assert campo in salida, f"el modelo dejó de declarar `{campo}`"
         assert f"`{campo}`" in HERRAMIENTAS, f"`{campo}` no está en la referencia"
 
@@ -125,6 +131,15 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     lista = seccion[1].split("\n\n")[2]
     for canal in ("tiene_anexo", "listadoAudioLaboral", "expedienteApe", "IncompetenciaApe"):
         assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
+def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
+    """`ocultas` cubre lo reservado, no lo que no se pidió. La referencia llegó a decir que
+    la lista era un subconjunto sólo si `ocultas` era mayor que cero, y con eso una búsqueda
+    de 400 visibles con `filas` en 10 se leía como completa."""
+    seccion = HERRAMIENTAS.split("## `buscar_jurisprudencia`")[1].split("\n## ")[0]
+    assert "`no_entregadas`" in seccion, "la referencia no nombra el recorte por `filas`"
+    assert "`ocultas` en cero no significa que la lista esté completa" in seccion, (
+        "la referencia dejó de desmentir que `ocultas` en cero implique completitud"
+    )
 
 
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):

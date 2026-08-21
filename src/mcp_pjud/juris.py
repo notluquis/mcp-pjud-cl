@@ -278,6 +278,13 @@ class ResultadoJurisprudencia(BaseModel):
         "la pregunta no tiene respuesta acá, y un resultado sin coincidencias puede igual "
         "corresponder a algo reservado."
     )
+    no_entregadas: int = Field(
+        description="Coincidencias visibles que esta llamada NO trajo, porque `filas` acota "
+        "cuántas se piden. Si es mayor que cero, la lista es un subconjunto de lo visible.\n\n"
+        "Es distinto de `ocultas`, y hay que mirar los dos: `ocultas` son las que la "
+        "plataforma reserva, `no_entregadas` son las que sí se podrían ver y no se pidieron. "
+        "Un resultado con `ocultas` en cero puede igual estar recortado."
+    )
     condiciones_de_publicacion: dict[str, int] = Field(
         description="Desglose de TODAS las coincidencias por condición de publicación, "
         "visibles incluidas. Suma `coincidencias`, no `ocultas`: la categoría 'Publicable' "
@@ -402,6 +409,10 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
         visibles=visibles,
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
+        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y en dos de
+        # los tres buscadores viene en nulo, así que ésta es la única señal de recorte que
+        # funciona en los tres.
+        no_entregadas=max(0, visibles - len(sentencias)),
         condiciones_de_publicacion=condiciones,
     )
 

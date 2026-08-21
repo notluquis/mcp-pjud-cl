@@ -17,6 +17,7 @@ from mcp_pjud.parser import EstructuraInesperada, PlataformaRechaza
 FIXTURES = Path(__file__).parent / "fixtures"
 AMPLIA = (FIXTURES / "juris_busqueda_amplia.json").read_text(encoding="utf-8")
 CITA = (FIXTURES / "juris_cita_unica.json").read_text(encoding="utf-8")
+PARCIAL = (FIXTURES / "juris_pagina_parcial.json").read_text(encoding="utf-8")
 
 
 # -- lo que el buscador no muestra ----------------------------------------------
@@ -49,6 +50,28 @@ def test_una_cita_verificada_no_declara_ocultas():
     r = parse_sentencias(CITA)
     assert (r.visibles, r.coincidencias, r.ocultas) == (1, 1, 0)
     assert len(r.sentencias) == 1
+
+
+def test_una_pagina_parcial_lo_declara_aunque_no_haya_nada_reservado():
+    """El falso negativo que `ocultas` no cubre: 400 visibles, nada reservado, y la llamada
+    trae tres. Leer sólo `ocultas` da cero y se entiende como lista completa."""
+    r = parse_sentencias(PARCIAL)
+    assert r.ocultas == 0, "la fixture debe tener el recorte SIN nada reservado detrás"
+    assert (r.visibles, len(r.sentencias)) == (400, 3)
+    assert r.no_entregadas == 397
+
+
+def test_una_cita_completa_no_declara_recorte():
+    """El otro lado del guardia: si vino todo lo visible, no hay nada que advertir."""
+    assert parse_sentencias(CITA).no_entregadas == 0
+
+
+def test_el_recorte_se_declara_donde_ocultas_viene_en_nulo():
+    """`ocultas` es nulo en dos de los tres buscadores, así que ahí `no_entregadas` es la
+    única señal de que la lista es un subconjunto."""
+    r = parse_sentencias(PARCIAL, "laborales")
+    assert r.ocultas is None
+    assert r.no_entregadas == 397
 
 
 def test_sin_el_total_del_indice_se_levanta_en_vez_de_afirmar_completitud():

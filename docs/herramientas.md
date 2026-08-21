@@ -521,8 +521,17 @@ JavaScript, comentados.
 
 ### Campos de la respuesta
 
-`sentencias`, más cuatro campos de completitud: `visibles`, `coincidencias`, `ocultas` y
-`condiciones_de_publicacion`.
+`sentencias`, más cinco campos de completitud: `visibles`, `coincidencias`, `ocultas`,
+`no_entregadas` y `condiciones_de_publicacion`.
+
+**`ocultas` en cero no significa que la lista esté completa.** Son dos recortes distintos y
+hay que mirar los dos: `ocultas` son las coincidencias que la plataforma reserva a una consulta
+anónima, y `no_entregadas` son las visibles que esta llamada no trajo porque `filas` acota
+cuántas se piden. Una búsqueda con 400 visibles y `filas` en 10 devuelve diez sentencias,
+`ocultas` en cero y `no_entregadas` en 390.
+
+`no_entregadas` es además la única señal de recorte que funciona en los tres buscadores:
+`ocultas` viene en nulo en `apelaciones` y en `laborales`.
 
 `coincidencias` es lo que el buscador declara **antes** de aplicar su filtro de condición de
 publicación. No es el tamaño del índice: el Poder Judicial habla públicamente de más de un

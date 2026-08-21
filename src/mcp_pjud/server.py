@@ -102,9 +102,12 @@ lista recortada. Ese error significa "hay más resultados de los que caben", no 
 resultados": acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada.
 
 Sobre jurisprudencia: `buscar_jurisprudencia` consulta el Buscador Unificado de Fallos.
-Su resultado trae `ocultas`, que es cuántas coincidencias existen y NO se entregan a una
-consulta anónima. Si `ocultas` es mayor que cero, la lista es un subconjunto y hay que
-decirlo: NO se puede afirmar que algo no existe porque no aparezca.
+Su resultado trae dos números de completitud y hay que mirar los dos. `ocultas` son
+las coincidencias que la plataforma reserva a una consulta anónima. `no_entregadas` son
+las visibles que esta llamada no trajo, porque `filas` acota cuántas se piden. Si
+cualquiera de los dos es mayor que cero, la lista es un subconjunto y hay que decirlo: NO
+se puede afirmar que algo no existe porque no aparezca. `ocultas` en cero no significa
+que la lista esté completa.
 Medido el {FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles
 de {miles(INDEXADAS_MEDIDAS)} indexadas.
 
@@ -751,8 +754,10 @@ def buscar_jurisprudencia(
     Sirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve
     la sentencia con su caratulado, sala, fecha y enlace permanente.
 
-    El resultado trae `ocultas`. Si es mayor que cero, la lista es un subconjunto de lo
-    que hay indexado y no se puede afirmar que falte lo que no aparece.
+    El resultado trae `ocultas` y `no_entregadas`. Si cualquiera de los dos es mayor que
+    cero, la lista es un subconjunto y no se puede afirmar que falte lo que no aparece:
+    `ocultas` son las que la plataforma reserva, `no_entregadas` las que sí se podrían ver
+    y no se pidieron.
     """
     with JurisClient(_contacto()) as c:
         return c.buscar(

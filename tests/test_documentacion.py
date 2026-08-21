@@ -2761,6 +2761,34 @@ def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
     )
 
 
+#: Lo que Magnar declara en su material público, revisado el 21 de agosto de 2026. Vive acá
+#: porque es una fuente externa que nada del repositorio puede derivar, y el guardia lo que sí
+#: puede es exigir que las menciones de la página no se separen entre sí.
+MAGNAR_DECLARA = {
+    "paginas": 10_000,
+    "certificaciones": ("ISO 27001", "SOC 2 Type 2", "RGPD", "ISO 42001"),
+}
+
+
+def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():
+    """La cifra de las páginas aparece dos veces y podían separarse.
+
+    Es una afirmación de un tercero, así que no se deriva de nada: lo que sí se puede impedir
+    es que una mención se actualice y la otra quede vieja, que es lo mismo que se persigue con
+    las cifras propias. Y que las certificaciones se citen completas, porque media lista dice
+    algo distinto de la lista entera.
+    """
+    seccion = _texto(RAIZ / "docs" / "ecosistema.md").split("### Magnar")[1].split("\n### ")[0]
+    cifra = miles(MAGNAR_DECLARA["paginas"])
+    veces = seccion.count(cifra)
+    assert veces >= 2, (
+        f"la sección de Magnar cita {cifra} páginas {veces} vez/veces, y las menciones que "
+        "tenía eran dos: si se quitó una, hay que quitar este guardia con ella"
+    )
+    faltan = [c for c in MAGNAR_DECLARA["certificaciones"] if c not in seccion]
+    assert not faltan, f"la sección dejó de citar {faltan}, que es parte de lo que declara"
+
+
 def test_lo_comercial_se_declara_como_publicado_y_no_como_medido():
     """De un producto cerrado sólo se sabe lo que publica, y la página tiene que decirlo.
 

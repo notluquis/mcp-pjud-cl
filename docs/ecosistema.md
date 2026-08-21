@@ -56,9 +56,16 @@ o si presenta una sola. Afirmar que no lo hace sería inventar.
 Revisado el 21 de agosto de 2026 sobre lo que publica, sin contratarlo. Es chileno, de 2025, y
 ya opera en Perú, Ecuador, Costa Rica, Colombia y Uruguay.
 
-**No es un competidor: cubre la otra mitad.** Lo que publica es investigación sobre normativa y
-jurisprudencia, análisis de expedientes y redacción. Lo que este proyecto hace, el estado de
-una causa y la fecha que corre el plazo, no aparece en su material.
+**La jurisprudencia se solapa; el resto no.** Este proyecto también busca fallos y entrega su
+texto, con `buscar_jurisprudencia` y `obtener_texto_sentencia`, así que decir que Magnar cubre
+"la otra mitad" sería falso y le serviría mal a quien esté comparando. La diferencia real:
+
+| | Magnar | Acá |
+|---|---|---|
+| Jurisprudencia | **sí**, con banco propio | **sí**, contra el buscador oficial |
+| Normativa | sí | no |
+| Análisis de expedientes y redacción | sí | no, y la redacción está fuera por la regla 1 |
+| Estado de una causa y fecha que corre el plazo | no lo publica | **sí**, y es la razón de existir |
 
 | | |
 |---|---|
@@ -68,6 +75,11 @@ una causa y la fecha que corre el plazo, no aparece en su material.
 | Escala que declara | Expedientes de hasta 10.000 páginas |
 | Certificaciones que declara | ISO 27001, SOC 2 Type 2, RGPD; ISO 42001 en curso |
 | Qué NO publica | Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de cómputo de plazos |
+
+Sobre el solapamiento en jurisprudencia hay una diferencia que sí se puede sostener sin
+contratar nada: acá la fuente es el buscador oficial y la respuesta declara qué NO trae, con
+`ocultas` y `no_entregadas`. Un banco propio puede estar más completo o menos, y desde afuera
+no hay cómo saberlo.
 
 Dos cosas que sí sirven acá:
 

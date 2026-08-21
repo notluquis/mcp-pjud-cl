@@ -316,37 +316,59 @@ def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
     assert _texto(RAIZ / "LICENSE.md").startswith(
         f"# {nombre.replace('Strict', 'Strict License')}"
     ), f"LICENSE.md no es el texto de {nombre}"
-    for pagina in ("docs/licencia.md", "README.md"):
-        assert nombre in _texto(RAIZ / pagina), (
-            f"{pagina} no nombra {nombre}, que es la licencia que el paquete declara"
+    # TODAS las declaraciones sustantivas, no cualquier mención: el README nombra la licencia
+    # en su insignia, así que cambiar la frase que de verdad dice qué se permite dejaba el
+    # guardia verde con las dos instrucciones contradiciéndose.
+    declaraciones = {
+        "README.md": r"^\[([^\]]+)\]\(LICENSE\.md\) permite",
+        "docs/licencia.md": r"^El proyecto usa \[([^\]]+)\]|^\*\*([^*]+)\*\* permite",
+    }
+    for pagina, patron in declaraciones.items():
+        halladas = {
+            g for m in re.finditer(patron, _texto(RAIZ / pagina), re.M) for g in m.groups() if g
+        }
+        assert halladas, f"{pagina} dejó de declarar bajo qué licencia se publica"
+        ajenas = sorted(h for h in halladas if h != nombre)
+        assert not ajenas, (
+            f"{pagina} declara {ajenas} y el paquete distribuye bajo {nombre}. Dos "
+            "instrucciones de licencia distintas en el mismo repositorio."
         )
 
 
-def test_las_precisiones_medidas_dicen_lo_mismo_en_las_tres_copias():
-    """Cinco cifras escritas a mano en tres lugares, y ninguna las comparaba.
+def test_las_precisiones_medidas_dicen_lo_mismo_en_las_cuatro_copias():
+    """Cinco cifras escritas a mano en cuatro lugares, y ninguna las comparaba.
 
-    `herramientas` las repite dos veces (en la tabla de campos y en el aviso) y `verificacion`
-    una. Corregir una y dejar las otras es lo que la regla de dato repetido persigue, y acá
-    además decide qué tan lejos del punto pudo estar el ministro de fe.
+    `herramientas` las repite dos veces (tabla de campos y aviso), `verificacion` una, y la
+    cuarta es la que de verdad lee el modelo: el esquema de salida que el servidor anuncia.
+    Mirar sólo las de Markdown dejaba que la documentación y el protocolo dijeran cosas
+    distintas, que es peor que dos páginas en desacuerdo.
+
+    Se comparan los números completos y no por pertenencia: con `in`, cambiar `10,04` por
+    `110,04` dejaba el guardia verde, porque la cadena vieja sigue adentro de la nueva. Es el
+    mismo error que buscar `.doc` dentro de `_window.document.close()`.
     """
+    from mcp_pjud.parser import Georreferencia
+
+    ref = _texto(RAIZ / "docs" / "herramientas.md")
     copias = {
-        "herramientas.md (tabla)": _texto(RAIZ / "docs" / "herramientas.md").split(
-            "`precision_metros`"
-        )[1][:200],
-        "herramientas.md (aviso)": _texto(RAIZ / "docs" / "herramientas.md").split(
-            "Medidas en una sola causa:"
-        )[1][:200],
+        "herramientas.md (tabla)": ref.split("`precision_metros`")[1][:200],
+        "herramientas.md (aviso)": ref.split("Medidas en una sola causa:")[1][:200],
         "verificacion.md": _texto(RAIZ / "docs" / "verificacion.md").split(
             "Medidas en una sola causa:"
         )[1][:200],
+        "el esquema que anuncia el servidor": (
+            Georreferencia.model_fields["precision_metros"].description or ""
+        ),
     }
-    faltan = {
-        donde: [p for p in PRECISIONES_MEDIDAS if p not in texto] for donde, texto in copias.items()
+    esperadas = sorted(PRECISIONES_MEDIDAS)
+    mal = {
+        donde: sorted(set(re.findall(r"\d+,\d+", texto)))
+        for donde, texto in copias.items()
+        if sorted(set(re.findall(r"\d+,\d+", texto))) != esperadas
     }
-    faltan = {k: v for k, v in faltan.items() if v}
-    assert not faltan, (
-        f"estas copias no citan las precisiones medidas: {faltan}. Son "
-        f"{' · '.join(PRECISIONES_MEDIDAS)} metros, y las tres tienen que decir lo mismo."
+    assert not mal, (
+        f"estas copias no citan exactamente las precisiones medidas: {mal}. Son "
+        f"{' · '.join(PRECISIONES_MEDIDAS)} metros, y las cuatro tienen que decir lo mismo."
     )
 
 
@@ -381,6 +403,27 @@ def test_la_aritmetica_de_diez_sentencias_sale_de_la_sentencia_medida():
     assert f"serían {miles(redondeado * 10)}" in ref, (
         f"la referencia parte de {miles(redondeado)} y no concluye {miles(redondeado * 10)}"
     )
+
+    # Y las copias que anuncia el protocolo, que son las que el modelo lee de verdad: la
+    # descripción de `obtener_texto_sentencia` y la del propio modelo de resultado. Escriben
+    # la magnitud en palabras, así que se comparan contra la misma constante deletreada.
+    from mcp_pjud.juris import TextoSentencia
+    from mcp_pjud.server import obtener_texto_sentencia
+
+    en_palabras = {25_000: "veinticinco mil", 30_000: "treinta mil", 20_000: "veinte mil"}
+    esperado = en_palabras.get(redondeado)
+    assert esperado, (
+        f"no está escrita en palabras la magnitud {miles(redondeado)}, y las descripciones "
+        "del protocolo la citan así"
+    )
+    for donde, texto in (
+        ("obtener_texto_sentencia", obtener_texto_sentencia.__doc__ or ""),
+        ("el modelo TextoSentencia", TextoSentencia.__doc__ or ""),
+    ):
+        assert f"unos {esperado} caracteres" in " ".join(texto.split()), (
+            f"{donde} anuncia una magnitud distinta de {esperado} caracteres, así que el "
+            "protocolo y la documentación dicen cosas distintas"
+        )
 
 
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):

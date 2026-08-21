@@ -37,6 +37,20 @@ numero=$(printf '%s' "$datos" | /usr/bin/python3 -c \
   'import json,sys; d=json.load(sys.stdin); print(d["number"] if d.get("state")=="OPEN" and not d.get("isDraft") else "")' 2>/dev/null)
 [[ -n "$numero" ]] || exit 0
 
+# Si el pedido anterior quedó sin contestar, decirlo. Es el único modo de falla silencioso
+# que le queda al diseño: cuando se agota la cuota de revisiones, el comentario `@codex
+# review` se ve EXACTAMENTE igual esté contestado o no, así que uno cree que revisó y no
+# revisó. Se avisa y se pide igual, porque puede haberse repuesto la ventana.
+sin_contestar=$(gh pr view "$numero" --json comments,reviews --jq '
+  [.comments[], .reviews[]]
+  | (map(select(.author.login != "chatgpt-codex-connector" and (.body // "") == "@codex review")) | last) as $pedido
+  | if $pedido == null then "no"
+    else (map(select(.author.login == "chatgpt-codex-connector"
+                     and ((.createdAt // .submittedAt) > ($pedido.createdAt // $pedido.submittedAt))))
+          | if length == 0 then "si" else "no" end)
+    end' 2>/dev/null)
+[[ "$sin_contestar" == "si" ]] && echo   "Ojo: el pedido anterior en #$numero sigue sin respuesta de Codex. Puede ser la cuota de revisiones agotada." >&2
+
 if gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1; then
   : > "$marca"
   echo "Revisión de Codex pedida en #$numero para $local_sha." >&2

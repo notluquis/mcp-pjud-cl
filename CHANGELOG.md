@@ -28,6 +28,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Un hook pide la revisión de Codex después de cada `git push` que llega al remoto. Codex sólo
   se dispara solo al abrir el pull request, así que sin esto revisaba el primer commit y no los
   que corrigen sus hallazgos.
+- Dos hooks cierran el ciclo de la revisión de Codex: uno la pide después de cada `git push`
+  que llega al remoto, y otro avisa antes de terminar el turno cuando hay hallazgos sin mirar.
+  Codex sólo se dispara solo al abrir el pull request, y su respuesta llega minutos después.
 - Los workflows que corren la suite clonan la historia completa. Sin ella la publicación se
   caía al etiquetar.
 

@@ -1262,7 +1262,14 @@ class PiezaExhorto(BaseModel):
         "piezas medidas: ahí el sitio publica una sola fecha en esta columna.",
     )
     foja: str = Field(default="", description="Foja del expediente de origen.")
-    tiene_documento: bool = Field(description="Si la pieza trae documento descargable.")
+    tiene_documento: bool = Field(description="Si la columna `Doc.` de la pieza ofrece algo.")
+    tiene_anexo: bool = Field(
+        default=False,
+        description="Si la columna `Anexo` de la pieza ofrece algo. Mismo canal, mismo límite "
+        "y mismo contrato que `Actuacion.tiene_anexo`: la celda abre un modal de JavaScript y "
+        "este servidor todavía no lo puede pedir. La pieza puede traer su documento principal "
+        "y un anexo aparte.",
+    )
     documento_ruta: str | None = Field(
         default=None,
         description="Qué ruta de la plataforma entrega ese documento. NULO si no trae.",
@@ -1341,6 +1348,12 @@ def parse_piezas_exhorto(
                 foja=txt["foja"],
                 tiene_documento=bool(
                     celdas[spec.piezas_exhorto.columnas.index("doc")].xpath(".//form | .//a")
+                ),
+                # Las piezas declaran `anexo` igual que la historia, y quedarse corto acá dejaba
+                # el mismo falso negativo en el panel de al lado: arreglado para un llamador y
+                # no para el otro, que es peor que no haberlo arreglado.
+                tiene_anexo=bool(
+                    celdas[spec.piezas_exhorto.columnas.index("anexo")].xpath(".//form | .//a")
                 ),
                 documento_ruta=documento[0],
                 documento_referencia=documento[1],

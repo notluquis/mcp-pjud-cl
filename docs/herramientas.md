@@ -290,7 +290,8 @@ no rutas verificadas contra la plataforma. Se declaran como no medidas en vez de
 ciegas.
 
 Un folio con `tiene_anexo` en verdadero tiene algo que este servidor no entrega. Hay que ir al
-expediente.
+expediente. Vale igual para las piezas de exhorto: `PiezaExhorto` declara el mismo campo,
+porque el panel de piezas publica la misma columna.
 :::
 
 :::{important} Preferir ésta antes que preguntar por partes

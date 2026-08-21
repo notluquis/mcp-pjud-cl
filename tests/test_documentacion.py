@@ -17,6 +17,7 @@ divergencia salga en CI y no en el uso.
 
 import ast
 import asyncio
+import ast
 import base64
 import contextlib
 import re
@@ -603,7 +604,15 @@ def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
     # constante, o sea la que más fácil se queda atrás.
     obligatorias = {RAIZ / "src" / "mcp_pjud" / "juris.py"}
     for p in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
-        t = " ".join(_texto(p).split())
+        # En un `.py` se mira SÓLO el docstring del módulo, no el archivo entero. Con el
+        # archivo completo, la asignación de `FECHA_MEDICION` que está unas líneas más abajo
+        # rescataba a su propia copia vieja del docstring: la constante contiene el valor que
+        # el guardia venía a verificar contra ella.
+        crudo = _texto(p)
+        if p.suffix == ".py":
+            m = ast.get_docstring(ast.parse(crudo))
+            crudo = m or ""
+        t = " ".join(crudo.split())
         if miles(INDEXADAS_MEDIDAS) not in t and p not in obligatorias:
             continue
         # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no

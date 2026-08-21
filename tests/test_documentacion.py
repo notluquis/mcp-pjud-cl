@@ -1342,7 +1342,7 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
     import unicodedata
 
     antes = subprocess.run(  # noqa: S603
-        ["git", "show", f"{CORTE_DE_LA_HOJA_DE_RUTA}^:docs/roadmap.md"],  # noqa: S607
+        ["git", "show", f"{CORTE_DE_LA_HOJA_DE_RUTA}^:docs/roadmap.md"],
         cwd=RAIZ,
         capture_output=True,
         text=True,

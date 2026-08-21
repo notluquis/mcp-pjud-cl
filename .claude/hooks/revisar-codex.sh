@@ -22,7 +22,11 @@
 set -uo pipefail
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || exit 0
-marcas=".git/codex-visto"
+# Mismo motivo que en el hook de al lado: en un worktree `.git` es un archivo, y la cuenta va
+# en el directorio COMÚN porque un hallazgo es de un pull request y no de un worktree. Con la
+# ruta privada, el mismo hallazgo interrumpía una vez por cada worktree abierto.
+comun=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+marcas="$comun/codex-visto"
 mkdir -p "$marcas" 2>/dev/null || exit 0
 
 # Una sola consulta para todos los pull requests abiertos: esto corre al final de CADA

@@ -218,39 +218,48 @@ def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
 def test_cada_hook_declarado_existe_y_es_ejecutable():
     """Un script de hook sin su `settings.json` es código muerto que parece vivo.
 
-    Las dos mitades se pueden versionar por separado y una sola no hace nada: el script sin
-    la declaración no corre nunca, y la declaración sin el script falla en cada llamada. Se
-    comprueba que la declaración apunte a algo que existe, y que ese algo tenga permiso de
-    ejecución, porque sin él el hook falla en silencio.
+    Las dos mitades se pueden versionar por separado y una sola no hace nada: el script sin la
+    declaración no corre nunca, y la declaración sin el script falla en cada llamada.
+
+    Y `settings.local.json` NO rescata a un script de ser huérfano, aunque sí se le exige que
+    lo que declare exista. Está en el `.gitignore`, así que un cableado que vive sólo ahí no
+    viaja: darlo por bueno es el mismo modo de falla que este guardia persigue, entrando por la
+    puerta de al lado.
     """
     import json
     import os
 
-    ajustes = RAIZ / ".claude" / "settings.json"
-    if not ajustes.exists():
+    def declarados_en(ajustes: Path) -> list[str]:
+        if not ajustes.exists():
+            return []
+        return [
+            h["command"]
+            for grupo in json.loads(_texto(ajustes)).get("hooks", {}).values()
+            for entrada in grupo
+            for h in entrada.get("hooks", [])
+            if h.get("type") == "command"
+        ]
+
+    versionado = RAIZ / ".claude" / "settings.json"
+    local = RAIZ / ".claude" / "settings.local.json"
+    if not versionado.exists() and not local.exists():
         pytest.skip("este repositorio no declara hooks de proyecto")
 
-    declarados = [
-        h["command"]
-        for grupo in json.loads(_texto(ajustes)).get("hooks", {}).values()
-        for entrada in grupo
-        for h in entrada.get("hooks", [])
-        if h.get("type") == "command"
-    ]
-    assert declarados, "`settings.json` declara `hooks` y ninguno es un comando"
+    del_repo = declarados_en(versionado)
+    assert del_repo or not versionado.exists(), "`settings.json` existe y no declara ningún comando"
 
-    for comando in declarados:
+    # Lo que declare cualquiera de los dos tiene que existir y poder ejecutarse.
+    for comando in [*del_repo, *declarados_en(local)]:
         ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
-        assert ruta.exists(), f"`settings.json` declara {comando} y ese archivo no existe"
+        assert ruta.exists(), f"un settings declara {comando} y ese archivo no existe"
         assert os.access(ruta, os.X_OK), f"{comando} no tiene permiso de ejecución"
 
-    # Y al revés: un script en `hooks/` que nadie declara no corre, y se documenta como si sí.
+    # Pero sólo el versionado rescata de ser huérfano.
     escritos = {p.name for p in (RAIZ / ".claude" / "hooks").glob("*.sh")}
-    nombrados = {pathlib.PurePosixPath(c).name for c in declarados}
-    huerfanos = sorted(escritos - nombrados)
+    huerfanos = sorted(escritos - {pathlib.PurePosixPath(c).name for c in del_repo})
     assert not huerfanos, (
-        f"{huerfanos} viven en `.claude/hooks/` y ningún `settings.json` los declara, así que "
-        "no corren nunca"
+        f"{huerfanos} viven en `.claude/hooks/` y `.claude/settings.json` no los declara, así "
+        "que no viajan cableados: en otra copia del repositorio no corren"
     )
 
 

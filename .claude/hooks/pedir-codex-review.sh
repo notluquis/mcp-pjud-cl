@@ -19,7 +19,14 @@ set -uo pipefail
 entrada=$(cat)
 comando=$(printf '%s' "$entrada" | /usr/bin/python3 -c \
   'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null) || exit 0
-[[ "$comando" == *"git push"* ]] || exit 0
+# Que se haya EJECUTADO un push, no que el texto lo mencione. `echo git push`,
+# `grep "git push" .` y un comentario de shell traen esas dos palabras y no empujan nada, y
+# con la marca ausente cualquiera de ellos publicaba un pedido. Se exige que `git` esté en
+# posición de comando (principio de línea o después de un separador) y que `push` sea su
+# subcomando, con las opciones globales que git acepta en medio.
+if ! printf '%s' "$comando" | grep -qE   '(^|[;&|]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'; then
+  exit 0
+fi
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || exit 0
 
@@ -28,7 +35,16 @@ local_sha=$(git rev-parse HEAD 2>/dev/null) || exit 0
 remoto_sha=$(git rev-parse '@{u}' 2>/dev/null) || exit 0
 [[ "$local_sha" == "$remoto_sha" ]] || exit 0
 
-marca=".git/codex-pedido-$local_sha"
+# `--git-common-dir` y no `.git/` a secas. Dos motivos. En un checkout hecho con `git worktree`,
+# `.git` es un ARCHIVO, así que escribir dentro falla. Y como el script no usa `set -e`,
+# fallaba en silencio: el pedido salía igual y cada push siguiente del mismo SHA volvía a
+# publicarlo. Acá se trabaja con worktrees a diario, así que era el caso normal y no el raro.
+#
+# Y COMÚN, no privada del worktree: un commit es el mismo commit se empuje desde donde se
+# empuje. Con la ruta privada cada worktree llevaba su propia cuenta y el mismo SHA pedía
+# una revisión por cada uno.
+comun=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+marca="$comun/codex-pedido-$local_sha"
 [[ -f "$marca" ]] && exit 0
 
 rama=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0
@@ -49,10 +65,25 @@ sin_contestar=$(gh pr view "$numero" --json comments,reviews --jq '
                      and ((.createdAt // .submittedAt) > ($pedido.createdAt // $pedido.submittedAt))))
           | if length == 0 then "si" else "no" end)
     end' 2>/dev/null)
-[[ "$sin_contestar" == "si" ]] && echo   "Ojo: el pedido anterior en #$numero sigue sin respuesta de Codex. Puede ser la cuota de revisiones agotada." >&2
+aviso=""
+[[ "$sin_contestar" == "si" ]] && aviso="El pedido anterior en #$numero sigue sin respuesta de Codex: puede ser la cuota agotada. "
 
 if gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1; then
-  : > "$marca"
-  echo "Revisión de Codex pedida en #$numero para $local_sha." >&2
+  if : > "$marca" 2>/dev/null; then
+    aviso+="Revisión de Codex pedida en #$numero para ${local_sha:0:7}."
+  else
+    # Sin marca no hay protección contra el duplicado, y decirlo es mejor que fingir que sí.
+    aviso+="Revisión pedida en #$numero, pero no se pudo dejar la marca en $marca: el próximo push del mismo commit la va a repetir."
+  fi
+fi
+
+# Por `systemMessage` y no por `stderr`. En `PostToolUse` con código 0 la documentación dice
+# que «Claude Code shows nothing in the conversation», y stdout y stderr sólo salen con
+# `--debug`: el aviso del pedido colgado, que es el único que hay que ver, era invisible justo
+# para quien tiene que actuar. Y no con código 2, cuya semántica acá es ambigua porque la
+# herramienta ya corrió: `systemMessage` es el campo documentado para decir algo sin bloquear.
+if [[ -n "$aviso" ]]; then
+  printf '%s' "$aviso" | /usr/bin/python3 -c \
+    'import json,sys; print(json.dumps({"systemMessage": sys.stdin.read(), "continue": True}))'
 fi
 exit 0

@@ -1298,6 +1298,34 @@ def test_el_falso_de_georreferenciado_no_significa_lo_mismo_en_todas_las_compete
     )
 
 
+def test_un_folio_con_anexo_no_se_agota_en_su_documento_principal():
+    """El anexo es un SEGUNDO archivo, y el folio ya entregaba el primero.
+
+    Los dos folios con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su
+    `docuN.php`. O sea el peligro no era que la fila pasara por vacía: era peor. Quien pidiera
+    `documento_ruta` recibía un PDF real y quedaba creyendo que tenía el folio completo,
+    mientras el anexo seguía ahí sin que nada lo nombrara. Un documento entregado tapa mejor lo
+    que falta que una fila en blanco.
+    """
+    con_anexo = [a for a in parse_historia(C1156_APREMIO) if a.tiene_anexo]
+    assert len(con_anexo) == 2, "el cuaderno de apremio trae dos folios con anexo"
+    assert all(a.documento_ruta for a in con_anexo), (
+        "los dos traen documento principal, que es lo que hacía invisible al anexo"
+    )
+    assert all(a.tramite == "Escrito" for a in con_anexo)
+
+
+def test_donde_la_competencia_no_publica_la_columna_el_anexo_es_falso_por_ausencia():
+    """Mismo contrato que `georreferenciado`, y por el mismo motivo: falso significa ausente
+    sólo donde hay columna. En `penal` no hay Historia medida, así que no se sabe."""
+    assert COMPETENCIAS["penal"].historia is None, (
+        "si penal pasa a tener Historia medida, el contrato del campo hay que reescribirlo"
+    )
+    civiles = parse_historia(C1156_APREMIO)
+    assert any(a.tiene_anexo for a in civiles), "civil sí publica la columna"
+    assert any(not a.tiene_anexo for a in civiles), "y no todos los folios traen anexo"
+
+
 # -- georreferencia ------------------------------------------------------------------
 
 GEO = (FIXTURES / "georreferencia_civil.html").read_text(encoding="utf-8")

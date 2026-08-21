@@ -527,7 +527,24 @@ class Actuacion(BaseModel):
         "georreferenció. Mirar `COMPETENCIAS[competencia].historia.columnas` para saber cuál "
         "de las dos cosas es."
     )
-    tiene_documento: bool = Field(description="Si el folio trae documento descargable.")
+    tiene_documento: bool = Field(
+        description="Si la columna `Doc.` del folio ofrece algo. Verdadero NO garantiza que "
+        "este servidor pueda traerlo: cuando `documento_ruta` viene en nulo, la celda abre el "
+        "documento con un modal de JavaScript cuyo endpoint no está medido."
+    )
+    tiene_anexo: bool = Field(
+        default=False,
+        description="Si la columna `Anexo` del folio ofrece algo. Es un SEGUNDO canal de "
+        "documentos, distinto de `Doc.`, y este servidor todavía no lo puede pedir: la celda "
+        "abre un modal de JavaScript y ninguna de sus rutas está verificada contra la "
+        "plataforma.\n\n"
+        "Se publica igual porque el silencio es peor. Sin este campo, un folio con anexo se "
+        "veía idéntico a uno sin nada, y quien preguntara por los documentos de la causa "
+        "recibía una respuesta que parecía completa. Verdadero significa: acá hay algo que "
+        "hay que ir a buscar al expediente.\n\n"
+        "Falso significa AUSENTE sólo donde la competencia publica la columna. En `penal` no "
+        "hay tabla de Historia medida, así que ahí no se sabe.",
+    )
     documento_ruta: str | None = Field(
         default=None,
         description="Qué ruta de la plataforma entrega ese documento. Cada competencia usa la "
@@ -823,6 +840,15 @@ def _fila_a_actuacion(
             else None
         ),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
+        # La columna `Anexo` es un segundo canal de documentos y hasta acá no se leía ninguna
+        # celda de ella. Un folio con anexo salía idéntico a uno sin nada, así que preguntar
+        # por los documentos de la causa devolvía una lista que parecía completa: el falso
+        # negativo de la regla 4, en la columna de al lado de la que sí se leía.
+        tiene_anexo=(
+            bool(celdas[columnas.index("anexo")].xpath(".//form | .//a"))
+            if "anexo" in columnas
+            else False
+        ),
         documento_ruta=documento[0],
         documento_referencia=documento[1],
     )

@@ -18,12 +18,18 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Campo `tiene_anexo` en cada actuación: la columna `Anexo` del detalle es un segundo canal de
+  documentos del que no se leía ninguna celda. Se declara aunque todavía no se pueda pedir,
+  porque un escrito entregaba su PDF principal y dejaba el anexo sin que nada lo nombrara.
 - Herramienta `obtener_georreferencia`: dónde y cuándo el ministro de fe registró que practicó
   una diligencia. Trae la única hora del proyecto, que es una tercera fuente para contrastar la
   fecha que corre los plazos.
 
 ### Cambiado
 
+- `tiene_documento` ya no se anuncia como "trae documento descargable": con `documento_ruta`
+  en nulo la celda abre un modal cuyo endpoint no está medido, así que verdadero no garantiza
+  que este servidor pueda traerlo.
 - El bloque de configuración que se pega en el cliente MCP se genera desde un solo lugar: eran
   cuatro copias que sólo diferían en la clave externa.
 - Cada página publicada declara de qué trata, y la portada nombra sus dos lecturas en vez de

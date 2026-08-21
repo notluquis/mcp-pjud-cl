@@ -434,10 +434,14 @@ página deja anotado en primer lugar qué habría que medir para cambiar de opin
 ## Qué emite la plataforma: sólo PDF, y hasta dónde está medido
 
 Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no contienen ninguna
-referencia a `.doc`, `.docx`, `.xls`, `.rtf` ni a una cabecera `Content-Disposition`**. Los
+referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**. Los
 únicos archivos que el detalle nombra son dos iconos del propio sitio,
 `images/downloadPdf.png` y `apelaciones/modal/icono_PDF.png`, y en el cuaderno principal de
 C-1156-2026 los enlaces de descarga van marcados **12** veces con el icono `fa-file-pdf-o`.
+
+De las **cabeceras** de respuesta no se sabe nada, y conviene decirlo en vez de darlo por
+comprobado: las fixtures son cuerpos HTML, así que ningún `Content-Disposition` aparece ahí ni
+podría aparecer. Lo medido es lo que el detalle **dibuja**, no lo que las seis rutas responden.
 
 El código ya se apoya en eso: `_MAGIA_PDF` exige que la respuesta empiece en `%PDF-` y
 `EstructuraInesperada` corta si no. Pero está **medido en una de las seis rutas**, `docuN.php`,

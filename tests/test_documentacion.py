@@ -354,9 +354,10 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
 
     # La extensión tiene que terminar donde termina un nombre de archivo. Buscar `.doc` a secas
     # calza dentro de `_window.document.close()`, que es JavaScript del sitio y no un formato.
-    ajenos = sorted(set(re.findall(r"\.(?:docx?|xlsx?|rtf)(?=[\"'\s>?&])", fixtures, re.I))) + (
-        ["Content-Disposition"] if "content-disposition" in fixtures.lower() else []
-    )
+    #
+    # Y sólo extensiones: `Content-Disposition` es una cabecera HTTP, las fixtures guardan
+    # cuerpos, así que buscarla acá era un guardia que no podía fallar.
+    ajenos = sorted(set(re.findall(r"\.(?:docx?|xlsx?|rtf)(?=[\"'\s>?&])", fixtures, re.I)))
     assert not ajenos, (
         f"las fixtures ya traen {ajenos} y la investigación afirma que no hay ninguna "
         "referencia a otro formato. De esa afirmación cuelga `_MAGIA_PDF`."

@@ -19,6 +19,7 @@ import ast
 import asyncio
 import base64
 import contextlib
+import pathlib
 import re
 import subprocess
 import tomllib
@@ -211,6 +212,45 @@ def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
     assert "`no_entregadas`" in seccion, "la referencia no nombra el recorte por `filas`"
     assert "`ocultas` en cero no significa que la lista esté completa" in seccion, (
         "la referencia dejó de desmentir que `ocultas` en cero implique completitud"
+    )
+
+
+def test_cada_hook_declarado_existe_y_es_ejecutable():
+    """Un script de hook sin su `settings.json` es código muerto que parece vivo.
+
+    Las dos mitades se pueden versionar por separado y una sola no hace nada: el script sin
+    la declaración no corre nunca, y la declaración sin el script falla en cada llamada. Se
+    comprueba que la declaración apunte a algo que existe, y que ese algo tenga permiso de
+    ejecución, porque sin él el hook falla en silencio.
+    """
+    import json
+    import os
+
+    ajustes = RAIZ / ".claude" / "settings.json"
+    if not ajustes.exists():
+        pytest.skip("este repositorio no declara hooks de proyecto")
+
+    declarados = [
+        h["command"]
+        for grupo in json.loads(_texto(ajustes)).get("hooks", {}).values()
+        for entrada in grupo
+        for h in entrada.get("hooks", [])
+        if h.get("type") == "command"
+    ]
+    assert declarados, "`settings.json` declara `hooks` y ninguno es un comando"
+
+    for comando in declarados:
+        ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
+        assert ruta.exists(), f"`settings.json` declara {comando} y ese archivo no existe"
+        assert os.access(ruta, os.X_OK), f"{comando} no tiene permiso de ejecución"
+
+    # Y al revés: un script en `hooks/` que nadie declara no corre, y se documenta como si sí.
+    escritos = {p.name for p in (RAIZ / ".claude" / "hooks").glob("*.sh")}
+    nombrados = {pathlib.PurePosixPath(c).name for c in declarados}
+    huerfanos = sorted(escritos - nombrados)
+    assert not huerfanos, (
+        f"{huerfanos} viven en `.claude/hooks/` y ningún `settings.json` los declara, así que "
+        "no corren nunca"
     )
 
 

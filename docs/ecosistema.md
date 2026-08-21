@@ -28,9 +28,12 @@ referencia de hacia dónde puede ir esto.
 
 ## Herramientas chilenas que tocan lo mismo
 
-Revisadas a fondo el 17 de agosto de 2026: las dos de código abierto leyendo su código, las
-dos comerciales leyendo lo que documentan. Se anota con detalle porque marcan el piso: lo que
-ellas ya hacen no es una idea para el roadmap, es lo mínimo.
+Revisadas a fondo el 17 de agosto de 2026, más Magnar el 21: las de código abierto leyendo su
+código, las comerciales leyendo lo que documentan. Se anota con detalle porque marcan el piso:
+lo que ellas ya hacen no es una idea para el roadmap, es lo mínimo.
+
+De las comerciales sólo se puede afirmar lo que publican. Ninguna se contrató ni se probó, así
+que cuando acá diga "no cubre X" hay que leerlo como **no lo publica**, que no es lo mismo.
 
 ### CausAlerta
 
@@ -47,6 +50,38 @@ seguimiento diario y resumen por correo.
 Conviene subrayar la tercera fila: **sí dice cubrir los movimientos de receptor**. Lo que no
 dice, y no se puede saber desde afuera, es si separa la fecha de diligencia de la de registro
 o si presenta una sola. Afirmar que no lo hace sería inventar.
+
+### Magnar
+
+Revisado el 21 de agosto de 2026 sobre lo que publica, sin contratarlo. Es chileno, de 2025, y
+ya opera en Perú, Ecuador, Costa Rica, Colombia y Uruguay.
+
+**No es un competidor: cubre la otra mitad.** Lo que publica es investigación sobre normativa y
+jurisprudencia, análisis de expedientes y redacción. Lo que este proyecto hace, el estado de
+una causa y la fecha que corre el plazo, no aparece en su material.
+
+| | |
+|---|---|
+| Qué declara buscar | "normativa y jurisprudencia oficial de tu país, con citas verificables y acceso directo a cada fuente" |
+| Base propia | Un banco de fallos en `app.magnar.ai/cl/juris` |
+| Qué genera | Resúmenes de sentencias, tablas comparativas, ediciones con control de cambios en Word |
+| Escala que declara | Expedientes de hasta 10.000 páginas |
+| Certificaciones que declara | ISO 27001, SOC 2 Type 2, RGPD; ISO 42001 en curso |
+| Qué NO publica | Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de cómputo de plazos |
+
+Dos cosas que sí sirven acá:
+
+**La cifra de las 10.000 páginas.** Es publicidad y no una medición, pero pone un orden de
+magnitud a lo que un producto de este rubro dice manejar, y el problema de entregar un
+expediente sin gastar el contexto está abierto en esta hoja. No se toma como dato: se anota
+como el número que alguien más se atreve a decir en público.
+
+**Que el énfasis esté en la cita verificable.** Es la misma decisión que acá lleva a que cada
+sentencia traiga su `url` y a que el texto declare `anonimizada` y `fuente`. Que un producto
+comercial lo ponga primero en su portada confirma que no es una manía del proyecto.
+
+Y lo que no se toma: la redacción de escritos. La regla 1 prohíbe que este servidor escriba en
+los sistemas del Poder Judicial, y redactar para presentar es el paso anterior a eso.
 
 ### API de Boostr
 

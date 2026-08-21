@@ -2744,6 +2744,20 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
         f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
         f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
         "ahí daría una lista parcial, no una vacía."
+def test_lo_comercial_se_declara_como_publicado_y_no_como_medido():
+    """De un producto cerrado sólo se sabe lo que publica, y la página tiene que decirlo.
+
+    Es la lección de siempre puesta como guardia: "no cubre X" sobre un producto que no se
+    contrató sólo puede querer decir "no lo publica". Sin esa salvedad, la página compara una
+    medición contra un folleto y las presenta al mismo nivel.
+    """
+    pagina = " ".join(_texto(RAIZ / "docs" / "ecosistema.md").split())
+    assert "sólo se puede afirmar lo que publican" in pagina, (
+        "`ecosistema.md` dejó de acotar qué se sabe de los productos comerciales"
+    )
+    assert "no lo publica" in pagina, (
+        "`ecosistema.md` dejó de decir que un 'no cubre X' sobre un producto cerrado significa "
+        "que no lo publica, no que no lo haga"
     )
 
 

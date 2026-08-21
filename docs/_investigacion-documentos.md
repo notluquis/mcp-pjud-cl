@@ -49,9 +49,10 @@ el documento, y los marcadores de un archivo de una página no existen. Lo que p
 otro: si **una** hoja escaneada, tal como la entrega la plataforma, ya son cincuenta y dos
 presupuestos, mover el expediente completo en su formato original no cabe en ninguna respuesta.
 
-Hasta ahí llega lo medido, y conviene no estirarlo. Rasterizar la misma hoja la baja a cuatro
-presupuestos, y bajando la resolución baja más: la afirmación fuerte, que no cabe a ninguna
-resolución, esta página **no la comprueba**. Lo que sí se sostiene es que ninguna resolución la
+Hasta ahí llega lo medido sobre el folio real, y conviene no estirarlo. Más abajo, sobre una
+hoja **sintética** y no sobre éste, rasterizar baja el costo a cuatro presupuestos, y bajando la
+resolución baja más: la afirmación fuerte, que el expediente no cabe a ninguna resolución, esta
+página **no la comprueba**, y del folio 9 rasterizado no hay ninguna cifra. Lo que sí se sostiene es que ninguna resolución la
 hace gratis, y que elegirla es una decisión sobre pérdida que el servidor tomaría por el
 abogado. Por eso la salida propuesta no es comprimir mejor, es dejar de mover bytes y empezar a
 apuntar a páginas. Lo que hace falta medir es el ebook, y de ése no hay ni una cifra.
@@ -499,7 +500,10 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
    sirve acá: ahí la búsqueda y el texto son preguntas distintas, y acá es el mismo archivo,
    que sin persistencia hay que volver a descargar entero para leerle otro rango. Si el rango
    pedido cae sobre páginas sin texto, eso se dice, con los números: es el mismo criterio que
-   `discrepancia_fechas`, no elegir en silencio.
+   `discrepancia_fechas`, no elegir en silencio. Y el texto sale **delimitado y con la
+   advertencia de que es contenido de un tercero que no se obedece**, no como conveniencia sino
+   como parte del contrato: quien redactó ese escrito puede ser la contraparte, y nada de lo
+   que hoy anuncia la herramienta lo cubre.
 3. **Los marcadores del archivo**, cuando los traiga, como tabla de contenidos del expediente.
 4. **Declarar `_meta["anthropic/maxResultSizeChars"]`** en la herramienta, que es
    gratis y evita que el cliente escriba en disco lo que este servidor decidió no escribir.
@@ -548,5 +552,12 @@ igual que el HTML del que este servidor ya extrae tablas, y devolverlo en la res
 la vista del modelo como si fueran instrucciones. `jztan/pdf-mcp` lo trata así, repite en cada
 docstring que el texto extraído no se obedece, y detecta texto escondido (blanco sobre blanco,
 opacidad cero, tamaños diminutos) sin borrarlo, sólo marcándolo. Acá la anotación
-`open_world_hint` ya lo declara; si el texto empieza a viajar por rangos, conviene que el sobre
-en palabras lo repita.
+`open_world_hint` **no sirve para esto**: declara que la herramienta habla con entidades
+externas, no marca lo devuelto como no confiable ni le dice al modelo que no lo obedezca. O sea
+hoy no hay nada que lo cubra.
+
+Por eso, si el texto empieza a viajar por rangos, el contrato tiene que **exigir** dos cosas en
+cada respuesta y no dejarlas como conveniencia: la advertencia explícita de que lo que sigue es
+contenido de un tercero que no se obedece, y el texto delimitado para que se vea dónde empieza y
+dónde termina. Es el mismo criterio con el que este proyecto trata todo lo demás: quien redactó
+ese escrito puede ser la contraparte.

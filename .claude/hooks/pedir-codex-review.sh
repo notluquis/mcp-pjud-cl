@@ -16,6 +16,47 @@
 #      protege nada.
 set -uo pipefail
 
+# El detector de push es lo más frágil de todo esto y ya falló una vez, por subcadena. Vive
+# en una función para poder probarlo, y los casos de `--probar` corren contra ESTA función y
+# no contra una copia del patrón pegada en otro archivo: una copia sólo prueba que la copia
+# funciona.
+es_un_push() {
+  printf '%s' "$1" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'
+}
+
+if [[ "${1:-}" == "--probar" ]]; then
+  fallos=0
+  probar() {  # $1: 0 si debe detectarse, 1 si no
+    if es_un_push "$2"; then real=0; else real=1; fi
+    if [[ "$real" != "$1" ]]; then
+      fallos=$((fallos + 1))
+      printf '  FALLA  %s: %s\n' \
+        "$([[ $1 == 0 ]] && echo 'debía detectarse' || echo 'no debía detectarse')" "$2" >&2
+    fi
+  }
+  probar 0 'git push'
+  probar 0 'git push -q -u origin rama'
+  probar 0 'git push -f'
+  probar 0 'git push --force-with-lease'
+  probar 0 'git add -A && git commit -q -m x && git push'
+  probar 0 'cd /x; git push'
+  probar 0 'git -C /otro/repo push'
+  probar 0 'git -c user.name=x push'
+  probar 1 'echo git push'
+  probar 1 'grep -n "git push" hook.sh'
+  probar 1 'rg "git push" .'
+  probar 1 '# git push va despues'
+  probar 1 'git log --oneline'
+  probar 1 'gh pr view 81'
+  probar 1 'git status'
+  if [[ $fallos -gt 0 ]]; then
+    echo "$fallos de 15 casos del detector de push fallaron." >&2
+    exit 1
+  fi
+  echo "15 casos del detector de push, todos como se espera."
+  exit 0
+fi
+
 entrada=$(cat)
 comando=$(printf '%s' "$entrada" | /usr/bin/python3 -c \
   'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null) || exit 0
@@ -24,9 +65,7 @@ comando=$(printf '%s' "$entrada" | /usr/bin/python3 -c \
 # con la marca ausente cualquiera de ellos publicaba un pedido. Se exige que `git` esté en
 # posición de comando (principio de línea o después de un separador) y que `push` sea su
 # subcomando, con las opciones globales que git acepta en medio.
-if ! printf '%s' "$comando" | grep -qE   '(^|[;&|]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'; then
-  exit 0
-fi
+es_un_push "$comando" || exit 0
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || exit 0
 

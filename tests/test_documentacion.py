@@ -254,6 +254,22 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
         assert ruta.exists(), f"un settings declara {comando} y ese archivo no existe"
         assert os.access(ruta, os.X_OK), f"{comando} no tiene permiso de ejecución"
 
+    # Y si un hook trae su propia prueba, se corre. La parte más frágil de un hook suele ser
+    # un patrón de texto, y probarlo desde otro archivo con una copia del patrón sólo prueba
+    # que la copia funciona: los casos tienen que correr contra la función del hook.
+    for comando in del_repo:
+        ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
+        if "--probar" not in _texto(ruta):
+            continue
+        r = subprocess.run(  # noqa: S603
+            [str(ruta), "--probar"],
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            check=False,
+        )
+        assert r.returncode == 0, f"{ruta.name} --probar falló:\n{r.stdout}\n{r.stderr}"
+
     # Pero sólo el versionado rescata de ser huérfano.
     escritos = {p.name for p in (RAIZ / ".claude" / "hooks").glob("*.sh")}
     huerfanos = sorted(escritos - {pathlib.PurePosixPath(c).name for c in del_repo})

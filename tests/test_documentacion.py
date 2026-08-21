@@ -261,13 +261,24 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
         ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
         if "--probar" not in _texto(ruta):
             continue
-        r = subprocess.run(  # noqa: S603
-            [str(ruta), "--probar"],
-            capture_output=True,
-            text=True,
-            stdin=subprocess.DEVNULL,
-            check=False,
-        )
+        # `stdin` cerrado y con tope. Lo primero es lo que impide el cuelgue real: un hook que
+        # declare la bandera sin implementarla cae en su `cat` y con la entrada cerrada recibe
+        # EOF y sale en milisegundos (medido: 33 ms). Desde una terminal, en cambio, `cat`
+        # espera para siempre, y ese cuelgue es de la shell y no del hook.
+        #
+        # El tope es por otra cosa: acá corre dentro de la suite, y un subproceso colgado por
+        # cualquier motivo (una llamada de red que no vuelve) deja CI trabado sin decir nada.
+        try:
+            r = subprocess.run(  # noqa: S603
+                [str(ruta), "--probar"],
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                timeout=30,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{ruta.name} --probar no terminó en 30 s")
         assert r.returncode == 0, f"{ruta.name} --probar falló:\n{r.stdout}\n{r.stderr}"
 
     # Pero sólo el versionado rescata de ser huérfano.

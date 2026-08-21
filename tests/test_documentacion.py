@@ -372,12 +372,24 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
         "referencia a otro formato. De esa afirmación cuelga `_MAGIA_PDF`."
     )
 
-    # El prefijo `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
-    iconos = sorted(set(re.findall(r"(\w+\.png)", fixtures)))
-    assert iconos == ["downloadPdf.png", "icono_PDF.png"], (
-        f"las fixtures nombran {iconos}, y la página afirma que los únicos archivos que el "
-        "detalle nombra son los dos iconos de PDF del propio sitio"
+    # La afirmación es sobre lo que EL DETALLE nombra, así que se miran sólo las fixtures que
+    # son un detalle: las que traen algún panel de historia. Reunir los `*.png` de todas hacía
+    # que una fixture nueva con un logotipo pusiera el guardia en rojo sin contradecir nada.
+    paneles = {c.historia.panel for c in COMPETENCIAS.values() if c.historia is not None}
+    detalles = "\n".join(
+        t
+        for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html"))
+        if any(p in (t := _texto(f)) for p in paneles)
     )
+    assert detalles, "no quedó ninguna fixture de detalle"
+    # El prefijo `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
+    iconos = sorted(set(re.findall(r"(\w+\.png)", detalles)))
+    assert iconos == ["icono_PDF.png"], (
+        f"el detalle nombra {iconos}. Acotar el guardia a las fixtures de detalle mostró que "
+        "`downloadPdf.png` no está en ninguna: vive en la consulta unificada, y la página lo "
+        "atribuía al detalle"
+    )
+    assert "downloadPdf.png" in _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
     for icono in iconos:
         assert icono in pagina, f"la página dejó de nombrar el icono {icono}"
 

@@ -437,8 +437,9 @@ página deja anotado en primer lugar qué habría que medir para cambiar de opin
 
 Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no contienen ninguna
 referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**. Los
-únicos archivos que el detalle nombra son dos iconos del propio sitio,
-`images/downloadPdf.png` y `apelaciones/modal/icono_PDF.png`, y en el cuaderno principal de
+únicos archivos que nombran son dos iconos del propio sitio: `icono_PDF.png`, que aparece en el
+detalle de apelaciones, y `downloadPdf.png`, que no está en ningún detalle sino en la página de
+la consulta unificada. Y en el cuaderno principal de
 C-1156-2026 los enlaces de descarga van marcados **12** veces con el icono `fa-file-pdf-o`.
 
 De las **cabeceras** de respuesta no se sabe nada, y conviene decirlo en vez de darlo por
@@ -505,8 +506,13 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
    como parte del contrato: quien redactó ese escrito puede ser la contraparte, y nada de lo
    que hoy anuncia la herramienta lo cubre.
 3. **Los marcadores del archivo**, cuando los traiga, como tabla de contenidos del expediente.
-4. **Declarar `_meta["anthropic/maxResultSizeChars"]`** en la herramienta, que es
-   gratis y evita que el cliente escriba en disco lo que este servidor decidió no escribir.
+4. **Declarar `_meta["anthropic/maxResultSizeChars"]`, y sabiendo qué NO resuelve.** No
+   protege el caso que motivó todo esto: el PDF grande no viaja por la herramienta sino por
+   `resources/read`, siguiendo el `ResourceLink`, y esa anotación no llega a ese canal. Y para
+   lo que sí viaja embebido tampoco cambia nada, porque `LIMITE_EMBEBIDO` ya lo acota bastante
+   por debajo de cualquier tope que el cliente traiga. Sirve para los rangos de texto del punto
+   2, que son lo único que puede crecer sin un tope propio. Que un documento grande se persista
+   al leer el recurso sigue sin tener respuesta acá, y eso es lo que habría que medir primero.
 5. **Nada de imágenes producidas acá.** Para las páginas que son imagen, el archivo sigue siendo
    la única vía, y cómo llega a los ojos del modelo es del cliente y no de este servidor.
 

@@ -16,7 +16,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-## [0.8.0] - 2026-08-20
+## [0.8.0] - 2026-08-21
 
 ### Agregado
 

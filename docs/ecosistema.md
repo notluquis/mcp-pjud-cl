@@ -128,7 +128,8 @@ espera:
 
 1. **Litigantes, escritos y exhortos** del detalle de causa. `webscrapthings` los cubre desde
    2025 y son una pestaña más de la misma respuesta que ya se pide.
-2. **Programación de Sala**, el "¿cuándo me ven?". Los campos ya están mapeados arriba.
+2. **Programación de Sala**, el "¿cuándo me ven?". Ojo: los campos que se listaban acá se
+   midieron y no existen, así que esto no es copiar, es investigar de nuevo.
 3. **Más competencias.** Ocho contra una es la brecha más grande, y cobranza sigue siendo la
    primera por tener actuaciones de ministro de fe.
 4. **Detección de cambios**, que ya está más abajo sin versión asignada. Es lo que vende
@@ -190,16 +191,13 @@ Extraídos de `consultaUnificada.php`, ninguno ejecutado:
 
 ### Programación de Sala
 
-Vive fuera de `consultaUnificada.php`: cuelga del menú lateral de `home/index.php`, o sea es
-otra entrada y hay que mapear su sesión aparte. Los campos salen de leer `automatizador-legal`,
-y ninguno está verificado contra el sistema real:
+**Este mapeo se midió y no existe.** Salía de leer `automatizador-legal`, y el 20 de agosto de
+2026 se comprobó que ninguno de sus siete campos aparece: ni en `consultaUnificada.php` ni en
+la página real. Se conserva acá porque describe lo que ese proyecto hace, que es de lo que
+trata esta página, y no lo que la plataforma ofrece hoy.
 
-`progComp` (competencia), `progCorte`, `progRolCausa`, `progEraCausa`, `progTipoCausa`, botón
-`btnProgConsulta`, tabla de resultados `dtaTableDetalleProgSala`.
-
-Un detalle que ahorra un error: cuando no hay audiencias, la tabla devuelve **una sola celda**
-con el texto `Ningún dato disponible en esta tabla`. Hay que reconocerlo, porque confundirlo
-con un fallo de parseo, o al revés, es el mismo error de siempre.
+Lo que sí existe, medido, está en la {doc}`hoja de ruta <roadmap>`: otro host, sin el
+cortafuegos compartido, y un monitor por sala que no recibe rol.
 
 ### Jurisprudencia: lo que queda del buscador
 

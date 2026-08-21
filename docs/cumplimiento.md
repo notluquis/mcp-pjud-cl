@@ -226,7 +226,7 @@ Se dejan anotados con su razón, para no re-discutirlos cada vez que aparecen.
 |---|---|---|
 | `Maintained` | Se resuelve solo | Mide actividad sostenida en 90 días. El repositorio es nuevo |
 | `Code-Review` | Se resuelve al usar pull requests | Mide cambios revisados. Hasta ahora los commits fueron directos a `main` |
-| `SAST` | Resuelto | Se pasó de modo gestionado a workflow con `codeql-action` fijado por SHA y consultas `security-extended`, que es una de las dos huellas que Scorecard busca |
+| `SAST` | Resuelto | Se pasó de modo gestionado a un workflow propio con `codeql-action` fijado por SHA, que es la huella que Scorecard busca. **`security-extended` no es parte de eso**: agrega consultas, no cierra el hallazgo, y el propio workflow lo dice |
 | `Fuzzing` | Resuelto | Harness de Atheris en `tests/fuzz_parser.py`. Ver abajo por qué también hay pruebas de propiedades |
 | `CII-Best-Practices` | **Inalcanzable con esta licencia** | Ver abajo |
 

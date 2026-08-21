@@ -228,7 +228,7 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `discrepancia_fechas` | bool | Las dos fuentes del sitio no coinciden |
 | `cuaderno` | str | A qué cuaderno pertenece |
 | `foja` | str | Foja |
-| `georreferenciado` | bool | `false` significa **ausente** (art. 9 inc. 3 Ley 20.886) |
+| `georreferenciado` | bool | `false` significa **ausente** (art. 9 inc. 3 Ley 20.886). `true` significa que el sitio la OFRECE, no que exista: medido, una de seis abría un panel vacío |
 | `estado_firma` | str \| null | Estado de firma del trámite. Cobranza lo publica en lugar de la foja; civil no lo trae |
 | `correlativo` | str \| null | Correlativo interno del trámite. Sólo en suprema |
 | `anio_tramite` | str \| null | Año que suprema publica en columna aparte, además de la fecha |

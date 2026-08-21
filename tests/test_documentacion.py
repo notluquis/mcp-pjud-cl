@@ -153,7 +153,7 @@ PAGINAS_CON_LA_MEDICION = (
 )
 
 
-#: Las dos páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
+#: Las tres páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
 #: antes miraban `roadmap.md` miran las dos, y eso es a propósito: anclarlos sólo a la página
 #: nueva cubriría MENOS que antes, porque nada impediría reponer la afirmación vieja en la que
 #: se quedó con el nombre. La regla del corte es que el dato medido vive en una sola, no que el
@@ -675,13 +675,22 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
     # imposibles. Donde se cite la típica tiene que estar el peor caso al lado, porque es el
     # que justifica cuánto esperar antes de dar una consulta por perdida.
     peor = coma(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)
+
     # El changelog queda fuera a propósito: registra lo que era cierto en cada versión, así que
     # una entrada vieja que cita los 47,8 s no está desactualizada, está fechada. Actualizarla
     # para que pase este guardia sería falsear el registro.
+    #
+    # Su sección SIN PUBLICAR es otra cosa y sí se mira: todavía no fechó nada, así que una
+    # cifra a medias entrando ahí es una cifra a medias que se va a publicar. Excluir el
+    # archivo entero la dejaba pasar.
+    def fechada(p) -> bool:
+        if p.name != "CHANGELOG.md":
+            return False
+        sin_publicar = _texto(p).split("## [No publicado]", 1)[-1].split("\n## [", 1)[0]
+        return peor in _texto(p) or busqueda not in sin_publicar
+
     sin_el_peor = [
-        str(p.relative_to(RAIZ))
-        for p in citan
-        if peor not in _texto(p) and p.name != "CHANGELOG.md"
+        str(p.relative_to(RAIZ)) for p in citan if peor not in _texto(p) and not fechada(p)
     ]
     # El diagrama de la detención total cita el peor caso para justificar por qué un timeout
     # NO detiene el proceso. Es un dato repetido más, y si el techo se vuelve a medir hay que
@@ -1348,8 +1357,14 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
         text=True,
         check=False,
     )
-    if antes.returncode != 0:
-        pytest.skip("el commit del corte no está en este clon")
+    assert antes.returncode == 0, (
+        f"no se pudo leer `docs/roadmap.md` en {CORTE_DE_LA_HOJA_DE_RUTA}^, que es contra lo "
+        "que se comparan los anclajes publicados. Si es un clon superficial, hace falta "
+        "`fetch-depth: 0`.\n\n"
+        "Antes esto era un `skip`, y con el checkout por defecto de CI el guardia no corría "
+        "nunca: verde donde importa y roto en lo publicado. Un guardia que se salta solo es "
+        f"peor que no tenerlo.\n\n{antes.stderr}"
+    )
 
     def ancla(titulo: str) -> str:
         plano = "".join(
@@ -1366,6 +1381,73 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
         f"la hoja de ruta publicó estos anclajes y ya no los tiene: {faltan}. Un enlace a "
         "cualquiera de ellos lleva ahora al inicio de la página sin avisar."
     )
+
+
+#: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
+#: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
+#: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se
+#: contradigan, que es el modo de falla real.
+AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
+
+
+def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
+    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
+
+    No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
+    Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa.
+
+    NO se filtra a las que ya traen la cifra, que es lo que hacía la primera versión: eso
+    excluía del chequeo justo a la página que divergía, y se comprobó cambiando el número en
+    una de las tres. Se identifican por citar el estudio, no la cifra.
+    """
+    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
+    citan = [d for d in donde if "Ahrefs" in _texto(RAIZ / d)]
+    assert len(citan) == len(donde), (
+        f"el estudio se citaba en {len(donde)} lugares y ahora en {len(citan)}: {citan}. Si se "
+        "retiró de alguno a propósito, hay que sacarlo de esta lista."
+    )
+
+    for d in citan:
+        # Sin los marcadores de comentario: en `conf.py` la cita va en un comentario envuelto,
+        # y sin quitarlos el texto comparado queda como "137.210 # dominios", lo que obliga a
+        # reacomodar la prosa para que el guardia pase. Eso es el guardia mandando sobre el
+        # texto en vez de al revés.
+        crudo = _texto(RAIZ / d)
+        texto = " ".join(re.sub(r"^\s*#\s?", "", crudo, flags=re.M).split())
+        for clave, valor in AHREFS.items():
+            assert valor in texto, (
+                f"{d} cita el estudio sin su {clave} ({valor}). Las tres copias tienen que "
+                "decir lo mismo, porque ninguna se puede verificar contra el código."
+            )
+
+
+def test_la_directiva_no_afirma_de_la_georreferencia_mas_que_el_modelo():
+    """La directiva es lo que el modelo lee ANTES de cualquier llamada, así que una afirmación
+    de más ahí pesa más que en cualquier otro lugar.
+
+    Decía que `false` prueba que el registro no está, sin más. Suprema no publica la columna,
+    así que su falso significa que no hay dónde mirar, y confundirlos hace concluir que una
+    diligencia no se georreferenció cuando lo que pasa es que esa competencia no lo informa.
+
+    Las competencias se sacan de la tabla, no de una lista escrita a mano.
+    """
+    from mcp_pjud.server import DIRECTIVA
+
+    con_columna = sorted(
+        n
+        for n in MODULOS
+        if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
+    )
+    assert con_columna, "si ninguna publicara la columna, el campo no debería existir"
+    assert set(MODULOS) - set(con_columna), (
+        "si todas la publicaran, la salvedad sobra y hay que retirarla de la directiva"
+    )
+
+    for nombre in con_columna:
+        assert nombre in DIRECTIVA, (
+            f"{nombre!r} publica la columna de georreferencia y la directiva no lo nombra, así "
+            "que el modelo no puede saber dónde su `false` significa ausencia"
+        )
 
 
 def _numero(n: int) -> str:
@@ -2016,6 +2098,11 @@ def test_las_entradas_del_registro_de_cambios_no_pasan_de_dos_frases():
             actual = [linea[2:]]
         elif actual and linea.startswith("  "):
             actual.append(linea.strip())
+        elif actual and not linea.strip():
+            # Una línea en blanco NO cierra la viñeta: puede venir un segundo párrafo indentado.
+            # Cerrarla acá era como se colaban las entradas de dos párrafos, que sumaban cuatro
+            # frases y pasaban como dos.
+            actual.append("")
         else:
             if actual:
                 viñetas.append(" ".join(actual))

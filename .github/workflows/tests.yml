@@ -60,6 +60,11 @@ jobs:
           # El job no hace push. Sin esto, el token queda escrito en .git/config y
           # cualquier paso posterior podría usarlo.
           persist-credentials: false
+          # Historia completa. Un guardia compara los anclajes que la hoja de ruta publicó
+          # antes de partirla contra los que conserva hoy, y para eso lee el archivo en un
+          # commit anterior. Con el clon superficial ese guardia se SALTABA, o sea no corría
+          # justo donde importa: verde en CI y roto en lo publicado.
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:

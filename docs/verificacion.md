@@ -244,8 +244,8 @@ si la causa ES un exhorto, no de cuál exhorto sea.
 | Ruta | Parámetro | Qué entrega |
 |---|---|---|
 | `civil/documentos/docu.php` | `valorEncTxtDmda` | El texto de la demanda |
-| `civil/documentos/docuN.php` | `dtaDoc` | El documento de una fila de la Historia |
-| `civil/documentos/docuS.php` | `dtaDoc` | El documento de un escrito |
+| `civil/documentos/docuN.php` | `dtaDoc` | El escrito. El sitio titula el enlace "Documento principal del escrito" |
+| `civil/documentos/docuS.php` | `dtaDoc` | La resolución. El sitio titula el enlace "Descargar Documento" |
 | `civil/documentos/newebookcivil.php` | `dtaEbook` | **El expediente entero en un PDF** |
 | `civil/documentos/docCertificadoDemanda.php` | `dtaCert` | Certificado de envío de la demanda |
 | `civil/documentos/docCertificadoEscrito.php` | `dtaCert` | Certificado de envío de un escrito |

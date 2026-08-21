@@ -521,9 +521,11 @@ class Actuacion(BaseModel):
         "georreferenciadas de C-1156-2026 abría un panel que responde 'No existen "
         "Georreferencia para mostrar'. Verdadero significa que hay dónde preguntar, y "
         "confirmarlo cuesta una petición por actuación.\n\n"
-        "Falso sí significa AUSENTE, y eso puede ser jurídicamente relevante (art. 9 inc. 3 "
-        "Ley 20.886). La asimetría es a propósito: el lado que se puede afirmar sin preguntar "
-        "es el que se afirma."
+        "Falso significa AUSENTE **sólo donde la competencia publica la columna**, y ahí sí "
+        "puede ser jurídicamente relevante (art. 9 inc. 3 Ley 20.886). Suprema no la publica, "
+        "así que su falso significa que no hay dónde mirar, no que la diligencia no se "
+        "georreferenció. Mirar `COMPETENCIAS[competencia].historia.columnas` para saber cuál "
+        "de las dos cosas es."
     )
     tiene_documento: bool = Field(description="Si el folio trae documento descargable.")
     documento_ruta: str | None = Field(

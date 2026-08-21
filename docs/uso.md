@@ -81,10 +81,14 @@ herramienta no elige por ti: te avisa para que lo revises a mano.
 : El texto literal, sin normalizar. Ej: `NOTIFICACIÓN DE DEMANDA (Búsqueda negativa)`.
 
 `georreferenciado`
-: Si la actuación tiene registro georreferenciado. **Cuando dice `false`, significa que ese
-registro no está**, y su ausencia puede ser jurídicamente relevante (art. 9 inc. 3 de la
-Ley 20.886). Por eso el campo se muestra siempre, incluso vacío: omitirlo sería esconder un
-dato que quizá quieras alegar.
+: Si la actuación tiene registro georreferenciado. **Cuando dice `false` en civil, cobranza,
+laboral o apelaciones, significa que ese registro no está**, y su ausencia puede ser
+jurídicamente relevante (art. 9 inc. 3 de la Ley 20.886). Por eso el campo se muestra siempre,
+incluso vacío: omitirlo sería esconder un dato que quizá quieras alegar.
+
+  En suprema el sitio no publica esa columna, así que ahí el `false` significa que no hay dónde
+  mirar. Y el `true` significa que el sitio ofrece la georreferencia, no que exista: de seis
+  actuaciones medidas, una abría un panel que dice que no hay ninguna.
 
 `tiene_documento`
 : Si el folio tiene documento descargable en la plataforma.

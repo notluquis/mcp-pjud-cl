@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from lxml import html as H
 
+from mcp_pjud.client import MODULOS
 from mcp_pjud.parser import (
     COMPETENCIAS,
     Competencia,
@@ -1350,3 +1351,33 @@ def test_un_panel_sin_coordenadas_y_sin_el_aviso_levanta():
 
     with pytest.raises(EstructuraInesperada, match="latitud y"):
         parse_georreferencia(sin_coords)
+
+
+def test_una_fecha_de_dispositivo_imposible_levanta_en_vez_de_volver_nula():
+    """`31-02-2026` tiene el formato correcto y no es una fecha.
+
+    Devolverla en nulo publicaría `existe=true` sin fecha, y ésa es justamente la tercera fuente
+    por la que esta herramienta existe: sin ella no hay con qué contrastar la que corre los
+    plazos, y el nulo se leería como que el sitio no la publica.
+    """
+    with pytest.raises(EstructuraInesperada, match="no es una fecha"):
+        parse_georreferencia(GEO.replace("31-03-2026", "31-02-2026"))
+
+
+def test_la_georreferencia_solo_se_ofrece_donde_puede_existir():
+    """`penal` no tiene panel de Historia medido y `suprema` no publica la columna, así que para
+    las dos no puede existir una referencia que pedir.
+
+    La lista salía escrita a mano y dejaba a `penal` anunciada como opción válida y siempre en
+    error, que es lo mismo que el modelo atribuye a la plataforma.
+    """
+    from mcp_pjud.client import GEORREFERENCIA
+
+    for nombre, spec in COMPETENCIAS.items():
+        publica = spec.historia is not None and "georref" in spec.historia.columnas
+        assert (nombre in GEORREFERENCIA) == publica or nombre not in MODULOS, (
+            f"{nombre!r} publica la columna={publica} y se ofrece={nombre in GEORREFERENCIA}"
+        )
+    assert "penal" not in GEORREFERENCIA
+    assert "suprema" not in GEORREFERENCIA
+    assert "civil" in GEORREFERENCIA

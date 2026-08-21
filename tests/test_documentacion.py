@@ -2270,6 +2270,32 @@ def test_la_ultima_version_publicada_no_gana_entradas_despues_de_publicarse():
     )
 
 
+def test_cada_version_del_registro_enlaza_a_su_publicacion():
+    """Publicar consiste en insertar un encabezado, y las referencias del final se olvidan.
+
+    Cuando pasa, el encabezado de la versión nueva deja de enlazar a su release y `[No
+    publicado]` sigue comparando contra la anterior, o sea muestra como pendiente todo lo que
+    esa versión ya publicó. Las dos cosas se derivan del propio archivo.
+    """
+    registro = _texto(RAIZ / "CHANGELOG.md")
+    versiones = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", registro, re.M)
+    assert versiones, "el registro dejó de tener versiones"
+
+    referencias = set(re.findall(r"^\[(\d+\.\d+\.\d+)\]: ", registro, re.M))
+    faltan = [v for v in versiones if v not in referencias]
+    assert not faltan, (
+        f"estas versiones no enlazan a su publicación: {faltan}. Al publicar hay que agregar "
+        "`[x.y.z]: .../releases/tag/vx.y.z` al final del archivo."
+    )
+
+    ultima = versiones[0]
+    esperado = f"[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v{ultima}...HEAD"
+    assert esperado in registro, (
+        f"`[No publicado]` no compara contra la última versión publicada ({ultima}), así que "
+        "muestra como pendiente lo que esa versión ya publicó."
+    )
+
+
 def test_ninguna_version_del_registro_repite_una_seccion():
     """Dos `### Agregado` bajo la misma versión rompen la página de la publicación.
 

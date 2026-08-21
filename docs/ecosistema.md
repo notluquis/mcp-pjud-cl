@@ -156,7 +156,7 @@ Lo que sí se puede sostener, y hay que sostenerlo con evidencia y no con adjeti
 | Fallar ruidoso | Un servicio de alertas diarias que deja de parsear manda un resumen vacío que se lee como "no pasó nada". Acá eso levanta excepción |
 | Ser auditable | Código a la vista, bitácora de cada petición, y el intervalo verificado por CI. Un SaaS cerrado no permite comprobar ninguna de las tres |
 | No guardar nada de terceros | Sin cuenta, sin base de datos, sin retención bajo la Ley 21.719 |
-| Hablar MCP | Ninguna de las cuatro lo hace. La herramienta llega adentro del asistente que el abogado ya usa, no a otra pestaña más |
+| Hablar MCP | Ninguna de las cinco lo hace. La herramienta llega adentro del asistente que el abogado ya usa, no a otra pestaña más |
 
 Y lo que hay que copiar sin orgullo, en este orden, porque marca el piso de lo que un abogado
 espera:

@@ -2744,6 +2744,23 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
         f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
         f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
         "ahí daría una lista parcial, no una vacía."
+def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
+    """La cifra se escribió a mano y quedó vieja al agregar la quinta.
+
+    Es la clase de dato que envejece sin que nadie lo mire: agregar una sección es lo natural,
+    y actualizar una frase tres pantallas más abajo no. Sale de los encabezados de la propia
+    sección, así que la siguiente que se agregue entra sola.
+    """
+    _EN_PALABRAS = {3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho"}
+    pagina = _texto(RAIZ / "docs" / "ecosistema.md")
+    seccion = pagina.split("## Herramientas chilenas que tocan lo mismo")[1].split("\n## ")[0]
+    cuantas = len(re.findall(r"^### ", seccion, re.M))
+    assert cuantas >= 3, "la sección de herramientas chilenas se quedó sin entradas"
+    assert f"Ninguna de las {_EN_PALABRAS[cuantas]} lo hace" in pagina, (
+        f"la página lista {cuantas} herramientas chilenas y la comparación dice otra cifra"
+    )
+
+
 def test_lo_comercial_se_declara_como_publicado_y_no_como_medido():
     """De un producto cerrado sólo se sabe lo que publica, y la página tiene que decirlo.
 

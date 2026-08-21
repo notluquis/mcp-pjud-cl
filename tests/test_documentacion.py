@@ -385,10 +385,24 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     # TODO archivo nombrado, no sólo los `.png`: la frase dice que el detalle no nombra ningún
     # documento, así que un `.pdf` colándose ahí la desmiente igual que otro icono. El prefijo
     # `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
-    # Extensiones de archivo, no cualquier punto: `.php` son endpoints, que el detalle sí nombra
-    # y no son documentos, y en la prosa del sitio hay cosas como `AB.DTE` y `Pend.Art.52`.
-    tipos = "png|gif|jpe?g|svg|ico|pdf|docx?|xlsx?|rtf|mp3|zip"
-    nombrados = sorted(set(re.findall(rf"([\w.-]+\.(?:{tipos}))(?=[\"'\s>?&])", detalles, re.I)))
+    # No se busca en el texto suelto sino en lo que apunta a un archivo, que es lo que
+    # significa "la página nombra un archivo". Y se lee del HTML crudo y no del árbol, porque
+    # el sitio arma marcado dentro de su JavaScript: `pagLoad.gif` viaja en un `src` que sólo
+    # existe como cadena, y un enlace a un documento podría venir igual.
+    #
+    # Enumerar extensiones dejaba entrar un `.pptx` o un `.odt` sin que nada lo notara, y
+    # buscar cualquier punto se llevaba puesta la prosa del sitio (`Gar.de`, `AB.DTE`,
+    # `Pend.Art.52`). Exigir que venga de un `src` o un `href` distingue las dos cosas sin
+    # tener que adivinar qué formatos existen.
+    NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
+    nombrados = sorted(
+        {
+            base
+            for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", detalles)
+            if "." in (base := valor.split("?")[0].split("#")[0].rsplit("/", 1)[-1])
+            and base.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+        }
+    )
     assert nombrados == ["icono_PDF.png", "pagLoad.gif"], (
         f"el detalle nombra {nombrados}, y la página afirma que no nombra ningún documento: "
         "sólo el icono y el indicador de carga del propio sitio. El documento se pide por una "
@@ -437,9 +451,23 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
         f"base64, o sea {veces} veces los {miles(CARACTERES_DE_UNA_RESPUESTA)} de una respuesta."
     )
 
-    assert miles(BYTES_DEL_DOCUMENTO_MEDIDO) in _texto(RAIZ / "docs" / "verificacion.md"), (
-        "la investigación deriva de una medición que verificacion.md ya no declara"
-    )
+    # No sólo el tamaño: la recomendación cuelga igual de que el folio sea UNA página y NO
+    # traiga capa de texto. Con esas dos corregidas y el tamaño intacto, la página seguiría
+    # tratándolo como el peor caso de una hoja escaneada, que es lo que hace fuerte al
+    # argumento. `verificacion` las declara en dos lugares y los dos tienen que decir lo mismo.
+    verificacion = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    for afirmacion in (
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, 1 página, sin capa de texto",
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, un escaneo de una página",
+    ):
+        assert afirmacion in verificacion, (
+            f"verificacion.md dejó de declarar que el folio medido es {afirmacion!r}, y la "
+            "investigación deriva de que sea una hoja escaneada y no sólo de su tamaño"
+        )
+    for afirmacion in ("una página", "sin capa de texto"):
+        assert afirmacion in " ".join(pagina.split()), (
+            f"la investigación dejó de decir que el folio medido es {afirmacion!r}"
+        )
 
     # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento
     # sintético que no se reproduce acá, pero lo que se hace CON ellos es aritmética contra el

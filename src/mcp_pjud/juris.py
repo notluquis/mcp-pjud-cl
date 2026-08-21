@@ -404,6 +404,16 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
         for d in respuesta["docs"]
     ]
 
+    # El total no puede ser menor que la página que lo acompaña. Si lo es, el `max(0, ...)`
+    # de abajo publicaría `no_entregadas` en cero, o sea leería una respuesta contradictoria
+    # como una lista completa: exactamente el falso negativo que el campo vino a cerrar.
+    if visibles < len(sentencias):
+        raise EstructuraInesperada(
+            f"La respuesta declara {visibles} coincidencias visibles y trae "
+            f"{len(sentencias)} sentencias. Un total menor que su propia página significa "
+            "que la respuesta dejó de cumplir el contrato, no que no falte nada."
+        )
+
     return ResultadoJurisprudencia(
         sentencias=sentencias,
         visibles=visibles,

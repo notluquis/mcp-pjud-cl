@@ -6,7 +6,7 @@ myst:
 
 # Referencia de herramientas
 
-Las cinco están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las 12 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real

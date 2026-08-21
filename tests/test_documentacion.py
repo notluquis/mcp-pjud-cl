@@ -47,6 +47,22 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
+#: Para derivar la fecha corta de la larga en vez de escribir las dos al lado.
+_MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
 RAIZ = Path(__file__).parents[1]
 HERRAMIENTAS = (RAIZ / "docs" / "herramientas.md").read_text(encoding="utf-8")
 
@@ -249,10 +265,15 @@ def test_la_referencia_dice_cuantas_herramientas_hay_de_verdad(expuestas):
     comparaba contra el servidor: el guardia de secciones exige que cada herramienta tenga la
     suya, y eso sigue pasando con un conteo viejo al lado.
     """
-    encabezado = _texto(RAIZ / "docs" / "herramientas.md").split("---")[1]
-    assert f"las {len(expuestas)} herramientas MCP" in encabezado, (
+    pagina = _texto(RAIZ / "docs" / "herramientas.md")
+    assert f"las {len(expuestas)} herramientas MCP" in pagina.split("---")[1], (
         f"el servidor expone {len(expuestas)} herramientas y la descripción de la referencia "
         "dice otra cosa"
+    )
+    # Y el conteo del cuerpo, que es otra copia y quedó vieja aparte: decía "Las cinco" con
+    # doce expuestas. Arreglar la descripción y dejar ésta es el mismo error una línea abajo.
+    assert f"Las {len(expuestas)} están anotadas en el protocolo" in pagina, (
+        f"la referencia dice que están anotadas otras que las {len(expuestas)} expuestas"
     )
 
 
@@ -368,6 +389,21 @@ def test_las_precisiones_medidas_dicen_lo_mismo_en_las_cuatro_copias():
             Georreferencia.model_fields["precision_metros"].description or ""
         ),
     }
+    # Y el rango que el contrato de la herramienta publica, que es una quinta copia derivada:
+    # actualizar las cuatro y dejarla conserva los extremos viejos en lo que lee el modelo.
+    from mcp_pjud.server import obtener_georreferencia
+
+    numeros = sorted(float(p.replace(",", ".")) for p in PRECISIONES_MEDIDAS)
+    minimo, maximo = int(numeros[0]), int(numeros[-1])
+    contrato = " ".join((obtener_georreferencia.__doc__ or "").split())
+    assert f"varía entre {minimo} y {maximo} metros" in contrato, (
+        f"`obtener_georreferencia` publica un rango que no es {minimo} a {maximo} metros, que "
+        "es lo medido"
+    )
+    assert f"con {maximo} la coordenada dice el sector" in contrato, (
+        f"el contrato razona sobre un radio que no es el máximo medido ({maximo})"
+    )
+
     esperadas = sorted(PRECISIONES_MEDIDAS)
     mal = {
         donde: sorted(set(re.findall(r"\d+,\d+", texto)))
@@ -538,13 +574,26 @@ def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
 
     Lo que sí hace falta es normalizar los espacios, porque la fecha se parte entre líneas.
     """
-    for p in PROSA:
+    # Se barre la prosa Y el código: `juris.py` repite la fecha y las dos cifras en el
+    # docstring de su módulo, y ahí es donde vive la constante, así que era la copia con más
+    # posibilidades de quedar vieja sin que nadie la mirara.
+    for p in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
         t = " ".join(_texto(p).split())
-        if miles(INDEXADAS_MEDIDAS) in t:
-            assert FECHA_MEDICION in t, (
-                f"{p.relative_to(RAIZ)} cita la medición con una fecha que no es "
-                f"{FECHA_MEDICION!r}, que es cuándo se midió"
-            )
+        if miles(INDEXADAS_MEDIDAS) not in t:
+            continue
+        # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no
+        # se escribe al lado: un `or` con la fecha de hoy es lo que dejaba pasar la copia vieja.
+        m = re.fullmatch(r"(\d{1,2}) de (\w+) de (\d{4})", FECHA_MEDICION)
+        assert m, f"`FECHA_MEDICION` dejó de tener la forma que este guardia sabe derivar"
+        corta = f"{int(m[1]):02d}-{_MESES.index(m[2].lower()) + 1:02d}-{m[3]}"
+        assert FECHA_MEDICION in t or corta in t, (
+            f"{p.relative_to(RAIZ)} cita la medición con una fecha que no es {FECHA_MEDICION!r} "
+            f"ni {corta!r}"
+        )
+        assert miles(VISIBLES_MEDIDAS) in t, (
+            f"{p.relative_to(RAIZ)} cita las coincidencias declaradas sin las visibles, que es "
+            "la mitad que importa"
+        )
 
 
 def test_los_topes_declarados_coinciden_con_el_codigo():

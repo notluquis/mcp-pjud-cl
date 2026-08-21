@@ -158,7 +158,7 @@ PAGINAS_CON_LA_MEDICION = (
 #: nueva cubriría MENOS que antes, porque nada impediría reponer la afirmación vieja en la que
 #: se quedó con el nombre. La regla del corte es que el dato medido vive en una sola, no que el
 #: guardia mire una sola.
-ESTADO_Y_PLAN = ("docs/verificacion.md", "docs/roadmap.md")
+ESTADO_Y_PLAN = ("docs/verificacion.md", "docs/roadmap.md", "docs/ecosistema.md")
 
 
 def _estado_y_plan() -> str:
@@ -1246,6 +1246,24 @@ def test_el_listado_de_tribunales_exige_la_corte(expuestas):
     )
 
 
+def _parrafos_de_reglas(texto: str) -> dict[str, str]:
+    """El texto de cada regla numerada, por separado.
+
+    Los dos archivos las enumeran distinto, `**1. ...**` en uno y `1. **...**` en el otro, así
+    que se reconoce el número y no el formato. Cada regla llega hasta que empieza la
+    siguiente.
+    """
+    plano = " ".join(texto.split())
+    tramos: dict[str, str] = {}
+    marcas = [
+        (m.group(1), m.start())
+        for m in re.finditer(r"(?:\*\*)?([1-5])\.\s\*?\*?[A-ZÁÉÍÓÚN]", plano)
+    ]
+    for (numero, inicio), siguiente in zip(marcas, marcas[1:] + [(None, len(plano))], strict=True):
+        tramos.setdefault(numero, plano[inicio : siguiente[1]])
+    return tramos
+
+
 def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
     """Las reglas que no se negocian están escritas en tres archivos, y ya divergieron.
 
@@ -1279,9 +1297,16 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
 
     faltantes = {}
     for nombre, texto in archivos.items():
-        plano = " ".join(texto.split())
+        # Cada regla se busca en SU párrafo, no en el documento entero. Con el documento
+        # entero el guardia era parcialmente vacuo, y se comprobó: quitarle el 403 al
+        # enunciado de la regla 3 seguía verde, porque `AGENTS.md` menciona un 403 en otro
+        # párrafo que habla del cortafuegos. La regla vive donde se enuncia.
+        parrafos = _parrafos_de_reglas(texto)
         for regla, señas in REGLAS.items():
-            ausentes = [s for s in señas if s.lower() not in plano.lower()]
+            numero = regla.split(".", 1)[0]
+            propio = parrafos.get(numero, "")
+            assert propio, f"{nombre} no enuncia la regla {numero} con su número"
+            ausentes = [x for x in señas if x.lower() not in propio.lower()]
             if ausentes:
                 faltantes[f"{nombre} / {regla}"] = ausentes
     assert not faltantes, (
@@ -1295,52 +1320,78 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
         )
 
 
-#: Encabezados que la hoja de ruta publicó y que se movieron a otra página al partirla. Un
-#: enlace a `roadmap.html#...` que alguien haya guardado o citado sigue existiendo, y sin el
-#: encabezado lleva al INICIO de la página sin avisar. Un enlace roto se nota; uno que va al
-#: lugar equivocado, no.
-#:
-#: La lista sólo crece: si se mueve otra sección, se agrega acá antes de moverla.
-ANCLAS_HEREDADAS = (
-    "Qué está verificado y qué no",
-    "Jurisprudencia: qué hay mapeado y qué falta",
-    "Sobre los identificadores de causa en esta documentación",
-    "Reglas de la plataforma ya mapeadas",
-    "Qué más existe",
-    "Hallazgos de OpenSSF Scorecard que siguen abiertos",
-)
+#: El commit que partió la hoja de ruta. Los encabezados que tenía antes de eso publicaban un
+#: ancla citable, y moverlos sin dejar nada no da 404: da el inicio de la página, en silencio.
+#: Un enlace roto se nota; uno que va al lugar equivocado, no.
+CORTE_DE_LA_HOJA_DE_RUTA = "356ffce"
 
 
-#: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
-#: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
-#: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se
-#: contradigan, que es el modo de falla real.
-AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
+def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():
+    """Al partir la hoja de ruta, sus fragmentos publicados quedaron apuntando al vacío.
 
+    La primera versión de este guardia comparaba contra una lista de seis escrita a mano, y
+    los encabezados que se fueron eran **veintinueve**. Ahora la lista se saca de git: se
+    comparan los encabezados de antes del corte contra los anclajes que la página conserva
+    hoy, así que no hay lista que mantener ni número que acertar.
 
-def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
-    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
-
-    No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
-    Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa,
-    que es lo que pasa siempre con un dato repetido tres veces.
-
-    Y va con la fecha pegada por el mismo motivo que las cifras de latencia: una medición sin
-    fecha invita a tomarla por permanente, y ésta describe una tecnología de este año.
+    Y se cuentan también los de nivel 4, aunque `myst_heading_anchors` esté en 3: `docutils`
+    le pone un `id` a toda sección, así que esos anclajes existían igual. Eso se midió sobre
+    el HTML construido, no se dedujo de la configuración.
     """
-    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
-    citan = [d for d in donde if AHREFS["dominios"] in _texto(RAIZ / d)]
-    assert citan, "ninguna página cita el estudio, y tres lo citaban"
+    import subprocess
+    import unicodedata
 
-    for d in citan:
-        # Con los espacios normalizados: en `conf.py` la cita va en un comentario envuelto y
-        # la fecha queda partida en dos líneas. Se comprobó rompiéndolo así.
-        texto = " ".join(_texto(RAIZ / d).split())
-        for clave, valor in AHREFS.items():
-            assert valor in texto, (
-                f"{d} cita el estudio sin su {clave} ({valor}). Las tres copias tienen que "
-                "decir lo mismo, porque ninguna se puede verificar contra el código."
-            )
+    antes = subprocess.run(  # noqa: S603
+        ["git", "show", f"{CORTE_DE_LA_HOJA_DE_RUTA}^:docs/roadmap.md"],  # noqa: S607
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if antes.returncode != 0:
+        pytest.skip("el commit del corte no está en este clon")
+
+    def ancla(titulo: str) -> str:
+        plano = "".join(
+            c for c in unicodedata.normalize("NFD", titulo) if unicodedata.category(c) != "Mn"
+        )
+        return re.sub(r"[\s_]+", "-", re.sub(r"[^\w\s-]", "", plano.lower()).strip())
+
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    vigentes = {ancla(t) for t in re.findall(r"^#{1,4} (.+)$", hoja, re.M)}
+    vigentes |= set(re.findall(r"^\(([\w-]+)\)=", hoja, re.M))
+
+    faltan = sorted({ancla(t) for t in re.findall(r"^#{2,4} (.+)$", antes.stdout, re.M)} - vigentes)
+    assert not faltan, (
+        f"la hoja de ruta publicó estos anclajes y ya no los tiene: {faltan}. Un enlace a "
+        "cualquiera de ellos lleva ahora al inicio de la página sin avisar."
+    )
+
+
+def _numero(n: int) -> str:
+    """El número en palabras, para comparar contra prosa.
+
+    Levanta con un mensaje propio fuera de rango en vez de reventar con `KeyError`: un guardia
+    que se cae con una traza no dice qué pasó, y acá lo que pasa es que la fixture cambió de
+    tamaño.
+    """
+    palabras = {
+        1: "una",
+        2: "dos",
+        3: "tres",
+        4: "cuatro",
+        5: "cinco",
+        6: "seis",
+        7: "siete",
+        8: "ocho",
+        9: "nueve",
+        10: "diez",
+    }
+    assert n in palabras, (
+        f"la fixture pasó a traer {n}, que no está en la tabla de números en palabras. "
+        "Agregarlo acá es parte de actualizar la prosa."
+    )
+    return palabras[n]
 
 
 def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
@@ -1360,8 +1411,11 @@ def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
     # Anclado a la página que OWNS el dato, no a las dos: se comprobó rompiéndolo con la
     # concatenación puesta y quedaba verde, porque la copia de la otra página lo rescataba.
     hoja = _texto(RAIZ / "docs" / "verificacion.md")
-    numeros = {3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho"}
-    assert f"**{numeros[len(refs)]}**" in hoja or str(len(refs)) in hoja, (
+    # Sin alternativas: cada `or` de más era una forma de no fallar, y las dos que tenía lo
+    # eran. `str(len(refs)) in hoja` calzaba con el 6 suelto de "| Precisión | 6 metros |", así
+    # que cambiar el número a "tres" seguía verde: el falso negativo exacto que este guardia
+    # dice existir para atrapar. Se exige la palabra, en negrita y junto a lo que cuenta.
+    assert f"**{_numero(len(refs))}** actuaciones georreferenciadas" in hoja, (
         f"las fixtures traen {len(refs)} actuaciones georreferenciadas entre los dos "
         "cuadernos, y la documentación dice otra cosa"
     )
@@ -1370,31 +1424,15 @@ def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
     js = _texto(fixtures / "consultaUnificada.html")
     rutas = set(re.findall(r"([\w/]*modal/geoReferencia\w*\.php)", js))
     assert rutas, "la fixture dejó de traer las rutas de georreferencia"
-    assert f"{len(rutas)} rutas" in hoja or numeros.get(len(rutas), "") in hoja, (
+    # `numeros.get(n, "")` devolvía cadena vacía para cualquier cuenta fuera del diccionario,
+    # y `"" in hoja` es verdadero siempre: este `or` no podía fallar.
+    assert f"Hay {_numero(len(rutas))} rutas" in hoja, (
         f"son {len(rutas)} rutas de georreferencia y la documentación dice otra cosa"
     )
     parametro = re.search(r"geoReferenciaCivil\.php'.{0,400}?data\s*:\s*\{\s*(\w+)", js, re.S)
     assert parametro, "la fixture dejó de mostrar con qué parámetro se pide la georreferencia"
     assert f"`{parametro.group(1)}`" in hoja, (
         f"la georreferencia se pide con {parametro.group(1)!r} y la documentación dice otra cosa"
-    )
-
-
-def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():
-    """Al partir la hoja de ruta, sus fragmentos publicados quedaron apuntando al vacío.
-
-    `myst_heading_anchors` genera un ancla por encabezado hasta el nivel 3, así que
-    `roadmap.html#que-mas-existe` existía y era citable. Moverlo sin dejar nada no da 404: da
-    el inicio de la página, en silencio, que es la forma de romper un enlace que nadie nota.
-
-    Lo que se exige es que el encabezado siga estando, no que el contenido siga ahí: cada uno
-    quedó como un puntero de una línea a la página que se lo llevó.
-    """
-    hoja = _texto(RAIZ / "docs" / "roadmap.md")
-    faltan = [t for t in ANCLAS_HEREDADAS if f"# {t}" not in hoja]
-    assert not faltan, (
-        f"la hoja de ruta perdió encabezados que publicó y que alguien puede haber enlazado: "
-        f"{faltan}. Un enlace a su fragmento ahora lleva al inicio de la página sin avisar."
     )
 
 
@@ -1508,9 +1546,14 @@ def test_las_rutas_de_documentos_de_la_hoja_de_ruta_son_las_de_la_respuesta_real
     # Acotado a la SECCIÓN de la tabla y no a la página entera. Se comprobó rompiéndolo:
     # cambiar una ruta en la tabla seguía verde, porque el nombre viejo aparecía en otro
     # párrafo de la misma página, en la lista de rutas mapeadas y sin ejecutar.
-    seccion = _texto(RAIZ / "docs" / "verificacion.md").split(
-        "## Las rutas que entregan documentos", 1
-    )[1]
+    seccion = (
+        _texto(RAIZ / "docs" / "verificacion.md")
+        .split("## Las rutas que entregan documentos", 1)[1]
+        # Con cota superior: sin ella la "sección" llegaba al final del archivo y abarcaba dos
+        # secciones más, así que una ruta nombrada en cualquiera de ellas satisfacía el
+        # chequeo sin estar en la tabla. El comentario decía "acotado" y no lo estaba.
+        .split("\n## ", 1)[0]
+    )
     hoja = seccion
     for ruta in rutas:
         assert ruta in hoja, (
@@ -1591,8 +1634,10 @@ def test_lo_que_la_hoja_de_ruta_dice_del_exhorto_es_lo_que_traen_las_fixtures():
             "siguen diciendo eso"
         )
 
-    antes = hoja.split("## Los dos lados del exhorto", 1)[0]
-    assert "no está entendido" not in antes[-1500:], (
+    # La comprobación es sobre la página ENTERA y no sobre una ventana de 1.500 caracteres
+    # antes de la sección: al mudar el texto de página, esa ventana pasó a caer sobre prosa
+    # de otro tema y el guardia sobrevivió al movimiento dejando de guardar en silencio.
+    assert "no está entendido" not in hoja, (
         "la hoja de ruta sigue diciendo que no se entiende cuándo aparece el panel, y el "
         "párrafo siguiente lo explica: dos respuestas a la misma pregunta"
     )

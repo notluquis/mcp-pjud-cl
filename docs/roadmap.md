@@ -270,10 +270,17 @@ Hoy la Historia sólo dice si una actuación tiene georreferencia. Detrás del m
 que esta página suponía. Lo medido está en {doc}`verificacion`.
 
 **Y trae fotos y videos.** El modal tiene tres pestañas: `mapasGeoRef`, `imagenesGeoRef` y
-`videosGeoRef`. En la actuación medida las dos últimas vienen vacías, pero existen, y una
-fotografía de una diligencia es un dato personal de terceros de otra categoría que un nombre:
-puede mostrar el interior de una vivienda o a quien la habita. Eso hay que decidirlo antes de
-escribir el código, no después.
+`videosGeoRef`. **Las seis actuaciones medidas traen las dos últimas vacías**, así que no hay
+ni una imagen observada todavía.
+
+Se anotó una vez que había que decidir si entregarlas, y esa duda estaba mal planteada: el
+proyecto ya entrega **RUT de personas naturales**, que identifica más que una fotografía, y lo
+justifica porque es lo que la plataforma publica y lo que identifica a una parte sin
+ambigüedad. Entregar lo que el Poder Judicial publica es lo que este servidor hace; la regla 5
+prohíbe **persistirlo**, que es otra cosa.
+
+Lo que sí sigue en pie, y es la regla 6: si alguna vez se guarda una respuesta con imágenes
+como fixture, esa fixture hay que anonimizarla igual que las demás.
 
 Cuesta **una petición por actuación**, con su intervalo. Para las ocho de receptor de
 E-468-2026 serían ocho peticiones más, así que va a pedido de una actuación concreta y nunca de
@@ -326,7 +333,7 @@ proyecto rechaza, aunque el dato sea público. Si se implementa, será con un ca
 justificado y no "porque se puede".
 
 **Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los diez
-buscadores que ofrece `juris.pjud.cl` sólo Corte Suprema está verificado, y cada uno declara
+buscadores que ofrece `juris.pjud.cl` hay tres verificados, y cada uno declara
 sus propios campos.
 
 ## Jurisprudencia: qué hay mapeado y qué falta
@@ -433,32 +440,86 @@ La hoja de ruta la mueve el uso real, no la lista de deseos del autor. Lo más �
 
 ## Dónde se fue lo que estaba acá
 
-Esta página tenía 1.159 líneas y era seis documentos. Los encabezados de abajo se conservan
+Esta página tenía 1.159 líneas y era seis documentos. Los anclajes de abajo se conservan
 porque un enlace publicado a `roadmap.html#...` seguiría existiendo y llevaría al inicio de la
 página **sin avisar**, que es peor que un 404: un enlace roto se nota y uno que va al lugar
 equivocado, no.
 
-### Qué está verificado y qué no
+Son objetivos explícitos y no encabezados: un encabezado por cada sección movida rearmaría el
+archivo que este corte vino a deshacer, y además `docutils` le pone un `id` a toda sección,
+así que también hacían falta los de nivel 4.
 
-Se movió a {doc}`verificacion`, junto con las tablas de lo medido.
+(endpoints-del-buscador-mapeados-y-sin-ejecutar)=
+(los-diez-buscadores)=
+(los-dos-lados-del-exhorto-medidos)=
+(mapeado-pero-nunca-ejecutado)=
+(sin-cubrir-del-todo)=
+(verificado-contra-el-sistema-real)=
+(verificado-solo-contra-fixtures)=
 
-### Jurisprudencia: qué hay mapeado y qué falta
+(que-esta-verificado-y-que-no)=
+(reglas-de-la-plataforma-ya-mapeadas)=
+(sobre-los-identificadores-de-causa-en-esta-documentacion)=
+### Se fueron a {doc}`verificacion`
 
-El estado de los diez buscadores se movió a {doc}`verificacion`. Lo que falta decidir sigue
-más abajo, en la hoja de ruta.
+- Endpoints del buscador, mapeados y sin ejecutar
+- Los diez buscadores
+- Los dos lados del exhorto, medidos
+- Mapeado pero nunca ejecutado
+- Sin cubrir del todo
+- Verificado contra el sistema real
+- Verificado sólo contra fixtures
 
-### Sobre los identificadores de causa en esta documentación
+(api-de-boostr)=
+(causalerta)=
+(competencias)=
+(del-mismo-catalogo-que-mas-sirve-y-que-se-rechaza)=
+(deteccion-de-cambios-el-diseno-que-ya-existe)=
+(el-calendario-de-dias-habiles-la-pieza-que-falta-para-cerrar-el-circulo)=
+(el-contexto-gremial)=
+(el-diseno-de-su-documentacion-y-que-se-copio)=
+(herramientas-chilenas-que-tocan-lo-mismo)=
+(jurisprudencia-lo-que-queda-del-buscador)=
+(las-diligencias-de-cobranza-no-publican-fecha)=
+(las-diligencias-de-cobranza-viven-en-su-propio-panel)=
+(lo-que-falta-medido)=
+(los-paneles-del-detalle-que-ya-llegan-y-se-tiran)=
+(modales-de-la-oficina-judicial-virtual-sin-usar)=
+(programacion-de-sala)=
+(que-se-toma-de-cada-una)=
+(servidores-mcp-juridicos)=
+(automatizador-legal)=
+(webscrapthings)=
 
-Se movió a {doc}`verificacion`.
+(que-mas-existe)=
+### Se fueron a {doc}`ecosistema`
 
-### Reglas de la plataforma ya mapeadas
+- API de Boostr
+- CausAlerta
+- Competencias
+- Del mismo catálogo: qué más sirve y qué se rechaza
+- Detección de cambios: el diseño que ya existe
+- El calendario de días hábiles: la pieza que falta para cerrar el círculo
+- El contexto gremial
+- El diseño de su documentación, y qué se copió
+- Herramientas chilenas que tocan lo mismo
+- Jurisprudencia: lo que queda del buscador
+- Las diligencias de cobranza no publican fecha
+- Las diligencias de cobranza viven en su propio panel
+- Lo que falta, medido
+- Los paneles del detalle que ya llegan y se tiran
+- Modales de la Oficina Judicial Virtual sin usar
+- Programación de Sala
+- Qué se toma de cada una
+- Servidores MCP jurídicos
+- `automatizador-legal`
+- `webscrapthings`
 
-Se movió a {doc}`verificacion`.
+(sobre-cii-best-practices)=
+(sobre-fuzzing)=
 
-### Qué más existe
+(hallazgos-de-openssf-scorecard-que-siguen-abiertos)=
+### Se fueron a {doc}`cumplimiento`
 
-Se movió a {doc}`ecosistema`, que es el análisis de las otras herramientas.
-
-### Hallazgos de OpenSSF Scorecard que siguen abiertos
-
-Se movieron a {doc}`cumplimiento`, que es donde vive la postura de seguridad.
+- Sobre `CII-Best-Practices`
+- Sobre `Fuzzing`

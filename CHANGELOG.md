@@ -19,8 +19,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 ### Cambiado
 
 - La hoja de ruta se partió en tres: lo medido va a `verificacion`, el ecosistema a
-  `ecosistema`, y queda un plan de versiones que por fin es eso. Los encabezados que se
-  movieron quedan como punteros, así que un enlace publicado a su fragmento sigue llegando.
+  `ecosistema`, y queda un plan de versiones que por fin es eso. Los 34 anclajes que la
+  página publicó se conservan, así que ningún enlace guardado a un fragmento queda apuntando
+  al vacío.
 
 ## [0.7.0] - 2026-08-20
 

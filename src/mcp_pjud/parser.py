@@ -516,8 +516,14 @@ class Actuacion(BaseModel):
         description="Año que suprema publica en columna aparte, además de la fecha.",
     )
     georreferenciado: bool = Field(
-        description="Si la actuación tiene registro georreferenciado (art. 9 inc. 3 "
-        "Ley 20.886). False significa AUSENTE, lo que puede ser jurídicamente relevante."
+        description="Si el sitio OFRECE la georreferencia de esta actuación, no si existe.\n\n"
+        "Está medido que no es lo mismo: el 20 de agosto de 2026, una de las seis actuaciones "
+        "georreferenciadas de C-1156-2026 abría un panel que responde 'No existen "
+        "Georreferencia para mostrar'. Verdadero significa que hay dónde preguntar, y "
+        "confirmarlo cuesta una petición por actuación.\n\n"
+        "Falso sí significa AUSENTE, y eso puede ser jurídicamente relevante (art. 9 inc. 3 "
+        "Ley 20.886). La asimetría es a propósito: el lado que se puede afirmar sin preguntar "
+        "es el que se afirma."
     )
     tiene_documento: bool = Field(description="Si el folio trae documento descargable.")
     documento_ruta: str | None = Field(

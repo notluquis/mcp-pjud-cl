@@ -18,10 +18,6 @@ Lo que se decidió hacer con esto, y en qué orden, está en la {doc}`hoja de ru
 
 ## Contra qué se verificó cada cosa
 
-Esta tabla es lo más importante de la página. Distingue tres cosas que suelen confundirse:
-lo que se probó **contra el sistema real**, lo que sólo se probó **contra fixtures**, y lo que
-está **mapeado en el código de la plataforma pero nunca ejecutado**.
-
 ### Verificado contra el sistema real
 
 | Qué | Cómo se verificó |
@@ -93,7 +89,8 @@ servidor expone.
 
 ### Los diez buscadores
 
-Sólo el primero está verificado. **Cada buscador declara sus propios campos**, y esa es la
+Tres de los diez están verificados, y la tabla de abajo dice cuáles. **Cada buscador declara
+sus propios campos**, y esa es la
 razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
 Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería
 campos vacíos en vez de un error, que es exactamente el falso negativo que el proyecto evita.
@@ -267,32 +264,31 @@ sobre la fixture, no de recordarlas.
 
 ## Qué devuelve la georreferencia
 
-Medido el 20 de agosto de 2026 sobre C-1156-2026. que tiene **seis**
-actuaciones georreferenciadas, tres en cada cuaderno:
+Medido el 20 de agosto de 2026 sobre C-1156-2026: **seis** actuaciones georreferenciadas
+entre los dos cuadernos, tres en cada uno, consultadas las seis.
 
-| Dato | Ejemplo medido |
+| Dato | Forma |
 |---|---|
 | Coordenadas | Latitud y longitud con siete decimales. **No se transcriben acá**: ver abajo |
-| Precisión | 6 metros |
-| **Fecha del dispositivo** | **`27-03-2026 17:40`** |
+| Precisión | En metros, con decimales. Medidas: 26,68 y 56,22 |
+| Fecha del dispositivo | Con hora. Medidas: `31-03-2026 10:34` y `30-03-2026 10:31` |
+| Intentos | Un entero. Medido: 1 |
+
+**Una de las seis no trae georreferencia**, y el panel lo dice con todas sus letras: *"No
+existen Georreferencia para mostrar"*. O sea el icono de la Historia significa que el sitio
+OFRECE preguntar, no que haya respuesta, y confirmarlo cuesta una petición por actuación. El
+contrato de `georreferenciado` se corrigió por esto.
+
+**La fecha del dispositivo es el hallazgo.** Este proyecto existe por la distinción entre la
+fecha de registro y la de diligencia. Ésta es una TERCERA fuente, la del aparato del ministro
+de fe, y es la única que trae **hora** en todo el proyecto: una fuente independiente con la que
+contrastar la que corre los plazos.
+
+Las coordenadas no se copian acá, y eso no es pudor: siete decimales sitúan un punto con
+precisión de centímetros, o sea el domicilio de una persona que es parte en un juicio, y
+versionarlo sería persistir un dato de terceros en el repositorio. Entregarlo por el protocolo
+es otra cosa, y es lo que este proyecto ya hace con el RUT.
 
 Hay seis rutas, una por competencia más una unificada, bajo `ADIR_nnn/<competencia>/modal/`. El
 parámetro es `valGeoRef` y la referencia viaja en el `onclick` de la celda, igual que la de los
-documentos, y es un token firmado del mismo tipo.
-
-**La fecha del dispositivo es el hallazgo, y no es un detalle.** Este proyecto existe por la
-distinción entre la fecha de registro y la de diligencia. Ésta es una TERCERA fuente, la del
-aparato del ministro de fe, y es la única que trae **hora**. En la actuación medida coincide con
-`fecha_diligencia`, que es lo que uno esperaría, y por eso mismo sirve: es una fuente
-independiente con la que contrastar la que corre los plazos.
-
-Si se implementa, `discrepancia_fechas` tendría que contemplarla, y la hora es dato nuevo que
-hoy no se entrega en ninguna parte.
-
-**Las coordenadas no se copian a esta página, y eso es parte del hallazgo.** Siete decimales
-sitúan un punto con precisión de centímetros: es la dirección exacta donde un ministro de fe
-practicó una diligencia en una causa real, o sea el domicilio de una persona que es parte en un
-juicio. Versionarlas acá sería persistir un dato de terceros en el repositorio, que es la regla
-5, y hacerlo en el archivo que explica por qué no se hace.
-
-Se describe la forma del dato, que es lo que hace falta para implementarlo, y no su valor.
+documentos y con el mismo tipo de token firmado.

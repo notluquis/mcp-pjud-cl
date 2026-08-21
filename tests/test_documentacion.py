@@ -1259,7 +1259,7 @@ def _parrafos_de_reglas(texto: str) -> dict[str, str]:
         (m.group(1), m.start())
         for m in re.finditer(r"(?:\*\*)?([1-5])\.\s\*?\*?[A-ZÁÉÍÓÚN]", plano)
     ]
-    for (numero, inicio), siguiente in zip(marcas, marcas[1:] + [(None, len(plano))], strict=True):
+    for (numero, inicio), siguiente in zip(marcas, [*marcas[1:], (None, len(plano))], strict=True):
         tramos.setdefault(numero, plano[inicio : siguiente[1]])
     return tramos
 

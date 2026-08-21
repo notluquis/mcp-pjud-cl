@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Qué permite y qué no la licencia PolyForm Strict, y qué hace falta para contribuir."
+---
+
 # Licencia: qué se eligió y qué se descartó
 
 El proyecto usa [PolyForm Strict 1.0.0](https://polyformproject.org/licenses/strict/1.0.0).

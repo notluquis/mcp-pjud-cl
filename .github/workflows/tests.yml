@@ -88,6 +88,18 @@ jobs:
       - name: Tipos
         run: uv run ty check
 
+      # `cog` deja el resultado ESCRITO en el `.md`, así que el archivo se lee igual en GitHub
+      # y los guardias siguen teniendo qué comparar. Lo que esto verifica es que no se haya
+      # editado a mano el bloque generado NI cambiado la fuente sin regenerar: medido, las dos
+      # cosas salen con 5. El comando para arreglarlo va en el mensaje, porque el error de
+      # `cog` no lo dice.
+      - name: Bloques generados en la documentación
+        run: |
+          uv run cog --check README.md docs/instalacion.md || {
+            echo "::error::La configuración de ejemplo quedó desincronizada. Correr: uv run cog -r README.md docs/instalacion.md"
+            exit 1
+          }
+
       - name: Documentación
         # `-W` convierte los avisos en errores, y sin eso una reorganización rota pasa: se
         # midió sacando una página del `toctree` y dejando dos referencias muertas, y el

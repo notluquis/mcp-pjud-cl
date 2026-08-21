@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Referencia de las once herramientas MCP, sus parámetros y cada campo que devuelven."
+---
+
 # Referencia de herramientas
 
 Las cinco están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.

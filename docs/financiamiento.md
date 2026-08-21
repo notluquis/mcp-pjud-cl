@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Quién paga esto y qué compromisos vienen con eso."
+---
+
 # Financiamiento
 
 Este proyecto lo mantiene una persona en su tiempo libre. Si te sirve y quieres apoyarlo, hay

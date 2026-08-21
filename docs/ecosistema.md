@@ -1,7 +1,7 @@
 ---
 myst:
   html_meta:
-    description: Qué cubren las otras herramientas que consultan el Poder Judicial de Chile, qué se tomó de cada una y qué se dejó fuera a propósito.
+    description: "Qué cubren las otras herramientas que consultan el Poder Judicial de Chile, qué se tomó de cada una y qué se dejó fuera a propósito."
 ---
 
 # Qué más existe

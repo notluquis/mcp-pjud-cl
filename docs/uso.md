@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Qué significa cada campo de la respuesta y cuándo desconfiar de ella. Para quien va a computar un plazo con esto."
+---
+
 # Cómo se usa e interpreta
 
 Esta página no tiene código. Si quieres instalarlo, pásale la {doc}`guía de instalación <instalacion>` a quien administre tus sistemas.

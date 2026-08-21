@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Qué se va a hacer y en qué orden, con lo que se decidió no hacer y por qué. Para quien evalúa hacia dónde va."
+---
+
 # Hoja de ruta y estado de verificación
 
 ## Versionado

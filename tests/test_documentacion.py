@@ -153,7 +153,7 @@ PAGINAS_CON_LA_MEDICION = (
 )
 
 
-#: Las dos páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
+#: Las tres páginas entre las que se repartió la hoja de ruta al partirla. Los guardias que
 #: antes miraban `roadmap.md` miran las dos, y eso es a propósito: anclarlos sólo a la página
 #: nueva cubriría MENOS que antes, porque nada impediría reponer la afirmación vieja en la que
 #: se quedó con el nombre. La regla del corte es que el dato medido vive en una sola, no que el
@@ -675,13 +675,22 @@ def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
     # imposibles. Donde se cite la típica tiene que estar el peor caso al lado, porque es el
     # que justifica cuánto esperar antes de dar una consulta por perdida.
     peor = coma(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)
+
     # El changelog queda fuera a propósito: registra lo que era cierto en cada versión, así que
     # una entrada vieja que cita los 47,8 s no está desactualizada, está fechada. Actualizarla
     # para que pase este guardia sería falsear el registro.
+    #
+    # Su sección SIN PUBLICAR es otra cosa y sí se mira: todavía no fechó nada, así que una
+    # cifra a medias entrando ahí es una cifra a medias que se va a publicar. Excluir el
+    # archivo entero la dejaba pasar.
+    def fechada(p) -> bool:
+        if p.name != "CHANGELOG.md":
+            return False
+        sin_publicar = _texto(p).split("## [No publicado]", 1)[-1].split("\n## [", 1)[0]
+        return peor in _texto(p) or busqueda not in sin_publicar
+
     sin_el_peor = [
-        str(p.relative_to(RAIZ))
-        for p in citan
-        if peor not in _texto(p) and p.name != "CHANGELOG.md"
+        str(p.relative_to(RAIZ)) for p in citan if peor not in _texto(p) and not fechada(p)
     ]
     # El diagrama de la detención total cita el peor caso para justificar por qué un timeout
     # NO detiene el proceso. Es un dato repetido más, y si el techo se vuelve a medir hay que
@@ -2060,6 +2069,11 @@ def test_las_entradas_del_registro_de_cambios_no_pasan_de_dos_frases():
             actual = [linea[2:]]
         elif actual and linea.startswith("  "):
             actual.append(linea.strip())
+        elif actual and not linea.strip():
+            # Una línea en blanco NO cierra la viñeta: puede venir un segundo párrafo indentado.
+            # Cerrarla acá era como se colaban las entradas de dos párrafos, que sumaban cuatro
+            # frases y pasaban como dos.
+            actual.append("")
         else:
             if actual:
                 viñetas.append(" ".join(actual))

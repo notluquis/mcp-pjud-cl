@@ -32,6 +32,7 @@ from .parser import (
     Corte,
     DetalleCausa,
     EstructuraInesperada,
+    Georreferencia,
     Liquidacion,
     Notificacion,
     Tribunal,
@@ -42,6 +43,7 @@ from .parser import (
     leer_aviso,
     parse_cuadernos,
     parse_exhortos,
+    parse_georreferencia,
     parse_historia,
     parse_liquidaciones,
     parse_litigantes,
@@ -255,6 +257,20 @@ CORTES_MEDIDAS = 17
 #: módulos, y una tabla plana dejaría pedir el de civil bajo el prefijo de cobranza.
 #:
 #: `penal` no aparece: su detalle no emite ningún formulario de documentos.
+#: El modal de georreferencia de cada competencia. Sale del JavaScript de la plataforma, que
+#: declara seis rutas: una por competencia más una unificada que este proyecto no usa, porque
+#: la referencia viene de una fila que ya sabe de qué competencia es.
+#:
+#: `suprema` no está porque su tabla de Historia no publica la columna de georreferencia, así
+#: que no hay referencia que pedir. Eso se deriva de `COMPETENCIAS` y no se escribe acá.
+GEORREFERENCIA: dict[str, str] = {
+    "civil": "civil/modal/geoReferenciaCivil.php",
+    "cobranza": "cobranza/modal/geoReferenciaCobranza.php",
+    "laboral": "laboral/modal/geoReferenciaLaboral.php",
+    "apelaciones": "apelaciones/modal/geoReferenciaApelaciones.php",
+    "penal": "penal/modal/geoReferenciaPenal.php",
+}
+
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {
         "docu.php": "valorEncTxtDmda",
@@ -773,6 +789,43 @@ class PjudClient(Transporte):
                 "nombre de los campos."
             )
         return tribunales
+
+    def georreferencia(self, referencia: str, competencia: str = "civil") -> Georreferencia:
+        """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
+
+        La referencia la entrega cada actuación en `georreferencia_referencia`. Cuesta UNA
+        petición por actuación, con su intervalo, así que se pide de a una y nunca de barrido:
+        para las seis georreferenciadas de una causa de dos cuadernos serían seis peticiones
+        más sobre las seis que ya costó leerla.
+
+        Tener referencia no garantiza que haya georreferencia: está medido que una de seis
+        abre un panel que responde que no existe ninguna. Eso vuelve con `existe=False` y no
+        como error, porque un error se leería como que no se pudo consultar.
+        """
+        nombre = competencia.lower()
+        ruta = GEORREFERENCIA.get(nombre)
+        if ruta is None:
+            raise EstructuraInesperada(
+                f"{competencia!r} no publica la columna de georreferencia en su tabla de "
+                f"Historia, así que no hay referencia que pedir. La publican: "
+                f"{', '.join(sorted(GEORREFERENCIA))}."
+            )
+        if not referencia:
+            raise EstructuraInesperada(
+                "Falta la referencia de la georreferencia. La entrega cada actuación en "
+                "`georreferencia_referencia`, y cuando viene nula esa actuación no la ofrece."
+            )
+        return parse_georreferencia(
+            self._req(
+                "POST",
+                f"{BASE}/{self._prefijo()}/{ruta}",
+                data={"valGeoRef": referencia},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE}/consultaUnificada.php",
+                },
+            ).text
+        )
 
     # -- sesión -----------------------------------------------------------------
 

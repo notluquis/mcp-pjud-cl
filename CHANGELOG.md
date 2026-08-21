@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Herramienta `obtener_georreferencia`: dónde y cuándo el ministro de fe registró que practicó
+  una diligencia. Trae la única hora del proyecto, que es una tercera fuente para contrastar la
+  fecha que corre los plazos.
+
 ### Cambiado
 
 - El bloque de configuración que se pega en el cliente MCP se genera desde un solo lugar: eran

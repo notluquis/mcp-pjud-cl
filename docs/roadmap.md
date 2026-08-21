@@ -270,7 +270,9 @@ guarda sin usarla: `detalleExhortos.php` sigue mapeado y sin ejecutar, y cuando 
 ya está. **No sirve como identidad**: el mismo exhorto llega con una referencia distinta en
 cada cuaderno, así que la deduplicación las ignora a propósito.
 
-### 0.7b: la georreferencia — medida, y trae una tercera fecha
+(07b-la-georreferencia-medida-y-trae-una-tercera-fecha)=
+
+### 0.7b: la georreferencia — hecha
 
 Hoy la Historia sólo dice si una actuación tiene georreferencia. Detrás del modal hay más de lo
 que esta página suponía. Lo medido está en {doc}`verificacion`.

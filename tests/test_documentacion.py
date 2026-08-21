@@ -259,6 +259,9 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
         # Ofrece las que emiten formularios de descarga. `penal` no emite ninguno, así que no
         # hay ruta que ofrecerle: la llamada se rechaza siempre. Guardia propio abajo.
         "obtener_documento",
+        # Ofrece las que publican la columna de georreferencia en su Historia. Suprema no la
+        # publica, así que para ella nunca va a haber una referencia que pedir.
+        "obtener_georreferencia",
     }
     descripciones = [
         p.get("description", "")

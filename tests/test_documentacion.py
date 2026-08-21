@@ -131,6 +131,8 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     lista = seccion[1].split("\n\n")[2]
     for canal in ("tiene_anexo", "listadoAudioLaboral", "expedienteApe", "IncompetenciaApe"):
         assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
+
+
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
     """`ocultas` cubre lo reservado, no lo que no se pidió. La referencia llegó a decir que
     la lista era un subconjunto sólo si `ocultas` era mayor que cero, y con eso una búsqueda

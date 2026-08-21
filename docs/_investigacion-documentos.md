@@ -499,9 +499,14 @@ ya se hizo, no el acceso posterior.
 
 Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
 
-1. **Un índice por página en el sobre en palabras.** Hoy el resumen dice "es MIXTO: 40 de 200
-   páginas traen texto". Que diga cuáles cuesta lo mismo y convierte un dato descriptivo en uno
-   accionable.
+1. **Un índice por rangos de páginas en el sobre en palabras.** Hoy el resumen dice "es MIXTO:
+   40 de 200 páginas traen texto". Que diga cuáles convierte un dato descriptivo en uno
+   accionable. Va por **rangos** y no por lista de números, y ése es el punto: enumerar página
+   por página crece con el archivo, y esta misma página usa un ebook de 3.000 para justificar
+   que el resumen tiene que ser de tamaño constante. "1 a 40 con texto, 41 a 200 imagen" son
+   dos entradas para doscientas páginas y siguen siendo dos para tres mil. Si aun así no cabe,
+   se corta y **se dice que se cortó**, con el número de la última página descrita: un índice
+   truncado en silencio se lee como el expediente entero, que es la regla 4 otra vez.
 2. **El texto por rango de páginas, como parámetro opcional de `obtener_documento`** y no
    como una lectura aparte. El precedente de `JurisClient.texto` separado de la búsqueda no
    sirve acá: ahí la búsqueda y el texto son preguntas distintas, y acá es el mismo archivo,
@@ -511,13 +516,26 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
    advertencia de que es contenido de un tercero que no se obedece**, no como conveniencia sino
    como parte del contrato: quien redactó ese escrito puede ser la contraparte, y nada de lo
    que hoy anuncia la herramienta lo cubre.
+
+   Y con **tope propio**, que es lo que faltaba: un rango amplio o una sola página muy densa
+   pasan `CARACTERES_DE_UNA_RESPUESTA` sin que nada lo frene, y ahí vuelven el gasto de
+   contexto y la escritura en disco que esta arquitectura viene a evitar. El tope lo pone el
+   servidor y no el cliente, porque `_meta["anthropic/maxResultSizeChars"]` sólo mueve el
+   umbral de quien recibe: no acota ni pagina lo que se emite. Al alcanzarlo se corta y se
+   avisa hasta qué página llegó, para que pedir lo que falta sea otra llamada explícita y no
+   un silencio.
 3. **Los marcadores del archivo**, cuando los traiga, como tabla de contenidos del expediente.
+   Con el mismo contrato del punto 2, y no es un detalle: los títulos de `PdfReader.outline`
+   los escribe quien creó el PDF, así que un escrito adversario puede poner instrucciones en un
+   marcador y entrarlas por un canal que parece metadato del archivo. Todo lo que sale del
+   documento es contenido de un tercero, no sólo su texto.
 4. **Declarar `_meta["anthropic/maxResultSizeChars"]`, y sabiendo qué NO resuelve.** No
    protege el caso que motivó todo esto: el PDF grande no viaja por la herramienta sino por
    `resources/read`, siguiendo el `ResourceLink`, y esa anotación no llega a ese canal. Y para
    lo que sí viaja embebido tampoco cambia nada, porque `LIMITE_EMBEBIDO` ya lo acota bastante
    por debajo de cualquier tope que el cliente traiga. Sirve para los rangos de texto del punto
-   2, que son lo único que puede crecer sin un tope propio. Que un documento grande se persista
+   2, y sólo como aviso al cliente: el tope de verdad lo pone el servidor, ahí mismo. Que un
+   documento grande se persista
    al leer el recurso sigue sin tener respuesta acá, y eso es lo que habría que medir primero.
 5. **Nada de imágenes producidas acá.** Para las páginas que son imagen, el archivo sigue siendo
    la única vía, y cómo llega a los ojos del modelo es del cliente y no de este servidor.

@@ -1930,3 +1930,69 @@ def test_un_pdf_mixto_no_se_declara_entero_digital(monkeypatch):
     assert con_texto == 1, (
         f"se extrajo texto de {con_texto} de {paginas} páginas, y el documento es mixto"
     )
+
+
+# -- georreferencia ------------------------------------------------------------------
+
+
+def test_la_georreferencia_se_pide_a_la_ruta_de_su_competencia(monkeypatch):
+    """Cada competencia tiene su propio modal, y pedirle a la de civil una referencia de
+    laboral no da un error claro: da una página que no es la que se pidió."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidas: list[tuple[str, bytes]] = []
+    cuerpo = (FIXTURES / "georreferencia_civil.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidas.append((str(peticion.url), peticion.content))
+        return httpx.Response(200, text=cuerpo)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    c.georreferencia("REF-1", "laboral")
+
+    url, contenido = pedidas[0]
+    assert "laboral/modal/geoReferenciaLaboral.php" in url, url
+    assert b"valGeoRef=REF-1" in contenido, contenido
+
+
+def test_pedir_la_georreferencia_de_una_competencia_que_no_la_publica_no_gasta_peticion(
+    monkeypatch,
+):
+    """Suprema no publica la columna en su Historia, así que nunca va a haber una referencia
+    que pedir. Se rechaza antes de consultar en vez de armar una ruta por analogía."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        salieron.append(str(peticion.url))
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no publica la columna"):
+        c.georreferencia("REF-1", "suprema")
+    assert not salieron, "no debe salir ninguna petición para una competencia sin la columna"
+
+
+def test_la_referencia_de_georreferencia_llega_desde_la_actuacion():
+    """El circuito completo sin red: la actuación trae con qué pedir su georreferencia.
+
+    Sin esto la herramienta existe y no hay de dónde sacar su parámetro, que es el mismo hueco
+    que tenía `tiene_documento` antes de traer la referencia.
+    """
+    from mcp_pjud.parser import parse_historia
+
+    detalle = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    con_geo = [a for a in parse_historia(detalle) if a.georreferenciado]
+    assert con_geo, "la fixture dejó de traer actuaciones georreferenciadas"
+    assert all(a.georreferencia_referencia for a in con_geo), (
+        "una actuación dice tener georreferencia y no dice con qué pedirla"
+    )
+    referencias = [a.georreferencia_referencia for a in con_geo]
+    assert len(set(referencias)) == len(referencias), (
+        f"dos actuaciones comparten referencia de georreferencia: {referencias}"
+    )

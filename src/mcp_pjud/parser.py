@@ -533,6 +533,13 @@ class Actuacion(BaseModel):
         description="Qué ruta de la plataforma entrega ese documento. Cada competencia usa la "
         "suya. NULO cuando la actuación no trae documento.",
     )
+    georreferencia_referencia: str | None = Field(
+        default=None,
+        description="Con qué se pide la georreferencia de esta actuación. NULO cuando la "
+        "competencia no publica la columna o la actuación no la ofrece.\n\n"
+        "Tenerla no garantiza que haya georreferencia: está medido que una de seis abre un "
+        "panel que responde que no existe ninguna.",
+    )
     documento_referencia: str | None = Field(
         default=None,
         description="La referencia opaca con la que la plataforma identifica ese documento. "
@@ -658,6 +665,22 @@ def _filas_del_panel(html_detalle: str, spec: Panel) -> Iterator[tuple[list, dic
 #: llevan `$(this).closest("form").submit()`: de ahí sacaba `"form"` como si fuera la
 #: referencia del documento. Un valor plausible y falso, que es peor que no traer ninguno.
 _REFERENCIA_EN_MODAL = re.compile(r"^\s*([A-Za-z_]\w*)\(\s*['\"]([^'\"]+)['\"]\s*\)\s*;?\s*$")
+
+
+def _referencia_en_modal(celda, funcion: str) -> str | None:
+    """La referencia que una celda pasa a un modal de JavaScript.
+
+    El sitio abre varios paneles así: `geoReferencia('...')`, `detalleExhortosCivil('...')`.
+    Se exige el nombre de la función y no cualquier llamada, porque los enlaces que envían un
+    formulario llevan `$(this).closest("form").submit()` y de ahí salía `"form"` como si fuera
+    una referencia: un valor plausible y falso.
+    """
+    patron = re.compile(rf"^\s*{re.escape(funcion)}\w*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*;?\s*$")
+    for elemento in celda.iter():
+        m = patron.match(elemento.get("onclick") or "")
+        if m:
+            return m.group(1)
+    return None
 
 
 def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
@@ -793,6 +816,11 @@ def _fila_a_actuacion(
             bool(celdas[columnas.index("georref")].xpath(".//a"))
             if "georref" in columnas
             else False
+        ),
+        georreferencia_referencia=(
+            _referencia_en_modal(celdas[columnas.index("georref")], "geoReferencia")
+            if "georref" in columnas
+            else None
         ),
         tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
         documento_ruta=documento[0],
@@ -990,6 +1018,52 @@ class Exhorto(BaseModel):
         default=None,
         description="La referencia con la que la plataforma abre el detalle de este exhorto. "
         "Se guarda para cuando ese panel esté medido: hoy no hay herramienta que la use.",
+    )
+
+
+class Georreferencia(BaseModel):
+    """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
+
+    Es el registro del art. 9 inc. 3 de la Ley 20.886, y trae algo que no hay en ninguna otra
+    parte de la respuesta: la **hora**. Las dos fechas de la Historia son del día, y ésta viene
+    del aparato con que se tomó la coordenada.
+
+    Eso la vuelve una TERCERA fuente sobre cuándo ocurrió la diligencia, independiente de las
+    dos que el sitio publica en la tabla. No reemplaza a `fecha_diligencia`, que es la que
+    corre los plazos: sirve para contrastarla.
+
+    Trae coordenadas de un domicilio de terceros. Se entregan porque son lo que la plataforma
+    publica y lo que hace útil el registro, con el mismo criterio que el RUT de los litigantes,
+    y por eso mismo no se guardan en este repositorio.
+    """
+
+    existe: bool = Field(
+        description="Falso cuando la actuación ofrece georreferencia y el panel responde que "
+        "no hay ninguna. Está medido: una de seis. En ese caso los demás campos vienen nulos, "
+        "y eso NO es lo mismo que no haber preguntado."
+    )
+    latitud: float | None = Field(default=None, description="Latitud, como la publica el sitio.")
+    longitud: float | None = Field(default=None, description="Longitud, como la publica el sitio.")
+    precision_metros: float | None = Field(
+        default=None,
+        description="Radio de incertidumbre en metros. Medidas en una sola causa: 6,0 · 10,04 "
+        "· 26,68 · 56,22 y 103,13.\n\n"
+        "Informarla SIEMPRE junto con las coordenadas. Un radio de 103 metros abarca una "
+        "manzana entera en zona urbana, así que ahí la coordenada dice el sector y no la "
+        "puerta, y presentarla como una dirección exacta es afirmar de más.",
+    )
+    fecha_dispositivo: date | None = Field(
+        default=None,
+        description="Cuándo el aparato tomó la coordenada. Es la ÚNICA fecha del proyecto que "
+        "viene con hora, y es una fuente independiente de las dos de la Historia.",
+    )
+    hora_dispositivo: time | None = Field(
+        default=None, description="La hora de esa toma, que ninguna otra fecha del proyecto trae."
+    )
+    intentos: int | None = Field(
+        default=None,
+        description="Cuántas veces el aparato intentó fijar la posición, según el sitio. Sin "
+        "medir qué significa un número alto.",
     )
 
 
@@ -1290,6 +1364,69 @@ def _estado_de_parte(celdas, columnas: tuple[str, ...]) -> str | None:
         "La columna de estado de la parte existe y no trae ni texto ni un icono reconocible. "
         "El sitio cambió cómo la publica. No se devuelve nulo porque nulo significa que la "
         "competencia no informa el dato, y ésta sí lo informa."
+    )
+
+
+#: Lo que el panel responde cuando la actuación ofrece georreferencia y no hay ninguna. Medido
+#: sobre una de las seis actuaciones georreferenciadas de C-1156-2026.
+_SIN_GEORREFERENCIA = "no existen georreferencia"
+
+#: Los tres datos que el panel escribe como texto, con las tildes que el sitio emite.
+_DATOS_GEO = re.compile(
+    r"coordenada:\s*(\d{2}-\d{2}-\d{4})\s*(\d{1,2}:\d{2}).*?"
+    r"Precisi[oó]n:\s*([\d.,]+).*?"
+    r"Intentos:\s*(\d+)",
+    re.S | re.I,
+)
+
+
+def parse_georreferencia(html_modal: str) -> Georreferencia:
+    """Lee el panel de georreferencia de UNA actuación.
+
+    No recibe competencia: el panel es el mismo en las cinco rutas que lo publican, y lo que
+    cambia entre ellas es la ruta, no la respuesta. Eso está medido sólo en civil, así que si
+    alguna difiere, lo que corresponde es que este parser levante y no que adivine.
+    """
+    doc = html.fromstring(html_modal)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+    plano = " ".join(doc.text_content().split())
+
+    if _SIN_GEORREFERENCIA in plano.lower():
+        # No es un error: la actuación ofrecía el panel y el panel dice que no hay nada. Se
+        # informa como tal, porque un error se leería como que no se pudo consultar.
+        return Georreferencia(existe=False)
+
+    valores = {
+        e.get("id"): (e.get("value") or "").strip()
+        for e in doc.iter("input")
+        if e.get("id") in ("latitud", "longitud")
+    }
+    if not valores.get("latitud") or not valores.get("longitud"):
+        raise EstructuraInesperada(
+            "El panel de georreferencia no dice que esté vacío y tampoco trae latitud y "
+            "longitud. La estructura del sitio cambió. No se devuelve una georreferencia sin "
+            "coordenadas porque se leería como que la diligencia no se ubicó."
+        )
+
+    m = _DATOS_GEO.search(plano)
+    if not m:
+        raise EstructuraInesperada(
+            "El panel de georreferencia trae coordenadas y no la fecha del dispositivo, la "
+            "precisión ni los intentos. Entregar la ubicación sin cuándo se tomó ni con qué "
+            "margen es la mitad del dato, y es la mitad que no permite contrastar un plazo."
+        )
+    fecha, hora, precision, intentos = m.groups()
+    return Georreferencia(
+        existe=True,
+        latitud=float(valores["latitud"]),
+        longitud=float(valores["longitud"]),
+        precision_metros=float(precision.replace(",", ".")),
+        # El panel escribe la fecha con guiones y el resto del sitio con barras. Se normaliza
+        # acá y no en `_fecha`, porque ese ayudante lee las fechas de las tablas y aflojarlo
+        # haría que aceptara formatos que esas tablas nunca emiten.
+        fecha_dispositivo=_fecha(fecha.replace("-", "/")),
+        hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
+        intentos=int(intentos),
     )
 
 

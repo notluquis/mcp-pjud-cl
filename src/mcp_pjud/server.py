@@ -26,6 +26,7 @@ from .client import (
     CON_TRIBUNAL,
     DESCRIPCION,
     DOCUMENTOS,
+    GEORREFERENCIA,
     INTERVALO_MINIMO,
     LIMITE_EMBEBIDO,
     MODULOS,
@@ -48,7 +49,7 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, DetalleCausa
+from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, DetalleCausa, Georreferencia
 
 #: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
 #: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
@@ -238,6 +239,18 @@ CompetenciaConTribunal = Annotated[
         description=f"Una de: {', '.join(_CON_TRIBUNAL)}. Son las que se acotan por tribunal, "
         "o sea aquellas donde este listado sirve para buscar. Suprema no tiene tribunales "
         "debajo y apelaciones se acota por corte."
+    ),
+]
+
+#: Las competencias cuya tabla de Historia publica la columna de georreferencia. Se deriva de
+#: `parser.COMPETENCIAS` y no se escribe a mano: suprema no la publica, y ofrecerla haría que
+#: el modelo intente una llamada para la que nunca va a tener referencia.
+_CON_GEORREFERENCIA = sorted(n for n in MODULOS if n in GEORREFERENCIA)
+CompetenciaConGeorreferencia = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_GEORREFERENCIA)}. Son las que publican la "
+        "columna de georreferencia en su tabla de Historia. Suprema no la publica."
     ),
 ]
 
@@ -663,6 +676,46 @@ def obtener_documento(
             size=doc.tamano_bytes,
         )
     return [TextContent(type="text", text=_resumen(doc, embebido)), entrega]
+
+
+@mcp.tool(
+    title="Dónde y cuándo se practicó una diligencia",
+    annotations=SOLO_LECTURA,
+)
+def obtener_georreferencia(
+    georreferencia_referencia: Annotated[
+        str,
+        Field(
+            description="Lo entrega cada actuación en `georreferencia_referencia`. Cuando esa "
+            "viene nula, la actuación no ofrece georreferencia y no hay nada que pedir."
+        ),
+    ],
+    competencia: CompetenciaConGeorreferencia = "civil",
+) -> Georreferencia:
+    """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
+
+    Es el registro del art. 9 inc. 3 de la Ley 20.886, y trae algo que no hay en ninguna otra
+    parte de la respuesta: la HORA. Las dos fechas de la Historia son del día; ésta viene del
+    aparato con que se tomó la coordenada.
+
+    Eso la vuelve una TERCERA fuente sobre cuándo ocurrió la diligencia, independiente de las
+    dos que el sitio publica. NO reemplaza a `fecha_diligencia`, que es la que corre los
+    plazos: sirve para contrastarla, y si no coinciden hay que informarlo, no elegir.
+
+    Cuesta UNA petición por actuación. Pedirla para todas las de una causa multiplica las
+    consultas contra la plataforma: se pide de la actuación concreta que importa.
+
+    `existe: false` significa que la actuación la ofrecía y el panel respondió que no hay
+    ninguna. Está medido: una de seis. No es lo mismo que no haber preguntado.
+
+    Informar SIEMPRE `precision_metros` junto con las coordenadas. Está medido que varía entre
+    6 y 103 metros en una misma causa, y con 103 la coordenada dice el sector y no la puerta:
+    presentarla como una dirección exacta es afirmar de más.
+
+    Trae las coordenadas de un domicilio de terceros, igual que los litigantes traen su RUT.
+    """
+    with _cliente() as c:
+        return c.georreferencia(georreferencia_referencia, competencia)
 
 
 @mcp.tool(

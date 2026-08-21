@@ -1,0 +1,33 @@
+<!--
+  Respuesta del modal de georreferencia, con la FORMA medida el 20 de agosto de 2026 y valores
+  inventados. No es un recorte de una respuesta real, y no por comodidad: siete decimales de
+  latitud sitúan un punto con precisión de centímetros, o sea el domicilio donde un ministro de
+  fe practicó una diligencia en una causa real. Guardarlo sería persistir un dato de terceros
+  en el repositorio, que es la regla 5, y anonimizarlo no serviría: unas coordenadas cambiadas
+  ya no son las coordenadas.
+
+  La forma sí es la real, verificada contra la respuesta sin transcribir sus valores: tres
+  `input` ocultos por id, y el resto en el texto del panel de mapas.
+-->
+<div class="panel panel-default">
+  <div class="panel-body">
+    <input type="hidden" value="-11.1111111" name="latitud" id="latitud">
+    <input type="hidden" value="-22.2222222" name="longitud" id="longitud">
+    <input type="hidden" value="0" name="corrector" id="corrector">
+    <ul class="nav nav-tabs">
+      <li><a href="#mapasGeoRef" data-toggle="tab">Mapas</a></li>
+      <li><a href="#imagenesGeoRef" data-toggle="tab">Im&aacute;genes</a></li>
+      <li><a href="#videosGeoRef" data-toggle="tab">Videos</a></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane active" id="mapasGeoRef">
+        <div id="map-canvas"></div>
+        *Fecha dispositivo coordenada: &nbsp;31-03-2026 &nbsp;10:34 &nbsp;
+        *Precisi&oacute;n: &nbsp;26.68 &nbsp;metros &nbsp;
+        *Intentos: &nbsp;1
+      </div>
+      <div class="tab-pane" id="imagenesGeoRef"></div>
+      <div class="tab-pane" id="videosGeoRef"></div>
+    </div>
+  </div>
+</div>

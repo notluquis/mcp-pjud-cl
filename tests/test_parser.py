@@ -5,6 +5,7 @@ secuencia completa de actuaciones (búsquedas negativas, certificación positiva
 notificación exitosa y requerimiento ficto), todas con formato de fecha doble.
 """
 
+import re
 from datetime import date, time
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from mcp_pjud.parser import (
     causa_es_exhorto,
     parse_cuadernos,
     parse_exhortos,
+    parse_georreferencia,
     parse_historia,
     parse_liquidaciones,
     parse_litigantes,
@@ -1293,3 +1295,58 @@ def test_el_falso_de_georreferenciado_no_significa_lo_mismo_en_todas_las_compete
     assert all(not a.georreferenciado for a in suprema), (
         "en suprema el campo sólo puede ser falso, y por ausencia de columna"
     )
+
+
+# -- georreferencia ------------------------------------------------------------------
+
+GEO = (FIXTURES / "georreferencia_civil.html").read_text(encoding="utf-8")
+GEO_VACIA = (FIXTURES / "georreferencia_vacia.html").read_text(encoding="utf-8")
+
+
+def test_la_georreferencia_trae_la_unica_hora_del_proyecto():
+    """Las dos fechas de la Historia son del día. Ésta viene del aparato con que se tomó la
+    coordenada, así que es una tercera fuente sobre cuándo ocurrió la diligencia.
+
+    Perder la hora al leerla sería quedarse con lo que ya se tenía.
+    """
+    g = parse_georreferencia(GEO)
+
+    assert g.existe
+    assert (g.latitud, g.longitud) == (-11.1111111, -22.2222222)
+    assert g.precision_metros == 26.68
+    assert g.fecha_dispositivo == date(2026, 3, 31)
+    assert g.hora_dispositivo == time(10, 34)
+    assert g.intentos == 1
+
+
+def test_una_actuacion_sin_georreferencia_se_distingue_de_no_haber_preguntado():
+    """Medido: de las seis actuaciones georreferenciadas de C-1156-2026, una abre un panel que
+    responde que no existe ninguna.
+
+    Vuelve como dato y no como error, porque un error se leería como que no se pudo consultar,
+    y eso llevaría a reintentar contra la plataforma por algo que ya respondió.
+    """
+    g = parse_georreferencia(GEO_VACIA)
+
+    assert g.existe is False
+    assert g.latitud is None
+    assert g.fecha_dispositivo is None
+
+
+def test_un_panel_con_coordenadas_y_sin_fecha_levanta():
+    """Entregar la ubicación sin cuándo se tomó ni con qué margen es la mitad del dato, y es la
+    mitad que no permite contrastar un plazo."""
+    sin_texto = re.sub(r"\*Fecha dispositivo.*?\*Intentos: &nbsp;1", "", GEO, flags=re.S)
+    assert sin_texto != GEO
+
+    with pytest.raises(EstructuraInesperada, match="fecha del dispositivo"):
+        parse_georreferencia(sin_texto)
+
+
+def test_un_panel_sin_coordenadas_y_sin_el_aviso_levanta():
+    """Si el sitio deja de emitir latitud y longitud y tampoco dice que no hay georreferencia,
+    devolver una georreferencia sin coordenadas se leería como que la diligencia no se ubicó."""
+    sin_coords = GEO.replace('id="latitud"', 'id="otro"').replace('id="longitud"', 'id="otro2"')
+
+    with pytest.raises(EstructuraInesperada, match="latitud y"):
+        parse_georreferencia(sin_coords)

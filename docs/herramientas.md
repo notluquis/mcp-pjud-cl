@@ -238,6 +238,7 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `estado_firma` | str \| null | Estado de firma del trámite. Cobranza lo publica en lugar de la foja; civil no lo trae |
 | `correlativo` | str \| null | Correlativo interno del trámite. Sólo en suprema |
 | `anio_tramite` | str \| null | Año que suprema publica en columna aparte, además de la fecha |
+| `georreferencia_referencia` | str \| null | Con qué se pide la georreferencia de esta actuación |
 | `tiene_documento` | bool | Si el folio trae documento descargable |
 | `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
 | `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
@@ -356,6 +357,54 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 | `corte` | int, opcional | **Omitir salvo certeza** |
 
 ```{include} _generado/obtener_detalle_causa.md
+```
+
+## `obtener_georreferencia`
+
+Dónde y cuándo el ministro de fe registró que practicó una diligencia. Es el registro del
+art. 9 inc. 3 de la Ley 20.886.
+
+| Parámetro | Qué es |
+|---|---|
+| `georreferencia_referencia` | Lo entrega cada actuación. Cuando viene nula, esa actuación no la ofrece |
+| `competencia` | Sólo las que publican la columna. Suprema no la publica |
+
+:::{important} Trae la única hora del proyecto
+Las dos fechas de la Historia son del día. Ésta viene del aparato con que se tomó la
+coordenada, así que es una **tercera fuente** sobre cuándo ocurrió la diligencia, independiente
+de las dos que el sitio publica en la tabla.
+
+No reemplaza a `fecha_diligencia`, que es la que corre los plazos. Sirve para contrastarla, y
+si no coinciden hay que informarlo, no elegir.
+:::
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `existe` | bool | Falso cuando la actuación la ofrecía y el panel respondió que no hay ninguna |
+| `latitud` / `longitud` | float \| null | Como las publica el sitio |
+| `precision_metros` | float \| null | Radio de incertidumbre. Medidas: 6,0 · 10,04 · 26,68 · 56,22 · **103,13** |
+| `fecha_dispositivo` | date \| null | Cuándo el aparato tomó la coordenada |
+| `hora_dispositivo` | time \| null | La hora de esa toma |
+| `intentos` | int \| null | Cuántas veces el aparato intentó fijar la posición |
+
+:::{warning} La precisión varía mucho, y con 103 metros la ubicación no identifica un domicilio
+Medidas en una sola causa: 6,0 · 10,04 · 26,68 · 56,22 y **103,13 metros**. Un radio de 103
+metros abarca una manzana entera en zona urbana, así que la coordenada dice el sector y no la
+puerta. Informar la precisión junto con las coordenadas, siempre: sin ella el punto se lee como
+exacto.
+:::
+
+**`existe: false` no es lo mismo que no haber preguntado**, y está medido: de las seis
+actuaciones georreferenciadas de una causa, una abre un panel que dice que no hay ninguna.
+
+Cuesta **una petición por actuación**, con su intervalo. Se pide de la actuación concreta que
+importa, nunca de todas: para las seis de una causa de dos cuadernos serían seis peticiones más
+sobre las seis que ya costó leerla.
+
+Trae coordenadas de un domicilio de terceros, con el mismo criterio que el RUT de los
+litigantes: es lo que la plataforma publica.
+
+```{include} _generado/obtener_georreferencia.md
 ```
 
 ## `obtener_documento`

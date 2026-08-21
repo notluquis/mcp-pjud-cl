@@ -264,13 +264,17 @@ sobre la fixture, no de recordarlas.
 
 ## Qué devuelve la georreferencia
 
+Medido el 20 de agosto de 2026, y de nuevo al implementarlo: la tercera fecha **coincidió con
+`fecha_diligencia`** en las tres actuaciones contrastadas, que es lo que la vuelve útil como
+fuente independiente.
+
 Medido el 20 de agosto de 2026 sobre C-1156-2026: **seis** actuaciones georreferenciadas
 entre los dos cuadernos, tres en cada uno, consultadas las seis.
 
 | Dato | Forma |
 |---|---|
 | Coordenadas | Latitud y longitud con siete decimales. **No se transcriben acá**: ver abajo |
-| Precisión | En metros, con decimales. Medidas: 26,68 y 56,22 |
+| Precisión | En metros, con decimales. Medidas en una sola causa: 6,0 · 10,04 · 26,68 · 56,22 y **103,13** |
 | Fecha del dispositivo | Con hora. Medidas: `31-03-2026 10:34` y `30-03-2026 10:31` |
 | Intentos | Un entero. Medido: 1 |
 

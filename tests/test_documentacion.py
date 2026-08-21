@@ -2765,7 +2765,14 @@ def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
 #: porque es una fuente externa que nada del repositorio puede derivar, y el guardia lo que sí
 #: puede es exigir que las menciones de la página no se separen entre sí.
 MAGNAR_PAGINAS = 10_000
-MAGNAR_CERTIFICACIONES = ("ISO 27001", "SOC 2 Type 2", "RGPD", "ISO 42001")
+#: Con su estado, no sólo el nombre: borrar el "en curso" de la ISO 42001 sin quitar el
+#: nombre cambia una afirmación verificable y el guardia no lo veía.
+MAGNAR_CERTIFICACIONES = (
+    "ISO 27001 obtenida",
+    "SOC 2 Type 2 obtenida",
+    "RGPD cumple",
+    "ISO 42001 en curso",
+)
 
 
 def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():

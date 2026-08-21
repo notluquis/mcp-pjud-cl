@@ -64,7 +64,7 @@ texto, con `buscar_jurisprudencia` y `obtener_texto_sentencia`, así que decir q
 |---|---|---|
 | Jurisprudencia | **sí**, con banco propio | **sí**, contra el buscador oficial |
 | Normativa | sí | no |
-| Análisis de expedientes y redacción | sí | no, y la redacción está fuera por la regla 1 |
+| Análisis de expedientes y redacción | sí | no, y por decisión de alcance, no por la regla 1 |
 | Estado de una causa y fecha que corre el plazo | no lo publica | **sí**, y es la razón de existir |
 
 | | |
@@ -73,7 +73,7 @@ texto, con `buscar_jurisprudencia` y `obtener_texto_sentencia`, así que decir q
 | Base propia | Un banco de fallos en `app.magnar.ai/cl/juris` |
 | Qué genera | Resúmenes de sentencias, tablas comparativas, ediciones con control de cambios en Word |
 | Escala que declara | Expedientes de hasta 10.000 páginas |
-| Certificaciones que declara | ISO 27001, SOC 2 Type 2, RGPD; ISO 42001 en curso |
+| Certificaciones que declara | ISO 27001 obtenida, SOC 2 Type 2 obtenida, RGPD cumple; ISO 42001 en curso |
 | Qué NO publica | Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de cómputo de plazos |
 
 Sobre el solapamiento en jurisprudencia hay una diferencia que sí se puede sostener sin
@@ -92,8 +92,15 @@ como el número que alguien más se atreve a decir en público.
 sentencia traiga su `url` y a que el texto declare `anonimizada` y `fuente`. Que un producto
 comercial lo ponga primero en su portada confirma que no es una manía del proyecto.
 
-Y lo que no se toma: la redacción de escritos. La regla 1 prohíbe que este servidor escriba en
-los sistemas del Poder Judicial, y redactar para presentar es el paso anterior a eso.
+Y lo que no se toma: la redacción de escritos. **No porque la regla 1 lo prohíba**, y la
+distinción importa porque esa regla no se negocia y estirarla la desgasta: lo que prohíbe es
+que este servidor escriba en los sistemas del Poder Judicial o invoque endpoints de ingreso.
+Un borrador que se queda en la máquina de quien lo pidió no hace ninguna de las dos cosas.
+
+Queda fuera por alcance, que es una decisión y no un límite: esto es un servidor de consulta,
+redactar exige entender el caso y no sólo leerlo, y quien redacte con ayuda de un modelo puede
+hacerlo con el resultado de estas herramientas al lado. Lo que la regla 1 sí cierra es el paso
+siguiente, presentar el escrito, y ése no se va a abrir.
 
 ### API de Boostr
 

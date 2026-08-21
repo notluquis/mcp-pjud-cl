@@ -2117,6 +2117,25 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
     nombradas = [a.tramite for a in filas if "receptor" in a.tramite.lower()]
     assert nombradas, "la fixture de cobranza dejó de nombrar receptores en su Historia"
 
+    # La cifra está escrita con letras en seis copias, y una sola que cambie contradice a la
+    # fixture. Se compara contra lo que la fixture trae de verdad, que es la fuente.
+    _EN_LETRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
+    cuantas = _EN_LETRAS[len(nombradas)]
+    copias = {
+        f.name: " ".join(_texto(f).split())
+        for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+    }
+    mal = {
+        nombre: m
+        for nombre, texto in copias.items()
+        if (m := re.findall(r"(\w+) (?:filas|veces)[^.]{0,60}Receptor", texto))
+        and any(c != cuantas for c in m)
+    }
+    assert not mal, (
+        f"estas copias dicen otra cantidad de filas con receptor que las {cuantas} que trae "
+        f"la fixture: {mal}"
+    )
+
     fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
     # Dos formas de decir lo mismo, y la segunda se coló en la misma página que la corregía:
     # afirmar que nunca las nombra, y afirmar que leerla daría una lista VACÍA. La lista sería

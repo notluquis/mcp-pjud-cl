@@ -1436,7 +1436,7 @@ def test_la_directiva_no_afirma_de_la_georreferencia_mas_que_el_modelo():
     con_columna = sorted(
         n
         for n in MODULOS
-        if COMPETENCIAS[n].historia and "georref" in COMPETENCIAS[n].historia.columnas
+        if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
     )
     assert con_columna, "si ninguna publicara la columna, el campo no debería existir"
     assert set(MODULOS) - set(con_columna), (

@@ -382,16 +382,20 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
         if any(p in (t := _texto(f)) for p in paneles)
     )
     assert detalles, "no quedó ninguna fixture de detalle"
-    # El prefijo `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
-    iconos = sorted(set(re.findall(r"(\w+\.png)", detalles)))
-    assert iconos == ["icono_PDF.png"], (
-        f"el detalle nombra {iconos}. Acotar el guardia a las fixtures de detalle mostró que "
-        "`downloadPdf.png` no está en ninguna: vive en la consulta unificada, y la página lo "
-        "atribuía al detalle"
+    # TODO archivo nombrado, no sólo los `.png`: la frase dice que el detalle no nombra ningún
+    # documento, así que un `.pdf` colándose ahí la desmiente igual que otro icono. El prefijo
+    # `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
+    # Extensiones de archivo, no cualquier punto: `.php` son endpoints, que el detalle sí nombra
+    # y no son documentos, y en la prosa del sitio hay cosas como `AB.DTE` y `Pend.Art.52`.
+    tipos = "png|gif|jpe?g|svg|ico|pdf|docx?|xlsx?|rtf|mp3|zip"
+    nombrados = sorted(set(re.findall(rf"([\w.-]+\.(?:{tipos}))(?=[\"'\s>?&])", detalles, re.I)))
+    assert nombrados == ["icono_PDF.png", "pagLoad.gif"], (
+        f"el detalle nombra {nombrados}, y la página afirma que no nombra ningún documento: "
+        "sólo el icono y el indicador de carga del propio sitio. El documento se pide por una "
+        "referencia opaca, no por su nombre."
     )
-    assert "downloadPdf.png" in _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
-    for icono in iconos:
-        assert icono in pagina, f"la página dejó de nombrar el icono {icono}"
+    for archivo in nombrados:
+        assert archivo in pagina, f"la página dejó de nombrar {archivo}"
 
     marcas = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html").count("fa-file-pdf-o")
     assert f"**{marcas}** veces con el icono `fa-file-pdf-o`" in pagina, (

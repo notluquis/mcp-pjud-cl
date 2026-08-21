@@ -436,11 +436,17 @@ página deja anotado en primer lugar qué habría que medir para cambiar de opin
 ## Qué emite la plataforma: sólo PDF, y hasta dónde está medido
 
 Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no contienen ninguna
-referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**. Los
-únicos archivos que nombran son dos iconos del propio sitio: `icono_PDF.png`, que aparece en el
-detalle de apelaciones, y `downloadPdf.png`, que no está en ningún detalle sino en la página de
-la consulta unificada. Y en el cuaderno principal de
-C-1156-2026 los enlaces de descarga van marcados **12** veces con el icono `fa-file-pdf-o`.
+referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**.
+
+Los **detalles de causa** no nombran ningún documento: los dos únicos archivos que aparecen ahí
+son `icono_PDF.png` y `pagLoad.gif`, o sea el icono y el indicador de carga del propio sitio. El
+documento no se nombra porque no viaja por su nombre: se pide por una referencia opaca. Y en el
+cuaderno principal de C-1156-2026 los enlaces de descarga se marcan
+**12** veces con el icono `fa-file-pdf-o`.
+
+Las otras páginas guardadas sí enlazan documentos, y eso apoya la conclusión en vez de
+debilitarla: la ley 20.886, el auto acordado, las condiciones de uso y los manuales, **todos
+PDF**.
 
 De las **cabeceras** de respuesta no se sabe nada, y conviene decirlo en vez de darlo por
 comprobado: las fixtures son cuerpos HTML, así que ningún `Content-Disposition` aparece ahí ni

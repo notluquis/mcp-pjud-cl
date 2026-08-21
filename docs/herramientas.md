@@ -1,7 +1,7 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las once herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 12 herramientas MCP, sus parámetros y cada campo que devuelven."
 ---
 
 # Referencia de herramientas

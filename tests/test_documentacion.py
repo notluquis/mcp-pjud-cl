@@ -228,6 +228,9 @@ def test_todo_trabajo_que_corre_la_suite_clona_la_historia_completa():
     )
 
 
+#: Los conteos que la prosa escribe con letras, para poder derivarlos igual.
+_EN_PALABRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
+
 #: Los radios de precisión que devolvió la única causa donde se midió la georreferencia. No
 #: salen de ninguna constante, porque son una medición y no una decisión: viven acá, y el
 #: guardia exige que las tres copias de la documentación digan los mismos cinco.
@@ -236,6 +239,87 @@ PRECISIONES_MEDIDAS = ("6,0", "10,04", "26,68", "56,22", "103,13")
 #: Lo que mide la sentencia de trece páginas con la que se decidió separar el texto de la
 #: búsqueda. Misma razón: es una medición.
 CARACTERES_DE_UNA_SENTENCIA = 25_473
+
+
+def test_la_referencia_dice_cuantas_herramientas_hay_de_verdad(expuestas):
+    """La descripción de la página se quedó en once cuando entró la doce.
+
+    Es el `<meta name="description">` de la página publicada y la línea que la ecosistema y
+    `llms.txt` muestran como resumen, o sea lo primero que lee alguien que llega. Nada la
+    comparaba contra el servidor: el guardia de secciones exige que cada herramienta tenga la
+    suya, y eso sigue pasando con un conteo viejo al lado.
+    """
+    encabezado = _texto(RAIZ / "docs" / "herramientas.md").split("---")[1]
+    assert f"las {len(expuestas)} herramientas MCP" in encabezado, (
+        f"el servidor expone {len(expuestas)} herramientas y la descripción de la referencia "
+        "dice otra cosa"
+    )
+
+
+def test_las_rutas_de_georreferencia_son_las_que_el_sitio_declara():
+    """`verificacion` afirma cuántas hay, y sale del JavaScript del sitio.
+
+    Son una por competencia más una unificada. El cliente ofrece menos, porque descarta las
+    que no tienen tabla de Historia medida, y ésa es justamente la distinción que el conteo
+    del sitio deja ver: lo que la plataforma publica no es lo que este servidor puede pedir.
+    """
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    rutas = set(re.findall(r"(geoReferencia\w*\.php)", js))
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    assert f"Hay {_EN_PALABRAS[len(rutas)]} rutas, una por competencia más una unificada" in (
+        pagina
+    ), f"el sitio declara {len(rutas)} rutas de georreferencia: {sorted(rutas)}"
+
+
+def test_la_pagina_de_uso_nombra_campos_que_existen():
+    """Es la página que le enseña al abogado a leer la salida, y no la miraba nadie.
+
+    Vaciarla entera no ponía ni un test en rojo. Nombra los campos de una actuación en su lista
+    de definiciones, empezando por `fecha_diligencia`, que es el que corre los plazos: si uno se
+    renombra, esa página queda enseñando a buscar algo que la respuesta ya no trae.
+    """
+    from mcp_pjud.parser import Actuacion
+
+    pagina = _texto(RAIZ / "docs" / "uso.md")
+    # Los términos de la lista de definiciones: una línea que es sólo un identificador entre
+    # comillas invertidas, seguida de otra que empieza con dos puntos.
+    lineas = pagina.splitlines()
+    nombrados = {
+        m.group(1)
+        for i, linea in enumerate(lineas[:-1])
+        if (m := re.fullmatch(r"`(\w+)`", linea.strip())) and lineas[i + 1].startswith(":")
+    }
+    assert nombrados, "la página de uso dejó de tener su lista de campos"
+
+    faltan = sorted(n for n in nombrados if n not in Actuacion.model_fields)
+    assert not faltan, (
+        f"la página de uso enseña a leer {faltan}, y una actuación no trae esos campos"
+    )
+    assert "fecha_diligencia" in nombrados, (
+        "la página de uso dejó de explicar `fecha_diligencia`, que es la que corre los plazos"
+    )
+
+
+def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
+    """La licencia está escrita en cuatro archivos y nada los comparaba.
+
+    Vaciar `docs/licencia.md` entera no ponía ni un test en rojo, así que la página que explica
+    qué se puede hacer con este software podía decir una licencia y el paquete distribuir otra.
+    Es la afirmación con más consecuencias del repositorio después de las de plazos.
+    """
+    identificador = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["license"]
+    nombre = identificador.removeprefix("LicenseRef-").replace("-", " ").replace(" 1 0 0", " 1.0.0")
+
+    assert identificador in _texto(RAIZ / "CITATION.cff"), (
+        f"CITATION.cff declara una licencia distinta de {identificador}"
+    )
+    assert _texto(RAIZ / "LICENSE.md").startswith(
+        f"# {nombre.replace('Strict', 'Strict License')}"
+    ), f"LICENSE.md no es el texto de {nombre}"
+    for pagina in ("docs/licencia.md", "README.md"):
+        assert nombre in _texto(RAIZ / pagina), (
+            f"{pagina} no nombra {nombre}, que es la licencia que el paquete declara"
+        )
 
 
 def test_las_precisiones_medidas_dicen_lo_mismo_en_las_tres_copias():

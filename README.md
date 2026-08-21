@@ -104,6 +104,12 @@ servidor falla con un mensaje que te lo recuerda.
 
 **Claude Desktop, Codex y cualquier otro cliente**
 
+<!-- [[[cog
+import sys; sys.path.insert(0, 'docs')
+from _bloques import configuracion
+cog.out('\n```json\n' + configuracion(contacto='tu@correo.cl') + '\n```\n')
+]]] -->
+
 ```json
 {
   "mcpServers": {
@@ -115,6 +121,7 @@ servidor falla con un mensaje que te lo recuerda.
   }
 }
 ```
+<!-- [[[end]]] -->
 
 El transporte es stdio: no abre puertos ni escucha en la red.
 

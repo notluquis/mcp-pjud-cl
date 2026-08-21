@@ -1,5 +1,8 @@
 ---
 orphan: true
+myst:
+  html_meta:
+    description: "Documento de trabajo: qué arquitectura debería tener esta documentación y por qué. Se borra cuando se ejecute o se descarte."
 ---
 
 # Propuesta: arquitectura de la documentación para dos audiencias

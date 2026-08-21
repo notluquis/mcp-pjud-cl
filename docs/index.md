@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Servidor MCP de solo lectura para consultar causas del Poder Judicial de Chile. La fecha de diligencia es la que corre los plazos."
+---
+
 # mcp-pjud
 
 Servidor MCP no oficial de solo lectura para la consulta pública de causas del Poder Judicial
@@ -37,6 +43,24 @@ se contradicen, lo informa en `discrepancia_fechas` en vez de elegir una.
 
 {doc}`Ejemplos <ejemplos>`
 : Casos resueltos de punta a punta, incluidos los modos de falla y cómo leerlos.
+
+### Si vienes a evaluar o auditar
+
+Esta documentación se escribió para dos lecturas, y ésta es la segunda. Son las mismas
+páginas: lo que cambia es por dónde conviene entrar.
+
+{doc}`Qué está verificado <verificacion>`
+: Qué se probó contra el sistema real, qué sólo contra respuestas guardadas y qué está mapeado
+sin ejecutar. Es la página que responde si un dato se puede afirmar.
+
+{doc}`Cumplimiento <cumplimiento>`
+: Qué obligaciones aplican, cómo se cumplen y qué pasa ante un bloqueo.
+
+{doc}`Licencia <licencia>` y [cómo contribuir](https://github.com/notluquis/mcp-pjud-cl/blob/main/.github/CONTRIBUTING.md)
+: Qué permite PolyForm Strict y qué hace falta para preparar un cambio.
+
+{doc}`Hoja de ruta <roadmap>` y {doc}`ecosistema <ecosistema>`
+: Hacia dónde va, qué se decidió no hacer, y qué cubren las otras herramientas.
 
 ## Antes de instalar
 

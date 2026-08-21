@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Qué obligaciones aplican y cómo se cumplen: ritmo, identificación, detención total y solo lectura. Para quien evalúa el riesgo de usarlo."
+---
+
 # Cumplimiento
 
 Esta página existe porque el contexto regulatorio de esta herramienta cambió hace pocas

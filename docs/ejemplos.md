@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Casos resueltos de punta a punta, con sus modos de falla. Para quien quiere ver cómo se lee una respuesta real."
+---
+
 # Ejemplos
 
 Casos resueltos de punta a punta. Los roles son de causas públicas reales y las salidas están

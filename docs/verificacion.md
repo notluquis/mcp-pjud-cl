@@ -1,7 +1,7 @@
 ---
 myst:
   html_meta:
-    description: Qué se probó contra el sistema real, qué sólo contra respuestas guardadas y qué está mapeado sin ejecutar.
+    description: "Qué se probó contra el sistema real, qué sólo contra respuestas guardadas y qué está mapeado sin ejecutar."
 ---
 
 # Qué está verificado

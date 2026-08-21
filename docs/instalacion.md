@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Cómo instalarlo y qué controles de uso responsable no se deben tocar. Para quien lo va a poner a andar."
+---
+
 # Instalación y operación
 
 ## Qué es
@@ -42,6 +48,12 @@ claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
 :::{tab-item} Claude Desktop
 En `claude_desktop_config.json`:
 
+<!-- [[[cog
+import sys; sys.path.insert(0, 'docs')
+from _bloques import configuracion
+cog.out('\n```json\n' + configuracion() + '\n```\n')
+]]] -->
+
 ```json
 {
   "mcpServers": {
@@ -53,11 +65,18 @@ En `claude_desktop_config.json`:
   }
 }
 ```
+<!-- [[[end]]] -->
 :::
 
 :::{tab-item} Cursor
 En `~/.cursor/mcp.json`, o por el botón de un clic del README:
 
+<!-- [[[cog
+import sys; sys.path.insert(0, 'docs')
+from _bloques import configuracion
+cog.out('\n```json\n' + configuracion() + '\n```\n')
+]]] -->
+
 ```json
 {
   "mcpServers": {
@@ -69,11 +88,18 @@ En `~/.cursor/mcp.json`, o por el botón de un clic del README:
   }
 }
 ```
+<!-- [[[end]]] -->
 :::
 
 :::{tab-item} VS Code
 En `.vscode/mcp.json`. **Ojo con la diferencia**: acá la clave es `servers`, no `mcpServers`
 como en el resto. Pegar el bloque de Claude Desktop no funciona.
+
+<!-- [[[cog
+import sys; sys.path.insert(0, 'docs')
+from _bloques import configuracion
+cog.out('\n```json\n' + configuracion("servers") + '\n```\n')
+]]] -->
 
 ```json
 {
@@ -86,6 +112,7 @@ como en el resto. Pegar el bloque de Claude Desktop no funciona.
   }
 }
 ```
+<!-- [[[end]]] -->
 :::
 
 :::{tab-item} Codex

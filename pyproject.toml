@@ -70,6 +70,7 @@ dev = [
     # declara: apoyarse en una dependencia transitiva es depender de una decisión ajena que
     # puede cambiar sin aviso, y el test moriría con un ImportError que no dice nada.
     "jsonschema>=4.20",
+    "cogapp>=3.6",
 ]
 
 [build-system]

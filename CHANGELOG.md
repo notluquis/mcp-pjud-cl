@@ -18,6 +18,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- El bloque de configuración que se pega en el cliente MCP se genera desde un solo lugar: eran
+  cuatro copias que sólo diferían en la clave externa.
+- Cada página publicada declara de qué trata, y la portada nombra sus dos lecturas en vez de
+  hablarle sólo a quien va a computar un plazo.
 - La hoja de ruta se partió en tres: lo medido va a `verificacion`, el ecosistema a
   `ecosistema`, y queda un plan de versiones que por fin es eso. Los 34 anclajes que la
   página publicó se conservan, así que ningún enlace guardado a un fragmento queda apuntando

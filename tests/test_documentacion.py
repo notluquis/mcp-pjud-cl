@@ -1518,6 +1518,49 @@ def test_la_georreferencia_documentada_es_la_que_traen_las_fixtures():
     )
 
 
+def test_toda_pagina_publicada_declara_de_que_trata():
+    """La descripción de cada página es lo que muestra un buscador y lo que se ve al compartir
+    el enlace, y es donde la audiencia se nombra sin partir el árbol en dos.
+
+    Sin ella, Sphinx no emite `<meta name="description">` y la página queda sin resumen. Es
+    barato de poner y nadie lo nota si falta, que es la combinación que hace falta un guardia.
+    """
+    sin = []
+    for pagina in sorted(RAIZ.glob("docs/*.md")):
+        cabecera = _texto(pagina).split("---\n", 2)
+        if len(cabecera) < 3 or "description:" not in cabecera[1]:
+            sin.append(pagina.name)
+    assert not sin, (
+        f"páginas publicadas sin descripción: {sin}. Va en el front matter, bajo "
+        "`myst: html_meta: description`."
+    )
+
+
+def test_la_portada_declara_las_dos_lecturas():
+    """La documentación se escribió para dos audiencias que comparten las mismas páginas, y la
+    portada le hablaba sólo a una.
+
+    No se parte el árbol: se agrega una segunda entrada. Lo que este guardia exige es que la
+    segunda exista y lleve a `verificacion`, que es la página que responde la única pregunta
+    que las dos audiencias comparten: ¿este dato se puede afirmar?
+    """
+    portada = _texto(RAIZ / "docs" / "index.md")
+    puerta = portada.split("## Por dónde empezar", 1)
+    assert len(puerta) == 2, "la portada dejó de tener la sección de entrada"
+
+    # Con el salto de línea: "## " calza también dentro de "### ", así que sin él el corte
+    # caía justo en el subtítulo de la segunda puerta y se llevaba lo que venía a comprobar.
+    segunda = puerta[1].split(chr(10) + "## ", 1)[0]
+    assert "evaluar o auditar" in segunda, (
+        "la portada no declara la segunda lectura, así que quien viene a auditar el código no "
+        "sabe por dónde entrar"
+    )
+    for destino in ("verificacion", "cumplimiento", "licencia"):
+        assert f"<{destino}>" in segunda or f"`{destino}`" in segunda, (
+            f"la segunda entrada no lleva a {destino!r}"
+        )
+
+
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
     """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
     alguien mira para decidir si esto le entra al entorno.

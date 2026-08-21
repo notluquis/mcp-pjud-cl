@@ -112,6 +112,21 @@ def test_los_campos_de_completitud_estan_documentados(expuestas):
         assert f"`{campo}`" in HERRAMIENTAS, f"`{campo}` no está en la referencia"
 
 
+def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
+    """La lista de lo mapeado sin ejecutar es lo único que impide dar el detalle por completo.
+
+    Los tres que entran acá son canales enteros, no rutas sueltas: el anexo de cada actuación,
+    los audios de audiencia de laboral, y los dos paneles de apelaciones que no se leen. Si
+    alguno desaparece de la lista sin haberse implementado, la documentación pasa a describir
+    un expediente completo que no lo es.
+    """
+    seccion = _texto(RAIZ / "docs" / "verificacion.md").split("### Mapeado pero nunca ejecutado")
+    assert len(seccion) == 2, "la sección de lo mapeado sin ejecutar desapareció"
+    lista = seccion[1].split("\n\n")[2]
+    for canal in ("tiene_anexo", "listadoAudioLaboral", "expedienteApe", "IncompetenciaApe"):
+        assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
+
+
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):
     """La referencia afirma que todas están anotadas como solo lectura. Es verificable, así
     que se verifica en vez de confiar en que siga siendo cierto."""

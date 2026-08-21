@@ -1393,6 +1393,45 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
 AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
 
 
+def test_lo_que_cuesta_anunciar_las_herramientas_es_lo_que_dice_la_auditoria(expuestas):
+    """La auditoría cita cuánto pesa la superficie MCP, y ese número crece solo.
+
+    Cada herramienta nueva lo sube sin que nadie lo mire, porque el costo no aparece en ningún
+    lado: se paga en el contexto de cada conversación, antes de la primera consulta. Un número
+    escrito a mano sobre algo que crece solo es la definición de dato que va a quedar viejo.
+
+    El guardia no exige que no crezca: exige que la cifra escrita siga siendo la real, con la
+    holgura de un 10% para que un cambio de redacción no lo ponga en rojo.
+    """
+    import json
+
+    auditoria = RAIZ / "docs" / "_auditoria-superficie.md"
+    if not auditoria.exists():
+        pytest.skip("la auditoría ya se ejecutó y se borró")
+
+    real = sum(
+        len(
+            json.dumps(
+                {
+                    "name": h.name,
+                    "description": h.description,
+                    "inputSchema": h.input_schema,
+                    "outputSchema": h.output_schema,
+                },
+                ensure_ascii=False,
+            )
+        )
+        for h in expuestas.values()
+    )
+    dicho = re.search(r"\*\*([\d.]+) tokens\.\*\*", _texto(auditoria))
+    assert dicho, "la auditoría dejó de decir cuánto cuesta anunciar las herramientas"
+    afirmado = int(dicho.group(1).replace(".", ""))
+    assert abs(real // 4 - afirmado) <= afirmado * 0.10, (
+        f"la auditoría dice {afirmado} tokens y la superficie real pesa {real // 4}. Si "
+        "entraron herramientas nuevas, hay que volver a medir y decidir si el costo se acepta."
+    )
+
+
 def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
     """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
 

@@ -1298,6 +1298,67 @@ def test_el_falso_de_georreferenciado_no_significa_lo_mismo_en_todas_las_compete
     )
 
 
+def test_las_piezas_de_exhorto_tambien_leen_su_columna_de_anexo():
+    """El mismo canal, en el panel de al lado, y arreglarlo para un llamador y no para el otro
+    es peor que no haberlo arreglado.
+
+    El panel de piezas declara la columna `anexo` igual que la Historia. Ninguna de las seis
+    piezas de E-468-2026 la trae llena, así que se rellena una sobre la fixture real: si el
+    parser no mira esa columna, el campo sale falso con el enlace puesto.
+    """
+    piezas = parse_piezas_exhorto(DETALLE, "civil")
+    assert piezas is not None
+    assert not any(p.tiene_anexo for p in piezas), (
+        "si la fixture empieza a traer anexos, este test se reescribe contra el dato real"
+    )
+
+    arbol = H.fromstring(DETALLE)
+    panel = COMPETENCIAS["civil"].piezas_exhorto
+    tabla = arbol.get_element_by_id(panel.panel)
+    columna = panel.columnas.index("anexo")
+    primera = next(tr for tr in tabla.iter("tr") if len(tr.findall("td")) > columna)
+    # Misma forma que las dos celdas de anexo reales de `c1156_apremio`.
+    enlace = H.fromstring(
+        '<a data-toggle="modal" href="#modalAnexoSolicitudCivil" '
+        "onclick=\"anexoSolicitudCivil('referencia-de-prueba');\">anexo</a>"
+    )
+    primera.findall("td")[columna].append(enlace)
+
+    rellenas = parse_piezas_exhorto(H.tostring(arbol, encoding="unicode"), "civil")
+    assert rellenas is not None
+    assert sum(p.tiene_anexo for p in rellenas) == 1, (
+        "la columna `Anexo` de las piezas no se está leyendo"
+    )
+
+
+def test_un_folio_con_anexo_no_se_agota_en_su_documento_principal():
+    """El anexo es un SEGUNDO archivo, y el folio ya entregaba el primero.
+
+    Los dos folios con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su
+    `docuN.php`. O sea el peligro no era que la fila pasara por vacía: era peor. Quien pidiera
+    `documento_ruta` recibía un PDF real y quedaba creyendo que tenía el folio completo,
+    mientras el anexo seguía ahí sin que nada lo nombrara. Un documento entregado tapa mejor lo
+    que falta que una fila en blanco.
+    """
+    con_anexo = [a for a in parse_historia(C1156_APREMIO) if a.tiene_anexo]
+    assert len(con_anexo) == 2, "el cuaderno de apremio trae dos folios con anexo"
+    assert all(a.documento_ruta for a in con_anexo), (
+        "los dos traen documento principal, que es lo que hacía invisible al anexo"
+    )
+    assert all(a.tramite == "Escrito" for a in con_anexo)
+
+
+def test_donde_la_competencia_no_publica_la_columna_el_anexo_es_falso_por_ausencia():
+    """Mismo contrato que `georreferenciado`, y por el mismo motivo: falso significa ausente
+    sólo donde hay columna. En `penal` no hay Historia medida, así que no se sabe."""
+    assert COMPETENCIAS["penal"].historia is None, (
+        "si penal pasa a tener Historia medida, el contrato del campo hay que reescribirlo"
+    )
+    civiles = parse_historia(C1156_APREMIO)
+    assert any(a.tiene_anexo for a in civiles), "civil sí publica la columna"
+    assert any(not a.tiene_anexo for a in civiles), "y no todos los folios traen anexo"
+
+
 # -- georreferencia ------------------------------------------------------------------
 
 GEO = (FIXTURES / "georreferencia_civil.html").read_text(encoding="utf-8")

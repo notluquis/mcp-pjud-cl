@@ -18,6 +18,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Campo `tiene_anexo` en cada actuación y en cada pieza de exhorto: la columna `Anexo` del
+  detalle es un segundo canal de documentos del que no se leía ninguna celda. Se declara aunque
+  todavía no se pueda pedir, porque un escrito entregaba su PDF y dejaba el anexo sin nombrar.
 - Herramienta `obtener_georreferencia`: dónde y cuándo el ministro de fe registró que practicó
   una diligencia. Trae la única hora del proyecto, que es una tercera fuente para contrastar la
   fecha que corre los plazos.
@@ -27,6 +30,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- `tiene_documento` ya no se anuncia como "trae documento descargable": con `documento_ruta`
+  en nulo la celda abre un modal cuyo endpoint no está medido, así que verdadero no garantiza
+  que este servidor pueda traerlo.
 - La referencia y la directiva ya no dan a entender que `ocultas` en cero signifique lista
   completa. Una búsqueda de 400 coincidencias con `filas` en 10 devolvía diez sentencias sin
   nada que dijera que había 390 más.

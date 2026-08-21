@@ -239,7 +239,8 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `correlativo` | str \| null | Correlativo interno del trámite. Sólo en suprema |
 | `anio_tramite` | str \| null | Año que suprema publica en columna aparte, además de la fecha |
 | `georreferencia_referencia` | str \| null | Con qué se pide la georreferencia de esta actuación |
-| `tiene_documento` | bool | Si el folio trae documento descargable |
+| `tiene_documento` | bool | Si la columna `Doc.` ofrece algo. `true` NO garantiza que se pueda traer: con `documento_ruta` en nulo, la celda abre un modal de JavaScript cuyo endpoint no está medido |
+| `tiene_anexo` | bool | Si la columna `Anexo` ofrece algo. Segundo canal de documentos, **todavía no pedible**: ninguna de sus rutas está verificada. `false` significa ausente sólo donde la competencia publica la columna |
 | `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
 | `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
 
@@ -259,6 +260,7 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
   "foja": "0",
   "georreferenciado": true,
   "tiene_documento": true,
+  "tiene_anexo": false,
   "documento_ruta": "docuN.php",
   "documento_referencia": "hHkPqx0yRb2..."
 }
@@ -279,6 +281,18 @@ por defecto.
 **No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
 leer: los escritos todavía no están medidos, así que su ausencia acá
 NO significa que la causa no los tenga.
+
+:::{warning}
+**La columna `Anexo` es un segundo canal de documentos y no se puede pedir.** Cada actuación
+declara `tiene_anexo`, pero ahí termina lo que este servidor puede hacer: la celda abre un modal
+de JavaScript, y las dieciocho rutas que ese JavaScript nombra son candidatas leídas del sitio,
+no rutas verificadas contra la plataforma. Se declaran como no medidas en vez de pedirse a
+ciegas.
+
+Un folio con `tiene_anexo` en verdadero tiene algo que este servidor no entrega. Hay que ir al
+expediente. Vale igual para las piezas de exhorto: `PiezaExhorto` declara el mismo campo,
+porque el panel de piezas publica la misma columna.
+:::
 
 :::{important} Preferir ésta antes que preguntar por partes
 Los paneles vienen juntos en la misma respuesta HTML. Pedirlos por separado multiplica las

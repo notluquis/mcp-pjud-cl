@@ -118,6 +118,41 @@ def test_los_campos_de_completitud_estan_documentados(expuestas):
         assert f"`{campo}`" in HERRAMIENTAS, f"`{campo}` no está en la referencia"
 
 
+def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
+    """La lista de lo mapeado sin ejecutar es lo único que impide dar el detalle por completo.
+
+    Nombrar los canales no basta: las cifras que los acompañan también son afirmaciones, y las
+    tres se pueden derivar. Un guardia que sólo buscara los identificadores dejaba pasar que
+    18 rutas se volvieran cualquier otro número.
+    """
+    seccion = _texto(RAIZ / "docs" / "verificacion.md").split("### Mapeado pero nunca ejecutado")
+    assert len(seccion) == 2, "la sección de lo mapeado sin ejecutar desapareció"
+    lista = seccion[1].split("\n\n")[2]
+
+    for canal in ("tiene_anexo", "listadoAudioLaboral", "expedienteApe", "IncompetenciaApe"):
+        assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
+
+    # El JavaScript del sitio es la única fuente de cuántas rutas de anexo hay.
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    rutas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    assert f"**{len(rutas)} rutas de anexo**" in lista, (
+        f"el sitio nombra {len(rutas)} rutas de anexo y la lista dice otra cosa"
+    )
+
+    # Y el detalle de apelaciones dice cuántos paneles publica.
+    ape = _texto(RAIZ / "tests" / "fixtures" / "detalle_apelaciones.html")
+    paneles = set(re.findall(r'id="(\w*[Aa]pe)"', ape))
+    leidos = {
+        p.panel
+        for a in ("historia", "litigantes", "notificaciones", "liquidaciones", "materias")
+        if (p := getattr(COMPETENCIAS["apelaciones"], a, None)) is not None
+    }
+    assert f"De los **{len(paneles)}** paneles que apelaciones publica se leen " in lista
+    assert f"se leen **{len(paneles & leidos)}**" in lista, (
+        f"apelaciones publica {sorted(paneles)} y se leen {sorted(paneles & leidos)}"
+    )
+
+
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
     """`ocultas` cubre lo reservado, no lo que no se pidió. La referencia llegó a decir que
     la lista era un subconjunto sólo si `ocultas` era mayor que cero, y con eso una búsqueda

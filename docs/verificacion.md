@@ -72,6 +72,14 @@ rechaza en vez de adivinar sus parámetros:
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
+- Las **18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
+  competencias. Cada actuación y cada pieza de exhorto declara `tiene_anexo`, y ahí termina lo
+  que se puede hacer
+- `listadoAudioLaboral`, que en laboral abre el listado de **audios de las audiencias**. Es un
+  canal de medios y no de documentos, así que rompe el supuesto de que todo lo descargable de
+  la plataforma es PDF
+- `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
+  `IncompetenciaApe`. De los **6** paneles que apelaciones publica se leen **2**
 - `receptorCivil.php`, que devuelve la tabla de **retiro** de documentos, no la de
   actuaciones. Se ejecutó una vez y se descartó por no ser lo que se buscaba
 

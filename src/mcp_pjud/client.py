@@ -816,10 +816,22 @@ class PjudClient(Transporte):
         nombre = competencia.lower()
         ruta = GEORREFERENCIA.get(nombre)
         if ruta is None:
-            raise EstructuraInesperada(
+            # Las dos razones para no ofrecerla se rechazan igual, pero no significan lo
+            # mismo y no se pueden decir con la misma frase. En `suprema` está medido que su
+            # Historia no trae la columna; en `penal` no está medida la Historia, así que
+            # decir "no la publica" sería publicar un negativo que nadie verificó.
+            medida = COMPETENCIAS.get(nombre) is not None and COMPETENCIAS[nombre].historia
+            motivo = (
                 f"{competencia!r} no publica la columna de georreferencia en su tabla de "
-                f"Historia, así que no hay referencia que pedir. La publican: "
-                f"{', '.join(sorted(GEORREFERENCIA))}."
+                "Historia, así que no hay referencia que pedir."
+                if medida
+                else f"La tabla de Historia de {competencia!r} no está medida, así que no se "
+                "sabe si publica la columna de georreferencia ni de dónde saldría la "
+                "referencia. Se rechaza por no verificada, NO porque esté comprobado que no "
+                "la tenga."
+            )
+            raise EstructuraInesperada(
+                f"{motivo} Verificadas: {', '.join(sorted(GEORREFERENCIA))}."
             )
         if not referencia:
             raise EstructuraInesperada(

@@ -1272,3 +1272,24 @@ def test_una_causa_exhortada_sin_piezas_no_se_publica_como_que_no_le_mandaron_na
 
     with pytest.raises(EstructuraInesperada, match="ninguna fila"):
         parse_piezas_exhorto(H.tostring(doc, encoding="unicode"), "civil")
+
+
+def test_el_falso_de_georreferenciado_no_significa_lo_mismo_en_todas_las_competencias():
+    """Suprema no publica la columna, así que su `false` es "no hay dónde mirar".
+
+    En civil, en cambio, `false` significa que la actuación NO se georreferenció, que es lo
+    que el art. 9 inc. 3 de la Ley 20.886 vuelve relevante. Afirmar lo segundo donde sólo vale
+    lo primero es exactamente la clase de dato plausible y falso que este proyecto persigue.
+    """
+    assert "georref" in COMPETENCIAS["civil"].historia.columnas
+    assert "georref" not in COMPETENCIAS["suprema"].historia.columnas, (
+        "si suprema pasa a publicar la columna, el contrato del campo hay que reescribirlo"
+    )
+
+    suprema = parse_historia(
+        (FIXTURES / "detalle_suprema.html").read_text(encoding="utf-8"), competencia="suprema"
+    )
+    assert suprema, "la fixture de suprema dejó de traer actuaciones"
+    assert all(not a.georreferenciado for a in suprema), (
+        "en suprema el campo sólo puede ser falso, y por ausencia de columna"
+    )

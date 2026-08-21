@@ -1348,8 +1348,14 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
         text=True,
         check=False,
     )
-    if antes.returncode != 0:
-        pytest.skip("el commit del corte no está en este clon")
+    assert antes.returncode == 0, (
+        f"no se pudo leer `docs/roadmap.md` en {CORTE_DE_LA_HOJA_DE_RUTA}^, que es contra lo "
+        "que se comparan los anclajes publicados. Si es un clon superficial, hace falta "
+        "`fetch-depth: 0`.\n\n"
+        "Antes esto era un `skip`, y con el checkout por defecto de CI el guardia no corría "
+        "nunca: verde donde importa y roto en lo publicado. Un guardia que se salta solo es "
+        f"peor que no tenerlo.\n\n{antes.stderr}"
+    )
 
     def ancla(titulo: str) -> str:
         plano = "".join(
@@ -1366,6 +1372,44 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
         f"la hoja de ruta publicó estos anclajes y ya no los tiene: {faltan}. Un enlace a "
         "cualquiera de ellos lleva ahora al inicio de la página sin avisar."
     )
+
+
+#: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
+#: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
+#: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se
+#: contradigan, que es el modo de falla real.
+AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
+
+
+def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
+    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
+
+    No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
+    Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa.
+
+    NO se filtra a las que ya traen la cifra, que es lo que hacía la primera versión: eso
+    excluía del chequeo justo a la página que divergía, y se comprobó cambiando el número en
+    una de las tres. Se identifican por citar el estudio, no la cifra.
+    """
+    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
+    citan = [d for d in donde if "Ahrefs" in _texto(RAIZ / d)]
+    assert len(citan) == len(donde), (
+        f"el estudio se citaba en {len(donde)} lugares y ahora en {len(citan)}: {citan}. Si se "
+        "retiró de alguno a propósito, hay que sacarlo de esta lista."
+    )
+
+    for d in citan:
+        # Sin los marcadores de comentario: en `conf.py` la cita va en un comentario envuelto,
+        # y sin quitarlos el texto comparado queda como "137.210 # dominios", lo que obliga a
+        # reacomodar la prosa para que el guardia pase. Eso es el guardia mandando sobre el
+        # texto en vez de al revés.
+        crudo = _texto(RAIZ / d)
+        texto = " ".join(re.sub(r"^\s*#\s?", "", crudo, flags=re.M).split())
+        for clave, valor in AHREFS.items():
+            assert valor in texto, (
+                f"{d} cita el estudio sin su {clave} ({valor}). Las tres copias tienen que "
+                "decir lo mismo, porque ninguna se puede verificar contra el código."
+            )
 
 
 def _numero(n: int) -> str:

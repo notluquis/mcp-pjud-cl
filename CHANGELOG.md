@@ -21,9 +21,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Herramienta `obtener_georreferencia`: dónde y cuándo el ministro de fe registró que practicó
   una diligencia. Trae la única hora del proyecto, que es una tercera fuente para contrastar la
   fecha que corre los plazos.
+- Campo `no_entregadas` en el resultado de `buscar_jurisprudencia`: cuántas coincidencias
+  visibles quedaron fuera porque `filas` acota cuántas se piden. `ocultas` sólo cubre lo que la
+  plataforma reserva, y viene en nulo en dos de los tres buscadores.
 
 ### Cambiado
 
+- La referencia y la directiva ya no dan a entender que `ocultas` en cero signifique lista
+  completa. Una búsqueda de 400 coincidencias con `filas` en 10 devolvía diez sentencias sin
+  nada que dijera que había 390 más.
 - El bloque de configuración que se pega en el cliente MCP se genera desde un solo lugar: eran
   cuatro copias que sólo diferían en la clave externa.
 - Cada página publicada declara de qué trata, y la portada nombra sus dos lecturas en vez de

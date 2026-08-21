@@ -278,6 +278,13 @@ class ResultadoJurisprudencia(BaseModel):
         "la pregunta no tiene respuesta acá, y un resultado sin coincidencias puede igual "
         "corresponder a algo reservado."
     )
+    no_entregadas: int = Field(
+        description="Coincidencias visibles que esta llamada NO trajo, porque `filas` acota "
+        "cuántas se piden. Si es mayor que cero, la lista es un subconjunto de lo visible.\n\n"
+        "Es distinto de `ocultas`, y hay que mirar los dos: `ocultas` son las que la "
+        "plataforma reserva, `no_entregadas` son las que sí se podrían ver y no se pidieron. "
+        "Un resultado con `ocultas` en cero puede igual estar recortado."
+    )
     condiciones_de_publicacion: dict[str, int] = Field(
         description="Desglose de TODAS las coincidencias por condición de publicación, "
         "visibles incluidas. Suma `coincidencias`, no `ocultas`: la categoría 'Publicable' "
@@ -397,11 +404,25 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
         for d in respuesta["docs"]
     ]
 
+    # El total no puede ser menor que la página que lo acompaña. Si lo es, el `max(0, ...)`
+    # de abajo publicaría `no_entregadas` en cero, o sea leería una respuesta contradictoria
+    # como una lista completa: exactamente el falso negativo que el campo vino a cerrar.
+    if visibles < len(sentencias):
+        raise EstructuraInesperada(
+            f"La respuesta declara {visibles} coincidencias visibles y trae "
+            f"{len(sentencias)} sentencias. Un total menor que su propia página significa "
+            "que la respuesta dejó de cumplir el contrato, no que no falte nada."
+        )
+
     return ResultadoJurisprudencia(
         sentencias=sentencias,
         visibles=visibles,
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
+        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y en dos de
+        # los tres buscadores viene en nulo, así que ésta es la única señal de recorte que
+        # funciona en los tres.
+        no_entregadas=max(0, visibles - len(sentencias)),
         condiciones_de_publicacion=condiciones,
     )
 

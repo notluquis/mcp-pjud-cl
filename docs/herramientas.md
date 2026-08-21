@@ -205,10 +205,12 @@ proyecto.
 
 :::{warning}
 Sólo **civil** entrega actuaciones por esta vía. En **cobranza** las diligencias del ministro de
-fe existen pero viven en un panel propio (`diligenciaCob`) con otra estructura, que este
-proyecto todavía no lee, así que la llamada se **rechaza** en vez de devolver la lista vacía que
-la Historia produciría. Esa lista se leería como "no hubo actuaciones" cuando lo cierto es "no
-las estoy leyendo".
+fe viven en un panel propio (`diligenciaCob`) con otra estructura, que este proyecto todavía no
+lee, así que la llamada se **rechaza**.
+
+Su Historia sí nombra algunas, y por eso el rechazo: tres filas dicen `Actuacion - Receptor` y
+ninguna trae fecha de diligencia, o sea leerlas de ahí daría una lista **parcial y sin el dato
+que se busca**. Una lista parcial es peor que una vacía, porque se ve completa.
 
 En laboral, penal, apelaciones y suprema no existen: en todo el sitio sólo hay
 `receptorCivil` y `receptorCobranza`.

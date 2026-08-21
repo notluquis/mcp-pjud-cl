@@ -1709,12 +1709,15 @@ class Competencia(NamedTuple):
     receptor: bool
     #: Si esas actuaciones se leen desde la tabla de Historia.
     #:
-    #: En civil sí: la columna `Trámite` dice "Actuación Receptor". En cobranza NO, y esto se
-    #: midió sobre una respuesta real: los trámites de `historiaCob` son `Actuación`,
-    #: `Resolución` y `Escrito`, nunca "Actuación Receptor", mientras las diligencias viven en
-    #: un panel aparte, `diligenciaCob`, con estructura propia (`Estado Diligencia`,
-    #: `Tipo Diligencia`, `Destinatario`, `Responsable`). La palabra "receptor" aparece en esa
-    #: respuesta, o sea existen: lo que no existe es la forma de leerlas desde Historia.
+    #: En civil sí: la columna `Trámite` dice "Actuación Receptor". En cobranza NO, y la razón
+    #: no es que la Historia no las nombre. Medido sobre una respuesta real: tres filas de
+    #: `historiaCob` dicen `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha
+    #: de diligencia. Las diligencias de verdad viven en `diligenciaCob`, con estructura propia
+    #: (`Estado Diligencia`, `Tipo Diligencia`, `Destinatario`, `Responsable`).
+    #:
+    #: O sea leerlas desde Historia no daría una lista vacía sino una PARCIAL y sin el dato que
+    #: se busca. `TRAMITE_RECEPTOR` tampoco las reconoce, por la tilde y el guion, y no se
+    #: amplía: con la competencia rechazada antes, esa rama no podría ejecutarse.
     #:
     #: Sin esta distinción, pedir actuaciones de cobranza devolvía una lista vacía mientras las
     #: diligencias estaban en el panel de al lado. Es exactamente el falso negativo que este

@@ -68,12 +68,12 @@ compara el formulario enviado contra lo que ella declara.
 
 **Lo que sigue pendiente es lo que da valor**, y es más chico de lo que parecía:
 
-- **`diligenciaCob`**: cobranza tiene ministro de fe pero sus diligencias NO viven en la tabla
-  de Historia. `historiaCob` trae `Actuación`, `Resolución` y `Escrito`, nunca "Actuación
-  Receptor". Las diligencias están en un panel aparte con estructura propia (`Estado
-  Diligencia`, `Tipo Diligencia`, `Destinatario`, `Responsable`). Hoy `actuaciones_receptor`
-  rechaza cobranza en vez de devolver una lista vacía, que es lo correcto mientras el panel no
-  esté medido.
+- **`diligenciaCob`**: cobranza tiene ministro de fe y sus diligencias viven en un panel
+  aparte, con estructura propia (`Estado Diligencia`, `Tipo Diligencia`, `Destinatario`,
+  `Responsable`). Su Historia **sí nombra algunas**: tres filas dicen `Actuacion - Receptor`,
+  sin tilde y con guion, y ninguna trae fecha de diligencia. Hoy `actuaciones_receptor` rechaza
+  cobranza, y es lo correcto mientras el panel no esté medido: leerlas de la Historia daría una
+  lista **parcial**, que se ve completa.
 
   **Medido, y la respuesta es que hoy no sirve.** De cinco causas de cobranza, sólo una trae
   filas en ese panel, y sus tres diligencias traen `31/12/1969` en la columna de fecha: el

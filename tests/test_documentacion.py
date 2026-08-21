@@ -43,7 +43,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import COMPETENCIAS
+from mcp_pjud.parser import COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
 RAIZ = Path(__file__).parents[1]
@@ -2098,6 +2098,36 @@ def test_la_variable_de_entorno_documentada_es_la_que_el_servidor_lee():
         assert nombre.group(1) in _texto(pagina), (
             f"{pagina.name} no nombra {nombre.group(1)}, que es la variable que el servidor lee"
         )
+
+
+def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
+    """La afirmación falsa vivía en CINCO lugares y el primer arreglo tocó dos.
+
+    Decía que `historiaCob` nunca dice "Actuación Receptor". Lo dice tres veces, escrito
+    `Actuacion - Receptor`. Estaba en el mensaje de error, en `ecosistema`, en `roadmap`, en
+    `herramientas` y en el comentario de `COMPETENCIAS`, o sea en todo lo que alguien podría
+    leer para entender por qué se rechaza cobranza.
+
+    Se barre la prosa Y el código, porque el peor de los cinco era el mensaje de error: es lo
+    que un modelo le relata a un abogado.
+    """
+    filas = parse_historia(
+        _texto(RAIZ / "tests" / "fixtures" / "detalle_cobranza.html"), competencia="cobranza"
+    )
+    nombradas = [a.tramite for a in filas if "receptor" in a.tramite.lower()]
+    assert nombradas, "la fixture de cobranza dejó de nombrar receptores en su Historia"
+
+    fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+    culpables = {
+        f.name
+        for f in fuentes
+        if re.search(r"nunca [\"']?Actuaci[oó]n Receptor", " ".join(_texto(f).split()))
+    }
+    assert not culpables, (
+        f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
+        f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
+        "ahí daría una lista parcial, no una vacía."
+    )
 
 
 def test_la_licencia_dice_lo_mismo_en_todas_partes():

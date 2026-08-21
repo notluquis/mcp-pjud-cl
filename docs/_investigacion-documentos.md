@@ -45,10 +45,15 @@ antes de procesarse. Cincuenta y dos presupuestos de respuesta contra mil quinie
 Y conviene decir qué demuestra y qué no. Es **una** página, o sea el caso donde todo lo que
 esta página propone rinde menos: un índice de una hoja es la hoja, un rango de páginas es todo
 el documento, y los marcadores de un archivo de una página no existen. Lo que prueba es lo
-otro, que es más fuerte: si **una** hoja escaneada ya son cincuenta y dos presupuestos, el
-expediente completo no cabe en ningún canal ni a ninguna resolución. Entonces la salida no es
-cambiar el canal por el que viaja el archivo, es dejar de mover bytes y empezar a apuntar a
-páginas. Lo que hace falta medir es el ebook, y de ése no hay ni una cifra.
+otro: si **una** hoja escaneada, tal como la entrega la plataforma, ya son cincuenta y dos
+presupuestos, mover el expediente completo en su formato original no cabe en ninguna respuesta.
+
+Hasta ahí llega lo medido, y conviene no estirarlo. Rasterizar la misma hoja la baja a cuatro
+presupuestos, y bajando la resolución baja más: la afirmación fuerte, que no cabe a ninguna
+resolución, esta página **no la comprueba**. Lo que sí se sostiene es que ninguna resolución la
+hace gratis, y que elegirla es una decisión sobre pérdida que el servidor tomaría por el
+abogado. Por eso la salida propuesta no es comprimir mejor, es dejar de mover bytes y empezar a
+apuntar a páginas. Lo que hace falta medir es el ebook, y de ése no hay ni una cifra.
 
 ## Qué cuesta una imagen, y qué cuesta el mismo contenido en texto
 
@@ -443,8 +448,8 @@ hace falta ejecutar las otras cinco rutas cuando haya dónde probarlas.
 ## Qué se está tirando hoy y sale gratis
 
 `_describir_pdf` ya llama a `extract_text()` en **todas** las páginas y se queda sólo con la
-cuenta. El trabajo está pagado y el resultado se descarta. Sin sumar una dependencia ni una
-petición, ahí hay:
+cuenta. El trabajo está pagado y el resultado se descarta. Sin sumar una dependencia, y **en la
+misma petición que ya se hizo**, ahí hay:
 
 | Dato | Qué habilita | De dónde sale |
 |---|---|---|
@@ -462,6 +467,21 @@ distancia.
 `PdfReader.metadata` queda fuera de la lista a propósito: puede traer nombre de autor y software
 del tribunal o de quien redactó el escrito, o sea datos de terceros que nadie pidió.
 
+:::{important}
+**"En la misma petición" no se extiende a la siguiente, y eso decide la forma de la herramienta.**
+
+La regla 5 dice que no se persisten datos de terceros, así que ni el PDF ni su extracción
+sobreviven a la llamada. Una herramienta aparte que pidiera "las páginas 41 a 50" tendría que
+**volver a descargar el archivo entero y volver a parsearlo**: una petición más contra el Poder
+Judicial, con su intervalo, por cada rango.
+
+De ahí sale una consecuencia de diseño y no sólo una advertencia: el rango va como parámetro
+opcional de `obtener_documento`, no como una segunda herramienta. Con una segunda herramienta,
+pedir el índice y después dos rangos cuesta tres descargas del mismo archivo; con un parámetro,
+quien ya sabe qué páginas quiere las pide de una vez. Lo gratis es el índice de la llamada que
+ya se hizo, no el acceso posterior.
+:::
+
 ## Qué se propone entregar en vez del PDF
 
 Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
@@ -469,13 +489,14 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
 1. **Un índice por página en el sobre en palabras.** Hoy el resumen dice "es MIXTO: 40 de 200
    páginas traen texto". Que diga cuáles cuesta lo mismo y convierte un dato descriptivo en uno
    accionable.
-2. **El texto por rango de páginas**, como una lectura aparte y no dentro de
-   `obtener_documento`. Es el precedente que el propio proyecto ya fijó al separar
-   `JurisClient.texto` de la búsqueda, por el mismo motivo y con la misma aritmética. Si el
-   rango pedido cae sobre páginas sin texto, eso se dice, con los números: es el mismo criterio
-   que `discrepancia_fechas`, no elegir en silencio.
+2. **El texto por rango de páginas, como parámetro opcional de `obtener_documento`** y no
+   como una lectura aparte. El precedente de `JurisClient.texto` separado de la búsqueda no
+   sirve acá: ahí la búsqueda y el texto son preguntas distintas, y acá es el mismo archivo,
+   que sin persistencia hay que volver a descargar entero para leerle otro rango. Si el rango
+   pedido cae sobre páginas sin texto, eso se dice, con los números: es el mismo criterio que
+   `discrepancia_fechas`, no elegir en silencio.
 3. **Los marcadores del archivo**, cuando los traiga, como tabla de contenidos del expediente.
-4. **Declarar `_meta["anthropic/maxResultSizeChars"]`** en la herramienta de texto, que es
+4. **Declarar `_meta["anthropic/maxResultSizeChars"]`** en la herramienta, que es
    gratis y evita que el cliente escriba en disco lo que este servidor decidió no escribir.
 5. **Nada de imágenes producidas acá.** Para las páginas que son imagen, el archivo sigue siendo
    la única vía, y cómo llega a los ojos del modelo es del cliente y no de este servidor.

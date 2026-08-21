@@ -70,6 +70,11 @@ dev = [
     # declara: apoyarse en una dependencia transitiva es depender de una decisión ajena que
     # puede cambiar sin aviso, y el test moriría con un ImportError que no dice nada.
     "jsonschema>=4.20",
+    # Mismo caso, y por la misma razón: un guardia lee los workflows para exigir que los
+    # trabajos que corren la suite clonen la historia completa. Hoy funciona sin declararlo
+    # porque `mutmut` arrastra `libcst`, que arrastra `pyyaml`. Si esa cadena cambia, la suite
+    # entera muere al recolectar, y con ella la publicación que ese guardia protege.
+    "pyyaml>=6.0",
     "cogapp>=3.6",
 ]
 

@@ -18,9 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- La publicación de 0.8.0 falló al etiquetar: `publicar.yml` clonaba superficial y ahí se cae
-  un guardia que lee un commit anterior. Arreglado también en `mutacion.yml`, donde el fallo
-  habría sido mudo.
+- Los workflows que corren la suite clonan la historia completa. Sin ella la publicación se
+  caía al etiquetar.
 
 ## [0.8.0] - 2026-08-21
 

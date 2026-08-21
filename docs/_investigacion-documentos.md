@@ -432,7 +432,7 @@ Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no conti
 referencia a `.doc`, `.docx`, `.xls`, `.rtf` ni a una cabecera `Content-Disposition`**. Los
 únicos archivos que el detalle nombra son dos iconos del propio sitio,
 `images/downloadPdf.png` y `apelaciones/modal/icono_PDF.png`, y en el cuaderno principal de
-C-1156-2026 los enlaces de descarga van marcados doce veces con el icono `fa-file-pdf-o`.
+C-1156-2026 los enlaces de descarga van marcados **12** veces con el icono `fa-file-pdf-o`.
 
 El código ya se apoya en eso: `_MAGIA_PDF` exige que la respuesta empiece en `%PDF-` y
 `EstructuraInesperada` corta si no. Pero está **medido en una de las seis rutas**, `docuN.php`,

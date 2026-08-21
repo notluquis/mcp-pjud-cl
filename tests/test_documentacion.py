@@ -341,6 +341,43 @@ def test_los_documentos_de_trabajo_no_se_publican():
         )
 
 
+def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
+    """De esa afirmación cuelga `_MAGIA_PDF`, que rechaza en duro lo que no empiece en `%PDF-`.
+
+    Si una fixture llega a traer evidencia de otro formato y nadie lo mira, el documento de
+    trabajo sigue diciendo "sólo PDF" y la implementación que salga de él rechaza un documento
+    real informando que la referencia caducó. Se deriva de las fixtures, que es donde la página
+    dice haberlo buscado.
+    """
+    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
+    fixtures = "\n".join(_texto(f) for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html")))
+
+    # La extensión tiene que terminar donde termina un nombre de archivo. Buscar `.doc` a secas
+    # calza dentro de `_window.document.close()`, que es JavaScript del sitio y no un formato.
+    ajenos = sorted(set(re.findall(r"\.(?:docx?|xlsx?|rtf)(?=[\"'\s>?&])", fixtures, re.I))) + (
+        ["Content-Disposition"] if "content-disposition" in fixtures.lower() else []
+    )
+    assert not ajenos, (
+        f"las fixtures ya traen {ajenos} y la investigación afirma que no hay ninguna "
+        "referencia a otro formato. De esa afirmación cuelga `_MAGIA_PDF`."
+    )
+
+    # El prefijo `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
+    iconos = sorted(set(re.findall(r"(\w+\.png)", fixtures)))
+    assert iconos == ["downloadPdf.png", "icono_PDF.png"], (
+        f"las fixtures nombran {iconos}, y la página afirma que los únicos archivos que el "
+        "detalle nombra son los dos iconos de PDF del propio sitio"
+    )
+    for icono in iconos:
+        assert icono in pagina, f"la página dejó de nombrar el icono {icono}"
+
+    marcas = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html").count("fa-file-pdf-o")
+    assert f"**{marcas}** veces con el icono `fa-file-pdf-o`" in pagina, (
+        f"el cuaderno principal de C-1156-2026 marca {marcas} enlaces con `fa-file-pdf-o` y la "
+        "página dice otra cosa"
+    )
+
+
 def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
     """Esa página razona sobre el presupuesto de una respuesta y sobre cuántas veces lo pasa un
     documento medido. Las dos cifras son derivadas, no copiadas, y por eso quedan viejas sin que

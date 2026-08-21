@@ -316,23 +316,31 @@ def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
     assert _texto(RAIZ / "LICENSE.md").startswith(
         f"# {nombre.replace('Strict', 'Strict License')}"
     ), f"LICENSE.md no es el texto de {nombre}"
-    # TODAS las declaraciones sustantivas, no cualquier mención: el README nombra la licencia
-    # en su insignia, así que cambiar la frase que de verdad dice qué se permite dejaba el
-    # guardia verde con las dos instrucciones contradiciéndose.
-    declaraciones = {
-        "README.md": r"^\[([^\]]+)\]\(LICENSE\.md\) permite",
-        "docs/licencia.md": r"^El proyecto usa \[([^\]]+)\]|^\*\*([^*]+)\*\* permite",
-    }
-    for pagina, patron in declaraciones.items():
-        halladas = {
-            g for m in re.finditer(patron, _texto(RAIZ / pagina), re.M) for g in m.groups() if g
+    # Se barre la prosa entera en vez de enumerar dónde está declarada. Enumerar es lo que
+    # falló dos veces: primero el guardia aceptaba cualquier mención (la insignia del README
+    # rescataba una declaración cambiada), después miraba dos páginas y se le escapaban las de
+    # `uso`, `index` e `instalacion`. Cualquier nombre de licencia que no sea el declarado es
+    # una contradicción, esté donde esté.
+    ajenas = {}
+    for pagina in PROSA:
+        otras = {
+            m.group(0)
+            for m in re.finditer(r"PolyForm [A-Z]\w+ \d+\.\d+\.\d+", _texto(pagina))
+            if m.group(0) != nombre
         }
-        assert halladas, f"{pagina} dejó de declarar bajo qué licencia se publica"
-        ajenas = sorted(h for h in halladas if h != nombre)
-        assert not ajenas, (
-            f"{pagina} declara {ajenas} y el paquete distribuye bajo {nombre}. Dos "
-            "instrucciones de licencia distintas en el mismo repositorio."
-        )
+        # `licencia.md` compara a propósito con las otras variantes de PolyForm para explicar
+        # por qué se eligió Strict. Ahí nombrarlas no es declararlas.
+        if otras and pagina.name != "licencia.md":
+            ajenas[pagina.name] = sorted(otras)
+    assert not ajenas, (
+        f"estas páginas nombran una licencia que no es la que el paquete distribuye: {ajenas}. "
+        f"La declarada es {nombre}."
+    )
+
+    # Y que al menos una página la declare, para que borrarla no pase por silencio.
+    assert any(nombre in _texto(p) for p in PROSA), (
+        f"ninguna página nombra {nombre}, que es bajo lo que se distribuye"
+    )
 
 
 def test_las_precisiones_medidas_dicen_lo_mismo_en_las_cuatro_copias():
@@ -424,6 +432,18 @@ def test_la_aritmetica_de_diez_sentencias_sale_de_la_sentencia_medida():
             f"{donde} anuncia una magnitud distinta de {esperado} caracteres, así que el "
             "protocolo y la documentación dicen cosas distintas"
         )
+
+    # Y el producto, que el modelo también escribe en palabras: actualizar sólo la magnitud
+    # dejaba a `TextoSentencia` concluyendo diez veces la cifra vieja.
+    productos = {250_000: "doscientos cincuenta mil", 300_000: "trescientos mil"}
+    producto = productos.get(redondeado * 10)
+    assert producto, (
+        f"no está escrito en palabras el producto {miles(redondeado * 10)}, y la descripción "
+        "del modelo lo cita así"
+    )
+    assert producto in " ".join((TextoSentencia.__doc__ or "").split()), (
+        f"`TextoSentencia` dice que diez sentencias son otra cosa que {producto}"
+    )
 
 
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):

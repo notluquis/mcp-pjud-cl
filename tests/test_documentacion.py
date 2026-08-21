@@ -62,6 +62,19 @@ def _texto(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def _trozos_de_ruta(url: str) -> list[str]:
+    """Los trozos de una URL que pueden ser un nombre de archivo.
+
+    Sin el esquema ni el host: `https://www.pjud.cl/ayuda` partido a lo bruto entrega
+    `www.pjud.cl`, y de ahí `cl` se lee como una extensión ajena. Sería un rojo sobre un
+    enlace externo perfectamente legítimo, o sea un guardia que estorba en vez de proteger.
+    """
+    from urllib.parse import urlsplit
+
+    partes = urlsplit(url)
+    return [t for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}") if "." in t]
+
+
 def _registro() -> str:
     return _texto(RAIZ / "CHANGELOG.md")
 
@@ -373,8 +386,8 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     enlazados = {
         trozo
         for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", fixtures)
-        for trozo in re.split(r"[?&=/#]", valor)
-        if "." in trozo and trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+        for trozo in _trozos_de_ruta(valor)
+        if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
     }
     ajenos = sorted(
         e for e in enlazados if not e.lower().endswith((".pdf", ".png", ".gif", ".jpg"))
@@ -409,12 +422,10 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
     nombrados = sorted(
         {
-            base
-            # La consulta NO se descarta: un `download.php?archivo=escrito.pdf` nombra el
-            # documento justo ahí, y cortar en el `?` borraba la evidencia antes de mirarla.
+            trozo
             for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", detalles)
-            for trozo in re.split(r"[?&=/#]", valor)
-            if "." in (base := trozo) and base.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+            for trozo in _trozos_de_ruta(valor)
+            if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
         }
     )
     assert nombrados == ["icono_PDF.png", "pagLoad.gif"], (

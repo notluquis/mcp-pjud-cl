@@ -521,9 +521,20 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
    pasan `CARACTERES_DE_UNA_RESPUESTA` sin que nada lo frene, y ahí vuelven el gasto de
    contexto y la escritura en disco que esta arquitectura viene a evitar. El tope lo pone el
    servidor y no el cliente, porque `_meta["anthropic/maxResultSizeChars"]` sólo mueve el
-   umbral de quien recibe: no acota ni pagina lo que se emite. Al alcanzarlo se corta y se
-   avisa hasta qué página llegó, para que pedir lo que falta sea otra llamada explícita y no
-   un silencio.
+   umbral de quien recibe: no acota ni pagina lo que se emite.
+
+   **El corte va en el borde de una página, nunca dentro.** Al alcanzar el tope se entrega
+   hasta la última página completa que cupo y se avisa cuál fue, para que pedir lo que falta
+   sea otra llamada explícita y no un silencio. Y si una sola página no cabe por sí sola, no
+   se entrega recortada: se **levanta**, diciendo qué página y cuánto pesa.
+
+   Eso último es el punto y no una omisión. Con el rango expresado en páginas, cortar dentro
+   de una deja la continuación sin forma de expresarse: repetir esa página devuelve otra vez
+   el mismo prefijo, y empezar en la siguiente pierde el resto para siempre. Las salidas
+   serían un desplazamiento dentro de la página o un cursor, y las dos ponen al modelo a
+   reensamblar el texto de una resolución entre llamadas, donde un trozo perdido o repetido
+   es exactamente el dato plausible y falso que este proyecto persigue. Levantar es lo que ya
+   hace `ResultadosTruncados` con los listados, y por la misma razón.
 3. **Los marcadores del archivo**, cuando los traiga, como tabla de contenidos del expediente.
    Con el mismo contrato del punto 2, y no es un detalle: los títulos de `PdfReader.outline`
    los escribe quien creó el PDF, así que un escrito adversario puede poner instrucciones en un

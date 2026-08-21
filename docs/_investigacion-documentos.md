@@ -12,8 +12,9 @@ Documento de trabajo, no publicado. Recoge lo que se midió y lo que se leyó an
 `obtener_documento`, que **no se tocó**. Se borra cuando lo que propone se ejecute o se
 descarte.
 
-Lleva `orphan: true` porque no cuelga de ningún `toctree`, y sin eso el build con `-W`
-fallaría por esta misma página.
+No se publica porque `docs/conf.py` excluye `_*.md` del build. El `orphan: true` de la cabecera
+quedó de antes, cuando la exclusión no existía y sin él el build con `-W` fallaba por esta
+misma página; hoy es inerte y se deja como red por si alguien toca `exclude_patterns`.
 :::
 
 ## La recomendación, en una frase

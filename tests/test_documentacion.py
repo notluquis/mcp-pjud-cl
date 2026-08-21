@@ -327,18 +327,27 @@ def test_los_documentos_de_trabajo_no_se_publican():
     que se declara de trabajo terminaba publicado en Read the Docs. Lo que sí lo excluye es
     `exclude_patterns`, y la convención de nombre es el `_` adelante.
     """
-    conf = _texto(RAIZ / "docs" / "conf.py")
-    assert '"_*.md"' in conf, (
-        "`docs/conf.py` dejó de excluir los documentos de trabajo, así que los que dicen "
-        "'no publicado' se van a publicar"
+    import ast
+    import fnmatch
+
+    # Se lee la lista y se prueba cada documento contra ella, en vez de buscar el literal
+    # `"_*.md"`: lo que importa es que el archivo quede excluido, no con qué patrón.
+    m = re.search(r"^exclude_patterns = (\[[^\]]*\])", _texto(RAIZ / "docs" / "conf.py"), re.M)
+    assert m, "`docs/conf.py` dejó de declarar `exclude_patterns`"
+    patrones = ast.literal_eval(m.group(1))
+
+    publicados = [
+        f.name
+        for f in sorted((RAIZ / "docs").glob("_*.md"))
+        if not any(fnmatch.fnmatch(f.name, p) for p in patrones)
+    ]
+    assert not publicados, (
+        f"estos documentos de trabajo se van a publicar: {publicados}. Ninguno de los patrones "
+        f"de `exclude_patterns` ({patrones}) los excluye, y todos dicen 'no publicado'."
     )
 
-    de_trabajo = sorted(p.name for p in (RAIZ / "docs").glob("_*.md"))
-    for nombre in de_trabajo:
-        pagina = _texto(RAIZ / "docs" / nombre)
-        assert "orphan: true" in pagina, (
-            f"{nombre} se ve como documento de trabajo y no declara `orphan: true`"
-        )
+    # No se exige `orphan: true`: con el archivo excluido Sphinx nunca lo descubre, así que no
+    # puede emitir `toc.not_included`. Pedirlo pondría CI en rojo por algo que ya no falla.
 
 
 def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():

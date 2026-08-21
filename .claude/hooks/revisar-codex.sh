@@ -31,36 +31,37 @@ mkdir -p "$marcas" 2>/dev/null || exit 0
 
 # Una sola consulta para todos los pull requests abiertos: esto corre al final de CADA
 # turno, así que una llamada por PR se paga en cada respuesta.
-abiertos=$(gh pr list --state open --json number --jq '.[].number' 2>/dev/null) || exit 0
-[[ -n "$abiertos" ]] || exit 0
+# UNA consulta para todo, no una por pull request. La versión anterior prometía eso en un
+# comentario y hacía `1 + 3N` llamadas seriales: el `gh pr list`, más una GraphQL y DOS
+# `gh repo view` por PR, dentro del bucle. Corre al final de CADA turno, así que el costo se
+# paga en cada respuesta aunque no haya nada que avisar.
+#
+# Y con paginación: `reviewThreads(first: 50)` incluye los ya resueltos, así que en un pull
+# request con muchas rondas un hallazgo nuevo podía quedar fuera de la página y no aparecer
+# nunca. Acá hay uno con más de veinte hilos y este flujo los acumula rápido.
+repo=$(gh repo view --json owner,name --jq '"\(.owner.login) \(.name)"' 2>/dev/null) || exit 0
+
+# La consulta y el filtro en variables de una línea. Pasarlos con saltos de línea dentro de
+# `-f query=` hacía que `gh` no reconociera sus propias banderas y devolviera el texto de uso:
+# fallaba en silencio, con salida 0 y sin hilos, o sea el hook no avisaba nunca.
+consulta='query($duenio: String!, $nombre: String!, $cursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 25, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { number reviewThreads(first: 100) { nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } } } } } } }'
+filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThreads.nodes[] | select(.isResolved == false) | select(.comments.nodes[0].author.login == "chatgpt-codex-connector") | "\($n)\t\(.id)\t\(.path):\(.line)\t\(.comments.nodes[0].body | split("\n")[0] | sub("^.*</sub></sub>\\s*"; "") | gsub("\\*\\*"; ""))"'
+
+# El filtro va por una tubería a `jq` y no por `--jq`: `gh` rechaza `--slurp` junto con
+# `--jq` («the `--slurp` option is not supported with `--jq`»), y con el error mandado a
+# `/dev/null` eso se veía como cero hilos. El hook salía 0 sin avisar de nada.
+hilos=$(gh api graphql --paginate --slurp -f query="$consulta" \
+  -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null | jq -r "$filtro" 2>/dev/null) || exit 0
 
 nuevos=""
-for n in $abiertos; do
-  hilos=$(gh api graphql -f query="
-    { repository(owner: \"$(gh repo view --json owner --jq .owner.login 2>/dev/null)\",
-                 name: \"$(gh repo view --json name --jq .name 2>/dev/null)\") {
-        pullRequest(number: $n) {
-          reviewThreads(first: 50) { nodes {
-            id isResolved path line
-            comments(first: 1) { nodes { author { login } body } }
-          } } } } }" \
-    --jq '.data.repository.pullRequest.reviewThreads.nodes[]
-          | select(.isResolved == false)
-          | select(.comments.nodes[0].author.login == "chatgpt-codex-connector")
-          | "\(.id)\t\(.path):\(.line)\t\(.comments.nodes[0].body
-              | split("\n")[0]
-              | sub("^.*</sub></sub>\\s*"; "")
-              | gsub("\\*\\*"; ""))"' 2>/dev/null) || continue
-
-  while IFS=$'\t' read -r id donde titulo; do
-    [[ -n "$id" ]] || continue
-    [[ -f "$marcas/$id" ]] && continue
-    : > "$marcas/$id"
-    nuevos+="  #$n $donde
+while IFS=$'\t' read -r n id donde titulo; do
+  [[ -n "$id" ]] || continue
+  [[ -f "$marcas/$id" ]] && continue
+  : > "$marcas/$id" 2>/dev/null || continue
+  nuevos+="  #$n $donde
       $titulo
 "
-  done <<< "$hilos"
-done
+done <<< "$hilos"
 
 [[ -n "$nuevos" ]] || exit 0
 

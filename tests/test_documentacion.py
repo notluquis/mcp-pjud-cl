@@ -19,7 +19,6 @@ import ast
 import asyncio
 import base64
 import contextlib
-import pathlib
 import re
 import subprocess
 import tomllib
@@ -228,6 +227,7 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
     """
     import json
     import os
+    import shlex
 
     def declarados_en(ajustes: Path) -> list[str]:
         if not ajustes.exists():
@@ -248,9 +248,17 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
     del_repo = declarados_en(versionado)
     assert del_repo or not versionado.exists(), "`settings.json` existe y no declara ningún comando"
 
-    # Lo que declare cualquiera de los dos tiene que existir y poder ejecutarse.
+    # Lo que declare cualquiera de los dos tiene que existir, poder ejecutarse, y llevar la
+    # variable ENTRECOMILLADA: sin comillas, un checkout cuya ruta tenga espacios parte la
+    # expansión y no corre ningún hook. Se resuelve la cadena tal cual está declarada en vez
+    # de armar la ruta con `Path`, que es lo que hacía que el guardia no viera el problema.
     for comando in [*del_repo, *declarados_en(local)]:
-        ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
+        assert '"$CLAUDE_PROJECT_DIR"' in comando or "$CLAUDE_PROJECT_DIR" not in comando, (
+            f"{comando} usa `$CLAUDE_PROJECT_DIR` sin comillas: en una ruta con espacios el "
+            "shell parte la expansión y el hook no corre"
+        )
+        partes = shlex.split(comando.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))
+        ruta = Path(partes[0])
         assert ruta.exists(), f"un settings declara {comando} y ese archivo no existe"
         assert os.access(ruta, os.X_OK), f"{comando} no tiene permiso de ejecución"
 
@@ -258,7 +266,7 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
     # un patrón de texto, y probarlo desde otro archivo con una copia del patrón sólo prueba
     # que la copia funciona: los casos tienen que correr contra la función del hook.
     for comando in del_repo:
-        ruta = RAIZ / comando.replace("$CLAUDE_PROJECT_DIR/", "")
+        ruta = Path(shlex.split(comando.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))[0])
         if "--probar" not in _texto(ruta):
             continue
         # `stdin` cerrado y con tope. Lo primero es lo que impide el cuelgue real: un hook que
@@ -283,7 +291,10 @@ def test_cada_hook_declarado_existe_y_es_ejecutable():
 
     # Pero sólo el versionado rescata de ser huérfano.
     escritos = {p.name for p in (RAIZ / ".claude" / "hooks").glob("*.sh")}
-    huerfanos = sorted(escritos - {pathlib.PurePosixPath(c).name for c in del_repo})
+    declarados_nombre = {
+        Path(shlex.split(c.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))[0]).name for c in del_repo
+    }
+    huerfanos = sorted(escritos - declarados_nombre)
     assert not huerfanos, (
         f"{huerfanos} viven en `.claude/hooks/` y `.claude/settings.json` no los declara, así "
         "que no viajan cableados: en otra copia del repositorio no corren"

@@ -21,6 +21,9 @@ set -uo pipefail
 # no contra una copia del patrón pegada en otro archivo: una copia sólo prueba que la copia
 # funciona.
 es_un_push() {
+  # Un `cd` o un `-C` cambian de repositorio y el hook no puede saber a cuál: se rechazan.
+  printf '%s' "$1" | grep -qE '(^|[;&|])[[:space:]]*cd[[:space:]]' && return 1
+  printf '%s' "$1" | grep -qE 'git([[:space:]]+-c[[:space:]]+[^[:space:]]+)*[[:space:]]+-C[[:space:]]' && return 1
   printf '%s' "$1" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'
 }
 
@@ -39,8 +42,6 @@ if [[ "${1:-}" == "--probar" ]]; then
   probar 0 'git push -f'
   probar 0 'git push --force-with-lease'
   probar 0 'git add -A && git commit -q -m x && git push'
-  probar 0 'cd /x; git push'
-  probar 0 'git -C /otro/repo push'
   probar 0 'git -c user.name=x push'
   probar 1 'echo git push'
   probar 1 'grep -n "git push" hook.sh'
@@ -49,6 +50,14 @@ if [[ "${1:-}" == "--probar" ]]; then
   probar 1 'git log --oneline'
   probar 1 'gh pr view 81'
   probar 1 'git status'
+  # Estas dos NO se aceptan, y no es un descuido. El hook corre aparte y resuelve el
+  # repositorio desde SU directorio, no desde donde ocurrió el push: con `cd /otro/repo` o
+  # `git -C /otro/repo`, un push a otro repositorio publicaría el pedido en un pull request
+  # de éste y marcaría un SHA que no le corresponde. Preferimos no pedir una revisión a
+  # pedirla en el lugar equivocado: lo primero se nota al mirar el PR, lo segundo no.
+  probar 1 'git -C /otro/repo push'
+  probar 1 'cd /otro/repo && git push'
+  probar 1 'cd /x; git push'
   if [[ $fallos -gt 0 ]]; then
     echo "$fallos de 15 casos del detector de push fallaron." >&2
     exit 1

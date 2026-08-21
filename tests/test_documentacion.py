@@ -361,12 +361,24 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
     fixtures = "\n".join(_texto(f) for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html")))
 
-    # La extensión tiene que terminar donde termina un nombre de archivo. Buscar `.doc` a secas
-    # calza dentro de `_window.document.close()`, que es JavaScript del sitio y no un formato.
+    # Sin enumerar formatos, igual que abajo: la lista cerrada dejaba entrar un `.pptx`, un
+    # `.odt` o un `.txt` en cualquier fixture que no fuera de detalle, y ahí la afirmación de
+    # que las demás páginas enlazan exclusivamente PDF ya sería falsa.
     #
-    # Y sólo extensiones: `Content-Disposition` es una cabecera HTTP, las fixtures guardan
-    # cuerpos, así que buscarla acá era un guardia que no podía fallar.
-    ajenos = sorted(set(re.findall(r"\.(?:docx?|xlsx?|rtf)(?=[\"'\s>?&])", fixtures, re.I)))
+    # Se leen los `src` y `href`, que es lo que significa "la página enlaza un archivo", y del
+    # HTML crudo porque el sitio arma marcado dentro de su JavaScript. `Content-Disposition`
+    # no se busca: es una cabecera HTTP y las fixtures guardan cuerpos, o sea era un guardia
+    # que no podía fallar.
+    NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
+    enlazados = {
+        trozo
+        for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", fixtures)
+        for trozo in re.split(r"[?&=/#]", valor)
+        if "." in trozo and trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+    }
+    ajenos = sorted(
+        e for e in enlazados if not e.lower().endswith((".pdf", ".png", ".gif", ".jpg"))
+    )
     assert not ajenos, (
         f"las fixtures ya traen {ajenos} y la investigación afirma que no hay ninguna "
         "referencia a otro formato. De esa afirmación cuelga `_MAGIA_PDF`."

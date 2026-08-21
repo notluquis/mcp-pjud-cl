@@ -489,10 +489,12 @@ porque no hay copia guardada de nada.
 
 ## Lo que falta medir
 
-Nada de esta página se comprobó contra un PDF del Poder Judicial: **no hay ninguno en
-`tests/fixtures/`**, y las mediciones de tamaño y de extracción se hicieron sobre archivos
-sintéticos armados acá. Alcanzan para mostrar la forma del problema, no su magnitud exacta.
-Falta, en este orden:
+Lo único medido sobre un documento real del Poder Judicial es su **tamaño**: los 975.006 bytes
+del folio 9 de C-1156-2026, que están en {doc}`verificacion` y son de donde cuelga la
+recomendación. Todo lo demás de esta página, la extracción de texto, la reserialización de
+imágenes y el rasterizado, se probó sobre archivos sintéticos armados acá, porque **no hay
+ningún PDF del Poder Judicial en `tests/fixtures/`**. Alcanzan para mostrar la forma del
+problema, no su magnitud exacta. Falta, en este orden:
 
 - **Qué llega de verdad al modelo cuando este servidor entrega un PDF.** Es el supuesto del que
   cuelga todo lo demás y no está documentado por ningún cliente.

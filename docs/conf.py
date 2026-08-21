@@ -49,7 +49,10 @@ myst_heading_anchors = 3
 
 templates_path = ["_templates"]
 # `_generado` se incluye dentro de otras páginas con `{include}`, no es una página propia.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_generado"]
+# Los documentos de trabajo se nombran con `_` adelante y se excluyen del build. `orphan: true`
+# sólo calla el aviso de que no cuelgan de ningún `toctree`: la página se genera igual, y
+# aparece en el buscador y en `llms.txt`. O sea decían "no publicado" y se publicaban.
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_generado", "_*.md"]
 
 html_theme = "furo"
 html_title = "mcp-pjud"

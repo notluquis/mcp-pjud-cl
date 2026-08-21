@@ -320,6 +320,27 @@ def test_los_topes_declarados_coinciden_con_el_codigo():
 BYTES_DEL_DOCUMENTO_MEDIDO = 975_006
 
 
+def test_los_documentos_de_trabajo_no_se_publican():
+    """`orphan: true` no excluye nada: sólo calla el aviso de no colgar de un `toctree`.
+
+    La página se genera igual y aparece en el buscador y en `llms.txt`, así que un documento
+    que se declara de trabajo terminaba publicado en Read the Docs. Lo que sí lo excluye es
+    `exclude_patterns`, y la convención de nombre es el `_` adelante.
+    """
+    conf = _texto(RAIZ / "docs" / "conf.py")
+    assert '"_*.md"' in conf, (
+        "`docs/conf.py` dejó de excluir los documentos de trabajo, así que los que dicen "
+        "'no publicado' se van a publicar"
+    )
+
+    de_trabajo = sorted(p.name for p in (RAIZ / "docs").glob("_*.md"))
+    for nombre in de_trabajo:
+        pagina = _texto(RAIZ / "docs" / nombre)
+        assert "orphan: true" in pagina, (
+            f"{nombre} se ve como documento de trabajo y no declara `orphan: true`"
+        )
+
+
 def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
     """Esa página razona sobre el presupuesto de una respuesta y sobre cuántas veces lo pasa un
     documento medido. Las dos cifras son derivadas, no copiadas, y por eso quedan viejas sin que

@@ -15,6 +15,7 @@ mano. Lo que hacen es comparar cada dato repetido contra su única fuente, para 
 divergencia salga en CI y no en el uso.
 """
 
+import ast
 import asyncio
 import base64
 import contextlib
@@ -43,7 +44,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import COMPETENCIAS
+from mcp_pjud.parser import COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
 RAIZ = Path(__file__).parents[1]
@@ -2098,6 +2099,86 @@ def test_la_variable_de_entorno_documentada_es_la_que_el_servidor_lee():
         assert nombre.group(1) in _texto(pagina), (
             f"{pagina.name} no nombra {nombre.group(1)}, que es la variable que el servidor lee"
         )
+
+
+def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
+    """La afirmación falsa vivía en CINCO lugares y el primer arreglo tocó dos.
+
+    Decía que `historiaCob` nunca dice "Actuación Receptor". Lo dice tres veces, escrito
+    `Actuacion - Receptor`. Estaba en el mensaje de error, en `ecosistema`, en `roadmap`, en
+    `herramientas` y en el comentario de `COMPETENCIAS`, o sea en todo lo que alguien podría
+    leer para entender por qué se rechaza cobranza.
+
+    Se barre la prosa Y el código, porque el peor de los cinco era el mensaje de error: es lo
+    que un modelo le relata a un abogado.
+    """
+    filas = parse_historia(
+        _texto(RAIZ / "tests" / "fixtures" / "detalle_cobranza.html"), competencia="cobranza"
+    )
+    nombradas = [a.tramite for a in filas if "receptor" in a.tramite.lower()]
+    assert nombradas, "la fixture de cobranza dejó de nombrar receptores en su Historia"
+
+    # La cifra está escrita con letras en seis copias, y una sola que cambie contradice a la
+    # fixture. Se compara contra lo que la fixture trae de verdad, que es la fuente.
+    _EN_LETRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
+    cuantas = _EN_LETRAS[len(nombradas)]
+
+    def legible(f: Path) -> str:
+        """El texto tal como lo LEE alguien, no como está escrito en el archivo.
+
+        En `client.py` el mensaje se arma con literales adyacentes, así que en el fuente
+        aparece `tres "` y `"filas` y la frase nunca está entera. Se juntan con `ast`, que es
+        lo que hace el intérprete: si no, el guardia mira una cadena que nadie va a leer.
+        """
+        crudo = _texto(f)
+        if f.suffix != ".py":
+            return " ".join(crudo.split())
+        # Las dos cosas: los literales unidos por `ast`, para las cadenas partidas, MÁS el
+        # fuente crudo, porque los comentarios `#:` de `COMPETENCIAS` también afirman la cifra
+        # y `ast` no los ve. Mirar sólo los literales dejaba esa copia sin guardia.
+        textos = [n.value for n in ast.walk(ast.parse(crudo)) if isinstance(n, ast.Constant)]
+        unidos = " ".join(" ".join(str(t).split()) for t in textos if isinstance(t, str))
+        return f"{unidos} {' '.join(crudo.split())}"
+
+    copias = {f.name: legible(f) for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]}
+    # La cifra puede ir antes o después de la palabra: el registro escribe "los nombra tres
+    # veces", con el sujeto adelante, y el patrón que sólo miraba hacia la derecha lo perdía.
+    # Sólo palabras de cantidad, no cualquier palabra antes de "filas": con `\w+` el guardia
+    # se llevaba el "de" de "no por falta de filas" y reportaba "qué" como si fuera una cifra.
+    NUM = r"(?:una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)"
+    cerca = (
+        rf"(?:[Rr]eceptor\w*[^.]{{0,80}}?({NUM}) (?:filas|veces)"
+        rf"|({NUM}) (?:filas|veces)[^.]{{0,80}}?[Rr]eceptor)"
+    )
+    mal = {
+        nombre: sorted({g for par in m for g in par if g})
+        for nombre, texto in copias.items()
+        if (m := re.findall(cerca, texto)) and any(g and g != cuantas for par in m for g in par)
+    }
+    assert not mal, (
+        f"estas copias dicen otra cantidad de filas con receptor que las {cuantas} que trae "
+        f"la fixture: {mal}"
+    )
+
+    fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+    # Dos formas de decir lo mismo, y la segunda se coló en la misma página que la corregía:
+    # afirmar que nunca las nombra, y afirmar que leerla daría una lista VACÍA. La lista sería
+    # parcial, que es la diferencia entera.
+    contradicciones = (
+        r"nunca [\"']?Actuaci[oó]n Receptor",
+        r"lista vac[ií]a que la Historia produc",
+        r"devolver la lista vac[ií]a[^.]{0,40}cobranza",
+    )
+    culpables = {
+        f.name
+        for f in fuentes
+        if any(re.search(p, " ".join(_texto(f).split())) for p in contradicciones)
+    }
+    assert not culpables, (
+        f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
+        f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
+        "ahí daría una lista parcial, no una vacía."
+    )
 
 
 def test_la_licencia_dice_lo_mismo_en_todas_partes():

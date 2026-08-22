@@ -17,7 +17,12 @@ from mcp_pjud.client import (
     PjudBloqueado,
     PjudClient,
 )
-from mcp_pjud.parser import COMPETENCIAS, EstructuraInesperada, parse_resultados
+from mcp_pjud.parser import (
+    COMPETENCIAS,
+    EstructuraInesperada,
+    parse_historia,
+    parse_resultados,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -911,17 +916,36 @@ def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
 
 
 def test_pedir_actuaciones_de_cobranza_dice_que_estan_en_otro_panel():
-    """Se midió sobre una respuesta real: los trámites de `historiaCob` son `Actuación`,
-    `Resolución` y `Escrito`, nunca "Actuación Receptor", y las diligencias viven en
-    `diligenciaCob` con estructura propia. La palabra "receptor" aparece en esa respuesta, o
-    sea existen.
+    """Se rechaza, y por la razón correcta, que no es la que estaba escrita.
 
-    Sin este rechazo, pedir actuaciones de cobranza devolvía una lista vacía mientras las
-    diligencias estaban en el panel de al lado: "no hubo actuaciones" cuando lo cierto era "no
-    las estoy leyendo". Es el falso negativo que este proyecto existe para evitar.
+    Decía que `historiaCob` nunca dice "Actuación Receptor". Lo dice tres veces, escrito
+    `Actuacion - Receptor`: sin tilde y con guion. O sea leer las diligencias de ahí no daría
+    una lista vacía sino una PARCIAL, y una lista parcial es peor porque se ve completa. Las
+    tres además vienen sin fecha de diligencia, que es justamente el dato que se busca.
+
+    Se pinan las tres cosas juntas, porque cada una sola se lee como otra historia: que la
+    Historia las nombra, que el marcador NO las reconoce, y que la competencia se rechaza
+    igual. `TRAMITE_RECEPTOR` no se toca: hoy esa rama no puede ejecutarse, y ampliarla sería
+    escribir código que ningún test puede ejercitar.
     """
+    filas = parse_historia(
+        (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), competencia="cobranza"
+    )
+    nombradas = [a for a in filas if "receptor" in a.tramite.lower()]
+    assert len(nombradas) == 3, "la fixture de cobranza dejó de nombrar receptores en Historia"
+    assert {a.tramite for a in nombradas} == {"Actuacion - Receptor"}, (
+        "cobranza escribe el trámite distinto que civil, y de ahí sale que el marcador falle"
+    )
+    assert not any(a.es_actuacion_receptor for a in nombradas), (
+        "si el marcador pasa a reconocerlas, hay que decidir qué hacer con una lista parcial "
+        "en vez de dejar que salga sola"
+    )
+    assert not any(a.fecha_diligencia for a in nombradas), (
+        "ninguna trae el dato que la herramienta existe para entregar"
+    )
+
     c = _sin_red()
-    with pytest.raises(ValueError, match="NO están en la tabla"):
+    with pytest.raises(ValueError, match="completitud desconocida"):
         c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
 
 
@@ -2011,7 +2035,6 @@ def test_la_referencia_de_georreferencia_llega_desde_la_actuacion():
     Sin esto la herramienta existe y no hay de dónde sacar su parámetro, que es el mismo hueco
     que tenía `tiene_documento` antes de traer la referencia.
     """
-    from mcp_pjud.parser import parse_historia
 
     detalle = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
     con_geo = [a for a in parse_historia(detalle) if a.georreferenciado]

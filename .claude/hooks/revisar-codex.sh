@@ -73,7 +73,7 @@ consulta_pedidos='query($duenio: String!, $nombre: String!, $endCursor: String) 
 #
 # Cuenta como respondido: una reacción después del pedido (una pasada limpia no deja más que
 # eso), o una revisión o comentario posterior cuyo cuerpo nombre el `headRefOid`.
-filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review")) | last) // empty) as $p | ([.reactions.nodes[] | select(.user.login | test("codex")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.comments.nodes[] | select(.author.login | test("codex")) | select(.createdAt > $p.createdAt) | .body] + [.reviews.nodes[] | select(.author.login | test("codex")) | select(.submittedAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | if ($ok_reaccion + $ok_sha) == 0 then "\($n)\t\($p.createdAt)" else empty end'
+filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review")) | last) // empty) as $p | ([.reactions.nodes[] | select(.user.login | test("codex")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.comments.nodes[] | select(.author.login | test("codex")) | select(.createdAt > $p.createdAt) | .body] + [.reviews.nodes[] | select(.author.login | test("codex")) | select(.submittedAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | ([.comments.nodes[] | select(.author.login | test("codex")) | select(.createdAt > $p.createdAt) | .body] | map(select(test("usage limits|reached your Codex"))) | length) as $sin_cuota | if ($ok_reaccion + $ok_sha) == 0 then "\($n)\t\($p.createdAt)\t\(if $sin_cuota > 0 then "cuota" else "espera" end)" else empty end'
 
 hilos=$(gh api graphql --paginate --slurp -f query="$consulta" \
   -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null | jq -r "$filtro" 2>/dev/null) || exit 0
@@ -103,18 +103,31 @@ if [[ -z "$nuevos" ]]; then
     | jq -r "$filtro_pedidos" 2>/dev/null) || exit 0
   [[ -n "$pendiente" ]] || exit 0
 
-  while IFS=$'\t' read -r n cuando; do
+  while IFS=$'\t' read -r n cuando motivo; do
     [[ -n "$cuando" ]] || continue
     marca="$marcas/pedido-$n-${cuando//[:.]/-}"
     [[ -f "$marca" ]] && continue
     : > "$marca" 2>/dev/null || continue
-    cat >&2 <<MSG
+    # Sin cuota NO es lo mismo que en camino, y es el estado que cuela un pull request sin
+    # revisar: en las demás superficies se ve idéntico a "pendiente", así que uno espera algo
+    # que no va a llegar. Se separan porque piden cosas distintas.
+    if [[ "$motivo" == "cuota" ]]; then
+      cat >&2 <<MSG
+La revisión pedida en #$n NO va a llegar: Codex respondió que se agotó la cuota de
+revisiones ($cuando).
+
+Esperarla es perder el tiempo. Se puede volver a pedir más tarde, cuando la ventana se
+reponga, o mezclar sabiendo que va sin revisar y dejándolo dicho.
+MSG
+    else
+      cat >&2 <<MSG
 Hay una revisión de Codex pedida en #$n y todavía sin responder ($cuando).
 
 Llega en minutos y este es el último aviso: si el turno termina acá, nadie la va a mirar.
 Espérala en segundo plano y revisa los hallazgos antes de cerrar. Cada pedido avisa una
 sola vez.
 MSG
+    fi
     exit 2
   done <<< "$pendiente"
   exit 0

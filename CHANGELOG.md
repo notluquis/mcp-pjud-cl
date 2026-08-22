@@ -33,6 +33,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- La hoja de ruta explicaba la falta de penal con un diagnóstico que resultó falso, y no
+  nombraba ni los anexos ni los audios.
+- `verificacion` nombraba seis de las veinticinco rutas de documento que el servidor acepta.
 - Pedir una georreferencia de una competencia que no la ofrece, o sin referencia, levantaba
   `EstructuraInesperada`, que la referencia documenta como "la plataforma cambió, reportar".
   Son errores de la llamada y ahora levantan `ValueError`, como el resto.

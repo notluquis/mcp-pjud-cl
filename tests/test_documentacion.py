@@ -677,6 +677,29 @@ def test_lo_medido_del_canal_de_audio_no_se_pierde():
         )
 
 
+def test_toda_ruta_de_documento_que_el_cliente_acepta_esta_nombrada():
+    """`obtener_documento` rechaza lo que no esté en `DOCUMENTOS`, así que esa tabla es la
+    lista de lo que el servidor puede entregar, y la página que dice qué entrega la plataforma
+    tiene que nombrarlas todas.
+
+    Doce de las veinticinco no estaban: la sección se escribió cuando eran seis, todas de
+    civil, y cada competencia nueva agregó las suyas sin volver a la página. Quien la leyera
+    para saber qué puede pedir veía menos de la mitad.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    faltan = sorted(
+        f"{competencia}:{ruta}"
+        for competencia, rutas in DOCUMENTOS.items()
+        for ruta in rutas
+        # La tabla de civil las escribe con su carpeta delante (`civil/documentos/docu.php`) y
+        # las demás sueltas. Las dos formas nombran la ruta, que es lo que este guardia mide.
+        if not re.search(rf"`[\w/]*{re.escape(ruta)}`", pagina)
+    )
+    assert not faltan, (
+        f"`obtener_documento` acepta estas rutas y `verificacion` no las nombra: {faltan}"
+    )
+
+
 def test_lo_medido_de_penal_no_se_pierde():
     """Penal se lee, y no por la ruta que lleva su nombre.
 

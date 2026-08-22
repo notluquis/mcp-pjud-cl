@@ -360,9 +360,9 @@ medido en este mismo canal, al buscar el listado de audios de audiencia por la r
 la de otro modal: respondió **200 con la tabla vacía**, o sea con la forma exacta de "este
 folio no tiene anexos". Por eso `parse_anexos` levanta cuando la tabla viene sin filas.
 
-No es que no se hayan intentado: en diecinueve causas de cobranza, penal y civil abiertas para
-buscarlas, **ninguna ofrecía** ninguno de esos paneles. Lo que falta para medir las restantes
-no es tiempo de red sino una causa que las traiga.
+No es que no se hayan intentado: se abrieron **dieciocho** causas buscándolas, nueve de
+cobranza y nueve penales, de 2024 y de 2026, y **ninguna ofrecía** ninguno de los doce que
+faltan. Lo que falta para medirlos no es tiempo de red sino una causa que los traiga.
 
 **La descarga en sí no se ejecutó.** Las rutas de la última columna se leyeron del formulario
 de cada fila, igual que las cinco rutas civiles de la tabla de más arriba que siguen sin

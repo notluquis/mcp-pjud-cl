@@ -17,8 +17,6 @@ divergencia salga en CI y no en el uso.
 
 import ast
 import asyncio
-import ast
-import asyncio
 import base64
 import contextlib
 import re
@@ -342,42 +340,34 @@ def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
     # rescataba una declaración cambiada), después miraba dos páginas y se le escapaban las de
     # `uso`, `index` e `instalacion`. Cualquier nombre de licencia que no sea el declarado es
     # una contradicción, esté donde esté.
-    # Cualquier nombre de licencia, no sólo los que empiezan con PolyForm: si una declaración
-    # cambiara a MIT o Apache-2.0 no entraba en el barrido y el guardia quedaba verde con las
-    # dos instrucciones contradiciéndose.
-    OTRAS_LICENCIAS = (
-        r"PolyForm [A-Z]\w+ \d+\.\d+\.\d+",
-        r"\bMIT\b",
-        r"\bApache[- ]2\.0\b",
-        r"\bBSD-[23]-Clause\b",
-        r"\bGPL-[23]\.0\b",
-        r"\bAGPL-3\.0\b",
-        r"\bMPL-2\.0\b",
-        r"\bLGPL-[23]\.[01]\b",
-        r"\bUnlicense\b",
-        r"\bCC0-1\.0\b",
+    # Se buscan las DECLARACIONES sobre este software, no cualquier nombre de licencia. El
+    # barrido por nombre fue una sobrecorrección: la investigación de documentos compara las
+    # licencias de PyMuPDF, pypdf y pypdfium2 en prosa, y eso no es una declaración sobre
+    # esto. Prohibir nombres ponía el guardia en rojo sobre una página correcta.
+    #
+    # Una declaración se reconoce por su frase, y son pocas y estables: "el proyecto usa X",
+    # "se entrega bajo X", "[X] permite", "La licencia ([X])". Si alguna cambia de licencia,
+    # la frase sigue estando y el nombre que trae adentro es el que se compara.
+    DECLARACIONES = (
+        r"[Ee]l proyecto usa \[([^\]]+)\]",
+        r"[Ss]e entrega bajo \[([^\]]+)\]",
+        r"[Ss]e distribuye bajo \[([^\]]+)\]",
+        r"^\[([^\]]+)\]\([^)]*\)[.,]? [Pp]ermite",
+        r"^\*\*([^*]+)\*\* permite",
+        r"La licencia \(\[([^\]]+)\]",
     )
-    # Se miran sólo las líneas de PROSA: una fila de tabla que dice "PyMuPDF | AGPL-3.0" habla
-    # de la licencia de un tercero y no de bajo cuál se distribuye esto. La declaración de
-    # este software siempre es una frase, nunca una celda.
     ajenas = {}
     for pagina in PROSA:
-        prosa = "\n".join(
-            linea for linea in _texto(pagina).splitlines() if not linea.lstrip().startswith("|")
-        )
-        otras = {
-            m.group(0)
-            for patron in OTRAS_LICENCIAS
-            for m in re.finditer(patron, prosa)
-            if m.group(0) != nombre
+        texto = _texto(pagina)
+        halladas = {
+            m.group(1) for patron in DECLARACIONES for m in re.finditer(patron, texto, re.M)
         }
-        # `licencia.md` compara a propósito con las otras variantes de PolyForm para explicar
-        # por qué se eligió Strict. Ahí nombrarlas no es declararlas.
-        if otras and pagina.name != "licencia.md":
-            ajenas[pagina.name] = sorted(otras)
+        otras = sorted(h for h in halladas if h != nombre)
+        if otras:
+            ajenas[pagina.name] = otras
     assert not ajenas, (
-        f"estas páginas nombran una licencia que no es la que el paquete distribuye: {ajenas}. "
-        f"La declarada es {nombre}."
+        f"estas páginas declaran una licencia que no es la que el paquete distribuye: "
+        f"{ajenas}. La declarada es {nombre}."
     )
 
     # Y que al menos una página la declare, para que borrarla no pase por silencio.

@@ -2747,6 +2747,133 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
     )
 
 
+def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
+    """La cifra se escribió a mano y quedó vieja al agregar la quinta.
+
+    Es la clase de dato que envejece sin que nadie lo mire: agregar una sección es lo natural,
+    y actualizar una frase tres pantallas más abajo no. Sale de los encabezados de la propia
+    sección, así que la siguiente que se agregue entra sola.
+    """
+    _EN_PALABRAS = {3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho"}
+    pagina = _texto(RAIZ / "docs" / "ecosistema.md")
+    seccion = pagina.split("## Herramientas chilenas que tocan lo mismo")[1].split("\n## ")[0]
+    cuantas = len(re.findall(r"^### ", seccion, re.M))
+    assert cuantas >= 3, "la sección de herramientas chilenas se quedó sin entradas"
+    assert f"Ninguna de las {_EN_PALABRAS[cuantas]} lo hace" in pagina, (
+        f"la página lista {cuantas} herramientas chilenas y la comparación dice otra cifra"
+    )
+
+
+#: Lo que Magnar declara en su material público, revisado el 21 de agosto de 2026. Vive acá
+#: porque es una fuente externa que nada del repositorio puede derivar, y el guardia lo que sí
+#: puede es exigir que las menciones de la página no se separen entre sí.
+MAGNAR_PAGINAS = 10_000
+MAGNAR_ANIO = 2025
+MAGNAR_PAISES = ("Perú", "Ecuador", "Costa Rica", "Colombia", "Uruguay")
+
+#: Lo que declara hacer, con la frase que lo identifica en cada fila de la tabla. Es lo que
+#: sostiene la comparación publicada: si una capacidad cambia y la fila queda igual, quien
+#: lea la página para elegir está comparando contra algo que ya no es.
+#: El valor COMPLETO de cada fila, no un fragmento: proteger "control de cambios en Word"
+#: dejaba borrar "Resúmenes de sentencias" y "tablas comparativas" de la misma celda sin que
+#: nada fallara, y ahí la comparación publicada ya no es la que se revisó.
+MAGNAR_CAPACIDADES = {
+    "Qué declara buscar": (
+        '"normativa y jurisprudencia oficial de tu país, con citas verificables y acceso '
+        'directo a cada fuente"'
+    ),
+    "Base propia": "Un banco de fallos en `app.magnar.ai/cl/juris`",
+    "Qué genera": (
+        "Resúmenes de sentencias, tablas comparativas, ediciones con control de cambios en Word"
+    ),
+    "Escala que declara": "Expedientes de hasta 10.000 páginas",
+    "Qué NO publica": (
+        "Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de "
+        "cómputo de plazos"
+    ),
+}
+#: Con su estado, no sólo el nombre: borrar el "en curso" de la ISO 42001 sin quitar el
+#: nombre cambia una afirmación verificable y el guardia no lo veía.
+MAGNAR_CERTIFICACIONES = (
+    "ISO 27001 obtenida",
+    "SOC 2 Type 2 obtenida",
+    "RGPD cumple",
+    "ISO 42001 en curso",
+)
+
+
+def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():
+    """La cifra de las páginas aparece dos veces y podían separarse.
+
+    Es una afirmación de un tercero, así que no se deriva de nada: lo que sí se puede impedir
+    es que una mención se actualice y la otra quede vieja, que es lo mismo que se persigue con
+    las cifras propias. Y que las certificaciones se citen completas, porque media lista dice
+    algo distinto de la lista entera.
+    """
+    seccion = _texto(RAIZ / "docs" / "ecosistema.md").split("### Magnar")[1].split("\n### ")[0]
+    cifra = miles(MAGNAR_PAGINAS)
+    veces = seccion.count(cifra)
+    assert veces >= 2, (
+        f"la sección de Magnar cita {cifra} páginas {veces} vez/veces, y las menciones que "
+        "tenía eran dos: si se quitó una, hay que quitar este guardia con ella"
+    )
+    faltan = [c for c in MAGNAR_CERTIFICACIONES if c not in seccion]
+    assert not faltan, f"la sección dejó de citar {faltan}, que es parte de lo que declara"
+
+    # El año y los países son igual de verificables y cambian igual de fácil: es la
+    # comparación publicada, y quien la lea para elegir se merece que esté al día.
+    assert f"de {MAGNAR_ANIO}" in seccion, (
+        f"la sección dejó de decir que Magnar es de {MAGNAR_ANIO}"
+    )
+    sin_pais = [p for p in MAGNAR_PAISES if p not in seccion]
+    assert not sin_pais, f"la sección dejó de nombrar {sin_pais} entre los países donde opera"
+    # La lista se EXTRAE de la frase y se compara entera, en vez de rechazar unos pocos países
+    # elegidos a mano: enumerar los que no valen es la misma trampa que enumerar formatos, y
+    # dejaba pasar cualquiera que no se me hubiera ocurrido.
+    m = re.search(r"ya opera en ([^.]+)\.", " ".join(seccion.split()))
+    assert m, "la sección dejó de decir en qué países opera"
+    publicados = tuple(
+        pais.strip() for pais in re.split(r",\s*|\s+y\s+", m.group(1)) if pais.strip()
+    )
+    assert publicados == MAGNAR_PAISES, (
+        f"la sección publica {publicados} y la fuente revisada declara {MAGNAR_PAISES}: si "
+        "Magnar creció, hay que volver a mirar lo que publica en vez de agregarlo suelto"
+    )
+
+    # Y las capacidades, que son lo que sostiene la comparación.
+    # Se compara el valor COMPLETO de cada fila contra la celda que la página publica, no un
+    # fragmento contra la página entera: con el fragmento se podía borrar media celda.
+    plana = " ".join(seccion.split())
+    mal = {}
+    for fila, esperado in MAGNAR_CAPACIDADES.items():
+        m = re.search(rf"\| {re.escape(fila)} \| ([^|]+) \|", plana)
+        if m is None:
+            mal[fila] = "la fila desapareció"
+        elif m.group(1).strip() != " ".join(esperado.split()):
+            mal[fila] = m.group(1).strip()
+    assert not mal, (
+        f"estas filas no dicen lo que se revisó: {mal}. La comparación publicada se separó "
+        "de la fuente."
+    )
+
+
+def test_lo_comercial_se_declara_como_publicado_y_no_como_medido():
+    """De un producto cerrado sólo se sabe lo que publica, y la página tiene que decirlo.
+
+    Es la lección de siempre puesta como guardia: "no cubre X" sobre un producto que no se
+    contrató sólo puede querer decir "no lo publica". Sin esa salvedad, la página compara una
+    medición contra un folleto y las presenta al mismo nivel.
+    """
+    pagina = " ".join(_texto(RAIZ / "docs" / "ecosistema.md").split())
+    assert "sólo se puede afirmar lo que publican" in pagina, (
+        "`ecosistema.md` dejó de acotar qué se sabe de los productos comerciales"
+    )
+    assert "no lo publica" in pagina, (
+        "`ecosistema.md` dejó de decir que un 'no cubre X' sobre un producto cerrado significa "
+        "que no lo publica, no que no lo haga"
+    )
+
+
 def test_la_licencia_dice_lo_mismo_en_todas_partes():
     """Tres archivos declaran la licencia y ninguno leía a los otros.
 

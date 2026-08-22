@@ -28,9 +28,12 @@ referencia de hacia dónde puede ir esto.
 
 ## Herramientas chilenas que tocan lo mismo
 
-Revisadas a fondo el 17 de agosto de 2026: las dos de código abierto leyendo su código, las
-dos comerciales leyendo lo que documentan. Se anota con detalle porque marcan el piso: lo que
-ellas ya hacen no es una idea para el roadmap, es lo mínimo.
+Revisadas a fondo el 17 de agosto de 2026, más Magnar el 21: las de código abierto leyendo su
+código, las comerciales leyendo lo que documentan. Se anota con detalle porque marcan el piso:
+lo que ellas ya hacen no es una idea para el roadmap, es lo mínimo.
+
+De las comerciales sólo se puede afirmar lo que publican. Ninguna se contrató ni se probó, así
+que cuando acá diga "no cubre X" hay que leerlo como **no lo publica**, que no es lo mismo.
 
 ### CausAlerta
 
@@ -47,6 +50,57 @@ seguimiento diario y resumen por correo.
 Conviene subrayar la tercera fila: **sí dice cubrir los movimientos de receptor**. Lo que no
 dice, y no se puede saber desde afuera, es si separa la fecha de diligencia de la de registro
 o si presenta una sola. Afirmar que no lo hace sería inventar.
+
+### Magnar
+
+Revisado el 21 de agosto de 2026 sobre lo que publica, sin contratarlo. Es chileno, de 2025, y
+ya opera en Perú, Ecuador, Costa Rica, Colombia y Uruguay.
+
+**La jurisprudencia se solapa; el resto no.** Este proyecto también busca fallos y entrega su
+texto, con `buscar_jurisprudencia` y `obtener_texto_sentencia`, así que decir que Magnar cubre
+"la otra mitad" sería falso y le serviría mal a quien esté comparando. La diferencia real:
+
+| | Magnar | Acá |
+|---|---|---|
+| Jurisprudencia | **sí**, con banco propio | **sí**, contra el buscador oficial |
+| Normativa | sí | no |
+| Análisis de expedientes y redacción | sí | no, y por decisión de alcance, no por la regla 1 |
+| Estado de una causa y fecha que corre el plazo | no lo publica | **sí**, y es la razón de existir |
+
+| | |
+|---|---|
+| Qué declara buscar | "normativa y jurisprudencia oficial de tu país, con citas verificables y acceso directo a cada fuente" |
+| Base propia | Un banco de fallos en `app.magnar.ai/cl/juris` |
+| Qué genera | Resúmenes de sentencias, tablas comparativas, ediciones con control de cambios en Word |
+| Escala que declara | Expedientes de hasta 10.000 páginas |
+| Certificaciones que declara | ISO 27001 obtenida, SOC 2 Type 2 obtenida, RGPD cumple; ISO 42001 en curso |
+| Qué NO publica | Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de cómputo de plazos |
+
+Sobre el solapamiento en jurisprudencia hay una diferencia que sí se puede sostener sin
+contratar nada: acá la fuente es el buscador oficial y la respuesta declara qué NO trae, con
+`ocultas` y `no_entregadas`. Un banco propio puede estar más completo o menos, y desde afuera
+no hay cómo saberlo.
+
+Dos cosas que sí sirven acá:
+
+**La cifra de las 10.000 páginas.** Es publicidad y no una medición, pero pone un orden de
+magnitud a lo que un producto de este rubro dice manejar, y el problema de entregar un
+expediente sin gastar el contexto está abierto en esta hoja. No se toma como dato: se anota
+como el número que alguien más se atreve a decir en público.
+
+**Que el énfasis esté en la cita verificable.** Es la misma decisión que acá lleva a que cada
+sentencia traiga su `url` y a que el texto declare `anonimizada` y `fuente`. Que un producto
+comercial lo ponga primero en su portada confirma que no es una manía del proyecto.
+
+Y lo que no se toma: la redacción de escritos. **No porque la regla 1 lo prohíba**, y la
+distinción importa porque esa regla no se negocia y estirarla la desgasta: lo que prohíbe es
+que este servidor escriba en los sistemas del Poder Judicial o invoque endpoints de ingreso.
+Un borrador que se queda en la máquina de quien lo pidió no hace ninguna de las dos cosas.
+
+Queda fuera por alcance, que es una decisión y no un límite: esto es un servidor de consulta,
+redactar exige entender el caso y no sólo leerlo, y quien redacte con ayuda de un modelo puede
+hacerlo con el resultado de estas herramientas al lado. Lo que la regla 1 sí cierra es el paso
+siguiente, presentar el escrito, y ése no se va a abrir.
 
 ### API de Boostr
 
@@ -121,7 +175,7 @@ Lo que sí se puede sostener, y hay que sostenerlo con evidencia y no con adjeti
 | Fallar ruidoso | Un servicio de alertas diarias que deja de parsear manda un resumen vacío que se lee como "no pasó nada". Acá eso levanta excepción |
 | Ser auditable | Código a la vista, bitácora de cada petición, y el intervalo verificado por CI. Un SaaS cerrado no permite comprobar ninguna de las tres |
 | No guardar nada de terceros | Sin cuenta, sin base de datos, sin retención bajo la Ley 21.719 |
-| Hablar MCP | Ninguna de las cuatro lo hace. La herramienta llega adentro del asistente que el abogado ya usa, no a otra pestaña más |
+| Hablar MCP | Ninguna de las cinco lo hace. La herramienta llega adentro del asistente que el abogado ya usa, no a otra pestaña más |
 
 Y lo que hay que copiar sin orgullo, en este orden, porque marca el piso de lo que un abogado
 espera:

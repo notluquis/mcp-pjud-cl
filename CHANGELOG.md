@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.10.0] - 2026-08-22
+
 ### Agregado
 
 - `listar_audios_audiencia` dice qué audios de audiencia tiene la causa y con qué enlace se
@@ -23,8 +25,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El detalle de causa trae `audio_referencia`, que además de servir para pedir el listado dice
   que hubo audiencia grabada. Sólo laboral está medida.
 - Queda medido el detalle de las causas penales: se abre por `unificado`, no por la ruta que
-  lleva el nombre de la competencia, y ésa responde 200 con los paneles vacíos. Todavía no se
-  expone; la medición y sus trampas quedan en la documentación de verificación.
+  lleva el nombre de la competencia, y ésa responde 200 con los paneles vacíos. La medición y
+  sus trampas quedan en la documentación de verificación.
 - `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
   distinto del de la resolución y hasta ahora no se podían pedir. Tres paneles ofrecidos y
   otros cuatro medidos sin ofrecer, porque su referencia no cuelga de un folio.
@@ -42,7 +44,6 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El detalle combinado se anunciaba como "todo lo que la respuesta publica" y deja nueve
   paneles sin leer, distintos en cada competencia. Ahora su contrato dice cuáles, y que los
   anexos y los audios cuestan una petición aparte.
-
 - La hoja de ruta explicaba la falta de penal con un diagnóstico que resultó falso, y no
   nombraba ni los anexos ni los audios.
 - `verificacion` nombraba seis de las veinticinco rutas de documento que el servidor acepta.
@@ -354,7 +355,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.9.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.10.0
 [0.9.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.9.0
 [0.8.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.8.0
 [0.7.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.7.0

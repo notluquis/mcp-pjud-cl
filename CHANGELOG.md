@@ -22,6 +22,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   bajan. **No trae los archivos**: entrega los enlaces para que la persona los abra.
 - El detalle de causa trae `audio_referencia`, que además de servir para pedir el listado dice
   que hubo audiencia grabada. Sólo laboral está medida.
+- Queda medido el detalle de las causas penales: se abre por `unificado`, no por la ruta que
+  lleva el nombre de la competencia, y ésa responde 200 con los paneles vacíos. Todavía no se
+  expone; la medición y sus trampas quedan en la documentación de verificación.
 - `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
   distinto del de la resolución y hasta ahora no se podían pedir. Tres paneles ofrecidos y
   otros cuatro medidos sin ofrecer, porque su referencia no cuelga de un folio.

@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
+  anónima y entrega once archivos troceados por acto procesal. Todavía no se expone.
+
 ## [0.9.0] - 2026-08-22
 
 ### Agregado

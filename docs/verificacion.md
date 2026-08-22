@@ -63,6 +63,48 @@ Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema e
 | Fecha imposible (31/02) | Defensa preventiva, nunca observada |
 | Mensaje de "sin resultados" | Se copió de una respuesta real, pero el camino completo no se ejercitó |
 
+### Los audios de audiencia existen, y la ruta no es la que parece
+
+Medido el 22 de agosto de 2026 sobre una causa laboral real, con consulta anónima y sin
+credenciales. **Rompe el supuesto de que todo lo descargable de la plataforma es PDF.**
+
+| | |
+|---|---|
+| Ruta | `POST /audio/listadoAudio.php`, **fuera** del prefijo `ADIR_nnn` |
+| Parámetro | `dtaAudio`, con la referencia que la cabecera del detalle entrega en `listadoAudioLaboral(...)` |
+| Respuesta | 200, `text/html`, 25.854 bytes |
+| Filas | 11, con columnas `Nro`, `Descargar`, `Audio`, `Fecha` y `Referencia` |
+| Descarga | `audio/audioByPass.php?action=download&x=<token>`, un enlace por fila |
+| `Fecha` | viene **vacía** en las once, aunque la columna existe |
+
+La `Referencia` es el nombre del archivo `.mp3`, y describe el tramo de la audiencia:
+inicio, relación de los hechos, llamado a conciliación, hechos a probar, cada parte
+ofreciendo prueba, cierre. O sea el audio está troceado por acto procesal y no en una pista
+única.
+
+:::{warning}
+**La ruta equivocada devuelve 200 con la tabla vacía.**
+
+Primero se pidió `laboral/modal/listadoAudioLaboral.php`, construida por analogía con los
+otros modales del sitio, que sí viven bajo `{competencia}/modal/`. La plataforma respondió
+**200**, con `text/html`, con el modal correcto y su encabezado "Listado Archivos de
+Audio"... y `<tbody></tbody>`.
+
+Una tabla vacía se lee como "esta causa no tiene audios". Es exactamente el falso negativo
+que la regla 4 existe para evitar, producido acá por el instrumento de medición y no por la
+plataforma: de haberlo dado por bueno, la conclusión escrita habría sido que el canal no
+entrega nada de forma anónima.
+
+Lo que lo destapó fue leer el JavaScript del sitio en vez de seguir suponiendo:
+`listadoAudioLaboral(val)` hace `POST` a `../audio/listadoAudio.php`, que no está bajo el
+prefijo de sesión.
+:::
+
+Qué falta antes de exponerlo: cuánto pesa un archivo, que decide si puede viajar por el
+protocolo o sólo como enlace, y si `audioByPass.php` entrega el MP3 a una consulta anónima o
+sólo el listado. Ninguna de las dos se midió, y bajar un audio de una audiencia es traer a
+disco la voz de personas que son parte en un juicio: eso no se hace para explorar.
+
 ### Mapeado pero nunca ejecutado
 
 Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
@@ -75,9 +117,6 @@ rechaza en vez de adivinar sus parámetros:
 - Las **18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
   competencias. Cada actuación y cada pieza de exhorto declara `tiene_anexo`, y ahí termina lo
   que se puede hacer
-- `listadoAudioLaboral`, que en laboral abre el listado de **audios de las audiencias**. Es un
-  canal de medios y no de documentos, así que rompe el supuesto de que todo lo descargable de
-  la plataforma es PDF
 - `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
   `IncompetenciaApe`. De los **6** paneles que apelaciones publica se leen **2**
 - `receptorCivil.php`, que devuelve la tabla de **retiro** de documentos, no la de

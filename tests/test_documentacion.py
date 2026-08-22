@@ -87,6 +87,25 @@ def _texto(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def _legible(f: Path) -> str:
+    """El texto de un archivo tal como lo LEE alguien, no como está escrito en el fuente.
+
+    En `client.py` los mensajes se arman con literales adyacentes, así que en el archivo
+    aparece `tres "` y `"filas` y la frase nunca está entera. Se juntan con `ast`, que es lo
+    que hace el intérprete: si no, el guardia mira una cadena que nadie va a leer.
+
+    Y se devuelven las dos cosas, los literales unidos MÁS el fuente crudo, porque los
+    comentarios `#:` de `COMPETENCIAS` también afirman cosas y `ast` no los ve. Mirar sólo los
+    literales dejaba esas copias sin guardia.
+    """
+    crudo = _texto(f)
+    if f.suffix != ".py":
+        return " ".join(crudo.split())
+    textos = [n.value for n in ast.walk(ast.parse(crudo)) if isinstance(n, ast.Constant)]
+    unidos = " ".join(" ".join(str(t).split()) for t in textos if isinstance(t, str))
+    return f"{unidos} {' '.join(crudo.split())}"
+
+
 def _trozos_de_ruta(url: str) -> list[str]:
     """Los trozos de una URL que pueden ser un nombre de archivo.
 
@@ -708,6 +727,7 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
         "litigantes",
         "notificaciones",
         "liquidaciones",
+        "diligencias",
         "materias",
         "exhortos",
         "piezas_exhorto",
@@ -741,11 +761,10 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
 
     assert sin_leer, "ninguna fixture trae paneles sin mapear: el guardia dejó de ver algo"
     # No se exige el `id` literal, que es jerga del sitio: se exige que el contrato nombre la
-    # cosa. `escritosCiv` -> "escritos", `diligenciaCob` -> "diligencias".
+    # cosa. `escritosCiv` -> "escritos", `diligenciasLab` -> "diligencias".
     conceptos = {
         "escritosciv": "escritos",
         "escpendlab": "escritos",
-        "diligenciacob": "diligencias",
         "diligenciaslab": "diligencias",
         "liquidacionlab": "liquidaciones",
         "exhortosape": "exhortos",
@@ -2845,6 +2864,7 @@ def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
         "litigantes",
         "notificaciones",
         "liquidaciones",
+        "diligencias",
         "materias",
         "exhortos",
         "piezas_exhorto",
@@ -3045,24 +3065,7 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
     _EN_LETRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
     cuantas = _EN_LETRAS[len(nombradas)]
 
-    def legible(f: Path) -> str:
-        """El texto tal como lo LEE alguien, no como está escrito en el archivo.
-
-        En `client.py` el mensaje se arma con literales adyacentes, así que en el fuente
-        aparece `tres "` y `"filas` y la frase nunca está entera. Se juntan con `ast`, que es
-        lo que hace el intérprete: si no, el guardia mira una cadena que nadie va a leer.
-        """
-        crudo = _texto(f)
-        if f.suffix != ".py":
-            return " ".join(crudo.split())
-        # Las dos cosas: los literales unidos por `ast`, para las cadenas partidas, MÁS el
-        # fuente crudo, porque los comentarios `#:` de `COMPETENCIAS` también afirman la cifra
-        # y `ast` no los ve. Mirar sólo los literales dejaba esa copia sin guardia.
-        textos = [n.value for n in ast.walk(ast.parse(crudo)) if isinstance(n, ast.Constant)]
-        unidos = " ".join(" ".join(str(t).split()) for t in textos if isinstance(t, str))
-        return f"{unidos} {' '.join(crudo.split())}"
-
-    copias = {f.name: legible(f) for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]}
+    copias = {f.name: _legible(f) for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]}
     # La cifra puede ir antes o después de la palabra: el registro escribe "los nombra tres
     # veces", con el sujeto adelante, y el patrón que sólo miraba hacia la derecha lo perdía.
     # Sólo palabras de cantidad, no cualquier palabra antes de "filas": con `\w+` el guardia
@@ -3100,6 +3103,65 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
         f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
         f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
         "ahí daría una lista parcial, no una vacía."
+    )
+
+
+def test_nadie_afirma_que_las_diligencias_de_cobranza_no_se_leen():
+    """`diligenciaCob` pasó de no leerse a leerse, y la afirmación vieja vivía en SIETE copias.
+
+    La referencia, la hoja de ruta, la página de verificación, la del ecosistema, el mensaje
+    con que el cliente rechaza actuaciones en cobranza, el esquema que el servidor publica y
+    el contrato del detalle. Al mapear el panel, la suite entera siguió verde: ningún guardia
+    miraba esas frases, así que la documentación podía seguir diciendo que el dato no se lee
+    mientras el servidor lo entregaba.
+
+    Se barre la prosa Y el código, por lo de siempre: la copia que un modelo le relata a un
+    abogado es el mensaje de error, no la página.
+    """
+    from mcp_pjud.parser import parse_diligencias
+
+    assert COMPETENCIAS["cobranza"].diligencias is not None, (
+        "si el panel dejara de estar mapeado, este guardia sobra y hay que retirarlo junto con "
+        "el campo, no dejarlo pasando en vacío"
+    )
+    assert parse_diligencias(_texto(RAIZ / "tests" / "fixtures" / "detalle_cobranza.html")), (
+        "la fixture de cobranza dejó de traer filas en `diligenciaCob`"
+    )
+
+    # Las tres formas medidas de decirlo, incluida la que no nombra el panel: la referencia
+    # decía "un panel propio ... que este proyecto todavía no lee" y el servidor "otro panel
+    # que este servidor todavía no lee", sin el identificador en ninguna de las dos.
+    contradicciones = (
+        r"`?diligenciaCob`?[^.]{0,140}?(?:todav[ií]a )?no (?:se )?lee",
+        r"no (?:se )?lee[^.]{0,140}?`?diligenciaCob`?",
+        r"(?:otro|propio|aparte|distinto) panel[^.]{0,140}?(?:todav[ií]a )?no (?:se )?lee",
+        r"panel (?:otro|propio|aparte|distinto)[^.]{0,140}?(?:todav[ií]a )?no (?:se )?lee",
+    )
+    # El registro de cambios queda fuera y no por comodidad: sus entradas dicen qué cambió en
+    # una versión, y la de la 0.3.0 era cierta cuando se publicó. Editarla para que este
+    # guardia pase falsearía el registro, que es lo mismo que ya se decidió con la tabla de
+    # user agents medidos.
+    fuentes = [f for f in PROSA if f.name != "CHANGELOG.md"]
+    culpables = {
+        f.name: [p for p in contradicciones if re.search(p, _legible(f))]
+        for f in [*fuentes, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+        if any(re.search(p, _legible(f)) for p in contradicciones)
+    }
+    assert not culpables, (
+        f"{sorted(culpables)} sigue diciendo que las diligencias de cobranza no se leen, y el "
+        "detalle las entrega en `diligencias`. Quien lo lea va a buscar el dato en el "
+        "expediente teniendo la respuesta a mano."
+    )
+
+    # Y la otra forma de decir lo mismo, que no usa el verbo: figurar entre los canales
+    # mapeados y nunca ejecutados. Ahí estaba, encabezando la lista.
+    sin_ejecutar = (
+        _texto(RAIZ / "docs" / "verificacion.md")
+        .split("### Mapeado pero nunca ejecutado", 1)[1]
+        .split("###", 1)[0]
+    )
+    assert "diligenciaCob" not in sin_ejecutar, (
+        "`diligenciaCob` se lee y sigue listado entre los canales mapeados y nunca ejecutados"
     )
 
 

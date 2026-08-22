@@ -214,13 +214,17 @@ proyecto.
 
 :::{warning}
 Sólo **civil** entrega actuaciones por esta vía. En **cobranza** las diligencias del ministro de
-fe viven en un panel propio (`diligenciaCob`) con otra estructura, que este proyecto todavía no
-lee, así que la llamada se **rechaza**.
+fe viven en un panel propio (`diligenciaCob`), que `obtener_detalle_causa` lee y entrega en
+`diligencias`, así que la llamada por esta vía se **rechaza**.
 
 Su Historia sí nombra algunas, y por eso el rechazo: tres filas dicen `Actuacion - Receptor` y
 ninguna trae fecha de diligencia, o sea leerlas de ahí daría una lista **parcial y sin el dato
 que se busca**. Si son todas o sólo una parte no está medido, y entregarlas sería
 informar una completitud desconocida como si fuera el total.
+
+El panel tampoco publica la fecha en que se practicó la diligencia, así que sus filas **no son
+actuaciones** y no se pueden presentar como tales: dicen qué diligencia hay, en qué estado y
+quién figura a cargo.
 
 En laboral, penal, apelaciones y suprema no existen: en todo el sitio sólo hay
 `receptorCivil` y `receptorCobranza`.
@@ -288,9 +292,10 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 
 ## `obtener_detalle_causa`
 
-Historia, litigantes, notificaciones, liquidaciones, materias, los dos lados del exhorto y la
-causa de la que subió el recurso, leídos de **una sola cadena de peticiones**. Recorre todos
-los cuadernos, no sólo el que la plataforma muestra por defecto.
+Historia, litigantes, notificaciones, liquidaciones, diligencias, materias, los dos lados
+del exhorto y la causa de la que subió el recurso, leídos de **una sola cadena de
+peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
+por defecto.
 
 **No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
 leer: los escritos todavía no están medidos, así que su ausencia acá

@@ -74,16 +74,18 @@ compara el formulario enviado contra lo que ella declara.
 - **`diligenciaCob`**: cobranza tiene ministro de fe y sus diligencias viven en un panel
   aparte, con estructura propia (`Estado Diligencia`, `Tipo Diligencia`, `Destinatario`,
   `Responsable`). Su Historia **sí nombra algunas**: tres filas dicen `Actuacion - Receptor`,
-  sin tilde y con guion, y ninguna trae fecha de diligencia. Hoy `actuaciones_receptor` rechaza
-  cobranza, y es lo correcto mientras el panel no esté medido: no se sabe si esas tres son
-  todas, y entregarlas se leería como el total.
+  sin tilde y con guion, y ninguna trae fecha de diligencia. Por eso `actuaciones_receptor`
+  rechaza cobranza: no se sabe si esas tres son todas, y entregarlas se leería como el total.
 
-  **Medido, y la respuesta es que hoy no sirve.** De cinco causas de cobranza, sólo una trae
-  filas en ese panel, y sus tres diligencias traen `31/12/1969` en la columna de fecha: el
-  epoch, o sea el valor cero renderizado. Ninguna trae la fecha doble que este proyecto lee en
-  civil. Construir sobre eso entregaría actuaciones sin la fecha que corre los plazos, que es
-  peor que no entregarlas. Queda a la espera de encontrar una causa donde el panel sí publique
-  fechas.
+  **El panel se lee, y no entrega actuaciones.** El detalle de causa lo trae en `diligencias`:
+  qué diligencia hay, en qué estado, a quién se dirige y quién figura a cargo. Lo que **no**
+  trae es la fecha en que se practicó: la columna publica `31/12/1969`, el epoch, o sea el
+  valor cero renderizado, y ese cero se entrega en **nulo** en vez de como fecha. Informarlo
+  como `31/12/1969` haría computar un plazo desde 1969, que es peor que no informarlo.
+
+  Lo que sigue pendiente es más chico que antes: encontrar una causa donde ese panel **sí**
+  publique fechas. Hasta entonces, la fecha que corre los plazos en cobranza no está en ninguna
+  parte de la respuesta, y decirlo es lo único cierto que se puede decir.
 
 - **Las notificaciones son otra fuente de fechas, y no son uniformes.** Buscando lo anterior
   apareció que cobranza publica `notificacionCob` con DOS columnas de fecha, `Fec.Not.` y

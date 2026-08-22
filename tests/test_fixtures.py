@@ -69,7 +69,26 @@ _NOMBRES_RETIRADOS = {
     "8c89342be628f7cb8143f52c0230a85f6cefb705717541fa31a8fc14fc4fc270",
     "a35e09efbb7d06ac500b4a7efbca11e4903b14610e8519f5d9f923b076099090",
     "d8e1ed7044e561e2224e8288c92d3d5113f4fb0ae1e21c9978379a38acce4e75",
+    # Las dos que estaban en `detalle_cobranza.html` y ningún guardia veía: el juez asignado de
+    # la cabecera y la responsable de una diligencia. Venían en mayúscula y minúscula, y los
+    # cuatro patrones de acá buscaban corridas EN MAYÚSCULAS.
+    "c29bf725261bf5a827a20a6e541be6f41b824bb80965646c612625f1f896aab1",
+    "7ebd2473e57017c6a6c9acfb083e9b118f359107340341b72752888d34080e0b",
+    # Y la tercera, que apareció al escribir el guardia nuevo: un abogado en `detalle_laboral`.
+    # Ésta SÍ venía en mayúsculas, y se escapaba por otra rendija: el `(Poder Amplio)` del
+    # final, porque los paréntesis no están en la clase de caracteres del patrón viejo.
+    "f9b27137e89b3b75fb1f0a0117a9dca904b37d2e0b496e3baafa8614862fc160",
 }
+
+
+#: Cualquier texto de celda que pueda ser el nombre de una persona, en MAYÚSCULAS o en
+#: mayúscula y minúscula.
+#:
+#: El patrón anterior sólo veía corridas en mayúsculas, y con eso los dos nombres reales que
+#: `detalle_cobranza.html` traía en la cabecera y en el panel de diligencias eran invisibles
+#: para los cuatro guardias de este archivo a la vez. El sitio escribe algunos rótulos de una
+#: forma y otros de la otra, así que el guardia no puede elegir una.
+_CANDIDATOS_A_NOMBRE = re.compile(r">\s*([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ\s]{10,60})\s*<")
 
 
 def _huella(texto: str) -> str:
@@ -85,7 +104,7 @@ def test_sin_nombres_reales_conocidos():
     encontrados = {}
     for archivo in _archivos():
         texto = archivo.read_text(encoding="utf-8")
-        for candidato in re.findall(r">\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{10,60})\s*<", texto):
+        for candidato in _CANDIDATOS_A_NOMBRE.findall(texto):
             if _huella(candidato) in _NOMBRES_RETIRADOS:
                 encontrados.setdefault(archivo.name, set()).add("(identidad retirada)")
     assert not encontrados, (
@@ -123,6 +142,87 @@ def test_los_nombres_de_las_fixtures_son_los_ficticios():
                 inesperados.setdefault(archivo.name, set()).add(nombre)
     assert not inesperados, (
         f"Nombres que no son ficticios en las fixtures: {inesperados}. "
+        "Corre: uv run python tests/fixtures/anonimizar.py"
+    )
+
+
+#: Los encabezados de columna que llevan el nombre de una persona, y los rótulos de cabecera
+#: que hacen lo mismo. Salen de mirar las fixtures, no de imaginarlos.
+_COLUMNAS_CON_NOMBRE = {
+    "nombre",
+    "nombre o razón social",
+    "responsable",
+    "destinatario",
+    "abog. defensor",
+    "juez asignado",
+}
+
+#: Lo que puede aparecer ahí sin identificar a nadie. Cada entrada se agrega de a una: esto es
+#: lo que hace pasar un valor, así que ensancharlo es la forma más fácil de tapar una fuga.
+_NO_IDENTIFICAN = {"no", "no asignado", "sin asignar", "banco de chile"}
+
+#: Cómo empiezan los nombres ficticios que este repositorio usa.
+_PREFIJOS_FICTICIOS = ("PERSONA ", "EMPRESA ", "ABOGAD", "DEMANDAD")
+
+
+def _valores_de_columnas_con_nombre(texto: str) -> set[str]:
+    """Lo que las fixtures publican en las celdas que llevan nombres de personas.
+
+    Se mira POR COLUMNA y no por la forma del texto, y ésa es la diferencia con los guardias de
+    arriba: un nombre en mayúscula y minúscula es indistinguible de una descripción de trámite
+    ("Designación de Martillero" también son tres palabras capitalizadas), así que el patrón no
+    puede separarlos y el encabezado sí.
+    """
+    from lxml import etree
+    from lxml import html as H
+
+    doc = H.fromstring(texto)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    def texto_de(elemento) -> str:
+        return " ".join(elemento.text_content().split())
+
+    valores = set()
+    tablas: list = list(doc.iter("table"))
+    for tabla in tablas:
+        cabecera: list = list(tabla.iter("th"))
+        encabezados = {i: texto_de(th).lower() for i, th in enumerate(cabecera)}
+        columnas = [i for i, h in encabezados.items() if h in _COLUMNAS_CON_NOMBRE]
+        if not columnas:
+            continue
+        for fila in tabla.iter("tr"):
+            celdas: list = fila.findall("td")
+            for i in columnas:
+                if i < len(celdas) and (v := texto_de(celdas[i])):
+                    valores.add(v)
+    # Y los rótulos de cabecera, que no viven en una tabla con encabezados sino en un `strong`
+    # con el valor en su cola. Ahí estaba el juez asignado.
+    for etiqueta in doc.iter("strong"):
+        rotulo = texto_de(etiqueta).rstrip(":").lower()
+        if rotulo in _COLUMNAS_CON_NOMBRE and (v := " ".join((etiqueta.tail or "").split())):
+            valores.add(v)
+    return valores
+
+
+def test_las_celdas_que_llevan_nombres_traen_los_ficticios():
+    """El agujero que dejó pasar dos nombres reales durante versiones.
+
+    Los otros guardias de este archivo buscan corridas EN MAYÚSCULAS, así que un nombre escrito
+    como lo escribe una persona era invisible para los cuatro a la vez. `detalle_cobranza.html`
+    traía dos: el juez asignado de la cabecera y la responsable de una diligencia.
+
+    Éste no mira la forma del texto sino la COLUMNA: lo que va bajo `Nombre`, `Responsable`,
+    `Destinatario` o `Juez Asignado` identifica a una persona, se escriba como se escriba.
+    """
+    inesperados = {}
+    for archivo in _archivos():
+        for valor in _valores_de_columnas_con_nombre(archivo.read_text(encoding="utf-8")):
+            if valor.lower() in _NO_IDENTIFICAN:
+                continue
+            if not valor.upper().startswith(_PREFIJOS_FICTICIOS):
+                inesperados.setdefault(archivo.name, set()).add(valor)
+    assert not inesperados, (
+        f"Celdas con nombre que no son ficticias: {inesperados}. "
         "Corre: uv run python tests/fixtures/anonimizar.py"
     )
 

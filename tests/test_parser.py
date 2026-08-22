@@ -24,6 +24,7 @@ from mcp_pjud.parser import (
     parse_audios,
     parse_causa_de_origen,
     parse_cuadernos,
+    parse_diligencias,
     parse_escritos_pendientes,
     parse_exhortos,
     parse_georreferencia,
@@ -826,6 +827,85 @@ def test_una_competencia_que_no_liquida_se_rechaza():
     hay deuda liquidada, y eso es distinto de que la competencia no lo publique."""
     with pytest.raises(EstructuraInesperada, match="no publica liquidaciones"):
         parse_liquidaciones(NOTIF_CIVIL, "civil")
+
+
+# -- las diligencias del ministro de fe -----------------------------------------
+
+
+def test_las_diligencias_de_cobranza_se_leen_enteras():
+    """El panel donde cobranza guarda de verdad al ministro de fe.
+
+    Nueve columnas y un mapa posicional: las aserciones van campo por campo y no sobre la
+    cantidad de filas, porque dos columnas contiguas intercambiadas no cambian el largo de
+    nada. `destinatario` y `responsable` son justo ese par, y confundirlas pondría a quien
+    practica la diligencia en el lugar de quien la recibe.
+    """
+    (diligencia,) = parse_diligencias(NOTIF_COBRANZA, "cobranza")
+
+    assert diligencia.estado == "cumplida"
+    assert diligencia.tipo == "Oficios Varios 3"
+    assert diligencia.destinatario == "No Asignado"
+    assert diligencia.rit == "C-208-2019"
+    # El RUC va ceroizado en la fixture, como en el resto: su cuerpo de seis dígitos también
+    # tenía forma de RUT y pasaba por debajo del guardia.
+    assert diligencia.ruc == "00- 0-0000000-0"
+
+    # El nombre real no se escribe acá: la fixture trae el de una persona natural. Se comprueba
+    # la FORMA, que es lo que distingue la celda del responsable de la de al lado.
+    assert " " in diligencia.responsable, (
+        "el responsable es el nombre de una persona y lleva espacios; si trae 'No Asignado' o "
+        "una fecha, las columnas están corridas"
+    )
+    assert diligencia.responsable != diligencia.destinatario
+
+
+def test_la_fecha_epoch_de_una_diligencia_vuelve_nula_y_no_como_fecha():
+    """El test que importa de este panel, y por eso pasa por `parse_diligencias` entera.
+
+    La fila medida está `cumplida` y su columna de fecha dice `31/12/1969`: el epoch de Unix
+    visto desde una zona al oeste de Greenwich, o sea el valor cero renderizado, no una
+    diligencia practicada ese día. Entregarlo tal cual haría computar un plazo desde 1969.
+
+    Las dos aserciones van juntas a propósito: el nulo NO significa que la diligencia no se
+    practicó, y sin el estado al lado se leería justo así.
+    """
+    (diligencia,) = parse_diligencias(NOTIF_COBRANZA, "cobranza")
+
+    assert diligencia.fecha_tramite is None, (
+        "el epoch se devolvió como fecha real, y alguien computaría un plazo desde 1969"
+    )
+    assert diligencia.estado == "cumplida", (
+        "la diligencia SÍ se practicó: la fecha nula dice que el sitio no publicó ninguna, no "
+        "que no haya ocurrido"
+    )
+
+
+def test_un_panel_de_diligencias_vacio_devuelve_lista_y_no_levanta():
+    """Igual que en notificaciones y liquidaciones: acá la lista vacía SÍ es una respuesta.
+
+    De cinco causas de cobranza medidas, sólo una trae filas en este panel, así que la causa
+    sin ninguna diligencia es lo corriente y no lo anómalo. Levantar ahí convertiría lo normal
+    en un error, que es la mitad de la regla 4 que se olvida.
+
+    No hay fixture con el panel vacío, así que se le quita la única fila a la real: lo que se
+    prueba es el contrato del parser, no una respuesta que nadie capturó.
+    """
+    doc = H.fromstring(NOTIF_COBRANZA)
+    tabla = doc.xpath('//*[@id="diligenciaCob"]//table')[0]
+    for fila in tabla.xpath(".//tr"):
+        if fila.xpath("./td"):
+            fila.getparent().remove(fila)
+    sin_filas = H.tostring(doc, encoding="unicode")
+    assert "diligenciaCob" in sin_filas, "se borró el panel entero y no sólo su fila"
+
+    assert parse_diligencias(sin_filas, "cobranza") == []
+
+
+def test_una_competencia_sin_el_panel_de_diligencias_se_rechaza():
+    """Cobranza es la única con el panel medido. En las demás la lista vacía se leería como que
+    el ministro de fe no practicó ninguna diligencia, que es otra cosa."""
+    with pytest.raises(EstructuraInesperada, match="no publica el panel de diligencias"):
+        parse_diligencias(NOTIF_CIVIL, "civil")
 
 
 # -- litigantes y materias ------------------------------------------------------

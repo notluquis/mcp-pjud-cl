@@ -533,6 +533,21 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
             f"el alcance de la investigación dejó de decir que el folio medido {afirmacion!r}"
         )
 
+    # Y la relación entre los dos topes, que es la que obliga a que pedir texto reemplace el
+    # archivo: el máximo embebido ocupa el presupuesto ENTERO, así que cualquier otra cosa lo
+    # pasa. Si alguien afloja `LIMITE_EMBEBIDO`, la afirmación deja de ser cierta y hay que
+    # reescribir la propuesta, no sólo la cifra.
+    from mcp_pjud.client import LIMITE_EMBEBIDO
+
+    assert -(-LIMITE_EMBEBIDO // 3) * 4 == CARACTERES_DE_UNA_RESPUESTA, (
+        "el máximo embebido ya no ocupa el presupuesto entero, así que la propuesta no puede "
+        "seguir justificando con aritmética que pedir texto reemplace el archivo"
+    )
+    assert "reemplaza el archivo embebido por un `ResourceLink`" in pagina, (
+        "la propuesta dejó de decir que pedir texto reemplaza el archivo, y sin eso los dos "
+        "topes se cumplen por separado y suman uno que no se cumple"
+    )
+
     # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento
     # sintético que no se reproduce acá, pero lo que se hace CON ellos es aritmética contra el
     # presupuesto, o sea la mitad que sí queda vieja si alguien mueve la constante o edita la

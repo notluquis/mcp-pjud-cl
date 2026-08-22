@@ -555,6 +555,17 @@ Lo que **no** cambia: el umbral entre viajar embebido y viajar como enlace, el f
 cuando lo que llega no es un PDF, y que leer el recurso vuelve a consultar al Poder Judicial
 porque no hay copia guardada de nada.
 
+:::{important}
+**Pedir texto reemplaza el archivo embebido por un `ResourceLink`.** No es una optimización,
+es aritmética: `LIMITE_EMBEBIDO` son 18.750 bytes, que en base64 son **exactamente** los
+25.000 caracteres de una respuesta entera. Un documento en el límite se come el presupuesto
+completo y deja **cero** para el índice, el texto y la advertencia de contenido no confiable.
+
+Por eso el tope va sobre la RESPUESTA y no sobre cada pieza por separado: dos topes que se
+cumplen cada uno por su lado suman uno que no se cumple. Quien pide un rango quiere el texto,
+no el blob, así que entregar las dos cosas nunca fue lo deseable.
+:::
+
 ## Qué se descartó y por qué
 
 | Descartado | Por qué |

@@ -53,6 +53,15 @@ su valor no aparece en ninguna otra respuesta.
 
 Medido el 20 de agosto de 2026: **17 cortes**.
 
+### Cómo bajar a la causa apelada
+
+El detalle de una causa de la Corte Suprema trae `causa_de_origen` con la corte por su
+**nombre**, y la búsqueda pide el **código**. Son dos llamadas:
+
+1. `listar_cortes` para resolver el nombre a código.
+2. `buscar_causa_por_rit` en `apelaciones` con ese `corte`, el `rol` y el `anio` de la causa de
+   origen, y el `libro` en `tipo`: ahí el número de rol solo no identifica una causa.
+
 ```{include} _generado/listar_cortes.md
 ```
 
@@ -283,8 +292,9 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 
 ## `obtener_detalle_causa`
 
-Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y los dos lados del
-exhorto, leídos de **una sola cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
+Historia, litigantes, notificaciones, liquidaciones, diligencias, materias, los dos lados
+del exhorto y la causa de la que subió el recurso, leídos de **una sola cadena de
+peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
 por defecto.
 
 **No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
@@ -343,6 +353,28 @@ audiencias de la causa. Viene con valor cuando la cabecera ofrece el enlace, o s
 audiencia **grabada**, y eso es un dato en sí: la Historia dice que hubo audiencia, y esto dice
 que quedó registrada. Nulo cuando no la hay y también cuando la competencia no está medida,
 que hoy es todas salvo laboral. Se usa con `listar_audios_audiencia`.
+
+`causa_de_origen` está en la tabla y tampoco trae filas: es la causa de la Corte de Apelaciones
+desde la que **subió** el recurso, y cierra hacia abajo la misma clase de arista que los
+exhortos cierran hacia el lado. Sólo suprema publica el panel.
+
+Viene en **nulo** en dos casos, los dos medidos: la competencia no publica el panel, o la causa
+no subió desde una Corte de Apelaciones y el sitio no emite el panel. Lo segundo es **tres de
+dieciséis** causas de suprema, así que no es una rareza: exequátur, contienda de competencia y
+desafuero llegan a la Corte Suprema sin pasar por una corte.
+
+Lo que **levanta** es el panel presente y sin sus cuatro datos, que nunca se observó: un rol
+sin corte no ubica ninguna causa, y media identidad se lee como que el sitio no la publica.
+
+:::{important} La corte viene por su nombre
+`causa_de_origen.corte` dice `C.A. DE CONCEPCIÓN`, y las búsquedas piden un entero. Hay que
+resolverlo con `listar_cortes` antes de consultar la causa apelada: pasar el nombre donde va el
+código no devuelve un error, devuelve las causas de otra jurisdicción. Es la misma trampa que
+el tribunal de destino de un exhorto.
+
+El rol sí viene partido en `rol` y `anio`, que es como lo piden las búsquedas: el sitio lo
+publica como `14988 - 2020`, con espacios alrededor del guion.
+:::
 
 El mismo dato como grafo, útil para ver de un vistazo qué competencia sirve para qué pregunta.
 Se genera desde el código igual que la tabla, así que no puede quedar viejo:

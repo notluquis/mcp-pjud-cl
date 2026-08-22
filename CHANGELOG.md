@@ -32,6 +32,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   documento y sus anexos. La lista vacía significa que no queda nada por proveer.
 - Queda medida la ruta de anexos de un escrito por resolver, `anexoCausaSolEscritoCivil.php`,
   que sólo ese panel ofrece: son cuatro paneles de anexo pedibles.
+- El detalle de una causa de la Corte Suprema trae `causa_de_origen`, la causa de la Corte de
+  Apelaciones desde la que subió el recurso. La corte llega por su nombre, así que para
+  consultarla hay que resolver el código con `listar_cortes`.
 
 ## [0.10.0] - 2026-08-22
 

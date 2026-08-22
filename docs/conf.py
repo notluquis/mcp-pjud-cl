@@ -198,6 +198,7 @@ def _generar_tablas(app):
         "materias",
         "exhortos",
         "piezas_exhorto",
+        "causa_de_origen",
     )
     filas = []
     for campo in paneles:

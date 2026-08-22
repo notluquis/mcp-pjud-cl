@@ -33,6 +33,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- El detalle combinado se anunciaba como "todo lo que la respuesta publica" y deja nueve
+  paneles sin leer, distintos en cada competencia. Ahora su contrato dice cuáles, y que los
+  anexos y los audios cuestan una petición aparte.
+
 - La hoja de ruta explicaba la falta de penal con un diagnóstico que resultó falso, y no
   nombraba ni los anexos ni los audios.
 - `verificacion` nombraba seis de las veinticinco rutas de documento que el servidor acepta.

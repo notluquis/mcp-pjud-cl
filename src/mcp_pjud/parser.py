@@ -1169,7 +1169,10 @@ class Liquidacion(BaseModel):
         description="Monto líquido en pesos, sin separadores. Es el total adeudado A ESA "
         "FECHA, no un cargo que se sume a los demás: la deuda vigente es el monto de la "
         "liquidación más reciente. NULO si no se pudo leer con la forma medida, y nulo NO es "
-        "cero, que sería una deuda saldada.",
+        "cero, que sería una deuda saldada.\n\n"
+        "La forma medida es la de cobranza (`$24.563.365.-`). En laboral el panel nunca trajo "
+        "una fila, así que si imprime el monto de otra manera esto va a venir nulo con "
+        "`monto_publicado` lleno, y ahí el dato está en el segundo.",
     )
     monto_publicado: str = Field(
         description="El monto tal como lo imprime el sitio, ej: '$24.563.365.-'. Se conserva "
@@ -1179,7 +1182,8 @@ class Liquidacion(BaseModel):
         default=None,
         description="A QUIÉN se le paga, en las liquidaciones de laboral. Es un RUT de persona "
         "natural: dato personal de un tercero. NULO en cobranza, que liquida el crédito por "
-        "documento y no por persona.",
+        "documento y no por persona, y también mientras el panel de laboral no traiga una fila: "
+        "su contenido sale del encabezado y nadie lo ha visto lleno.",
     )
     nombre: str | None = Field(
         default=None,

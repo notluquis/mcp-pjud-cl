@@ -521,8 +521,9 @@ def obtener_detalle_causa(
     Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
     historial. Sumarlas informa una deuda inflada varias veces.
 
-    Los litigantes traen RUT de personas naturales, y las diligencias de cobranza el nombre de
-    quien figura a cargo: son datos personales de terceros.
+    Los litigantes traen RUT de personas naturales, las diligencias de cobranza el nombre de
+    quien figura a cargo, y la liquidación de laboral el RUT y el nombre de a quién se le
+    paga: son datos personales de terceros.
 
     Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente: el exhorto
     abre una causa nueva en el tribunal destino, y las actuaciones de esa parte NO están acá.

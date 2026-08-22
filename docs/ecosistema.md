@@ -329,10 +329,16 @@ Están en `diligenciaCob`, que tiene estructura propia:
 Doc. Ida | Doc. Vta. | Estado Diligencia | RIT | RUC | Tipo Diligencia | Fecha Trámite | Destinatario | Responsable
 ```
 
-Las dos preguntas que quedaban abiertas ya se contestaron. `Fecha Trámite` **no** trae el
+De las dos preguntas que quedaban abiertas se contestó **una**. `Fecha Trámite` **no** trae el
 formato de fecha doble de civil: es una sola columna, y en la fila medida imprime el epoch, así
-que se entrega en nulo. Y `RIT` y `RUC` son de la causa **a la que la diligencia se dirige**,
-que no es necesariamente la consultada.
+que se entrega en nulo.
+
+Qué significa `Responsable` **sigue sin medirse**. Se entrega tal como lo imprime el sitio, y
+no se afirma que identifique al receptor: eso era una conjetura y sigue siéndolo.
+
+Y una advertencia que la estructura no dice sola: `RIT` y `RUC` son de la causa **a la que la
+diligencia se dirige**, que no es necesariamente la consultada. Leerlos como los de esta causa
+haría informar acá un trámite ajeno.
 
 El panel ya se lee, y viaja en `diligencias` dentro del detalle de causa. Lo que
 sigue rechazándose es pedir esas filas como **actuaciones**: sin fecha de diligencia no son lo

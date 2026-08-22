@@ -876,6 +876,27 @@ def test_la_fecha_epoch_de_una_diligencia_vuelve_nula_y_no_como_fecha():
     )
 
 
+def test_un_panel_de_diligencias_vacio_devuelve_lista_y_no_levanta():
+    """Igual que en notificaciones y liquidaciones: acá la lista vacía SÍ es una respuesta.
+
+    De cinco causas de cobranza medidas, sólo una trae filas en este panel, así que la causa
+    sin ninguna diligencia es lo corriente y no lo anómalo. Levantar ahí convertiría lo normal
+    en un error, que es la mitad de la regla 4 que se olvida.
+
+    No hay fixture con el panel vacío, así que se le quita la única fila a la real: lo que se
+    prueba es el contrato del parser, no una respuesta que nadie capturó.
+    """
+    doc = H.fromstring(NOTIF_COBRANZA)
+    tabla = doc.xpath('//*[@id="diligenciaCob"]//table')[0]
+    for fila in tabla.xpath(".//tr"):
+        if fila.xpath("./td"):
+            fila.getparent().remove(fila)
+    sin_filas = H.tostring(doc, encoding="unicode")
+    assert "diligenciaCob" in sin_filas, "se borró el panel entero y no sólo su fila"
+
+    assert parse_diligencias(sin_filas, "cobranza") == []
+
+
 def test_una_competencia_sin_el_panel_de_diligencias_se_rechaza():
     """Cobranza es la única con el panel medido. En las demás la lista vacía se leería como que
     el ministro de fe no practicó ninguna diligencia, que es otra cosa."""

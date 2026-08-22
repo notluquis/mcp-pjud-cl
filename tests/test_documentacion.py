@@ -3072,7 +3072,16 @@ AVISOS_QUE_NO_SE_PUEDEN_PERDER = {
     ),
     "buscar_jurisprudencia": ("ocultas", "no_entregadas", "subconjunto"),
     "obtener_documento": ("escaneo", "OCR", "no es un PDF"),
-    "obtener_georreferencia": ("precision_metros", "hora", "existe"),
+    # `fecha_diligencia` es el aviso que más importa de los cuatro: sin él, un modelo puede
+    # tomar la hora del aparato como la fecha que corre el plazo, y ésta es una TERCERA
+    # fuente para contrastar, no un reemplazo. Faltaba justo ése.
+    "obtener_georreferencia": (
+        "precision_metros",
+        "hora",
+        "existe",
+        "fecha_diligencia",
+        "NO reemplaza",
+    ),
 }
 
 

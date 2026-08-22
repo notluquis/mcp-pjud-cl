@@ -2765,6 +2765,8 @@ def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
 #: porque es una fuente externa que nada del repositorio puede derivar, y el guardia lo que sí
 #: puede es exigir que las menciones de la página no se separen entre sí.
 MAGNAR_PAGINAS = 10_000
+MAGNAR_ANIO = 2025
+MAGNAR_PAISES = ("Perú", "Ecuador", "Costa Rica", "Colombia", "Uruguay")
 #: Con su estado, no sólo el nombre: borrar el "en curso" de la ISO 42001 sin quitar el
 #: nombre cambia una afirmación verificable y el guardia no lo veía.
 MAGNAR_CERTIFICACIONES = (
@@ -2792,6 +2794,20 @@ def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():
     )
     faltan = [c for c in MAGNAR_CERTIFICACIONES if c not in seccion]
     assert not faltan, f"la sección dejó de citar {faltan}, que es parte de lo que declara"
+
+    # El año y los países son igual de verificables y cambian igual de fácil: es la
+    # comparación publicada, y quien la lea para elegir se merece que esté al día.
+    assert f"de {MAGNAR_ANIO}" in seccion, (
+        f"la sección dejó de decir que Magnar es de {MAGNAR_ANIO}"
+    )
+    sin_pais = [p for p in MAGNAR_PAISES if p not in seccion]
+    assert not sin_pais, f"la sección dejó de nombrar {sin_pais} entre los países donde opera"
+    # Y que no se agregue uno sin anotarlo acá: la lista publicada es la lista medida.
+    otros = re.findall(r"\b(Bolivia|Argentina|México|Panamá|Paraguay|Brasil)\b", seccion)
+    assert not otros, (
+        f"la sección nombra {sorted(set(otros))} y la fuente no los declara: si Magnar creció, "
+        "hay que volver a mirar lo que publica en vez de agregarlo suelto"
+    )
 
 
 def test_lo_comercial_se_declara_como_publicado_y_no_como_medido():

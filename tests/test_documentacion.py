@@ -179,7 +179,8 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     assert len(seccion) == 2, "la sección de lo mapeado sin ejecutar desapareció"
     lista = seccion[1].split("\n\n")[2]
 
-    for canal in ("tiene_anexo", "listadoAudioLaboral", "expedienteApe", "IncompetenciaApe"):
+    # `listadoAudioLaboral` salió de esta lista el 22-08-2026: se midió, y tiene sección propia.
+    for canal in ("tiene_anexo", "expedienteApe", "IncompetenciaApe"):
         assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
 
     # El JavaScript del sitio es la única fuente de cuántas rutas de anexo hay.
@@ -579,6 +580,26 @@ def test_la_aritmetica_de_diez_sentencias_sale_de_la_sentencia_medida():
     assert producto in " ".join((TextoSentencia.__doc__ or "").split()), (
         f"`TextoSentencia` dice que diez sentencias son otra cosa que {producto}"
     )
+
+
+def test_lo_medido_del_canal_de_audio_no_se_pierde():
+    """Lo caro de esa medición no son las cifras: es la trampa que destapó.
+
+    Pedir la ruta construida por analogía con los otros modales devuelve 200 con la tabla
+    VACÍA, o sea el error se lee como "esta causa no tiene audios". Si esa advertencia
+    desaparece de la página, la próxima persona que mida repite el mismo falso negativo y
+    esta vez puede darlo por bueno.
+    """
+    pagina = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    for afirmacion in (
+        "POST /audio/listadoAudio.php",
+        "fuera** del prefijo",
+        "La ruta equivocada devuelve 200 con la tabla vacía",
+        "`Fecha` | viene **vacía**",
+    ):
+        assert afirmacion in pagina, (
+            f"`verificacion.md` dejó de decir {afirmacion!r} sobre el canal de audio"
+        )
 
 
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):

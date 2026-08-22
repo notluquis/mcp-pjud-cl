@@ -1,12 +1,12 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las 12 herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 13 herramientas MCP, sus parámetros y cada campo que devuelven."
 ---
 
 # Referencia de herramientas
 
-Las 12 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las 13 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real
@@ -243,7 +243,8 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `anio_tramite` | str \| null | Año que suprema publica en columna aparte, además de la fecha |
 | `georreferencia_referencia` | str \| null | Con qué se pide la georreferencia de esta actuación |
 | `tiene_documento` | bool | Si la columna `Doc.` ofrece algo. `true` NO garantiza que se pueda traer: con `documento_ruta` en nulo, la celda abre un modal de JavaScript cuyo endpoint no está medido |
-| `tiene_anexo` | bool | Si la columna `Anexo` ofrece algo. Segundo canal de documentos, **todavía no pedible**: ninguna de sus rutas está verificada. `false` significa ausente sólo donde la competencia publica la columna |
+| `tiene_anexo` | bool | Si la columna `Anexo` ofrece algo. Segundo canal de documentos, distinto de `Doc.`. Se puede pedir con `obtener_anexos_escrito` sólo donde `anexo_referencia` viene con valor. `false` significa ausente sólo donde la competencia publica la columna |
+| `anexo_referencia` | str \| null | Con qué se piden los anexos de este folio. Nulo cuando el folio no trae anexo, y también cuando lo trae y su competencia no está medida: ahí `tiene_anexo` queda en `true` y esto en nulo |
 | `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
 | `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
 
@@ -422,6 +423,46 @@ Trae coordenadas de un domicilio de terceros, con el mismo criterio que el RUT d
 litigantes: es lo que la plataforma publica.
 
 ```{include} _generado/obtener_georreferencia.md
+```
+
+## `obtener_anexos_escrito`
+
+Los documentos que un escrito acompañó. Son un canal **distinto** del de la resolución.
+
+| Parámetro | Qué es |
+|---|---|
+| `anexo_referencia` | Lo entrega cada actuación. Cuando viene nula, o el folio no ofrece anexos, o su competencia no está medida |
+| `competencia` | Sólo aquellas cuya ruta está verificada contra la plataforma |
+
+:::{important} Un folio con documento puede tener otro escondido al lado
+La Historia publica **dos** columnas de documentos por folio: `Doc.` trae la resolución o el
+escrito, y `Anexo` los papeles que se acompañaron, que es donde suele estar la prueba
+documental. Un folio puede traer las dos cosas.
+
+Por eso preguntar por los documentos de una causa mirando sólo `Doc.` devuelve una respuesta
+que parece completa: entrega un documento real y omite otro. Una fila en blanco se nota; un
+documento entregado, no.
+:::
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `folio` | str | El mismo folio de la actuación, para volver a ubicarla en la Historia |
+| `fecha` | date \| null | La que publica el panel. **No** corre plazos: eso lo hace `fecha_diligencia` |
+| `descripcion` | str | Lo que el sitio rotula `Referencia`: qué es el documento, escrito por quien lo acompañó |
+| `documento_ruta` | str \| null | Con qué ruta se pide |
+| `documento_referencia` | str \| null | La referencia opaca con la que se pide |
+
+Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento`.
+
+Cuesta **una petición por folio**, con su intervalo. Se pide del folio concreto que importa,
+nunca de barrido.
+
+Un panel con encabezados y cero filas **levanta un error**. Es la diferencia con las
+notificaciones y las liquidaciones, donde la lista vacía es un estado real de la causa: este
+panel sólo se pide cuando la actuación ya dijo que hay anexos, así que la tabla vacía significa
+que la respuesta cambió, no que el escrito se haya acompañado sin documentos.
+
+```{include} _generado/obtener_anexos_escrito.md
 ```
 
 ## `obtener_documento`

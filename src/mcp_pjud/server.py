@@ -23,6 +23,7 @@ from mcp.types import (
 from pydantic import Field
 
 from .client import (
+    ANEXOS,
     CON_TRIBUNAL,
     DESCRIPCION,
     DOCUMENTOS,
@@ -49,7 +50,14 @@ from .juris import (
     TextoSentencia,
     miles,
 )
-from .parser import COMPETENCIAS, Actuacion, CausaEncontrada, DetalleCausa, Georreferencia
+from .parser import (
+    COMPETENCIAS,
+    Actuacion,
+    Anexo,
+    CausaEncontrada,
+    DetalleCausa,
+    Georreferencia,
+)
 
 #: Con qué hay que acotar las búsquedas de nombre, RUT y fecha, según la competencia. Se
 #: deriva de la tabla en vez de escribirse a mano, por la misma razón que `_CON_RECEPTOR`: el
@@ -254,6 +262,19 @@ CompetenciaConGeorreferencia = Annotated[
     Field(
         description=f"Una de: {', '.join(_CON_GEORREFERENCIA)}. Son las que publican la "
         "columna de georreferencia en su tabla de Historia. Suprema no la publica."
+    ),
+]
+
+#: Las competencias cuyo panel de anexos está medido. Acá NO se puede derivar de
+#: `COMPETENCIAS`: las cinco publican la columna `Anexo`, así que la columna no distingue
+#: nada. Lo que distingue es si la ruta se ejecutó contra la plataforma.
+_CON_ANEXOS = sorted(n for n in MODULOS if n in ANEXOS)
+CompetenciaConAnexos = Annotated[
+    str,
+    Field(
+        description=f"Una de: {', '.join(_CON_ANEXOS)}. Son aquellas cuya ruta de anexos está "
+        "verificada contra la plataforma. Las demás publican la columna `Anexo` y su ruta no "
+        "está medida, así que se rechazan por no verificadas."
     ),
 ]
 
@@ -719,6 +740,40 @@ def obtener_georreferencia(
     """
     with _cliente() as c:
         return c.georreferencia(georreferencia_referencia, competencia)
+
+
+@mcp.tool(
+    title="Documentos que acompañan a un escrito",
+    annotations=SOLO_LECTURA,
+)
+def obtener_anexos_escrito(
+    anexo_referencia: Annotated[
+        str,
+        Field(
+            description="Lo entrega cada actuación en `anexo_referencia`. Cuando esa viene "
+            "nula, o el folio no ofrece anexos, o su competencia no está medida."
+        ),
+    ],
+    competencia: CompetenciaConAnexos = "laboral",
+) -> list[Anexo]:
+    """Los documentos que un escrito acompañó, que son un canal distinto del de la resolución.
+
+    La Historia publica DOS columnas de documentos por folio: `Doc.` trae la resolución o el
+    escrito, y `Anexo` los papeles que se acompañaron, o sea donde suele estar la prueba
+    documental. Un folio puede traer las dos cosas.
+
+    Por eso preguntar por los documentos de una causa mirando sólo `Doc.` devuelve una
+    respuesta que PARECE completa: entrega un documento real y omite otro. Si una actuación
+    trae `tiene_anexo: true`, hay algo más que hay que ir a buscar acá.
+
+    Cuesta UNA petición por folio, con su intervalo: se pide del folio concreto que importa y
+    nunca de barrido.
+
+    Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento` con
+    `documento_ruta` y `documento_referencia`.
+    """
+    with _cliente() as c:
+        return c.anexos(anexo_referencia, competencia)
 
 
 @mcp.tool(

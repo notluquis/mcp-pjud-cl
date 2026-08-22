@@ -1956,6 +1956,78 @@ def test_un_pdf_mixto_no_se_declara_entero_digital(monkeypatch):
     )
 
 
+# -- anexos --------------------------------------------------------------------------
+
+
+def test_los_anexos_se_piden_a_la_ruta_medida_con_su_propio_campo(monkeypatch):
+    """Cada modal del sitio nombra su parámetro distinto. El de anexos de laboral es `dtaAnex`,
+    y mandarle el de otro modal devuelve una página que no es la que se pidió."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidas: list[tuple[str, bytes]] = []
+    cuerpo = (FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidas.append((str(peticion.url), peticion.content))
+        return httpx.Response(200, text=cuerpo)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    anexos = c.anexos("REF-ANEXO", "laboral")
+
+    url, contenido = pedidas[0]
+    assert "laboral/modal/anexoEscritoLaboral.php" in url, url
+    assert b"dtaAnex=REF-ANEXO" in contenido, contenido
+    assert len(anexos) == 2
+
+
+def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monkeypatch):
+    """Las cinco publican la columna `Anexo`, así que acá el rechazo NO es "no lo publica":
+    es que su ruta no se ejecutó nunca contra la plataforma.
+
+    Armarla por analogía es lo que está medido que falla en silencio: la ruta análoga
+    equivocada del listado de audios respondió 200 con la tabla vacía, o sea con la forma
+    exacta de "este folio no tiene anexos".
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        salieron.append(str(peticion.url))
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada) as e:
+        c.anexos("REF-1", "civil")
+    dicho = str(e.value)
+    assert "no está verificado" in dicho.lower(), (
+        "el rechazo debe decir que no se midió, no que la competencia no tenga anexos"
+    )
+    assert not salieron, "no debe salir ninguna petición"
+
+
+def test_la_referencia_del_anexo_llega_desde_la_actuacion():
+    """El circuito completo sin red: la actuación trae con qué pedir sus anexos.
+
+    Sin esto la herramienta existe y no hay de dónde sacar su parámetro, y el folio con anexo
+    queda igual de inalcanzable que antes de que el campo existiera.
+    """
+    detalle = (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8")
+    con_anexo = [a for a in parse_historia(detalle, competencia="laboral") if a.tiene_anexo]
+    assert con_anexo, "la fixture de laboral dejó de traer folios con anexo"
+    assert all(a.anexo_referencia for a in con_anexo), (
+        "un folio dice tener anexo y no dice con qué pedirlo"
+    )
+    referencias = [a.anexo_referencia for a in con_anexo]
+    assert len(set(referencias)) == len(referencias), (
+        f"dos folios comparten referencia de anexo: {referencias}"
+    )
+
+
 # -- georreferencia ------------------------------------------------------------------
 
 

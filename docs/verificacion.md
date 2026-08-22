@@ -32,6 +32,7 @@ Lo que se decidió hacer con esto, y en qué orden, está en la {doc}`hoja de ru
 | Las cuatro capacidades nuevas, de punta a punta | 20 de agosto de 2026, **10 peticiones y todas 200**: 17 cortes, 24 tribunales en Concepción, el detalle de C-1156-2026 con su exhorto, y el documento del folio 9 (975.006 bytes, 1 página, sin capa de texto: un escaneo) |
 | La arista del exhorto, **resuelta y no recorrida** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán, y `listar_tribunales` sobre la corte 45 lo resuelve a código 145. Con eso la búsqueda es posible, pero **E-875-2026 no se consultó**: lo medido es que el dato que faltaba ya está, no que la causa de destino responda |
 | La georreferencia de una actuación | Ver la sección propia más abajo |
+| El panel de anexos de un escrito, en laboral | Ver la sección propia más abajo |
 | El monitor de salas está en otro host y NO comparte cortafuegos | `salas.pjud.cl` responde `Server: Apache`, sin la cookie `TS<hex>` de F5 que sí traen la Oficina Judicial Virtual y el buscador de fallos |
 | Los códigos de tribunal y de corte | Ver la sección propia más abajo |
 | Buscador de fallos Laborales | 20 de agosto de 2026, texto libre: 106.068 sentencias visibles y las tres primeras con rol, caratulado, fecha y juzgado bien mapeados. Tardó **1,6 s**, o sea el techo de espera está dimensionado por Suprema y no por el resto |
@@ -114,8 +115,9 @@ rechaza en vez de adivinar sus parámetros:
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
-- Las **18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
-  competencias. Cada actuación y cada pieza de exhorto declara `tiene_anexo`, y ahí termina lo
+- **17 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
+  competencias. La de laboral se midió y se expone; ver la sección propia más abajo. En las
+  otras cinco, cada actuación y cada pieza de exhorto declara `tiene_anexo` y ahí termina lo
   que se puede hacer
 - `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
   `IncompetenciaApe`. De los **6** paneles que apelaciones publica se leen **2**
@@ -308,6 +310,30 @@ No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de
 `consultaUnificada.php`, donde el sitio nombra 189 veces un `.php`, o sea 102 rutas distintas.
 Ése es el método a repetir cuando la plataforma cambie, y las dos cifras salen de contarlas
 sobre la fixture, no de recordarlas.
+
+## El segundo canal de documentos: los anexos del escrito
+
+Medido el 22 de agosto de 2026 sobre una causa laboral: la ruta
+`laboral/modal/anexoEscritoLaboral.php`, con el campo `dtaAnex` y la referencia que la propia
+celda de la Historia lleva en su `onclick`, respondió **200** con dos anexos de un mismo
+escrito y el formulario de descarga de cada uno.
+
+| Dato | Forma |
+|---|---|
+| Encabezados | `Doc.`, `Folio`, `Fecha`, `Referencia` |
+| Descarga | Un formulario por fila a `docAnexoLaboral.php`, campo `dtaDoc` |
+| `Referencia` | Texto libre escrito por quien acompañó el documento |
+
+**Lo que hacía invisible esta falta es que el folio SÍ entregaba un documento.** Las dos filas
+con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su `docuN.php`: quien
+pidiera el documento del folio recibía un PDF real y quedaba creyendo que tenía el folio
+completo. Un documento entregado tapa mejor lo que falta que una fila en blanco.
+
+**Las otras 17 rutas se rechazan a propósito.** Cada una nombra su ruta y su parámetro
+distinto, y armarlas por analogía no da un error: da una página que no es la que se pidió. Está
+medido en este mismo canal, al buscar el listado de audios de audiencia por la ruta análoga a
+la de otro modal: respondió **200 con la tabla vacía**, o sea con la forma exacta de "este
+folio no tiene anexos". Por eso `parse_anexos` levanta cuando la tabla viene sin filas.
 
 ## Qué devuelve la georreferencia
 

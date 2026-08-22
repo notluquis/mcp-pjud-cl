@@ -28,6 +28,7 @@ from pypdf import PdfReader
 from .parser import (
     COMPETENCIAS,
     Actuacion,
+    Anexo,
     CausaEncontrada,
     Corte,
     DetalleCausa,
@@ -41,6 +42,7 @@ from .parser import (
     es_aviso_de_captcha,
     es_sin_resultados,
     leer_aviso,
+    parse_anexos,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -282,6 +284,20 @@ GEORREFERENCIA: dict[str, str] = {
     if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
 }
 
+#: Dónde vive el panel de anexos de cada competencia, con el parámetro que espera. Sólo
+#: `laboral` está MEDIDA: el 22 de agosto de 2026, sobre T-196-2026, la ruta respondió 200 con
+#: dos anexos y sus formularios de descarga.
+#:
+#: El JavaScript del sitio nombra dieciocho rutas de anexo repartidas en las seis competencias.
+#: Las otras diecisiete siguen sin ejecutarse y se rechazan a propósito: cada una nombra su
+#: parámetro distinto (`dtaAnexCau`, `dtaCausaAnex`, `dtaOficiese`, `dtaRequierase`…) y armar
+#: una por analogía devuelve una página que no es la que se pidió. Está medido en este mismo
+#: canal: pedir el listado de audios por la ruta análoga respondió 200 con la tabla VACÍA, que
+#: se lee igual que "esta causa no tiene anexos".
+ANEXOS: dict[str, tuple[str, str]] = {
+    "laboral": ("laboral/modal/anexoEscritoLaboral.php", "dtaAnex"),
+}
+
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {
         "docu.php": "valorEncTxtDmda",
@@ -300,6 +316,8 @@ DOCUMENTOS: dict[str, dict[str, str]] = {
         "docCertificadoEscrito.php": "dtaCert",
     },
     "laboral": {
+        # Medida el 22-08-2026: la entrega el formulario de cada fila del panel de anexos.
+        "docAnexoLaboral.php": "dtaDoc",
         "docReformadoLaboral.php": "valorRef",
         "docReformadoEscritoLaboral.php": "valorRefEsc",
         "newebooklaboral.php": "dtaEbook",
@@ -843,6 +861,46 @@ class PjudClient(Transporte):
                 "POST",
                 f"{BASE}/{self._prefijo()}/{ruta}",
                 data={"valGeoRef": referencia},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE}/consultaUnificada.php",
+                },
+            ).text
+        )
+
+    def anexos(self, referencia: str, competencia: str = "laboral") -> list[Anexo]:
+        """Los documentos que acompañan a un escrito, en el segundo canal del folio.
+
+        La referencia la entrega cada actuación en `anexo_referencia`. Cuesta UNA petición por
+        folio, así que se pide del folio concreto que importa y nunca de barrido.
+
+        Sólo laboral. Las cinco competencias publican la columna `Anexo`, así que acá no se
+        puede derivar de la tabla de Historia quién ofrece esto: lo que distingue es si la
+        ruta está medida, y las otras diecisiete que nombra el JavaScript del sitio no lo
+        están. Se rechazan por no verificadas, no porque esté comprobado que no funcionen.
+        """
+        nombre = competencia.lower()
+        destino = ANEXOS.get(nombre)
+        if destino is None:
+            raise EstructuraInesperada(
+                f"No está verificado cómo se piden los anexos en {competencia!r}. Cada "
+                "competencia nombra su ruta y su parámetro distinto, y armarlos por analogía "
+                "devuelve un panel que no es el que se pidió: está medido que la ruta análoga "
+                "equivocada responde 200 con la tabla vacía, o sea con la forma exacta de 'no "
+                f"hay anexos'. Verificadas: {', '.join(sorted(ANEXOS))}."
+            )
+        if not referencia:
+            raise EstructuraInesperada(
+                "Falta la referencia del anexo. La entrega cada actuación en "
+                "`anexo_referencia`, y cuando viene nula ese folio no ofrece anexos o su "
+                "competencia no está medida."
+            )
+        ruta, campo = destino
+        return parse_anexos(
+            self._req(
+                "POST",
+                f"{BASE}/{self._prefijo()}/{ruta}",
+                data={campo: referencia},
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
                     "Referer": f"{BASE}/consultaUnificada.php",

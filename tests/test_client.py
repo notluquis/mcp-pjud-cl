@@ -10,6 +10,8 @@ import pytest
 
 from mcp_pjud import client
 from mcp_pjud.client import (
+    AUDIO_CAMPO,
+    AUDIO_RUTA,
     BASE,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -2043,6 +2045,105 @@ def test_la_referencia_del_anexo_llega_desde_la_actuacion():
     referencias = [a.anexo_referencia for a in con_anexo]
     assert len(set(referencias)) == len(referencias), (
         f"dos folios comparten referencia de anexo: {referencias}"
+    )
+
+
+# -- audios de audiencia ---------------------------------------------------------------
+
+
+def test_el_listado_de_audios_se_pide_a_la_raiz_y_no_bajo_el_prefijo(monkeypatch):
+    """Todos los demás modales cuelgan de `ADIR_nnn`; éste no.
+
+    Está medido lo que pasa al armarlo por analogía: la plataforma responde 200, con el modal
+    correcto y su encabezado, y la tabla VACÍA. O sea con la forma exacta de "esta causa no
+    tiene audios", que es el falso negativo que la regla 4 existe para evitar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidas: list[tuple[str, bytes]] = []
+    cuerpo = (FIXTURES / "listado_audio_laboral.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidas.append((str(peticion.url), peticion.content))
+        return httpx.Response(200, text=cuerpo)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    audios = c.audios("REF-AUDIO")
+
+    url, contenido = pedidas[0]
+    assert url == f"{BASE}/audio/listadoAudio.php", url
+    assert "ADIR_1" not in url, "el listado de audios NO cuelga del prefijo de sesión"
+    assert b"dtaAudio=REF-AUDIO" in contenido, contenido
+    assert len(audios) == 11
+
+
+def test_pedir_audios_sin_referencia_no_gasta_peticion(monkeypatch):
+    """Sin referencia no hay causa que pedir, y la plataforma respondería igual con algo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        salieron.append(str(peticion.url))
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(ValueError, match="referencia del listado de audios"):
+        c.audios("")
+    assert not salieron
+
+
+def test_el_detalle_combinado_entrega_con_que_pedir_los_audios(monkeypatch):
+    """Sin esto la herramienta existe y no hay de dónde sacar su parámetro.
+
+    Es el mismo hueco que tenía `tiene_documento` antes de traer su referencia: el detalle
+    decía que había algo y no con qué pedirlo.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    detalle = (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8")
+    busqueda = (FIXTURES / "busqueda_rit_laboral.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, text=detalle if "causaLaboral" in str(peticion.url) else busqueda
+        )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    d = c.detalle_causa("O", 9999, 2018, competencia="laboral", tribunal=1)
+
+    assert d.audio_referencia, "el detalle de laboral ofrece el listado y no lo está entregando"
+
+
+def test_la_ruta_y_el_campo_del_audio_salen_del_javascript_del_sitio():
+    """La única fuente de dónde vive el listado y con qué se pide es el JavaScript del sitio.
+
+    Y es el caso donde más importa: esta ruta NO cuelga del prefijo de sesión, al revés que
+    todos los demás modales, y armarla por analogía devuelve 200 con la tabla vacía. Un guardia
+    que comparara la constante contra sí misma no diría nada de eso.
+    """
+    js = (FIXTURES / "consultaUnificada.html").read_text(encoding="utf-8")
+    m = re.search(r"function\s+listadoAudio\w*\s*\(val\)\s*\{(.{0,900}?)\}\)", js, re.S)
+    assert m, "el JavaScript del sitio dejó de declarar la función del listado de audios"
+
+    url = re.search(r"url\s*:\s*'\.\./([^']+)'", m.group(1))
+    campo = re.search(r"data\s*:\s*\{\s*(\w+)\s*:", m.group(1))
+    assert url, "no se pudo leer la ruta del JavaScript"
+    assert campo, "no se pudo leer el campo del JavaScript"
+    assert url.group(1) == AUDIO_RUTA, (
+        f"el sitio declara {url.group(1)!r} y el cliente pide {AUDIO_RUTA!r}"
+    )
+    assert campo.group(1) == AUDIO_CAMPO, (
+        f"el sitio declara {campo.group(1)!r} y el cliente manda {AUDIO_CAMPO!r}"
+    )
+    assert not url.group(1).startswith("ADIR"), (
+        "la ruta del listado de audios no cuelga del prefijo de sesión, y ése es el hallazgo"
     )
 
 

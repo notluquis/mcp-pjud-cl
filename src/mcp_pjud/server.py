@@ -54,6 +54,7 @@ from .parser import (
     COMPETENCIAS,
     Actuacion,
     Anexo,
+    AudioAudiencia,
     CausaEncontrada,
     DetalleCausa,
     Georreferencia,
@@ -774,6 +775,41 @@ def obtener_anexos_escrito(
     """
     with _cliente() as c:
         return c.anexos(anexo_referencia, competencia)
+
+
+@mcp.tool(
+    title="Qué audios de audiencia tiene la causa",
+    annotations=SOLO_LECTURA,
+)
+def listar_audios_audiencia(
+    audio_referencia: Annotated[
+        str,
+        Field(
+            description="Lo entrega `obtener_detalle_causa` en `audio_referencia`. Cuando esa "
+            "viene nula, la causa no ofrece grabación o su competencia no está medida."
+        ),
+    ],
+) -> list[AudioAudiencia]:
+    """Qué audios de audiencia hay, y con qué enlace se bajan. NO los trae.
+
+    Devuelve el listado y el enlace de cada archivo para que la persona los abra. Es
+    deliberado: un audio de audiencia son las voces de las partes, los testigos y el tribunal,
+    y una transcripción automática no es lo mismo que oírlo. Lo que corresponde es entregar los
+    enlaces y decir qué tramo es cada uno.
+
+    El audio viene TROCEADO por acto procesal y no en una pista única. Medido: once archivos
+    para una sola audiencia preparatoria, del inicio al fin, pasando por el llamado a
+    conciliación y los hechos a probar. El nombre de cada archivo dice de qué tramo es, y a
+    veces la hora: es lo más útil que trae, porque la columna `Fecha` viene vacía en todos.
+
+    El nombre de archivo empieza con el RUC de la causa. Repetirlo completo publica ese
+    identificador, así que conviene nombrar el tramo y no el archivo entero.
+
+    Los enlaces CADUCAN. Si uno deja de funcionar hay que volver a pedir el listado, no
+    reintentar el mismo.
+    """
+    with _cliente() as c:
+        return c.audios(audio_referencia)
 
 
 @mcp.tool(

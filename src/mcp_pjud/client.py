@@ -26,9 +26,11 @@ from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
 from .parser import (
+    BASE_SITIO,
     COMPETENCIAS,
     Actuacion,
     Anexo,
+    AudioAudiencia,
     CausaEncontrada,
     Corte,
     DetalleCausa,
@@ -38,11 +40,13 @@ from .parser import (
     Notificacion,
     Tribunal,
     actuaciones_receptor,
+    audio_de_la_causa,
     causa_es_exhorto,
     es_aviso_de_captcha,
     es_sin_resultados,
     leer_aviso,
     parse_anexos,
+    parse_audios,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -76,7 +80,9 @@ except PackageNotFoundError:  # pragma: no cover - sólo fuera de una instalaci�
     VERSION = "desconocida"
     DESCRIPCION = ""
 
-BASE = "https://oficinajudicialvirtual.pjud.cl"
+#: El origen del sitio. La definición vive en `parser`, que es quien arma el enlace de
+#: descarga de un audio y no puede importar de acá. Reexportada para no escribirla dos veces.
+BASE = BASE_SITIO
 PORTADA = "https://www.pjud.cl/"
 
 #: Enlace que la propia institución publica en la portada de www.pjud.cl como acceso
@@ -283,6 +289,14 @@ GEORREFERENCIA: dict[str, str] = {
     for n, ruta in _RUTAS_GEORREFERENCIA.items()
     if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
 }
+
+#: Dónde vive el listado de audios de audiencia, y con qué se pide. Medido el 22 de agosto de
+#: 2026 sobre una causa laboral: 200, once archivos troceados por acto procesal.
+#:
+#: Cuelga de la RAÍZ y no del prefijo `ADIR_`, al revés que todos los demás modales. Construirla
+#: por analogía con ellos devuelve 200 con la tabla vacía, o sea "esta causa no tiene audios".
+AUDIO_RUTA = "audio/listadoAudio.php"
+AUDIO_CAMPO = "dtaAudio"
 
 #: Dónde vive el panel de anexos de cada competencia, con el parámetro que espera. Sólo
 #: `laboral` está MEDIDA: el 22 de agosto de 2026, sobre T-196-2026, la ruta respondió 200 con
@@ -818,6 +832,39 @@ class PjudClient(Transporte):
                 "nombre de los campos."
             )
         return tribunales
+
+    def audios(self, referencia: str) -> list[AudioAudiencia]:
+        """Qué audios de audiencia tiene la causa, y con qué enlace se bajan.
+
+        NO trae los archivos. Devuelve el listado y el enlace de cada uno, para que quien los
+        necesite los abra: son las voces de las partes, los testigos y el tribunal, y una
+        transcripción automática no reemplaza oírlos.
+
+        La referencia la entrega `detalle_causa` en `audio_referencia`. Cuesta UNA petición.
+
+        La ruta cuelga de la RAÍZ del sitio y no del prefijo `ADIR_`, a diferencia de todos los
+        demás modales. Está medido lo que pasa al construirla por analogía con ellos: la
+        plataforma responde 200, con el modal correcto y su encabezado, y la tabla VACÍA. O sea
+        con la forma exacta de "esta causa no tiene audios".
+        """
+        if not referencia:
+            raise ValueError(
+                "Falta la referencia del listado de audios. La entrega el detalle de la causa "
+                "en `audio_referencia`, y cuando viene nula esa causa no ofrece grabación o su "
+                "competencia no está medida."
+            )
+        self._prefijo()
+        return parse_audios(
+            self._req(
+                "POST",
+                f"{BASE}/{AUDIO_RUTA}",
+                data={AUDIO_CAMPO: referencia},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE}/consultaUnificada.php",
+                },
+            ).text
+        )
 
     def georreferencia(self, referencia: str, competencia: str = "civil") -> Georreferencia:
         """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
@@ -1424,6 +1471,9 @@ class PjudClient(Transporte):
 
         return DetalleCausa(
             historia=historia,
+            # De la cabecera del PRIMER cuaderno: el enlace vive ahí, que es la misma en todos,
+            # y no en la tabla que se recorre.
+            audio_referencia=audio_de_la_causa(primera),
             litigantes=_juntar(parse_litigantes, spec.litigantes),
             notificaciones=_juntar(parse_notificaciones, spec.notificaciones),
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),

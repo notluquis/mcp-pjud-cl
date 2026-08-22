@@ -30,6 +30,8 @@ import yaml
 
 from mcp_pjud.client import (
     ANEXOS,
+    AUDIO_CAMPO,
+    AUDIO_RUTA,
     CORTES_MEDIDAS,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -93,7 +95,13 @@ def _trozos_de_ruta(url: str) -> list[str]:
     from urllib.parse import urlsplit
 
     partes = urlsplit(url)
-    return [t for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}") if "." in t]
+    # El `.` de una ruta relativa (`./audio/...`) no es un nombre de archivo, y colarse como
+    # uno lo hacía figurar como documento enlazado con extensión vacía.
+    return [
+        t
+        for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}")
+        if "." in t and t.rsplit(".", 1)[1] and t.strip(".")
+    ]
 
 
 def _registro() -> str:
@@ -239,6 +247,29 @@ def test_la_seccion_de_anexos_nombra_la_ruta_y_los_campos_que_el_codigo_usa():
         assert f"`{encabezado}`" in seccion.lower(), (
             f"la sección no nombra la columna {encabezado!r}, y el mapeo es posicional"
         )
+
+
+def test_la_seccion_de_audio_nombra_la_ruta_y_el_campo_que_el_cliente_usa():
+    """La página es lo que alguien va a leer para repetir la medición, y su hallazgo central es
+    que la ruta NO cuelga del prefijo de sesión.
+
+    Sale del cliente y no de la memoria: si la ruta cambia, la página tiene que enterarse.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    seccion = pagina.split("### Los audios de audiencia existen")
+    assert len(seccion) == 2, "la sección del canal de audio desapareció"
+    seccion = seccion[1].split("\n### ")[0]
+
+    assert f"`POST /{AUDIO_RUTA}`" in seccion, (
+        f"la sección no nombra {AUDIO_RUTA!r}, que es la ruta que el cliente pide"
+    )
+    assert f"`{AUDIO_CAMPO}`" in seccion, (
+        f"la sección no nombra {AUDIO_CAMPO!r}, el campo con que se pide"
+    )
+    assert "fuera** del prefijo" in seccion or "fuera del prefijo" in seccion, (
+        "la sección dejó de decir que la ruta no cuelga del prefijo de sesión, que es lo que "
+        "distingue esta ruta de todos los demás modales"
+    )
 
 
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():

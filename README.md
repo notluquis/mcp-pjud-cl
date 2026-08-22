@@ -143,6 +143,7 @@ publicar: no es lo recomendado.
 | `obtener_actuaciones_receptor` | Actuaciones del ministro de fe con su fecha real de diligencia |
 | `obtener_georreferencia` | Dónde y cuándo el ministro de fe registró que practicó una diligencia, con hora |
 | `obtener_anexos_escrito` | Los documentos que un escrito acompañó, que son otro canal distinto del de la resolución |
+| `listar_audios_audiencia` | Qué audios de audiencia tiene la causa y con qué enlace se bajan. No los trae |
 | `obtener_documento` | El archivo de una actuación: resolución, escrito, certificado o el expediente entero |
 | `obtener_detalle_causa` | Historia, litigantes, notificaciones, liquidaciones y materias, de una sola cadena y recorriendo todos los cuadernos |
 | `buscar_jurisprudencia` | Busca sentencias en el buscador de fallos |

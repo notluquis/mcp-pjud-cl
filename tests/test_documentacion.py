@@ -30,6 +30,9 @@ import yaml
 
 from mcp_pjud.client import (
     ANEXOS,
+    ANEXOS_MEDIDOS_SIN_EXPONER,
+    AUDIO_CAMPO,
+    AUDIO_RUTA,
     CORTES_MEDIDAS,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -46,7 +49,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import _ENCABEZADOS_ANEXO, COMPETENCIAS, parse_historia
+from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -93,7 +96,13 @@ def _trozos_de_ruta(url: str) -> list[str]:
     from urllib.parse import urlsplit
 
     partes = urlsplit(url)
-    return [t for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}") if "." in t]
+    # El `.` de una ruta relativa (`./audio/...`) no es un nombre de archivo, y colarse como
+    # uno lo hacía figurar como documento enlazado con extensión vacía.
+    return [
+        t
+        for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}")
+        if "." in t and t.rsplit(".", 1)[1] and t.strip(".")
+    ]
 
 
 def _registro() -> str:
@@ -191,9 +200,10 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     # el servidor ya ofrece.
     js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
     rutas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
-    assert f"**{len(rutas) - len(ANEXOS)} de las {len(rutas)} rutas de anexo**" in lista, (
-        f"el sitio nombra {len(rutas)} rutas de anexo, {len(ANEXOS)} están medidas y la lista "
-        "dice otra cosa"
+    medidas = {r for paneles in ANEXOS.values() for r in paneles} | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    assert f"**{len(rutas - medidas)} de las {len(rutas)} rutas de anexo**" in lista, (
+        f"el sitio nombra {len(rutas)} rutas de anexo, {len(rutas & medidas)} están medidas y "
+        "la lista dice otra cosa"
     )
 
     # Y el detalle de apelaciones dice cuántos paneles publica.
@@ -210,35 +220,63 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     )
 
 
-def test_la_seccion_de_anexos_nombra_la_ruta_y_los_campos_que_el_codigo_usa():
-    """Lo que la página afirma sobre el canal medido sale del código, no de la memoria.
+def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
+    """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 
-    Son cuatro datos que se pueden derivar: la ruta del panel, el campo con que se pide, la
-    ruta de descarga de cada fila y su campo. Escribirlos a mano acá los deja envejecer justo
-    donde alguien va a buscarlos para repetir la medición cuando la plataforma cambie.
+    Son siete paneles con cuatro formas distintas, y esa tabla es lo que alguien va a leer para
+    repetir la medición cuando la plataforma cambie. Escribirla a mano la deja envejecer justo
+    ahí, y de a un panel por vez, que es como no se nota.
     """
     pagina = _texto(RAIZ / "docs" / "verificacion.md")
     seccion = pagina.split("## El segundo canal de documentos")
     assert len(seccion) == 2, "la sección del canal de anexos desapareció"
     seccion = seccion[1].split("\n## ")[0]
 
-    ruta, campo = ANEXOS["laboral"]
-    assert f"`{ruta}`" in seccion, f"la sección no nombra {ruta!r}, que es la ruta que se pide"
-    assert f"`{campo}`" in seccion, f"la sección no nombra {campo!r}, el campo con que se pide"
+    medidos = {r: campo for paneles in ANEXOS.values() for r, campo in paneles.items()}
+    medidos.update(ANEXOS_MEDIDOS_SIN_EXPONER)
+    for ruta, campo in medidos.items():
+        assert f"`{ruta}`" in seccion, f"la sección no nombra el panel {ruta!r}"
+        assert f"`{campo}`" in seccion, f"la sección no dice con qué campo se pide {ruta!r}"
 
-    # La de descarga sale de `DOCUMENTOS` y no de una lista escrita al lado: es la misma tabla
-    # que `obtener_documento` consulta, así que si una deja de estar la otra se entera.
-    descargas = [r for r in DOCUMENTOS["laboral"] if "anexo" in r.lower()]
-    assert len(descargas) == 1, f"laboral declara {descargas} rutas de descarga de anexo"
-    assert f"`{descargas[0]}`" in seccion, "la sección no dice con qué ruta se descarga el anexo"
-    assert f"`{DOCUMENTOS['laboral'][descargas[0]]}`" in seccion, (
-        "la sección no dice con qué campo se pide la descarga"
+    # Las columnas también: son lo que distingue un panel de otro, y la afirmación de la página
+    # es justamente que NO comparten forma.
+    for ruta, spec in _PANELES_ANEXO.items():
+        assert f"`{ruta}`" in seccion, f"{ruta!r} está mapeado y la sección no lo nombra"
+        fila = next(li for li in seccion.splitlines() if f"`{ruta}`" in li)
+        for encabezado in spec.encabezados:
+            assert encabezado in fila.lower(), (
+                f"la fila de {ruta!r} no nombra su columna {encabezado!r}, y el mapeo es posicional"
+            )
+
+    # Y la ruta de descarga de cada competencia, que sale de `DOCUMENTOS`.
+    for competencia in ANEXOS:
+        descargas = [
+            r for r in DOCUMENTOS[competencia] if "anexo" in r.lower() or "escrito" in r.lower()
+        ]
+        assert descargas, f"{competencia} no declara ninguna ruta de descarga de anexo"
+
+
+def test_la_seccion_de_audio_nombra_la_ruta_y_el_campo_que_el_cliente_usa():
+    """La página es lo que alguien va a leer para repetir la medición, y su hallazgo central es
+    que la ruta NO cuelga del prefijo de sesión.
+
+    Sale del cliente y no de la memoria: si la ruta cambia, la página tiene que enterarse.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    seccion = pagina.split("### Los audios de audiencia existen")
+    assert len(seccion) == 2, "la sección del canal de audio desapareció"
+    seccion = seccion[1].split("\n### ")[0]
+
+    assert f"`POST /{AUDIO_RUTA}`" in seccion, (
+        f"la sección no nombra {AUDIO_RUTA!r}, que es la ruta que el cliente pide"
     )
-
-    for encabezado in _ENCABEZADOS_ANEXO:
-        assert f"`{encabezado}`" in seccion.lower(), (
-            f"la sección no nombra la columna {encabezado!r}, y el mapeo es posicional"
-        )
+    assert f"`{AUDIO_CAMPO}`" in seccion, (
+        f"la sección no nombra {AUDIO_CAMPO!r}, el campo con que se pide"
+    )
+    assert "fuera** del prefijo" in seccion or "fuera del prefijo" in seccion, (
+        "la sección dejó de decir que la ruta no cuelga del prefijo de sesión, que es lo que "
+        "distingue esta ruta de todos los demás modales"
+    )
 
 
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
@@ -899,6 +937,22 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     assert not descargables, (
         f"las fixtures enlazan {descargables} y la investigación afirma que todo documento "
         "enlazado es PDF. De esa afirmación cuelga `_MAGIA_PDF`."
+    )
+
+    # La excepción medida, que el arreglo del tokenizador de rutas dejó sin nadie que la
+    # mirara: el canal de audio emite mp3. La evidencia no está en un `href` ni en un `src`
+    # (el enlace apunta a un `.php`), sino en el `type` del `<source>` y en el nombre del
+    # archivo dentro de una celda, o sea justo donde el barrido de arriba no llega.
+    #
+    # Va en las dos direcciones a propósito. Si aparece audio y la página no lo nombra, la
+    # afirmación de "sólo PDF" quedó falsa; si la página lo nombra y no hay audio en ninguna
+    # fixture, está declarando una excepción que nadie midió.
+    hay_audio = bool(re.search(r"""type\s*=\s*['"]audio/""", fixtures) or ".mp3" in fixtures)
+    lo_declara = "audio" in pagina.lower() and ".mp3" in pagina
+    assert hay_audio == lo_declara, (
+        f"las fixtures traen audio: {hay_audio}, y la investigación lo declara como excepción: "
+        f"{lo_declara}. Las dos cosas van juntas o la página afirma de más en una dirección o "
+        "en la otra."
     )
 
     # Lo que se muestra sí puede ser imagen, pero no cualquier cosa: un `.odt` en un `src`

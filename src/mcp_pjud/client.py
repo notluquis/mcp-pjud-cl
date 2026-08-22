@@ -26,9 +26,11 @@ from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
 from .parser import (
+    BASE_SITIO,
     COMPETENCIAS,
     Actuacion,
     Anexo,
+    AudioAudiencia,
     CausaEncontrada,
     Corte,
     DetalleCausa,
@@ -38,11 +40,13 @@ from .parser import (
     Notificacion,
     Tribunal,
     actuaciones_receptor,
+    audio_de_la_causa,
     causa_es_exhorto,
     es_aviso_de_captcha,
     es_sin_resultados,
     leer_aviso,
     parse_anexos,
+    parse_audios,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -76,7 +80,9 @@ except PackageNotFoundError:  # pragma: no cover - sólo fuera de una instalaci�
     VERSION = "desconocida"
     DESCRIPCION = ""
 
-BASE = "https://oficinajudicialvirtual.pjud.cl"
+#: El origen del sitio. La definición vive en `parser`, que es quien arma el enlace de
+#: descarga de un audio y no puede importar de acá. Reexportada para no escribirla dos veces.
+BASE = BASE_SITIO
 PORTADA = "https://www.pjud.cl/"
 
 #: Enlace que la propia institución publica en la portada de www.pjud.cl como acceso
@@ -284,22 +290,68 @@ GEORREFERENCIA: dict[str, str] = {
     if (h := COMPETENCIAS[n].historia) is not None and "georref" in h.columnas
 }
 
+#: Dónde vive el listado de audios de audiencia, y con qué se pide. Medido el 22 de agosto de
+#: 2026 sobre una causa laboral: 200, once archivos troceados por acto procesal.
+#:
+#: Cuelga de la RAÍZ y no del prefijo `ADIR_`, al revés que todos los demás modales. Construirla
+#: por analogía con ellos devuelve 200 con la tabla vacía, o sea "esta causa no tiene audios".
+AUDIO_RUTA = "audio/listadoAudio.php"
+AUDIO_CAMPO = "dtaAudio"
+
 #: Dónde vive el panel de anexos de cada competencia, con el parámetro que espera. Sólo
 #: `laboral` está MEDIDA: el 22 de agosto de 2026, sobre T-196-2026, la ruta respondió 200 con
 #: dos anexos y sus formularios de descarga.
+#: Los paneles de anexo MEDIDOS, por competencia y ruta, con el parámetro que espera cada uno.
+#: Misma forma que `DOCUMENTOS` y por la misma razón: una competencia tiene varios y no
+#: comparten parámetro.
 #:
-#: El JavaScript del sitio nombra dieciocho rutas de anexo repartidas en las seis competencias.
-#: Las otras diecisiete siguen sin ejecutarse y se rechazan a propósito: cada una nombra su
-#: parámetro distinto (`dtaAnexCau`, `dtaCausaAnex`, `dtaOficiese`, `dtaRequierase`…) y armar
-#: una por analogía devuelve una página que no es la que se pidió. Está medido en este mismo
-#: canal: pedir el listado de audios por la ruta análoga respondió 200 con la tabla VACÍA, que
-#: se lee igual que "esta causa no tiene anexos".
-ANEXOS: dict[str, tuple[str, str]] = {
-    "laboral": ("laboral/modal/anexoEscritoLaboral.php", "dtaAnex"),
+#: Medidos el 22 de agosto de 2026, uno por uno, contra causas reales. El JavaScript del sitio
+#: nombra dieciocho rutas de anexo repartidas en las seis competencias; acá van las que se
+#: ejecutaron y respondieron con filas.
+#:
+#: Las que faltan no se arman por analogía. Cada una nombra su parámetro distinto
+#: (`dtaAnexCau`, `dtaCausaAnex`, `dtaOficiese`, `dtaRequierase`...) y pedir la ruta
+#: equivocada no da error: da otra página. Está medido en este mismo canal, con el listado de
+#: audios, que por la ruta análoga respondió 200 con la tabla VACÍA, o sea con la forma exacta
+#: de "esta causa no tiene nada".
+ANEXOS: dict[str, dict[str, str]] = {
+    "civil": {"anexoCausaSolicitudCivil.php": "dtaCausaAnex"},
+    "laboral": {"anexoEscritoLaboral.php": "dtaAnex"},
+    # El sitio la llama "Escrito" y no "Anexo", y su panel publica seis columnas que no se
+    # parecen a las de nadie: tipo de documento, cantidad y si el ejemplar físico se exige. Es
+    # el mismo canal igual, porque es lo que abre la columna `Anexo` de su Historia.
+    "suprema": {"escritoSuprema.php": "dtEsc"},
+}
+
+#: Paneles de anexo MEDIDOS que todavía no se pueden pedir, porque la competencia que los usa
+#: no tiene detalle mapeado. Los dos salieron 200 con filas el 22 de agosto de 2026, sobre una
+#: causa penal de 2024: uno con cuatro anexos de la demanda (carnet, certificados) y otro con
+#: tres del escrito.
+#:
+#: Están acá y no en `ANEXOS` porque no hay de dónde sacar su referencia: las causas penales se
+#: abren por `unificado/modal/causaUnificado.php`, cuyo detalle no está mapeado. Ofrecerlos
+#: sería una herramienta cuyo parámetro nadie puede conseguir.
+ANEXOS_MEDIDOS_SIN_EXPONER: dict[str, str] = {
+    "anexoDemandaUnificado.php": "dtaAnex",
+    "anexoEscritoUnificado.php": "dtaAnex",
+    # Éstos dos respondieron con filas y tampoco se exponen, por la misma razón y no por la
+    # misma causa: su referencia NO vive en la celda de un folio, así que `anexo_ruta` nunca los
+    # va a entregar.
+    #
+    # `anexoCausaCivil` cuelga de la cabecera, en "Anexos de la causa", o sea es del expediente
+    # y no de un escrito. `anexoRecursoApelaciones` vive en el panel `recursoApe`, que es otro
+    # panel del detalle y no está mapeado.
+    #
+    # Se midieron igual y la medición queda escrita: lo que falta para ofrecerlos no es la ruta
+    # sino de dónde sacar la referencia.
+    "anexoCausaCivil.php": "dtaAnexCau",
+    "anexoRecursoApelaciones.php": "dtaAnexRec",
 }
 
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {
+        # La entrega el formulario de cada fila de los dos paneles de anexo de civil.
+        "anexoDocCivil.php": "dtaDoc",
         "docu.php": "valorEncTxtDmda",
         "docuN.php": "dtaDoc",
         "docuS.php": "dtaDoc",
@@ -325,10 +377,12 @@ DOCUMENTOS: dict[str, dict[str, str]] = {
         "docCertificadoEscrito.php": "dtaCert",
     },
     "apelaciones": {
+        "anexoDocRecursoApelaciones.php": "dtaDoc",
         "docCausaApelaciones.php": "valorDoc",
         "newebookapelaciones.php": "dtaEbook",
     },
     "suprema": {
+        "docEscritosSuprema.php": "dtaDoc",
         "docCausaSuprema.php": "valorFile",
         "newebooksuprema.php": "dtaEbook",
     },
@@ -819,6 +873,39 @@ class PjudClient(Transporte):
             )
         return tribunales
 
+    def audios(self, referencia: str) -> list[AudioAudiencia]:
+        """Qué audios de audiencia tiene la causa, y con qué enlace se bajan.
+
+        NO trae los archivos. Devuelve el listado y el enlace de cada uno, para que quien los
+        necesite los abra: son las voces de las partes, los testigos y el tribunal, y una
+        transcripción automática no reemplaza oírlos.
+
+        La referencia la entrega `detalle_causa` en `audio_referencia`. Cuesta UNA petición.
+
+        La ruta cuelga de la RAÍZ del sitio y no del prefijo `ADIR_`, a diferencia de todos los
+        demás modales. Está medido lo que pasa al construirla por analogía con ellos: la
+        plataforma responde 200, con el modal correcto y su encabezado, y la tabla VACÍA. O sea
+        con la forma exacta de "esta causa no tiene audios".
+        """
+        if not referencia:
+            raise ValueError(
+                "Falta la referencia del listado de audios. La entrega el detalle de la causa "
+                "en `audio_referencia`, y cuando viene nula esa causa no ofrece grabación o su "
+                "competencia no está medida."
+            )
+        self._prefijo()
+        return parse_audios(
+            self._req(
+                "POST",
+                f"{BASE}/{AUDIO_RUTA}",
+                data={AUDIO_CAMPO: referencia},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE}/consultaUnificada.php",
+                },
+            ).text
+        )
+
     def georreferencia(self, referencia: str, competencia: str = "civil") -> Georreferencia:
         """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
 
@@ -866,48 +953,54 @@ class PjudClient(Transporte):
             ).text
         )
 
-    def anexos(self, referencia: str, competencia: str = "laboral") -> list[Anexo]:
+    def anexos(self, ruta: str, referencia: str, competencia: str = "civil") -> list[Anexo]:
         """Los documentos que acompañan a un escrito, en el segundo canal del folio.
 
-        La referencia la entrega cada actuación en `anexo_referencia`. Cuesta UNA petición por
-        folio, así que se pide del folio concreto que importa y nunca de barrido.
+        La ruta y la referencia las entrega cada actuación en `anexo_ruta` y
+        `anexo_referencia`, y hacen falta las dos: la competencia no alcanza para saber a qué
+        panel se pide, porque civil tiene dos y con parámetros distintos.
 
-        Sólo laboral. Las cinco competencias publican la columna `Anexo`, así que acá no se
-        puede derivar de la tabla de Historia quién ofrece esto: lo que distingue es si la
-        ruta está medida, y las otras diecisiete que nombra el JavaScript del sitio no lo
-        están. Se rechazan por no verificadas, no porque esté comprobado que no funcionen.
+        Cuesta UNA petición por folio, con su intervalo, así que se pide del folio concreto
+        que importa y nunca de barrido.
+
+        Cinco paneles medidos de los dieciocho que el sitio nombra. Los demás se rechazan por
+        no verificados, no porque esté comprobado que no funcionen: armarlos por analogía
+        devuelve una página que no es la que se pidió, y eso no se distingue de una causa sin
+        anexos.
         """
         nombre = competencia.lower()
-        destino = ANEXOS.get(nombre)
-        if destino is None:
-            # `ValueError` y no `EstructuraInesperada`: el sitio no cambió, la llamada pidió
-            # algo que no se ofrece. La referencia publica esa distinción, y mandarla por el
-            # otro camino le dice a quien llama que reporte un cambio de la plataforma que no
-            # ocurrió.
+        rutas = ANEXOS.get(nombre)
+        if rutas is None:
             raise ValueError(
-                f"No está verificado cómo se piden los anexos en {competencia!r}. Cada "
-                "competencia nombra su ruta y su parámetro distinto, y armarlos por analogía "
-                "devuelve un panel que no es el que se pidió: está medido que la ruta análoga "
-                "equivocada responde 200 con la tabla vacía, o sea con la forma exacta de 'no "
-                f"hay anexos'. Verificadas: {', '.join(sorted(ANEXOS))}."
+                f"No hay ningún panel de anexos medido en {competencia!r}. Medidos: "
+                f"{', '.join(sorted(ANEXOS))}. Se rechaza por no verificado, NO porque esté "
+                "comprobado que esa competencia no los tenga."
+            )
+        campo = rutas.get(ruta)
+        if campo is None:
+            raise ValueError(
+                f"La ruta {ruta!r} no es uno de los paneles de anexo medidos de "
+                f"{competencia!r}: {', '.join(sorted(rutas))}. Si viene de una actuación, usar "
+                "su `anexo_ruta` tal cual. Cuando esa viene en nulo, el folio abre un panel "
+                "que no está medido y sus anexos todavía no se pueden pedir."
             )
         if not referencia:
             raise ValueError(
                 "Falta la referencia del anexo. La entrega cada actuación en "
                 "`anexo_referencia`, y cuando viene nula ese folio no ofrece anexos o su "
-                "competencia no está medida."
+                "panel no está medido."
             )
-        ruta, campo = destino
         return parse_anexos(
             self._req(
                 "POST",
-                f"{BASE}/{self._prefijo()}/{ruta}",
+                f"{BASE}/{self._prefijo()}/{nombre}/modal/{ruta}",
                 data={campo: referencia},
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
                     "Referer": f"{BASE}/consultaUnificada.php",
                 },
-            ).text
+            ).text,
+            ruta,
         )
 
     # -- sesión -----------------------------------------------------------------
@@ -1424,6 +1517,9 @@ class PjudClient(Transporte):
 
         return DetalleCausa(
             historia=historia,
+            # De la cabecera del PRIMER cuaderno: el enlace vive ahí, que es la misma en todos,
+            # y no en la tabla que se recorre.
+            audio_referencia=audio_de_la_causa(primera),
             litigantes=_juntar(parse_litigantes, spec.litigantes),
             notificaciones=_juntar(parse_notificaciones, spec.notificaciones),
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),

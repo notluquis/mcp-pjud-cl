@@ -1,12 +1,12 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las 13 herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 14 herramientas MCP, sus parámetros y cada campo que devuelven."
 ---
 
 # Referencia de herramientas
 
-Las 13 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las 14 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real
@@ -244,7 +244,8 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `georreferencia_referencia` | str \| null | Con qué se pide la georreferencia de esta actuación |
 | `tiene_documento` | bool | Si la columna `Doc.` ofrece algo. `true` NO garantiza que se pueda traer: con `documento_ruta` en nulo, la celda abre un modal de JavaScript cuyo endpoint no está medido |
 | `tiene_anexo` | bool | Si la columna `Anexo` ofrece algo. Segundo canal de documentos, distinto de `Doc.`. Se puede pedir con `obtener_anexos_escrito` sólo donde `anexo_referencia` viene con valor. `false` significa ausente sólo donde la competencia publica la columna |
-| `anexo_referencia` | str \| null | Con qué se piden los anexos de este folio. Nulo cuando el folio no trae anexo, y también cuando lo trae y su competencia no está medida: ahí `tiene_anexo` queda en `true` y esto en nulo |
+| `anexo_ruta` | str \| null | A qué panel se piden los anexos de este folio. Va junto con `anexo_referencia`: una misma competencia abre paneles distintos según el trámite, y civil tiene dos |
+| `anexo_referencia` | str \| null | Con qué se piden. Nulo cuando el folio no trae anexo, y también cuando lo trae por un panel que no está medido: ahí `tiene_anexo` queda en `true` y esto en nulo |
 | `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
 | `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
 
@@ -332,6 +333,12 @@ un exhorto, y meterlas en el mismo nulo borra la distinción que el resto del mo
 Sale de la cabecera de la causa, no de que el panel esté presente: deducirlo de la presencia
 ataría la afirmación a que la plataforma no renombre un `id`, y el día que lo renombre la
 respuesta diría "esta causa no es un exhorto" en vez de "no pude leerlo".
+
+Y otro que tampoco es un panel: `audio_referencia`, con qué se pide el listado de audios de las
+audiencias de la causa. Viene con valor cuando la cabecera ofrece el enlace, o sea cuando hay
+audiencia **grabada**, y eso es un dato en sí: la Historia dice que hubo audiencia, y esto dice
+que quedó registrada. Nulo cuando no la hay y también cuando la competencia no está medida,
+que hoy es todas salvo laboral. Se usa con `listar_audios_audiencia`.
 
 El mismo dato como grafo, útil para ver de un vistazo qué competencia sirve para qué pregunta.
 Se genera desde el código igual que la tabla, así que no puede quedar viejo:
@@ -431,8 +438,9 @@ Los documentos que un escrito acompañó. Son un canal **distinto** del de la re
 
 | Parámetro | Qué es |
 |---|---|
-| `anexo_referencia` | Lo entrega cada actuación. Cuando viene nula, o el folio no ofrece anexos, o su competencia no está medida |
-| `competencia` | Sólo aquellas cuya ruta está verificada contra la plataforma |
+| `anexo_ruta` | Lo entrega cada actuación, y se usa tal cual. Civil tiene dos paneles con parámetros distintos |
+| `anexo_referencia` | Lo entrega cada actuación. Cuando viene nula, o el folio no ofrece anexos, o su panel no está medido |
+| `competencia` | Sólo aquellas con al menos un panel verificado contra la plataforma |
 
 :::{important} Un folio con documento puede tener otro escondido al lado
 La Historia publica **dos** columnas de documentos por folio: `Doc.` trae la resolución o el
@@ -446,11 +454,17 @@ documento entregado, no.
 
 | Campo | Tipo | Qué es |
 |---|---|---|
-| `folio` | str | El mismo folio de la actuación, para volver a ubicarla en la Historia |
+| `folio` | str \| null | El folio de la actuación. Sólo el panel de escritos de laboral lo publica |
 | `fecha` | date \| null | La que publica el panel. **No** corre plazos: eso lo hace `fecha_diligencia` |
-| `descripcion` | str | Lo que el sitio rotula `Referencia`: qué es el documento, escrito por quien lo acompañó |
+| `descripcion` | str | Qué es el documento, escrito por quien lo acompañó. En suprema sale de `Observación del Documento` |
+| `tipo` | str \| null | Cómo lo clasifica el sitio. Ej: 'Anexo Escrito'. Sólo suprema |
+| `cantidad` | str \| null | Cuántos ejemplares declara. Sólo suprema |
+| `documento_fisico` | str \| null | Lo que suprema publica en `Docto. Físico`. Medido: 'No Requerido' |
 | `documento_ruta` | str \| null | Con qué ruta se pide |
 | `documento_referencia` | str \| null | La referencia opaca con la que se pide |
+
+Un nulo significa que **ese panel no publica la columna**, no que el dato no exista: los cinco
+paneles medidos no comparten forma.
 
 Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento`. Esa
 ruta de descarga se leyó del formulario de cada fila y **no se ha ejecutado**: lo medido es el
@@ -465,6 +479,46 @@ panel sólo se pide cuando la actuación ya dijo que hay anexos, así que la tab
 que la respuesta cambió, no que el escrito se haya acompañado sin documentos.
 
 ```{include} _generado/obtener_anexos_escrito.md
+```
+
+## `listar_audios_audiencia`
+
+Qué audios de audiencia tiene la causa, y con qué enlace se bajan. **No los trae.**
+
+| Parámetro | Qué es |
+|---|---|
+| `audio_referencia` | Lo entrega `obtener_detalle_causa`. Cuando viene nula, la causa no ofrece grabación o su competencia no está medida |
+
+:::{important} Entrega los enlaces, no el audio
+Un audio de audiencia son las voces de las partes, los testigos y el tribunal. Una
+transcripción automática no es lo mismo que oírlo, y no siempre se puede transcribir. Lo que
+corresponde es entregar los enlaces y decir qué tramo es cada uno, para que la persona baje el
+que necesita.
+:::
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `numero` | str | El correlativo con que el sitio ordena los archivos |
+| `archivo` | str | Nombre del archivo, tal cual. Trae el tramo al final, y a veces la hora |
+| `fecha` | date \| null | Lo que publica la columna `Fecha`. Medido: **vacía en los once** |
+| `descarga_url` | str | Enlace directo, para abrir en el navegador |
+
+El audio viene **troceado por acto procesal**, no en una pista única: medidos once archivos
+para una sola audiencia preparatoria, del inicio al fin, pasando por el llamado a conciliación
+y los hechos a probar. El nombre de cada archivo es lo más útil que trae, porque la columna
+`Fecha` viene vacía en todos.
+
+El nombre empieza con el **RUC de la causa**: repetirlo completo publica ese identificador, así
+que conviene nombrar el tramo y no el archivo entero.
+
+Los enlaces **caducan**. Si uno deja de funcionar hay que volver a pedir el listado, no
+reintentar el mismo.
+
+Sólo laboral está medida. Un listado sin filas **levanta un error**: sólo se pide cuando el
+detalle ofreció el enlace, así que cero filas significa que la respuesta cambió, no que la
+audiencia no se haya grabado.
+
+```{include} _generado/listar_audios_audiencia.md
 ```
 
 ## `obtener_documento`

@@ -54,6 +54,7 @@ from .parser import (
     COMPETENCIAS,
     Actuacion,
     Anexo,
+    AudioAudiencia,
     CausaEncontrada,
     DetalleCausa,
     Georreferencia,
@@ -747,14 +748,22 @@ def obtener_georreferencia(
     annotations=SOLO_LECTURA,
 )
 def obtener_anexos_escrito(
+    anexo_ruta: Annotated[
+        str,
+        Field(
+            description="Lo entrega cada actuación en `anexo_ruta`, y se usa TAL CUAL. Una "
+            "misma competencia abre paneles distintos según el trámite: civil tiene dos, con "
+            "parámetros distintos."
+        ),
+    ],
     anexo_referencia: Annotated[
         str,
         Field(
             description="Lo entrega cada actuación en `anexo_referencia`. Cuando esa viene "
-            "nula, o el folio no ofrece anexos, o su competencia no está medida."
+            "nula, o el folio no ofrece anexos, o su panel no está medido."
         ),
     ],
-    competencia: CompetenciaConAnexos = "laboral",
+    competencia: CompetenciaConAnexos = "civil",
 ) -> list[Anexo]:
     """Los documentos que un escrito acompañó, que son un canal distinto del de la resolución.
 
@@ -771,9 +780,48 @@ def obtener_anexos_escrito(
 
     Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento` con
     `documento_ruta` y `documento_referencia`.
+
+    Los paneles NO comparten forma entre competencias, así que hay campos que vienen en nulo
+    porque ese panel no publica la columna, no porque el dato falte: civil no publica folio,
+    suprema no publica fecha y en cambio dice cuántos ejemplares hay y si se exige el físico.
     """
     with _cliente() as c:
-        return c.anexos(anexo_referencia, competencia)
+        return c.anexos(anexo_ruta, anexo_referencia, competencia)
+
+
+@mcp.tool(
+    title="Qué audios de audiencia tiene la causa",
+    annotations=SOLO_LECTURA,
+)
+def listar_audios_audiencia(
+    audio_referencia: Annotated[
+        str,
+        Field(
+            description="Lo entrega `obtener_detalle_causa` en `audio_referencia`. Cuando esa "
+            "viene nula, la causa no ofrece grabación o su competencia no está medida."
+        ),
+    ],
+) -> list[AudioAudiencia]:
+    """Qué audios de audiencia hay, y con qué enlace se bajan. NO los trae.
+
+    Devuelve el listado y el enlace de cada archivo para que la persona los abra. Es
+    deliberado: un audio de audiencia son las voces de las partes, los testigos y el tribunal,
+    y una transcripción automática no es lo mismo que oírlo. Lo que corresponde es entregar los
+    enlaces y decir qué tramo es cada uno.
+
+    El audio viene TROCEADO por acto procesal y no en una pista única. Medido: once archivos
+    para una sola audiencia preparatoria, del inicio al fin, pasando por el llamado a
+    conciliación y los hechos a probar. El nombre de cada archivo dice de qué tramo es, y a
+    veces la hora: es lo más útil que trae, porque la columna `Fecha` viene vacía en todos.
+
+    El nombre de archivo empieza con el RUC de la causa. Repetirlo completo publica ese
+    identificador, así que conviene nombrar el tramo y no el archivo entero.
+
+    Los enlaces CADUCAN. Si uno deja de funcionar hay que volver a pedir el listado, no
+    reintentar el mismo.
+    """
+    with _cliente() as c:
+        return c.audios(audio_referencia)
 
 
 @mcp.tool(

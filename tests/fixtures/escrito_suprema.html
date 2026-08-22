@@ -1,0 +1,58 @@
+	<div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal">&times;</button>
+				<h4 class="modal-title" style="color:#337ab7;">Documentos del Escrito</h4>
+			</div>
+		
+			<div class="modal-body">
+			
+				<div class="panel panel-default">
+					<div class="panel-body">
+						<div class="table-responsive">
+                                
+                                <table class="table table-bordered table-striped table-hover">
+                                    <thead>
+										<th>Doc.</th>
+										<th>Doc. F&iacute;sico</th>
+										<th>Tipo Documento</th>
+										<th>Cantidad</th>
+										<th>Observaci&oacute;n del Documento</th>
+										<th>Docto. F&iacute;sico</th>
+                                    </thead>
+									<tbody>
+											<tr>
+												<td align="center">
+													<form name="frmTxt" action="ADIR_871/suprema/documentos/docEscritosSuprema.php" method="get" target="1">
+														<input type='hidden' name='dtaDoc' value='referencia-ficticia-001'>
+														<a href="#" onClick='$(this).closest("form").submit();' role="img" title="Descargar Documento">
+															<i class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+														</a>
+														
+													</form>
+													
+												</td>												
+												<td align="center">
+                                                    <i class="fa fa-times fa-lg" aria-hidden="true" style="color: #AD5454;"></i>
+												</td>
+												<td>Anexo Escrito</td>
+												<td>1</td>
+												<td>documento</td>
+												<td>No Requerido</td>
+											</tr>
+
+                                    </tbody>
+                                </table>
+						</div>
+					</div>
+				</div>
+
+			</div>
+			
+        
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+			</div>
+		</div>
+	</div>

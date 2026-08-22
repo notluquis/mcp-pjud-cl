@@ -10,6 +10,10 @@ import pytest
 
 from mcp_pjud import client
 from mcp_pjud.client import (
+    ANEXOS,
+    ANEXOS_MEDIDOS_SIN_EXPONER,
+    AUDIO_CAMPO,
+    AUDIO_RUTA,
     BASE,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -1962,8 +1966,9 @@ def test_un_pdf_mixto_no_se_declara_entero_digital(monkeypatch):
 
 
 def test_los_anexos_se_piden_a_la_ruta_medida_con_su_propio_campo(monkeypatch):
-    """Cada modal del sitio nombra su parámetro distinto. El de anexos de laboral es `dtaAnex`,
-    y mandarle el de otro modal devuelve una página que no es la que se pidió."""
+    """Cada panel del sitio nombra su parámetro distinto. El de escritos de laboral es
+    `dtaAnex` y el de causa de civil `dtaAnexCau`, y mandarle a uno el del otro devuelve una
+    página que no es la que se pidió."""
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     pedidas: list[tuple[str, bytes]] = []
     cuerpo = (FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8")
@@ -1976,12 +1981,45 @@ def test_los_anexos_se_piden_a_la_ruta_medida_con_su_propio_campo(monkeypatch):
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    anexos = c.anexos("REF-ANEXO", "laboral")
+    anexos = c.anexos("anexoEscritoLaboral.php", "REF-ANEXO", "laboral")
 
     url, contenido = pedidas[0]
     assert "laboral/modal/anexoEscritoLaboral.php" in url, url
     assert b"dtaAnex=REF-ANEXO" in contenido, contenido
     assert len(anexos) == 2
+
+
+def test_el_parametro_de_cada_panel_sale_del_javascript_del_sitio():
+    """La única fuente de con qué se pide cada panel es el JavaScript de la plataforma.
+
+    El test que comprueba la petición que sale a la red no puede cubrir esto: saca el
+    parámetro esperado de la MISMA tabla que verifica, así que un campo mal copiado lo pasa
+    verde. Visto: cambiar `dtaAnexCau` por `dtaAnex` no rompía nada, y en vivo eso devuelve un
+    panel vacío, o sea un folio con anexos informado como folio sin anexos.
+    """
+    js = (FIXTURES / "consultaUnificada.html").read_text(encoding="utf-8")
+    declarados = {}
+    for m in re.finditer(
+        r"function\s+(\w*[Aa]nexo\w*|escrito\w+)\s*\(val\)\s*\{(.{0,1400}?)\}\)", js, re.S
+    ):
+        cuerpo = m.group(2)
+        url = re.search(r"url\s*:\s*'[^']*?/(\w+\.php)'", cuerpo)
+        campo = re.search(r"data\s*:\s*\{\s*(\w+)\s*:", cuerpo)
+        if url and campo:
+            declarados[url.group(1)] = campo.group(1)
+    assert len(declarados) > 15, (
+        f"el barrido del JavaScript encontró {len(declarados)} paneles y el sitio nombra "
+        "dieciocho de anexo más los de escrito: el patrón dejó de ver el archivo"
+    )
+
+    medidos = {r: campo for paneles in ANEXOS.values() for r, campo in paneles.items()}
+    medidos.update(ANEXOS_MEDIDOS_SIN_EXPONER)
+    for ruta, campo in medidos.items():
+        assert ruta in declarados, f"{ruta!r} no está en el JavaScript del sitio"
+        assert declarados[ruta] == campo, (
+            f"{ruta!r} se pide con {campo!r} y el sitio declara {declarados[ruta]!r}. Pedirla "
+            "con el parámetro de otro panel devuelve 200 con la tabla vacía."
+        )
 
 
 def test_la_ruta_de_descarga_del_anexo_es_una_que_obtener_documento_acepta():
@@ -1991,12 +2029,47 @@ def test_la_ruta_de_descarga_del_anexo_es_una_que_obtener_documento_acepta():
     el panel entrega con qué pedirlo y la herramienta que lo pide lo rechaza. Nada más lo mira:
     el parser no consulta esa tabla y el cliente no consulta el panel.
     """
-    anexos = parse_anexos((FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8"))
-    rutas = {a.documento_ruta for a in anexos}
-    assert rutas, "el panel dejó de traer rutas de descarga"
-    for ruta in rutas:
-        assert ruta in DOCUMENTOS["laboral"], (
-            f"el panel de anexos entrega {ruta!r} y `obtener_documento` no la acepta"
+    paneles = {
+        "civil": ("anexoCausaSolicitudCivil.php", "anexo_solicitud_civil.html"),
+        "laboral": ("anexoEscritoLaboral.php", "anexo_escrito_laboral.html"),
+        "suprema": ("escritoSuprema.php", "escrito_suprema.html"),
+    }
+    assert set(paneles) == set(ANEXOS), (
+        "hay una competencia con panel de anexos medido que este test no cubre"
+    )
+    for competencia, (ruta, fixture) in paneles.items():
+        anexos = parse_anexos((FIXTURES / fixture).read_text(encoding="utf-8"), ruta)
+        for a in anexos:
+            assert a.documento_ruta in DOCUMENTOS[competencia], (
+                f"el panel {ruta} entrega {a.documento_ruta!r} y `obtener_documento` no la acepta"
+            )
+
+
+def test_toda_ruta_ofrecida_sale_de_la_celda_de_alguna_actuacion():
+    """Una ruta que ninguna actuación entrega es una herramienta cuyo parámetro nadie puede
+    conseguir.
+
+    Pasó, y por eso este guardia existe: el barrido que midió los paneles buscaba las llamadas
+    en TODO el detalle, y dos de las que encontró no viven en la celda de un folio.
+    `anexoCausaCivil` cuelga de la cabecera, en "Anexos de la causa", y
+    `anexoRecursoApelaciones` vive en el panel de recursos. Las dos respondieron con filas, así
+    que los tests de parseo pasaban; lo que faltaba era comprobar de dónde sale su referencia.
+    """
+    detalles = {
+        "civil": ("c1156_apremio.html", "civil"),
+        "laboral": ("detalle_laboral.html", "laboral"),
+        "suprema": ("detalle_suprema.html", "suprema"),
+    }
+    assert set(detalles) == set(ANEXOS), (
+        "hay una competencia con panel ofrecido que este guardia no cubre. Si no hay fixture "
+        "que la alcance, el panel va a `ANEXOS_MEDIDOS_SIN_EXPONER` con su razón."
+    )
+    for competencia, (fixture, nombre) in detalles.items():
+        html = (FIXTURES / fixture).read_text(encoding="utf-8")
+        ofrecidas = {a.anexo_ruta for a in parse_historia(html, competencia=nombre) if a.anexo_ruta}
+        assert ofrecidas == set(ANEXOS[competencia]), (
+            f"{competencia} ofrece {sorted(ANEXOS[competencia])} y sus actuaciones entregan "
+            f"{sorted(ofrecidas)}"
         )
 
 
@@ -2019,30 +2092,130 @@ def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monke
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(ValueError, match="anexos") as e:
-        c.anexos("REF-1", "civil")
-    dicho = str(e.value)
-    assert "no está verificado" in dicho.lower(), (
-        "el rechazo debe decir que no se midió, no que la competencia no tenga anexos"
-    )
+    with pytest.raises(ValueError, match="anexos medido"):
+        c.anexos("anexoCausaCobranza.php", "REF-1", "cobranza")
+    with pytest.raises(ValueError, match="paneles de anexo medidos"):
+        c.anexos("anexoCausaSolEscritoCivil.php", "REF-1", "civil")
     assert not salieron, "no debe salir ninguna petición"
 
 
 def test_la_referencia_del_anexo_llega_desde_la_actuacion():
-    """El circuito completo sin red: la actuación trae con qué pedir sus anexos.
+    """El circuito completo sin red: la actuación trae ruta y referencia.
 
-    Sin esto la herramienta existe y no hay de dónde sacar su parámetro, y el folio con anexo
-    queda igual de inalcanzable que antes de que el campo existiera.
+    Sin las dos la herramienta existe y no hay de dónde sacar sus parámetros, y el folio con
+    anexo queda igual de inalcanzable que antes de que los campos existieran.
     """
     detalle = (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8")
     con_anexo = [a for a in parse_historia(detalle, competencia="laboral") if a.tiene_anexo]
     assert con_anexo, "la fixture de laboral dejó de traer folios con anexo"
-    assert all(a.anexo_referencia for a in con_anexo), (
+    assert all(a.anexo_ruta and a.anexo_referencia for a in con_anexo), (
         "un folio dice tener anexo y no dice con qué pedirlo"
+    )
+    assert all(a.anexo_ruta in ANEXOS["laboral"] for a in con_anexo), (
+        "la actuación entrega una ruta que el cliente no acepta"
     )
     referencias = [a.anexo_referencia for a in con_anexo]
     assert len(set(referencias)) == len(referencias), (
         f"dos folios comparten referencia de anexo: {referencias}"
+    )
+
+
+# -- audios de audiencia ---------------------------------------------------------------
+
+
+def test_el_listado_de_audios_se_pide_a_la_raiz_y_no_bajo_el_prefijo(monkeypatch):
+    """Todos los demás modales cuelgan de `ADIR_nnn`; éste no.
+
+    Está medido lo que pasa al armarlo por analogía: la plataforma responde 200, con el modal
+    correcto y su encabezado, y la tabla VACÍA. O sea con la forma exacta de "esta causa no
+    tiene audios", que es el falso negativo que la regla 4 existe para evitar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidas: list[tuple[str, bytes]] = []
+    cuerpo = (FIXTURES / "listado_audio_laboral.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidas.append((str(peticion.url), peticion.content))
+        return httpx.Response(200, text=cuerpo)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    audios = c.audios("REF-AUDIO")
+
+    url, contenido = pedidas[0]
+    assert url == f"{BASE}/audio/listadoAudio.php", url
+    assert "ADIR_1" not in url, "el listado de audios NO cuelga del prefijo de sesión"
+    assert b"dtaAudio=REF-AUDIO" in contenido, contenido
+    assert len(audios) == 11
+
+
+def test_pedir_audios_sin_referencia_no_gasta_peticion(monkeypatch):
+    """Sin referencia no hay causa que pedir, y la plataforma respondería igual con algo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        salieron.append(str(peticion.url))
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(ValueError, match="referencia del listado de audios"):
+        c.audios("")
+    assert not salieron
+
+
+def test_el_detalle_combinado_entrega_con_que_pedir_los_audios(monkeypatch):
+    """Sin esto la herramienta existe y no hay de dónde sacar su parámetro.
+
+    Es el mismo hueco que tenía `tiene_documento` antes de traer su referencia: el detalle
+    decía que había algo y no con qué pedirlo.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    detalle = (FIXTURES / "detalle_laboral.html").read_text(encoding="utf-8")
+    busqueda = (FIXTURES / "busqueda_rit_laboral.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, text=detalle if "causaLaboral" in str(peticion.url) else busqueda
+        )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    d = c.detalle_causa("O", 9999, 2018, competencia="laboral", tribunal=1)
+
+    assert d.audio_referencia, "el detalle de laboral ofrece el listado y no lo está entregando"
+
+
+def test_la_ruta_y_el_campo_del_audio_salen_del_javascript_del_sitio():
+    """La única fuente de dónde vive el listado y con qué se pide es el JavaScript del sitio.
+
+    Y es el caso donde más importa: esta ruta NO cuelga del prefijo de sesión, al revés que
+    todos los demás modales, y armarla por analogía devuelve 200 con la tabla vacía. Un guardia
+    que comparara la constante contra sí misma no diría nada de eso.
+    """
+    js = (FIXTURES / "consultaUnificada.html").read_text(encoding="utf-8")
+    m = re.search(r"function\s+listadoAudio\w*\s*\(val\)\s*\{(.{0,900}?)\}\)", js, re.S)
+    assert m, "el JavaScript del sitio dejó de declarar la función del listado de audios"
+
+    url = re.search(r"url\s*:\s*'\.\./([^']+)'", m.group(1))
+    campo = re.search(r"data\s*:\s*\{\s*(\w+)\s*:", m.group(1))
+    assert url, "no se pudo leer la ruta del JavaScript"
+    assert campo, "no se pudo leer el campo del JavaScript"
+    assert url.group(1) == AUDIO_RUTA, (
+        f"el sitio declara {url.group(1)!r} y el cliente pide {AUDIO_RUTA!r}"
+    )
+    assert campo.group(1) == AUDIO_CAMPO, (
+        f"el sitio declara {campo.group(1)!r} y el cliente manda {AUDIO_CAMPO!r}"
+    )
+    assert not url.group(1).startswith("ADIR"), (
+        "la ruta del listado de audios no cuelga del prefijo de sesión, y ése es el hallazgo"
     )
 
 

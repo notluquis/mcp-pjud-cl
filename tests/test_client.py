@@ -2019,7 +2019,7 @@ def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monke
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(EstructuraInesperada) as e:
+    with pytest.raises(ValueError, match="anexos") as e:
         c.anexos("REF-1", "civil")
     dicho = str(e.value)
     assert "no está verificado" in dicho.lower(), (
@@ -2087,7 +2087,7 @@ def test_pedir_la_georreferencia_de_una_competencia_que_no_la_publica_no_gasta_p
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(EstructuraInesperada, match="no publica la columna"):
+    with pytest.raises(ValueError, match="no publica la columna"):
         c.georreferencia("REF-1", "suprema")
     assert not salieron, "no debe salir ninguna petición para una competencia sin la columna"
 
@@ -2108,7 +2108,7 @@ def test_una_competencia_sin_historia_medida_no_se_rechaza_como_si_no_publicara(
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(EstructuraInesperada) as e:
+    with pytest.raises(ValueError, match="Historia") as e:
         c.georreferencia("REF-1", "penal")
     dicho = str(e.value)
     assert "no está medida" in dicho, "el rechazo de penal debe decir que no se midió"

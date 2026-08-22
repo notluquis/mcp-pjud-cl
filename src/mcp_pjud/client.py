@@ -848,11 +848,9 @@ class PjudClient(Transporte):
                 "referencia. Se rechaza por no verificada, NO porque esté comprobado que no "
                 "la tenga."
             )
-            raise EstructuraInesperada(
-                f"{motivo} Verificadas: {', '.join(sorted(GEORREFERENCIA))}."
-            )
+            raise ValueError(f"{motivo} Verificadas: {', '.join(sorted(GEORREFERENCIA))}.")
         if not referencia:
-            raise EstructuraInesperada(
+            raise ValueError(
                 "Falta la referencia de la georreferencia. La entrega cada actuación en "
                 "`georreferencia_referencia`, y cuando viene nula esa actuación no la ofrece."
             )
@@ -882,7 +880,11 @@ class PjudClient(Transporte):
         nombre = competencia.lower()
         destino = ANEXOS.get(nombre)
         if destino is None:
-            raise EstructuraInesperada(
+            # `ValueError` y no `EstructuraInesperada`: el sitio no cambió, la llamada pidió
+            # algo que no se ofrece. La referencia publica esa distinción, y mandarla por el
+            # otro camino le dice a quien llama que reporte un cambio de la plataforma que no
+            # ocurrió.
+            raise ValueError(
                 f"No está verificado cómo se piden los anexos en {competencia!r}. Cada "
                 "competencia nombra su ruta y su parámetro distinto, y armarlos por analogía "
                 "devuelve un panel que no es el que se pidió: está medido que la ruta análoga "
@@ -890,7 +892,7 @@ class PjudClient(Transporte):
                 f"hay anexos'. Verificadas: {', '.join(sorted(ANEXOS))}."
             )
         if not referencia:
-            raise EstructuraInesperada(
+            raise ValueError(
                 "Falta la referencia del anexo. La entrega cada actuación en "
                 "`anexo_referencia`, y cuando viene nula ese folio no ofrece anexos o su "
                 "competencia no está medida."

@@ -26,6 +26,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
   anónima y entrega once archivos troceados por acto procesal. Todavía no se expone.
 
+### Corregido
+
+- Pedir una georreferencia de una competencia que no la ofrece, o sin referencia, levantaba
+  `EstructuraInesperada`, que la referencia documenta como "la plataforma cambió, reportar".
+  Son errores de la llamada y ahora levantan `ValueError`, como el resto.
+
 ## [0.9.0] - 2026-08-22
 
 ### Agregado

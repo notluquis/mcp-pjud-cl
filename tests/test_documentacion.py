@@ -2767,6 +2767,16 @@ def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
 MAGNAR_PAGINAS = 10_000
 MAGNAR_ANIO = 2025
 MAGNAR_PAISES = ("Perú", "Ecuador", "Costa Rica", "Colombia", "Uruguay")
+
+#: Lo que declara hacer, con la frase que lo identifica en cada fila de la tabla. Es lo que
+#: sostiene la comparación publicada: si una capacidad cambia y la fila queda igual, quien
+#: lea la página para elegir está comparando contra algo que ya no es.
+MAGNAR_CAPACIDADES = {
+    "Qué declara buscar": "normativa y jurisprudencia oficial",
+    "Base propia": "app.magnar.ai/cl/juris",
+    "Qué genera": "control de cambios en Word",
+    "Qué NO publica": "Oficina Judicial Virtual",
+}
 #: Con su estado, no sólo el nombre: borrar el "en curso" de la ISO 42001 sin quitar el
 #: nombre cambia una afirmación verificable y el guardia no lo veía.
 MAGNAR_CERTIFICACIONES = (
@@ -2802,11 +2812,26 @@ def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():
     )
     sin_pais = [p for p in MAGNAR_PAISES if p not in seccion]
     assert not sin_pais, f"la sección dejó de nombrar {sin_pais} entre los países donde opera"
-    # Y que no se agregue uno sin anotarlo acá: la lista publicada es la lista medida.
-    otros = re.findall(r"\b(Bolivia|Argentina|México|Panamá|Paraguay|Brasil)\b", seccion)
-    assert not otros, (
-        f"la sección nombra {sorted(set(otros))} y la fuente no los declara: si Magnar creció, "
-        "hay que volver a mirar lo que publica en vez de agregarlo suelto"
+    # La lista se EXTRAE de la frase y se compara entera, en vez de rechazar unos pocos países
+    # elegidos a mano: enumerar los que no valen es la misma trampa que enumerar formatos, y
+    # dejaba pasar cualquiera que no se me hubiera ocurrido.
+    m = re.search(r"ya opera en ([^.]+)\.", " ".join(seccion.split()))
+    assert m, "la sección dejó de decir en qué países opera"
+    publicados = tuple(
+        pais.strip() for pais in re.split(r",\s*|\s+y\s+", m.group(1)) if pais.strip()
+    )
+    assert publicados == MAGNAR_PAISES, (
+        f"la sección publica {publicados} y la fuente revisada declara {MAGNAR_PAISES}: si "
+        "Magnar creció, hay que volver a mirar lo que publica en vez de agregarlo suelto"
+    )
+
+    # Y las capacidades, que son lo que sostiene la comparación.
+    sin_capacidad = {
+        fila: frase for fila, frase in MAGNAR_CAPACIDADES.items() if frase not in seccion
+    }
+    assert not sin_capacidad, (
+        f"la sección dejó de declarar {sorted(sin_capacidad)}: la comparación publicada se "
+        "separó de lo que se revisó"
     )
 
 

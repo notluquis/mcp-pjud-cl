@@ -215,6 +215,31 @@ DILIGENCIAS_COBRANZA = Diligencias(
 )
 
 
+#: La de laboral, medida el 22 de agosto de 2026 sobre tres causas de 2019 y 2023.
+#:
+#: No es la de cobranza con dos columnas menos: donde cobranza publica `Destinatario` y
+#: `Responsable`, laboral publica `Referencia`, y la fecha va al final en vez de al medio.
+#: Leerla con el mapa de cobranza pondría la referencia en el destinatario y correría la fecha.
+#:
+#: Y acá los documentos SÍ están medidos, al revés que en cobranza: `Doc. Ida` trae el oficio
+#: despachado y `Doc. Vta.` el que volvió. Una diligencia `enviada` trae sólo el de ida, y una
+#: `cumplida` trae los dos: la ausencia del segundo es el dato de que el oficio no ha vuelto.
+DILIGENCIAS_LABORAL = Diligencias(
+    panel="diligenciasLab",
+    columnas=("doc_ida", "doc_vta", "estado", "rit", "ruc", "tipo", "referencia", "fec_tramite"),
+    encabezados=(
+        "doc. ida",
+        "doc. vta.",
+        "estado diligencia",
+        "rit",
+        "ruc",
+        "tipo diligencia",
+        "referencia",
+        "fecha trámite",
+    ),
+)
+
+
 #: La de cobranza, medida pidiendo un detalle real el 17 de agosto de 2026.
 #:
 #: La diferencia con civil no es que le falten columnas: reemplaza `Foja` por `Estado Firma`
@@ -1163,13 +1188,38 @@ class Diligencia(BaseModel):
         "es el valor cero renderizado como fecha y no una diligencia de 1969: informarla haría "
         "computar un plazo desde ahí.",
     )
-    destinatario: str = Field(
+    destinatario: str | None = Field(
+        default=None,
         description="A quién se dirige la diligencia. Medido: 'No Asignado', o sea el panel "
-        "publica la fila antes de que haya alguien encargado de practicarla."
+        "publica la fila antes de que haya alguien encargado de practicarla. NULO en laboral, "
+        "que no publica la columna.",
     )
-    responsable: str = Field(
+    responsable: str | None = Field(
+        default=None,
         description="Quién figura a cargo de la diligencia, tal como lo publica el sitio. Es "
-        "el nombre de una persona natural: es un dato personal de un tercero."
+        "el nombre de una persona natural: es un dato personal de un tercero. NULO en laboral, "
+        "que no publica la columna.",
+    )
+    referencia: str | None = Field(
+        default=None,
+        description="Con qué se despachó la diligencia, como lo rotula el sitio. Medido en "
+        "laboral: 'Envío Automatico'. NULO en cobranza, que no publica la columna.",
+    )
+    documento_ida_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta entrega el oficio DESPACHADO. NULO cuando la fila no lo trae, y "
+        "también en cobranza, donde sólo está medido el caso sin documento.",
+    )
+    documento_ida_referencia: str | None = Field(
+        default=None, description="Con qué se pide ese documento. Va junto con su ruta."
+    )
+    documento_vuelta_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta entrega el oficio que VOLVIÓ. Su ausencia es un dato: está "
+        "medido que una diligencia `enviada` trae sólo el de ida, y una `cumplida` los dos.",
+    )
+    documento_vuelta_referencia: str | None = Field(
+        default=None, description="Con qué se pide ese documento. Va junto con su ruta."
     )
     rit: str = Field(
         description="RIT de la causa A LA QUE la diligencia se dirige, que NO es "
@@ -1196,17 +1246,28 @@ def parse_diligencias(html_detalle: str, competencia: str = "cobranza") -> list[
             "que se leería como que no se practicó ninguna diligencia."
         )
 
+    columnas = spec.diligencias.columnas
     diligencias = []
-    for _celdas_crudas, txt in _filas_del_panel(html_detalle, spec.diligencias):
+    for celdas, txt in _filas_del_panel(html_detalle, spec.diligencias):
+        ida = _documento_de_la_celda(celdas[columnas.index("doc_ida")])
+        vuelta = _documento_de_la_celda(celdas[columnas.index("doc_vta")])
         diligencias.append(
             Diligencia(
                 estado=txt["estado"],
                 tipo=txt["tipo"],
                 fecha_tramite=_fecha(txt["fec_tramite"]),
-                destinatario=txt["destinatario"],
-                responsable=txt["responsable"],
+                # Los tres que una competencia publica y la otra no. `get` y no corchetes: con
+                # corchetes, agregar una competencia que no traiga la columna revienta con un
+                # KeyError en vez de decir que ese panel no la publica.
+                destinatario=txt.get("destinatario"),
+                responsable=txt.get("responsable"),
+                referencia=txt.get("referencia"),
                 rit=txt["rit"],
                 ruc=txt["ruc"],
+                documento_ida_ruta=ida[0],
+                documento_ida_referencia=ida[1],
+                documento_vuelta_ruta=vuelta[0],
+                documento_vuelta_referencia=vuelta[1],
             )
         )
     return diligencias
@@ -2158,11 +2219,13 @@ class DetalleCausa(BaseModel):
     """Los paneles MAPEADOS del detalle, leídos de una sola vez. No es el expediente completo.
 
     Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. La respuesta de
-    la plataforma trae paneles que este servidor todavía no mapea, y cambian por competencia:
-    en laboral las diligencias, las liquidaciones y los escritos pendientes. En apelaciones
-    quedan fuera los
-    exhortos y la incompetencia; en suprema, las causas agregadas y la de la Corte de
-    Apelaciones de la que viene. Lo que no está acá **no está dicho**, no está negado.
+    la plataforma trae cinco paneles que este servidor todavía no mapea, y cambian por
+    competencia: en laboral las liquidaciones y los escritos pendientes, en apelaciones los
+    exhortos y la incompetencia, y en suprema las causas agregadas. Lo que no está acá **no
+    está dicho**, no está negado.
+
+    Los cinco están sin mapear por falta de datos y no de trabajo: en cincuenta y cinco causas
+    abiertas a propósito para buscarlos, ninguno trajo una sola fila.
 
     Y dos canales que sí se pueden pedir y NO vienen incluidos, porque cuestan una petición
     aparte cada uno: los anexos de un folio, con `anexo_ruta` y `anexo_referencia` de su
@@ -2637,6 +2700,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         {"rol": 1, "tribunal": 2, "caratulado": 3, "fecha_ingreso": 4, "estado": 5},
         litigantes=LITIGANTES_LABORAL,
         materias=MATERIAS_LABORAL,
+        diligencias=DILIGENCIAS_LABORAL,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,

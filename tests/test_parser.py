@@ -852,6 +852,7 @@ def test_las_diligencias_de_cobranza_se_leen_enteras():
 
     # El nombre real no se escribe acá: la fixture trae el de una persona natural. Se comprueba
     # la FORMA, que es lo que distingue la celda del responsable de la de al lado.
+    assert diligencia.responsable is not None, "cobranza sí publica la columna"
     assert " " in diligencia.responsable, (
         "el responsable es el nombre de una persona y lleva espacios; si trae 'No Asignado' o "
         "una fecha, las columnas están corridas"
@@ -1697,6 +1698,71 @@ def test_el_nombre_del_modal_se_compara_completo_y_no_por_prefijo():
     assert all(a.anexo_ruta is None for a in con_anexo), (
         f"un modal sin medir devolvió la ruta de otro: {[a.anexo_ruta for a in con_anexo]}"
     )
+
+
+# -- diligencias de laboral ------------------------------------------------------------
+
+DILIGENCIAS_LAB = (FIXTURES / "diligencias_laboral.html").read_text(encoding="utf-8")
+DILIGENCIAS_LAB_ENVIADA = (FIXTURES / "diligencias_laboral_enviada.html").read_text(
+    encoding="utf-8"
+)
+
+
+def test_las_diligencias_de_laboral_no_tienen_la_forma_de_las_de_cobranza():
+    """Donde cobranza publica `Destinatario` y `Responsable`, laboral publica `Referencia`, y
+    la fecha va al final en vez de al medio.
+
+    Leerla con el mapa de cobranza pondría 'Envío Automatico' en el destinatario y correría la
+    fecha, que es el modo de falla que no se ve: la fila sale con otros valores, no rota.
+    """
+    diligencias = parse_diligencias(DILIGENCIAS_LAB, "laboral")
+
+    assert len(diligencias) == 2
+    primera = diligencias[0]
+    assert primera.estado == "cumplida"
+    assert primera.tipo == "Oficio Sala"
+    assert primera.referencia == "Envío Automatico"
+    assert primera.fecha_tramite == date(2023, 4, 20)
+    assert primera.destinatario is None, "laboral no publica la columna"
+    assert primera.responsable is None, "laboral tampoco publica ésta"
+
+
+def test_una_diligencia_enviada_no_trae_el_documento_de_vuelta():
+    """La ausencia del segundo documento es el dato: el oficio salió y todavía no vuelve.
+
+    Está medido en los dos sentidos: la `cumplida` trae los dos documentos y la `enviada` sólo
+    el de ida. Sin esta distinción, las dos se ven igual.
+    """
+    cumplida = parse_diligencias(DILIGENCIAS_LAB, "laboral")[0]
+    enviada = parse_diligencias(DILIGENCIAS_LAB_ENVIADA, "laboral")[0]
+
+    assert cumplida.documento_ida_ruta == "docDiligenciaIdaLaboral.php"
+    assert cumplida.documento_vuelta_ruta == "docDiligenciaVueltaLaboral.php"
+    assert cumplida.documento_ida_referencia
+    assert cumplida.documento_vuelta_referencia
+
+    assert enviada.estado == "enviada"
+    assert enviada.documento_ida_ruta == "docDiligenciaIdaLaboral.php"
+    assert enviada.documento_vuelta_ruta is None
+    assert enviada.documento_vuelta_referencia is None
+
+
+def test_leer_las_diligencias_de_laboral_con_el_mapa_de_cobranza_se_rechaza():
+    """Dos guardias encadenados, y conviene ver los dos.
+
+    El primero es el nombre del panel: `diligenciaCob` no existe en un detalle de laboral. El
+    segundo es el que importa cuando el nombre sí calza, y por eso se fuerza: nueve columnas
+    donde hay ocho, cortado por cantidad y posición antes de que ninguna fila salga con los
+    campos corridos.
+    """
+    with pytest.raises(EstructuraInesperada, match="No existe el panel"):
+        parse_diligencias(DILIGENCIAS_LAB, "cobranza")
+
+    con_el_id_de_cobranza = DILIGENCIAS_LAB.replace('id="diligenciasLab"', 'id="diligenciaCob"')
+    assert con_el_id_de_cobranza != DILIGENCIAS_LAB
+
+    with pytest.raises(EstructuraInesperada, match="columnas"):
+        parse_diligencias(con_el_id_de_cobranza, "cobranza")
 
 
 # -- escritos por resolver -------------------------------------------------------------

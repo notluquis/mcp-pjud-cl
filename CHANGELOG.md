@@ -16,14 +16,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-### Corregido
-
-- Tres nombres reales de personas seguían en las fixtures versionadas, invisibles para los
-  cuatro guardias porque venían en mayúscula y minúscula o con un sufijo entre paréntesis. Se
-  reemplazaron, y hay un guardia nuevo que mira la COLUMNA en vez de la forma del texto.
-
 ### Agregado
 
+- El detalle de una causa laboral trae `diligencias`, con el oficio despachado y el que volvió.
+  Que falte el segundo es el dato de que el oficio todavía no vuelve.
 - El detalle de una causa de cobranza trae `diligencias`, el panel donde vive de verdad el
   ministro de fe. Su fecha viene **nula** cuando el sitio imprime el epoch `31/12/1969`, que es
   el valor cero y no una diligencia de ese día.
@@ -35,6 +31,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El detalle de una causa de la Corte Suprema trae `causa_de_origen`, la causa de la Corte de
   Apelaciones desde la que subió el recurso. La corte llega por su nombre, así que para
   consultarla hay que resolver el código con `listar_cortes`.
+
+### Corregido
+
+- Tres nombres reales de personas seguían en las fixtures versionadas, invisibles para los
+  cuatro guardias porque venían en mayúscula y minúscula o con un sufijo entre paréntesis. Se
+  reemplazaron, y hay un guardia nuevo que mira la COLUMNA en vez de la forma del texto.
 
 ## [0.10.0] - 2026-08-22
 

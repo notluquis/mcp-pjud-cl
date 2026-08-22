@@ -614,7 +614,16 @@ def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
             m = ast.get_docstring(ast.parse(crudo))
             crudo = m or ""
         t = " ".join(crudo.split())
-        if miles(INDEXADAS_MEDIDAS) not in t and p not in obligatorias:
+        if p in obligatorias:
+            # Obligatoria significa que TIENE que traer las dos cifras vigentes, no sólo que
+            # se la mire. Con el bypass anterior, una medición nueva que actualizara la fecha
+            # y las visibles y dejara el total viejo pasaba: el `continue` se saltaba, pero
+            # nada exigía el total, así que las aserciones de abajo daban verde.
+            assert miles(INDEXADAS_MEDIDAS) in t, (
+                f"{p.relative_to(RAIZ)} tiene que citar las {miles(INDEXADAS_MEDIDAS)} "
+                "coincidencias declaradas, y quedó con otra cifra"
+            )
+        elif miles(INDEXADAS_MEDIDAS) not in t:
             continue
         # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no
         # se escribe al lado: un `or` con la fecha de hoy es lo que dejaba pasar la copia vieja.

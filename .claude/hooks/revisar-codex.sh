@@ -61,6 +61,12 @@ filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThread
 # `/dev/null` eso se veía como cero hilos. El hook salía 0 sin avisar de nada.
 # Pedidos sin responder: el último `@codex review` de cada pull request abierto que no tenga
 # una respuesta de Codex después.
+# El login de Codex se compara con `test("codex")` y no por igualdad, y la razón es del
+# ESQUEMA y no del bot: REST siempre devuelve `chatgpt-codex-connector[bot]`, GraphQL lo
+# devuelve sin sufijo en `reviews.author` y `comments.author` -que son de tipo `Actor`- y CON
+# sufijo en `reactions.user`, que es de tipo `User`. Medido sobre el mismo pull request con
+# las dos APIs. Le pasa a cualquier App, y una misma consulta mezcla los dos tipos sin avisar.
+#
 # Las respuestas de Codex llegan por TRES superficies y hay que mirar las tres. Una pasada
 # con hallazgos deja una review con hilos; una limpia, a veces un comentario; y a veces sólo
 # una REACCIÓN de pulgar arriba en el pull request, que no aparece ni en `comments` ni en

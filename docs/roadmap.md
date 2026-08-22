@@ -321,10 +321,22 @@ la cabecera llena y los paneles con filas. Medido el 22 de agosto de 2026 sobre 
 La ruta que lleva el nombre de la competencia devuelve **200 con los cuatro paneles, sus
 encabezados y cero filas**: la forma exacta de "esta causa penal no tiene nada".
 
-Lo que falta ahora no es medir sino decidir qué se entrega. Un expediente penal nombra
-imputados y víctimas, sus litigantes no publican RUT donde las otras cinco sí, y sus `id` de
-panel son genéricos (`historia`, `litigantes`), así que un mapeo descuidado lee la respuesta
-equivocada sin enterarse. Eso se resuelve antes de escribir el código, no después.
+**Y la decisión está tomada: penal queda fuera de alcance.** El titular la tomó el 22 de agosto
+de 2026, al terminar la medición y no antes: primero se midió para poder decidir con datos, y
+lo medido queda escrito en {doc}`verificacion` para quien evalúe esto de nuevo.
+
+No es un pendiente ni una limitación técnica. La respuesta se lee, y aun así no se expone: un
+expediente penal nombra imputados y víctimas, y el criterio que sostiene al resto del proyecto,
+devolver lo que la plataforma publica sin identificarse, no se traslada solo a ese contenido.
+Queda junto a familia, por una razón distinta: familia no se puede leer, penal sí y no se
+quiere.
+
+Lo que NO cambia: penal sigue siendo **buscable**, como desde la 0.2.0. Buscar una causa
+devuelve rol, tribunal, RUC, caratulado y estado, que es lo mismo que el listado público de la
+plataforma muestra. Lo que queda fuera es el **detalle**: la historia, las partes y el panel de
+relaciones con el delito.
+
+Y el rechazo del detalle deja de explicarse como falta de medición. Es una decisión.
 
 **Ninguna de las cuatro tiene receptor.** La palabra no aparece ni una vez en las tres
 respuestas mapeadas, y ninguna fila trae la fecha doble. Por eso la historia se lee aparte de

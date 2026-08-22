@@ -31,6 +31,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Cada actuación trae `anexo_ruta` y `anexo_referencia`, que es con qué se piden sus anexos.
   Nulas donde el folio no tiene anexo o donde su panel no está medido.
 
+### Decidido
+
+- El detalle de las causas penales **queda fuera de alcance**, después de medirlo y no antes.
+  Penal sigue siendo buscable, que es lo que ya estaba; lo que no se expone es el contenido de
+  la causa.
+
 ### Corregido
 
 - El detalle combinado se anunciaba como "todo lo que la respuesta publica" y deja nueve

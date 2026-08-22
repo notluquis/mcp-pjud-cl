@@ -889,6 +889,22 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
         "enlazado es PDF. De esa afirmación cuelga `_MAGIA_PDF`."
     )
 
+    # La excepción medida, que el arreglo del tokenizador de rutas dejó sin nadie que la
+    # mirara: el canal de audio emite mp3. La evidencia no está en un `href` ni en un `src`
+    # (el enlace apunta a un `.php`), sino en el `type` del `<source>` y en el nombre del
+    # archivo dentro de una celda, o sea justo donde el barrido de arriba no llega.
+    #
+    # Va en las dos direcciones a propósito. Si aparece audio y la página no lo nombra, la
+    # afirmación de "sólo PDF" quedó falsa; si la página lo nombra y no hay audio en ninguna
+    # fixture, está declarando una excepción que nadie midió.
+    hay_audio = bool(re.search(r"""type\s*=\s*['"]audio/""", fixtures) or ".mp3" in fixtures)
+    lo_declara = "audio" in pagina.lower() and ".mp3" in pagina
+    assert hay_audio == lo_declara, (
+        f"las fixtures traen audio: {hay_audio}, y la investigación lo declara como excepción: "
+        f"{lo_declara}. Las dos cosas van juntas o la página afirma de más en una dirección o "
+        "en la otra."
+    )
+
     # Lo que se muestra sí puede ser imagen, pero no cualquier cosa: un `.odt` en un `src`
     # tampoco tiene explicación.
     mostrados = sorted(

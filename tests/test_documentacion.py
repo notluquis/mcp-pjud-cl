@@ -2771,11 +2771,23 @@ MAGNAR_PAISES = ("Perú", "Ecuador", "Costa Rica", "Colombia", "Uruguay")
 #: Lo que declara hacer, con la frase que lo identifica en cada fila de la tabla. Es lo que
 #: sostiene la comparación publicada: si una capacidad cambia y la fila queda igual, quien
 #: lea la página para elegir está comparando contra algo que ya no es.
+#: El valor COMPLETO de cada fila, no un fragmento: proteger "control de cambios en Word"
+#: dejaba borrar "Resúmenes de sentencias" y "tablas comparativas" de la misma celda sin que
+#: nada fallara, y ahí la comparación publicada ya no es la que se revisó.
 MAGNAR_CAPACIDADES = {
-    "Qué declara buscar": "normativa y jurisprudencia oficial",
-    "Base propia": "app.magnar.ai/cl/juris",
-    "Qué genera": "control de cambios en Word",
-    "Qué NO publica": "Oficina Judicial Virtual",
+    "Qué declara buscar": (
+        '"normativa y jurisprudencia oficial de tu país, con citas verificables y acceso '
+        'directo a cada fuente"'
+    ),
+    "Base propia": "Un banco de fallos en `app.magnar.ai/cl/juris`",
+    "Qué genera": (
+        "Resúmenes de sentencias, tablas comparativas, ediciones con control de cambios en Word"
+    ),
+    "Escala que declara": "Expedientes de hasta 10.000 páginas",
+    "Qué NO publica": (
+        "Ninguna mención de la Oficina Judicial Virtual, de consulta de causas ni de "
+        "cómputo de plazos"
+    ),
 }
 #: Con su estado, no sólo el nombre: borrar el "en curso" de la ISO 42001 sin quitar el
 #: nombre cambia una afirmación verificable y el guardia no lo veía.
@@ -2826,12 +2838,19 @@ def test_lo_que_magnar_declara_se_cita_igual_en_toda_la_pagina():
     )
 
     # Y las capacidades, que son lo que sostiene la comparación.
-    sin_capacidad = {
-        fila: frase for fila, frase in MAGNAR_CAPACIDADES.items() if frase not in seccion
-    }
-    assert not sin_capacidad, (
-        f"la sección dejó de declarar {sorted(sin_capacidad)}: la comparación publicada se "
-        "separó de lo que se revisó"
+    # Se compara el valor COMPLETO de cada fila contra la celda que la página publica, no un
+    # fragmento contra la página entera: con el fragmento se podía borrar media celda.
+    plana = " ".join(seccion.split())
+    mal = {}
+    for fila, esperado in MAGNAR_CAPACIDADES.items():
+        m = re.search(rf"\| {re.escape(fila)} \| ([^|]+) \|", plana)
+        if m is None:
+            mal[fila] = "la fila desapareció"
+        elif m.group(1).strip() != " ".join(esperado.split()):
+            mal[fila] = m.group(1).strip()
+    assert not mal, (
+        f"estas filas no dicen lo que se revisó: {mal}. La comparación publicada se separó "
+        "de la fuente."
     )
 
 

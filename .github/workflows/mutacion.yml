@@ -55,6 +55,13 @@ jobs:
 
       - run: uv sync --group dev
 
+      # `mutmut` muta el código; esto muta la DOCUMENTACIÓN, que es donde el proyecto guarda
+      # lo medido. A diferencia del de abajo, éste sí falla: una cifra sin guardia es un
+      # defecto concreto con dos salidas, escribirle el guardia o declararla sin fuente
+      # derivable, y las dos son trabajo acotado.
+      - name: Mutar las cifras de la documentación
+        run: uv run python scripts/mutar_documentacion.py
+
       - name: Ejecutar mutación
         run: uv run mutmut run || true
 

@@ -1791,7 +1791,19 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
 
 
 class DetalleCausa(BaseModel):
-    """Todo lo que la respuesta del detalle publica, leído de una sola vez.
+    """Los paneles MAPEADOS del detalle, leídos de una sola vez. No es el expediente completo.
+
+    Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. La respuesta de
+    la plataforma trae paneles que este servidor todavía no mapea, y cambian por competencia:
+    los escritos presentados en civil, las diligencias en cobranza, y en laboral las
+    diligencias, las liquidaciones y los escritos pendientes. En apelaciones quedan fuera los
+    exhortos y la incompetencia; en suprema, las causas agregadas y la de la Corte de
+    Apelaciones de la que viene. Lo que no está acá **no está dicho**, no está negado.
+
+    Y dos canales que sí se pueden pedir y NO vienen incluidos, porque cuestan una petición
+    aparte cada uno: los anexos de un folio, con `anexo_ruta` y `anexo_referencia` de su
+    actuación, y el listado de audios de audiencia, con `audio_referencia`. Que esos campos
+    vengan con valor significa que hay algo que este servidor puede traer y todavía no trajo.
 
     Cada campo distingue tres estados, y la diferencia entre los dos últimos es la que este
     proyecto existe para no borrar:

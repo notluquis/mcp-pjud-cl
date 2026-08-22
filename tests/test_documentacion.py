@@ -27,6 +27,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from lxml import html
 
 from mcp_pjud.client import (
     ANEXOS,
@@ -49,7 +50,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, parse_historia
+from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, DetalleCausa, parse_historia
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -675,6 +676,79 @@ def test_lo_medido_del_canal_de_audio_no_se_pierde():
         assert afirmacion in pagina, (
             f"`verificacion.md` dejó de decir {afirmacion!r} sobre el canal de audio"
         )
+
+
+def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
+    """La respuesta combinada no es el expediente, y su contrato tiene que decirlo.
+
+    La hoja de ruta lo exigía desde hace versiones y no se había cumplido: el docstring decía
+    "todo lo que la respuesta del detalle publica", con nueve paneles sin mapear en las cinco
+    competencias. Una ausencia sin declarar se lee como inexistencia, que es la regla 4 una
+    capa más arriba: no hay lista vacía, hay un campo que no existe.
+
+    Los paneles se derivan de las fixtures y no de una lista escrita al lado: si mañana se mapea
+    uno, este guardia exige que salga del contrato, y si el sitio publica uno nuevo, exige que
+    entre.
+    """
+    fixtures = {
+        "civil": "detalle_causa_civil.html",
+        "cobranza": "detalle_cobranza.html",
+        "laboral": "detalle_laboral.html",
+        "apelaciones": "detalle_apelaciones.html",
+        "suprema": "detalle_suprema.html",
+    }
+    paneles = (
+        "historia",
+        "litigantes",
+        "notificaciones",
+        "liquidaciones",
+        "materias",
+        "exhortos",
+        "piezas_exhorto",
+    )
+    # Normalizado: el docstring va envuelto a 96 columnas, así que "Corte de Apelaciones"
+    # puede venir partido en dos líneas y una comparación cruda no lo encuentra.
+    contrato = " ".join((DetalleCausa.__doc__ or "").split()).lower()
+
+    sin_leer = set()
+    for competencia, fixture in fixtures.items():
+        arbol = html.fromstring(_texto(RAIZ / "tests" / "fixtures" / fixture))
+        con_tabla = [e for e in arbol.iter() if e.get("id") and e.findall(".//table")]
+        # Sólo las hojas: los contenedores de pestaña también traen tabla adentro, y contarlos
+        # haría que el contrato tuviera que nombrar la pestaña además del panel.
+        hojas = {
+            e.get("id")
+            for e in con_tabla
+            if not any(otro is not e and otro in e.iterdescendants() for otro in con_tabla)
+        }
+        leidos = {
+            panel.panel
+            for atributo in paneles
+            if (panel := getattr(COMPETENCIAS[competencia], atributo, None)) is not None
+        }
+        # `loadHistCuaderno*` es la historia de otro cuaderno, que sí se lee: el recorrido pide
+        # cada cuaderno por separado.
+        sin_leer |= {p for p in hojas - leidos if p and not p.startswith("loadHistCuaderno")}
+
+    assert sin_leer, "ninguna fixture trae paneles sin mapear: el guardia dejó de ver algo"
+    # No se exige el `id` literal, que es jerga del sitio: se exige que el contrato nombre la
+    # cosa. `escritosCiv` -> "escritos", `diligenciaCob` -> "diligencias".
+    conceptos = {
+        "escritosciv": "escritos",
+        "escpendlab": "escritos",
+        "diligenciacob": "diligencias",
+        "diligenciaslab": "diligencias",
+        "liquidacionlab": "liquidaciones",
+        "exhortosape": "exhortos",
+        "incompetenciaape": "incompetencia",
+        "agregadossup": "agregad",
+        "corteapelaciones": "corte de apelaciones",
+    }
+    faltan = sorted(p for p in sin_leer if conceptos.get(p.lower(), p.lower()) not in contrato)
+    assert not faltan, (
+        f"el detalle no lee estos paneles y su contrato no los nombra: {faltan}. Quien reciba "
+        "la respuesta va a leer la ausencia como inexistencia."
+    )
 
 
 def test_toda_ruta_de_documento_que_el_cliente_acepta_esta_nombrada():

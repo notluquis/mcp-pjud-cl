@@ -293,17 +293,27 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 ## `obtener_detalle_causa`
 
 Historia, litigantes, notificaciones, liquidaciones, diligencias, materias, escritos por
-resolver, los dos lados del exhorto y la causa de la que subió el recurso, leídos de **una sola
-cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra por
-defecto.
+resolver, causas agregadas, los dos lados del exhorto y la causa de la que subió el recurso,
+leídos de **una sola cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la
+plataforma muestra por defecto.
 
-**No es el expediente completo.** El detalle publica cinco paneles que este servidor todavía no
-sabe leer, y cambian por competencia: en laboral las liquidaciones y los escritos pendientes, en
-apelaciones los exhortos y la incompetencia, y en suprema las causas agregadas. Su ausencia acá
-NO significa que la causa no los tenga.
+**No es el expediente completo.** Quedan dos paneles que este servidor no sabe leer, los dos de
+apelaciones: los exhortos de la corte y la incompetencia. Su ausencia acá NO significa que la
+causa no los tenga. No se mapean porque no hay qué mapear: su tabla trae dos columnas, la
+primera en blanco y la segunda con el rótulo, y en la mitad de los detalles de apelaciones el
+panel **ni siquiera aparece**.
 
-Están sin mapear por falta de datos y no de trabajo: en cincuenta y cinco causas abiertas a
-propósito para buscarlos, ninguno trajo una sola fila.
+:::{warning} Tres paneles se leen con las columnas del encabezado y de ninguno se vio una fila
+Los escritos pendientes y la liquidación de laboral, y las causas agregadas de suprema. El sitio
+publica sus encabezados en la tabla vacía, así que el orden y la cantidad están medidos y la
+validación posicional protege igual; lo que no está medido es **qué trae cada celda**.
+
+En sesenta y una causas abiertas a propósito para buscarlas, ninguna trajo una fila: son paneles
+de una etapa (la liquidación en cumplimiento, la acumulación en suprema) o de una cola
+transitoria. Se leen igual para que el día que una causa los traiga la respuesta los incluya en
+vez de descartarlos en silencio, y si el contenido de una celda resulta ser otra cosa, ese campo
+llegará vacío en vez de fallar.
+:::
 
 :::{warning}
 **La columna `Anexo` es un segundo canal de documentos y no se puede pedir.** Cada actuación

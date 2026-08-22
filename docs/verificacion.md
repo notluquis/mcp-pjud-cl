@@ -131,27 +131,38 @@ Las cuatro búsquedas (`consultaRit*`, `consultaNombre*`, `consultaJuridica*` y
 `consultaFecha*`) salieron de esta lista: están verificadas en las seis competencias que el
 servidor expone.
 
-### Los cinco paneles que quedan sin mapear, y por qué
+### Los paneles de los que nunca se vio una fila
 
-No es falta de trabajo: es falta de datos. Se abrieron **cincuenta y cinco causas** el 22 de
-agosto de 2026, en cuatro barridos y sobre cinco competencias, buscando una fila en cada uno.
-Ninguno la trajo.
+Se abrieron **sesenta y una causas** el 22 de agosto de 2026, en cinco barridos y sobre cinco
+competencias, buscando una fila en cada uno de estos cinco paneles. Ninguno la trajo.
 
 | Panel | Competencia | Qué es | Causas abiertas sin verlo |
 |---|---|---|---|
-| `EscPendLab` | laboral | "Escritos Pendientes", el equivalente de `escritosCiv` | 20 |
-| `liquidacionLab` | laboral | Liquidación del crédito en cumplimiento | 20 |
+| `EscPendLab` | laboral | "Escritos Pendientes", el equivalente de `escritosCiv` | 28 |
+| `liquidacionLab` | laboral | Liquidación, con RUT, nombre y monto | 28 |
+| `agregadosSup` | suprema | Causas que se ven junto con ésta | 22, siempre presente y siempre vacío |
 | `ExhortosApe` | apelaciones | Exhortos de la corte | 10, y en la mitad el panel **ni siquiera existe** |
 | `IncompetenciaApe` | apelaciones | Declaraciones de incompetencia | ídem |
-| `agregadosSup` | suprema | Causas agregadas a la de suprema | 16, siempre presente y siempre vacío |
 
-Los de apelaciones tienen algo que los demás no: en la mitad de los detalles el `id` **no
-aparece**, así que ni siquiera se sabe si el panel existe para esa clase de causa.
+**Los tres primeros se leen igual, con las columnas del encabezado.** El sitio las publica en la
+tabla vacía, así que el orden y la cantidad SÍ están medidos y la validación posicional protege
+como en cualquier otro panel. Lo que no está medido es qué trae cada celda: si una publica un
+formulario donde acá se lee texto, ese campo llegará vacío en vez de fallar. `parser.py` los
+nombra en `SIN_FILAS_OBSERVADAS`, y hay un guardia que compara esa lista contra las fixtures en
+las dos direcciones.
 
-Lo que falta para medirlos no es tiempo de red sino una causa que los traiga, y la forma
-barata de conseguirla es que aparezca en una consulta real. Buscarlos al azar ya se agotó: los
-paneles de cola sólo se llenan mientras algo está pendiente, y los de una etapa sólo en las
-causas que llegaron a esa etapa.
+Se leen porque el día que una causa los traiga la respuesta va a incluirlos, en vez de
+descartarlos en silencio. El mapeo se comprueba metiendo una fila sintética en el panel real,
+que es lo único comprobable sin una causa que lo llene.
+
+**Los dos de apelaciones NO se mapean, y es distinto**: ahí no hay qué mapear. Su tabla trae dos
+columnas, la primera en blanco y la segunda con el rótulo (`Exhorto`, `Incompetencia`), y en la
+mitad de los detalles el `id` ni siquiera aparece, así que tampoco se sabe si el panel existe
+para esa clase de causa.
+
+Buscarlos al azar ya se agotó: los paneles de cola sólo se llenan mientras algo está pendiente,
+y los de una etapa sólo en las causas que llegaron a esa etapa. La forma barata de conseguir una
+fila es que aparezca en una consulta real.
 
 ### Sin cubrir del todo
 

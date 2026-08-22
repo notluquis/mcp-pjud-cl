@@ -50,7 +50,14 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, DetalleCausa, Panel, parse_historia
+from mcp_pjud.parser import (
+    _PANELES_ANEXO,
+    COMPETENCIAS,
+    Competencia,
+    DetalleCausa,
+    Panel,
+    parse_historia,
+)
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -721,6 +728,7 @@ def test_la_referencia_nombra_los_paneles_que_el_detalle_sí_trae():
         "exhortos": "exhorto",
         "piezas_exhorto": "exhorto",
         "causa_de_origen": "causa de la que subió el recurso",
+        "causas_agregadas": "causas agregadas",
     }
     fuera = {
         "causa_encontrada",  # dice si la búsqueda dio con el rol, no es un panel
@@ -764,17 +772,19 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
         "apelaciones": "detalle_apelaciones.html",
         "suprema": "detalle_suprema.html",
     }
-    paneles = (
-        "historia",
-        "litigantes",
-        "notificaciones",
-        "liquidaciones",
-        "diligencias",
-        "materias",
-        "exhortos",
-        "piezas_exhorto",
-        "causa_de_origen",
+    # Los atributos que son un panel salen de `Competencia`, no de una lista escrita acá: la
+    # lista se quedó corta tres veces seguidas, una por cada panel nuevo, y el efecto es que el
+    # guardia exige nombrar en el contrato algo que sí se lee.
+    paneles = tuple(
+        campo
+        for campo in Competencia._fields
+        if any(
+            isinstance(getattr(c, campo), Panel)
+            or (campo.endswith("_origen") and getattr(c, campo))
+            for c in COMPETENCIAS.values()
+        )
     )
+    assert len(paneles) >= 8, f"la derivación de paneles encontró {paneles}: dejó de ver algo"
     # Normalizado: el docstring va envuelto a 96 columnas, así que "Corte de Apelaciones"
     # puede venir partido en dos líneas y una comparación cruda no lo encuentra.
     contrato = " ".join((DetalleCausa.__doc__ or "").split()).lower()

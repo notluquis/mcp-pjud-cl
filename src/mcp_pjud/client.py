@@ -48,6 +48,7 @@ from .parser import (
     parse_anexos,
     parse_audios,
     parse_cuadernos,
+    parse_escritos_pendientes,
     parse_exhortos,
     parse_georreferencia,
     parse_historia,
@@ -315,7 +316,11 @@ AUDIO_CAMPO = "dtaAudio"
 #: audios, que por la ruta análoga respondió 200 con la tabla VACÍA, o sea con la forma exacta
 #: de "esta causa no tiene nada".
 ANEXOS: dict[str, dict[str, str]] = {
-    "civil": {"anexoCausaSolicitudCivil.php": "dtaCausaAnex"},
+    "civil": {
+        "anexoCausaSolicitudCivil.php": "dtaCausaAnex",
+        # Medida el 22-08-2026: la ofrece la columna `Anexo` de un escrito por resolver.
+        "anexoCausaSolEscritoCivil.php": "dtaCausaAnexSol",
+    },
     "laboral": {"anexoEscritoLaboral.php": "dtaAnex"},
     # El sitio la llama "Escrito" y no "Anexo", y su panel publica seis columnas que no se
     # parecen a las de nadie: tipo de documento, cantidad y si el ejemplar físico se exige. Es
@@ -1525,6 +1530,7 @@ class PjudClient(Transporte):
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),
             materias=_juntar(parse_materias, spec.materias),
             exhortos=_juntar(parse_exhortos, spec.exhortos),
+            escritos_pendientes=_juntar(parse_escritos_pendientes, spec.escritos_pendientes),
             # De la cabecera y no de que el panel de piezas haya llegado: es lo único que
             # distingue "esta competencia no publica el panel" de "esta causa no es un
             # exhorto", y sin esa distinción `piezas_exhorto` en nulo diría las dos cosas.

@@ -16,6 +16,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- El detalle de causa trae `escritos_pendientes` en civil: los escritos presentados que el
+  tribunal todavía no resuelve, con su fecha de ingreso, quién los presentó y con qué pedir el
+  documento y sus anexos. La lista vacía significa que no queda nada por proveer.
+- Queda medida la ruta de anexos de un escrito por resolver, `anexoCausaSolEscritoCivil.php`,
+  que sólo ese panel ofrece: son cuatro paneles de anexo pedibles.
+
 ## [0.10.0] - 2026-08-22
 
 ### Agregado

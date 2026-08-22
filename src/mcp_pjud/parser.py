@@ -71,6 +71,7 @@ class Panel(NamedTuple):
 Historia = Panel
 Notificaciones = Panel
 Liquidaciones = Panel
+Diligencias = Panel
 
 
 # Marcador de que una fila de Historia es una actuación del ministro de fe.
@@ -168,6 +169,48 @@ LIQUIDACIONES_COBRANZA = Liquidaciones(
         "cuaderno",
         "estado",
         "monto líquido",
+    ),
+)
+
+
+#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#:
+#: Es donde cobranza guarda de verdad las diligencias del ministro de fe: su Historia nombra
+#: tres filas `Actuacion - Receptor` y ninguna trae fecha de diligencia, así que leerlas de ahí
+#: daría una lista parcial y sin el dato que se busca.
+#:
+#: `RIT` y `RUC` son de la causa a la que la diligencia SE DIRIGE, que no es necesariamente la
+#: que se está consultando. Por eso viajan en el modelo en vez de descartarse: sin ellos no se
+#: puede saber si la diligencia es de esta causa o de otra, y leerla como propia sería atribuir
+#: a este expediente un trámite ajeno.
+#:
+#: Las dos primeras columnas son documentos, y quedan fuera del modelo por lo mismo que
+#: `documento` en las liquidaciones: en la fila medida las dos vienen sin documento
+#: (`cursor:no-drop`), así que sólo está medido el caso AUSENTE. Declarar `tiene_documento`
+#: con eso sería publicar un mapeo sin una sola medición positiva.
+DILIGENCIAS_COBRANZA = Diligencias(
+    panel="diligenciaCob",
+    columnas=(
+        "doc_ida",
+        "doc_vta",
+        "estado",
+        "rit",
+        "ruc",
+        "tipo",
+        "fec_tramite",
+        "destinatario",
+        "responsable",
+    ),
+    encabezados=(
+        "doc. ida",
+        "doc. vta.",
+        "estado diligencia",
+        "rit",
+        "ruc",
+        "tipo diligencia",
+        "fecha trámite",
+        "destinatario",
+        "responsable",
     ),
 )
 
@@ -1091,6 +1134,84 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
     return liquidaciones
 
 
+class Diligencia(BaseModel):
+    """Una diligencia del ministro de fe en un juicio de cobranza.
+
+    Es el panel donde cobranza las guarda de verdad. Su tabla de Historia nombra algunas como
+    `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha de diligencia: leerlas
+    de ahí daría una lista parcial y sin el dato que se busca.
+
+    No es una `Actuacion` y no se puede tratar como tal. Una actuación de civil trae la fecha
+    doble que corre los plazos; acá el sitio publica una sola columna de fecha, y en la fila
+    medida trae el valor cero.
+    """
+
+    estado: str = Field(
+        description="Si la diligencia se practicó, y HAY QUE MIRARLO antes de leer la fecha. "
+        "Valor medido: 'cumplida'. Que la fecha venga nula NO significa que no se practicó: "
+        "significa que el sitio no publicó ninguna."
+    )
+    tipo: str = Field(
+        description="Qué diligencia es. Ej: 'Oficios Varios 3'. Es lo que el sitio imprime, "
+        "sin normalizar: dos causas pueden escribir distinto la misma diligencia."
+    )
+    fecha_tramite: date | None = Field(
+        default=None,
+        description="La única fecha que el panel publica, en ISO 8601. NO es la fecha de "
+        "diligencia de civil: acá no viene la fecha doble, así que no se puede afirmar cuándo "
+        "el ministro de fe la practicó. NULA también cuando el sitio imprime `31/12/1969`, que "
+        "es el valor cero renderizado como fecha y no una diligencia de 1969: informarla haría "
+        "computar un plazo desde ahí.",
+    )
+    destinatario: str = Field(
+        description="A quién se dirige la diligencia. Medido: 'No Asignado', o sea el panel "
+        "publica la fila antes de que haya alguien encargado de practicarla."
+    )
+    responsable: str = Field(
+        description="Quién figura a cargo de la diligencia, tal como lo publica el sitio. Es "
+        "el nombre de una persona natural: es un dato personal de un tercero."
+    )
+    rit: str = Field(
+        description="RIT de la causa A LA QUE la diligencia se dirige, que NO es "
+        "necesariamente la que se consultó. Leerlo como el RIT de esta causa haría informar "
+        "como propia una diligencia de otro expediente."
+    )
+    ruc: str = Field(
+        description="RUC de esa misma causa, con el mismo cuidado que `rit`: es de la causa "
+        "destinataria de la diligencia, no de la consultada."
+    )
+
+
+def parse_diligencias(html_detalle: str, competencia: str = "cobranza") -> list[Diligencia]:
+    """Las diligencias del ministro de fe. Sólo cobranza las publica en un panel propio.
+
+    Una causa puede no tener ninguna, así que la lista vacía es una respuesta legítima y no un
+    fallo: de cinco causas de cobranza medidas, sólo una trae filas acá.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.diligencias is None:
+        raise EstructuraInesperada(
+            f"La competencia {competencia!r} no publica el panel de diligencias del ministro "
+            "de fe: sólo cobranza lo tiene medido. Leerlo en otra devolvería una lista vacía, "
+            "que se leería como que no se practicó ninguna diligencia."
+        )
+
+    diligencias = []
+    for _celdas_crudas, txt in _filas_del_panel(html_detalle, spec.diligencias):
+        diligencias.append(
+            Diligencia(
+                estado=txt["estado"],
+                tipo=txt["tipo"],
+                fecha_tramite=_fecha(txt["fec_tramite"]),
+                destinatario=txt["destinatario"],
+                responsable=txt["responsable"],
+                rit=txt["rit"],
+                ruc=txt["ruc"],
+            )
+        )
+    return diligencias
+
+
 class Corte(BaseModel):
     """Una Corte de Apelaciones, con el código que las búsquedas exigen."""
 
@@ -1905,8 +2026,8 @@ class DetalleCausa(BaseModel):
 
     Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. La respuesta de
     la plataforma trae paneles que este servidor todavía no mapea, y cambian por competencia:
-    las diligencias en cobranza, y en laboral las diligencias, las liquidaciones y los escritos
-    pendientes. En apelaciones quedan fuera los
+    en laboral las diligencias, las liquidaciones y los escritos pendientes. En apelaciones
+    quedan fuera los
     exhortos y la incompetencia; en suprema, las causas agregadas y la de la Corte de
     Apelaciones de la que viene. Lo que no está acá **no está dicho**, no está negado.
 
@@ -1961,6 +2082,12 @@ class DetalleCausa(BaseModel):
     liquidaciones: list[Liquidacion] | None = Field(
         default=None,
         description="Cuánto se debe y a qué fecha. Sólo cobranza liquida el crédito.",
+    )
+    diligencias: list[Diligencia] | None = Field(
+        default=None,
+        description="Diligencias del ministro de fe, con su estado y quién figura a cargo. "
+        "Sólo cobranza publica el panel, y su fecha NO es la que corre los plazos: en la fila "
+        "medida el sitio imprime el valor cero, que se entrega en nulo.",
     )
     materias: list[Materia] | None = Field(
         default=None, description="Qué se litiga. Sólo laboral publica el panel."
@@ -2277,6 +2404,13 @@ class Competencia(NamedTuple):
     #: leer el panel sin poder contrastarlo contra la cabecera devuelve la ambigüedad que
     #: `causa_es_exhorto` existe para deshacer.
     piezas_exhorto: Panel | None = None
+    #: Cómo leer su panel de diligencias del ministro de fe, o `None` si no lo publica.
+    #:
+    #: Es distinto de `receptor`: aquél dice que el sitio EXPONE actuaciones de ministro de fe,
+    #: y esto dice que están medidas las columnas del panel donde viven. Cobranza tiene los dos
+    #: en verdadero y `receptor_en_historia` en falso, que es la combinación que describe su
+    #: situación real: las diligencias existen, se leen, y no salen de la Historia.
+    diligencias: Panel | None = None
     #: Cómo leer los escritos que el tribunal todavía no resuelve, o `None` mientras no se haya
     #: medido. Mismo default y por la misma razón que los dos de arriba.
     escritos_pendientes: Panel | None = None
@@ -2377,6 +2511,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         litigantes=LITIGANTES_COBRANZA,
         materias=None,
         liquidaciones=LIQUIDACIONES_COBRANZA,
+        diligencias=DILIGENCIAS_COBRANZA,
         notificaciones=NOTIFICACIONES_COBRANZA,
         rol_con_libro=False,
         campos_rit={},

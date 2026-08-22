@@ -235,8 +235,9 @@ CompetenciaConReceptor = Annotated[
     str,
     Field(
         description=f"Una de: {', '.join(_CON_RECEPTOR)}. Sólo esas publican las actuaciones "
-        "del ministro de fe en la tabla de Historia. En cobranza existen pero viven en otro "
-        "panel que este servidor todavía no lee, y en las demás no existen."
+        "del ministro de fe en la tabla de Historia. En cobranza viven en `diligenciaCob`, que "
+        "`obtener_detalle_causa` entrega en `diligencias`: ahí no vienen como actuaciones "
+        "porque ese panel no publica la fecha en que se practicaron. En las demás no existen."
     ),
 ]
 
@@ -486,7 +487,7 @@ def obtener_detalle_causa(
     tribunal: CodigoTribunal = None,
     corte: CodigoCorte = None,
 ) -> DetalleCausa:
-    """Historia, litigantes, notificaciones, liquidaciones, materias y exhortos de la causa.
+    """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
     Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y lo hace
     con una sola cadena de peticiones. Preferir esta herramienta antes que preguntar por

@@ -116,7 +116,6 @@ archivo y con qué enlace se baja.
 Las rutas se extrajeron del código de la plataforma y siguen sin ejecutarse. El cliente las
 rechaza en vez de adivinar sus parámetros:
 
-- El panel `diligenciaCob`, donde cobranza guarda de verdad sus diligencias
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`

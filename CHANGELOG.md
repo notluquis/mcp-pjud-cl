@@ -24,6 +24,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- El detalle de una causa de cobranza trae `diligencias`, el panel donde vive de verdad el
+  ministro de fe. Su fecha viene **nula** cuando el sitio imprime el epoch `31/12/1969`, que es
+  el valor cero y no una diligencia de ese día.
 - El detalle de causa trae `escritos_pendientes` en civil: los escritos presentados que el
   tribunal todavía no resuelve, con su fecha de ingreso, quién los presentó y con qué pedir el
   documento y sus anexos. La lista vacía significa que no queda nada por proveer.

@@ -48,6 +48,7 @@ from .parser import (
     parse_anexos,
     parse_audios,
     parse_cuadernos,
+    parse_diligencias,
     parse_escritos_pendientes,
     parse_exhortos,
     parse_georreferencia,
@@ -1383,17 +1384,19 @@ class PjudClient(Transporte):
             )
         if not spec.receptor_en_historia:
             raise ValueError(
-                f"En {competencia!r} las diligencias del ministro de fe viven en un panel "
-                "propio (`diligenciaCob`) con otra estructura, que este proyecto todavía no "
-                "lee.\n\n"
+                f"En {competencia!r} las diligencias del ministro de fe NO salen de la tabla "
+                "de Historia: viven en el panel `diligenciaCob`, que el detalle de causa SÍ "
+                "lee y entrega en `diligencias`.\n\n"
                 "Su tabla de Historia SÍ nombra algunas: medido sobre una respuesta real, tres "
                 "filas dicen 'Actuacion - Receptor', sin tilde y con guion, y ninguna trae "
                 "fecha de diligencia.\n\n"
-                "Si esas tres son todas las diligencias o sólo una parte NO está medido: haría "
-                "falta compararlas contra `diligenciaCob`, que este proyecto todavía no lee. "
-                "Entregarlas sería informar una lista de completitud desconocida como si fuera "
-                "el total, y sin el dato que se busca.\n\n"
-                "Se rechaza por eso, y no por falta de filas."
+                "Si esas tres son todas las diligencias o sólo una parte NO está medido, así "
+                "que entregarlas sería informar una lista de completitud desconocida como si "
+                "fuera el total. Y no traerían el dato que se busca: el panel tampoco publica "
+                "la fecha en que se practicó, así que estas diligencias NO son actuaciones y "
+                "no pueden entregarse como tales.\n\n"
+                "Se rechaza por eso, y no por falta de filas. Lo que el panel sí dice se pide "
+                "con el detalle de la causa."
             )
         return self._recorrer_cuadernos(
             tipo, rol, anio, competencia, tribunal, corte, actuaciones_receptor
@@ -1528,6 +1531,7 @@ class PjudClient(Transporte):
             litigantes=_juntar(parse_litigantes, spec.litigantes),
             notificaciones=_juntar(parse_notificaciones, spec.notificaciones),
             liquidaciones=_juntar(parse_liquidaciones, spec.liquidaciones),
+            diligencias=_juntar(parse_diligencias, spec.diligencias),
             materias=_juntar(parse_materias, spec.materias),
             exhortos=_juntar(parse_exhortos, spec.exhortos),
             escritos_pendientes=_juntar(parse_escritos_pendientes, spec.escritos_pendientes),

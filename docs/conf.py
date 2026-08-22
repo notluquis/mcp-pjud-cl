@@ -194,6 +194,7 @@ def _generar_tablas(app):
         "litigantes",
         "notificaciones",
         "liquidaciones",
+        "diligencias",
         "materias",
         "exhortos",
         "piezas_exhorto",

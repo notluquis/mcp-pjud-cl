@@ -382,19 +382,35 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     # HTML crudo porque el sitio arma marcado dentro de su JavaScript. `Content-Disposition`
     # no se busca: es una cabecera HTTP y las fixtures guardan cuerpos, o sea era un guardia
     # que no podía fallar.
+    # Y se separa lo que la página MUESTRA de lo que ENLAZA. La afirmación es que todos los
+    # documentos enlazados son PDF: un `<img src="icono.png">` es un recurso de presentación y
+    # no la contradice, pero un `<a href="resolucion.jpg">` sí, y aceptar las imágenes en
+    # bloque dejaba pasar justo ése. Un documento se enlaza con `href`.
     NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
-    enlazados = {
-        trozo
-        for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", fixtures)
-        for trozo in _trozos_de_ruta(valor)
-        if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
-    }
-    ajenos = sorted(
-        e for e in enlazados if not e.lower().endswith((".pdf", ".png", ".gif", ".jpg"))
+
+    def enlazados_por(atributo: str) -> set[str]:
+        return {
+            trozo
+            for valor in re.findall(rf"""{atributo}\s*=\s*['"]([^'"]+)['"]""", fixtures)
+            for trozo in _trozos_de_ruta(valor)
+            if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+        }
+
+    descargables = sorted(e for e in enlazados_por("href") if not e.lower().endswith(".pdf"))
+    assert not descargables, (
+        f"las fixtures enlazan {descargables} y la investigación afirma que todo documento "
+        "enlazado es PDF. De esa afirmación cuelga `_MAGIA_PDF`."
     )
-    assert not ajenos, (
-        f"las fixtures ya traen {ajenos} y la investigación afirma que no hay ninguna "
-        "referencia a otro formato. De esa afirmación cuelga `_MAGIA_PDF`."
+
+    # Lo que se muestra sí puede ser imagen, pero no cualquier cosa: un `.odt` en un `src`
+    # tampoco tiene explicación.
+    mostrados = sorted(
+        e
+        for e in enlazados_por("src")
+        if not e.lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".svg", ".ico", ".pdf"))
+    )
+    assert not mostrados, (
+        f"las fixtures muestran {mostrados}, que no es un recurso de presentación ni un PDF"
     )
 
     # La afirmación es sobre lo que EL DETALLE nombra, así que se miran sólo las fixtures que
@@ -460,10 +476,30 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
     en_base64 = -(-BYTES_DEL_DOCUMENTO_MEDIDO // 3) * 4
     veces = en_base64 // CARACTERES_DE_UNA_RESPUESTA
 
+    # Cada MENCIÓN del tamaño, no que aparezca en algún lado: la página lo cita tres veces (el
+    # párrafo de la cifra que decide, la fila de la tabla, y la sección de alcance), y buscarlo
+    # en la página entera dejaba que una quedara vieja mientras otra la rescataba. Una misma
+    # investigación publicando dos tamaños distintos es peor que una cifra vieja sola.
+    # Acotado a las menciones que hablan DEL FOLIO: la página cita también los 81.566 bytes de
+    # la hoja sintética rasterizada, que es otra medición y tiene que poder ser distinta.
+    plana = " ".join(pagina.split())
+    del_folio = {
+        m.group(1)
+        for m in re.finditer(r"(\d{1,3}(?:\.\d{3})+) bytes", plana)
+        if re.search(r"(folio|El documento)", plana[max(0, m.start() - 90) : m.end() + 90])
+    }
+    assert del_folio == {miles(BYTES_DEL_DOCUMENTO_MEDIDO)}, (
+        f"la investigación atribuye al folio medido {sorted(del_folio)} bytes y son "
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)}: todas las menciones tienen que decir lo mismo"
+    )
+    assert pagina.count(miles(BYTES_DEL_DOCUMENTO_MEDIDO)) >= 3, (
+        "la página citaba el tamaño medido tres veces y ahora menos: si se quitó una mención "
+        "a propósito, hay que bajar este número con ella"
+    )
+
     faltan = [
         cifra
         for cifra in (
-            miles(BYTES_DEL_DOCUMENTO_MEDIDO),
             miles(CARACTERES_DE_UNA_RESPUESTA),
             miles(en_base64),
             f"**{veces}**",

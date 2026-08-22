@@ -543,6 +543,10 @@ def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
         "el máximo embebido ya no ocupa el presupuesto entero, así que la propuesta no puede "
         "seguir justificando con aritmética que pedir texto reemplace el archivo"
     )
+    assert "el mismo parámetro de rango del" in pagina, (
+        "la propuesta dejó de decir cómo se continúa un índice truncado, y sin eso el corte "
+        "no tiene salida: repetir la llamada regenera el mismo prefijo"
+    )
     assert "reemplaza el archivo embebido por un `ResourceLink`" in pagina, (
         "la propuesta dejó de decir que pedir texto reemplaza el archivo, y sin eso los dos "
         "topes se cumplen por separado y suman uno que no se cumple"

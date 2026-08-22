@@ -504,10 +504,17 @@ Nada de esto está implementado. En orden de cuánto rinde por lo que cuesta:
    accionable. Va por **rangos** y no por lista de números, y ése es el punto: enumerar página
    por página crece con el archivo, y esta misma página usa un ebook de 3.000 para justificar
    que el resumen tiene que ser de tamaño constante. "1 a 40 con texto, 41 a 200 imagen" son
-   dos entradas para doscientas páginas y siguen siendo dos para tres mil. Si aun así no cabe,
-   se corta y **se dice que se cortó**, con el número de la última página descrita: un índice
-   truncado en silencio se lee como el expediente entero, que es la regla 4 otra vez.
-2. **El texto por rango de páginas, como parámetro opcional de `obtener_documento`** y no
+   dos entradas para doscientas páginas y siguen siendo dos para tres mil.
+
+   Si aun así no cabe, se corta, **se dice que se cortó** y el mismo parámetro de rango del
+   punto 2 sirve para seguir: pedir el documento desde la página que el corte nombró vuelve a
+   generar el índice a partir de ahí. Sin eso el corte no tendría salida, porque repetir la
+   llamada regeneraría el mismo prefijo y las páginas con texto de más adelante no se
+   podrían descubrir nunca. Un índice truncado en silencio se lee como el expediente entero,
+   que es la regla 4; uno truncado sin forma de continuar es la misma regla con un paso más.
+2. **El rango de páginas, como parámetro opcional de `obtener_documento`**, y acota las dos
+   cosas a la vez: desde dónde se describe el índice y de dónde sale el texto. Que sea uno
+   solo no es economía, es lo que hace continuable al punto 1. Va
    como una lectura aparte. El precedente de `JurisClient.texto` separado de la búsqueda no
    sirve acá: ahí la búsqueda y el texto son preguntas distintas, y acá es el mismo archivo,
    que sin persistencia hay que volver a descargar entero para leerle otro rango. Si el rango

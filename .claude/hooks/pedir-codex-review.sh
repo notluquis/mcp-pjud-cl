@@ -136,7 +136,7 @@ sin_contestar=$(gh pr view "$numero" --json comments,reviews --jq '
   [.comments[], .reviews[]]
   | (map(select((.body // "") == "@codex review" or (.body // "") == "/gemini review")) | last) as $pedido
   | if $pedido == null then "no"
-    else (map(select((.author.login | test("codex|gemini"))
+    else (map(select(((.author.login // "") | test("codex|gemini"))
                      and ((.createdAt // .submittedAt) > ($pedido.createdAt // $pedido.submittedAt))))
           | if length == 0 then "si" else "no" end)
     end' 2>/dev/null)

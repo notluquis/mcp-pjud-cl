@@ -26,6 +26,7 @@ from mcp_pjud.parser import (
     COMPETENCIAS,
     EstructuraInesperada,
     parse_anexos,
+    parse_escritos_pendientes,
     parse_historia,
     parse_resultados,
 )
@@ -2108,12 +2109,25 @@ def test_toda_ruta_ofrecida_sale_de_la_celda_de_alguna_actuacion():
         "hay una competencia con panel ofrecido que este guardia no cubre. Si no hay fixture "
         "que la alcance, el panel va a `ANEXOS_MEDIDOS_SIN_EXPONER` con su razón."
     )
+    # Los escritos por resolver son la SEGUNDA fuente de una ruta de anexo, y su panel viaja
+    # aparte porque no es el detalle completo. Sin esto, la ruta que sólo ellos ofrecen se veía
+    # como una ruta que nadie entrega.
+    otras_fuentes = {
+        "civil": {
+            e.anexo_ruta
+            for e in parse_escritos_pendientes(
+                (FIXTURES / "escritos_civil.html").read_text(encoding="utf-8")
+            )
+            if e.anexo_ruta
+        }
+    }
     for competencia, (fixture, nombre) in detalles.items():
         html = (FIXTURES / fixture).read_text(encoding="utf-8")
         ofrecidas = {a.anexo_ruta for a in parse_historia(html, competencia=nombre) if a.anexo_ruta}
+        ofrecidas |= otras_fuentes.get(competencia, set())
         assert ofrecidas == set(ANEXOS[competencia]), (
-            f"{competencia} ofrece {sorted(ANEXOS[competencia])} y sus actuaciones entregan "
-            f"{sorted(ofrecidas)}"
+            f"{competencia} ofrece {sorted(ANEXOS[competencia])} y sus actuaciones y escritos "
+            f"entregan {sorted(ofrecidas)}"
         )
 
 
@@ -2139,7 +2153,7 @@ def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monke
     with pytest.raises(ValueError, match="anexos medido"):
         c.anexos("anexoCausaCobranza.php", "REF-1", "cobranza")
     with pytest.raises(ValueError, match="paneles de anexo medidos"):
-        c.anexos("anexoCausaSolEscritoCivil.php", "REF-1", "civil")
+        c.anexos("anexoCausaSolicitudCivilSII.php", "REF-1", "civil")
     assert not salieron, "no debe salir ninguna petición"
 
 

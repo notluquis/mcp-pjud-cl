@@ -120,7 +120,7 @@ rechaza en vez de adivinar sus parámetros:
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
-- **12 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
+- **11 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
   competencias. Seis se midieron; ver la sección propia más abajo. Donde no hay ruta medida,
   la actuación declara `tiene_anexo` con la ruta en nulo y ahí termina lo que se puede hacer
 - `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
@@ -406,19 +406,20 @@ su `onclick`.
 |---|---|---|---|
 | `anexoCausaCivil.php` | `dtaAnexCau` | Doc. · Fecha · Referencia | `anexoDocCivil.php` (`dtaDoc`) |
 | `anexoCausaSolicitudCivil.php` | `dtaCausaAnex` | Doc. · Fecha · Referencia | `anexoDocCivil.php` (`dtaDoc`) |
+| `anexoCausaSolEscritoCivil.php` | `dtaCausaAnexSol` | Doc. · Fecha · Referencia | `anexoDocCivil.php` (`dtaDoc`) |
 | `anexoEscritoLaboral.php` | `dtaAnex` | Doc. · **Folio** · Fecha · Referencia | `docAnexoLaboral.php` (`dtaDoc`) |
 | `anexoRecursoApelaciones.php` | `dtaAnexRec` | **Doc. Principal** · Doc. · Fecha · Referencia | `anexoDocRecursoApelaciones.php` (`dtaDoc`) |
 | `escritoSuprema.php` | `dtEsc` | Doc. · Doc. Físico · Tipo Documento · Cantidad · Observación del Documento · Docto. Físico | `docEscritosSuprema.php` (`dtaDoc`) |
 | `anexoDemandaUnificado.php` | `dtaAnex` | Doc. · Fecha · Referencia · Tipo | `unificado/documentos/docu.php` (`data`) |
 | `anexoEscritoUnificado.php` | `dtaAnex` | Folio · Documento · Trámite · Fecha Firma | `unificado/documentos/docu.php` (`data`) |
 
-**Los siete no comparten forma, y ése es el hallazgo.** No son la misma tabla con los
+**Los ocho no comparten forma, y ése es el hallazgo.** No son la misma tabla con los
 encabezados traducidos: civil no publica folio, apelaciones antepone el documento principal del
 recurso, y suprema publica seis columnas que hablan de otra cosa (cuántos ejemplares hay y si
 el ejemplar físico se exige). Leer uno con el mapa de otro no da error: corre los campos y deja
 la fecha en la celda de la descarga.
 
-**Cuatro de los siete se midieron y no se exponen**, y la razón es siempre la misma: no hay de
+**Cuatro de los ocho se midieron y no se exponen**, y la razón es siempre la misma: no hay de
 dónde sacar su referencia. Ofrecerlos sería una herramienta cuyo parámetro nadie puede
 conseguir.
 
@@ -432,8 +433,10 @@ conseguir.
 Los dos de `unificado` apuntan además a una ruta de descarga distinta de todas las demás, con
 el campo `data` en vez de `dtaDoc`.
 
-Los tres que sí se ofrecen son los que una actuación entrega en `anexo_ruta`, o sea los que
-cuelgan de la celda `Anexo` de un folio de la Historia.
+Los cuatro que sí se ofrecen son los que una fila entrega en `anexo_ruta`: tres desde la celda
+`Anexo` de un folio de la Historia, y el de `anexoCausaSolEscritoCivil.php` desde la de un
+escrito por resolver. La medición de ese último salió de ahí: el panel de escritos lo ofrecía y
+nadie lo había mirado.
 
 **Lo que hacía invisible esta falta es que el folio SÍ entregaba un documento.** Las dos filas
 con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su `docuN.php`: quien

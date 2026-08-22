@@ -24,6 +24,7 @@ from mcp_pjud.parser import (
     parse_audios,
     parse_causa_de_origen,
     parse_cuadernos,
+    parse_escritos_pendientes,
     parse_exhortos,
     parse_georreferencia,
     parse_historia,
@@ -1616,6 +1617,69 @@ def test_el_nombre_del_modal_se_compara_completo_y_no_por_prefijo():
     assert all(a.anexo_ruta is None for a in con_anexo), (
         f"un modal sin medir devolvió la ruta de otro: {[a.anexo_ruta for a in con_anexo]}"
     )
+
+
+# -- escritos por resolver -------------------------------------------------------------
+
+ESCRITOS = (FIXTURES / "escritos_civil.html").read_text(encoding="utf-8")
+
+
+def test_los_escritos_por_resolver_son_la_cola_y_no_el_historial():
+    """Medido el 22-08-2026 sobre una causa civil de dos días: dos escritos esperando proveído.
+
+    Es lo que responde "¿ya me proveyeron?", que no es lo que responde la Historia: ahí el
+    escrito aparece cuando YA fue resuelto.
+    """
+    escritos = parse_escritos_pendientes(ESCRITOS)
+
+    assert [e.tipo for e in escritos] == ["Designación de Martillero", "Ingreso Exhorto"]
+    assert all(e.fecha_ingreso == date(2026, 8, 20) for e in escritos)
+    assert all(e.solicitante == "Demandante" for e in escritos)
+    assert all(e.documento_ruta == "docuN.php" for e in escritos)
+    assert all(e.documento_referencia for e in escritos), (
+        "sin la referencia el escrito se sabe que existe y no se puede leer"
+    )
+
+
+def test_un_escrito_por_resolver_trae_con_que_pedir_sus_anexos():
+    """Los escritos son la SEGUNDA fuente de una ruta de anexo, y la única de la de
+    `anexoCausaSolEscritoCivil`: no cuelga de ningún folio de la Historia.
+
+    Sin leer esta celda, un escrito que acompañó documentos se ve igual que uno que no.
+    """
+    con_anexo = [e for e in parse_escritos_pendientes(ESCRITOS) if e.tiene_anexo]
+
+    assert len(con_anexo) == 1, "uno de los dos escritos medidos acompañó documentos"
+    assert con_anexo[0].anexo_ruta == "anexoCausaSolEscritoCivil.php"
+    assert con_anexo[0].anexo_referencia
+
+
+def test_una_causa_sin_escritos_por_resolver_devuelve_lista_vacia():
+    """Acá la lista vacía SÍ es una respuesta: no queda nada por proveer, que es el estado
+    normal de una causa al día.
+
+    Las cuatro fixtures viejas de civil lo traen vacío con escritos de sobra en su Historia,
+    porque ya fueron resueltos. Levantar acá diría que la respuesta vino rota.
+    """
+    assert parse_escritos_pendientes(C1156_PRINCIPAL) == []
+    assert parse_escritos_pendientes(DETALLE) == []
+
+
+def test_una_competencia_sin_el_panel_medido_no_se_lee_con_el_mapa_de_civil():
+    """En laboral el panel se llama `EscPendLab` y publica seis columnas donde civil trae
+    cinco. Leerlo con este mapa correría el solicitante al tipo de escrito."""
+    with pytest.raises(EstructuraInesperada, match="escritos por resolver"):
+        parse_escritos_pendientes(DETALLE_LABORAL, competencia="laboral")
+
+
+def test_una_columna_insertada_en_los_escritos_levanta():
+    """El mapeo es posicional: con una columna de más, la fecha de ingreso cae en la celda del
+    anexo y el tipo de escrito informa una fecha."""
+    con_otra = ESCRITOS.replace("<th>Anexo</th>", "<th>Cuaderno</th><th>Anexo</th>", 1)
+    assert con_otra != ESCRITOS
+
+    with pytest.raises(EstructuraInesperada, match="columnas"):
+        parse_escritos_pendientes(con_otra)
 
 
 # -- audios de audiencia ---------------------------------------------------------------

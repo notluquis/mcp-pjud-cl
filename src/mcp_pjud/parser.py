@@ -343,10 +343,24 @@ HISTORIA_LABORAL = Historia(
 _MODAL_ANEXO: dict[str, str] = {
     "anexoCausaCivil": "anexoCausaCivil.php",
     "anexoSolicitudCivil": "anexoCausaSolicitudCivil.php",
+    "anexoSolicitudCivilEscrit": "anexoCausaSolEscritoCivil.php",
     "anexoEscritoLaboral": "anexoEscritoLaboral.php",
     "anexoRecursoApelaciones": "anexoRecursoApelaciones.php",
     "escritoSuprema": "escritoSuprema.php",
 }
+
+#: Los escritos que el tribunal todavía no resuelve. El sitio rotula la pestaña "Escritos por
+#: Resolver" en civil y "Escritos Pendientes" en laboral, y eso es lo que son: la cola de lo
+#: presentado y no proveído, no el listado de todo lo que se presentó.
+#:
+#: Se mide en las causas recientes y no en las viejas, y eso confunde: cuatro fixtures de civil
+#: lo traen vacío con escritos de sobra en su Historia, porque ya fueron resueltos. Medido el
+#: 22 de agosto de 2026 sobre cinco causas de dos días de antigüedad: todas traen filas.
+ESCRITOS_CIVIL = Panel(
+    panel="escritosCiv",
+    columnas=("doc", "anexo", "fecha_ingreso", "tipo", "solicitante"),
+    encabezados=("doc.", "anexo", "fecha de ingreso", "tipo escrito", "solicitante"),
+)
 
 #: Los litigantes de cada competencia. Medidos sobre las fixtures de las cinco.
 #:
@@ -1762,6 +1776,11 @@ _PANELES_ANEXO: dict[str, Panel] = {
         columnas=("doc", "fecha", "descripcion"),
         encabezados=("doc.", "fecha", "referencia"),
     ),
+    "anexoCausaSolEscritoCivil.php": Panel(
+        panel="anexoCausaSolEscritoCivil.php",
+        columnas=("doc", "fecha", "descripcion"),
+        encabezados=("doc.", "fecha", "referencia"),
+    ),
     "anexoEscritoLaboral.php": Panel(
         panel="anexoEscritoLaboral.php",
         columnas=("doc", "folio", "fecha", "descripcion"),
@@ -1854,6 +1873,97 @@ def parse_anexos(html_modal: str, ruta: str) -> list[Anexo]:
     return anexos
 
 
+class EscritoPendiente(BaseModel):
+    """Un escrito presentado que el tribunal todavía NO resuelve.
+
+    El sitio rotula la pestaña "Escritos por Resolver" en civil y "Escritos Pendientes" en
+    laboral. No es el listado de todo lo presentado: es la cola de lo que espera proveído, y
+    por eso una causa con años de tramitación suele traerla vacía mientras una de esta semana
+    trae dos.
+
+    Es lo que responde "¿ya me proveyeron el escrito?", que es una pregunta distinta de la que
+    responde la Historia, donde el escrito aparece cuando YA fue resuelto.
+    """
+
+    fecha_ingreso: date | None = Field(
+        default=None,
+        description="Cuándo ingresó el escrito, en ISO 8601. NO es una fecha de plazos: el "
+        "plazo lo corre la resolución que recaiga, y todavía no la hay.",
+    )
+    tipo: str = Field(
+        default="",
+        description="Qué se pidió, como lo rotula el sitio. Ej: 'Ingreso Solicitud', 'Ingreso "
+        "Exhorto', 'Designación de Martillero'.",
+    )
+    solicitante: str = Field(
+        default="",
+        description="Quién lo presentó, por su calidad procesal y no por su nombre. Ej: "
+        "'Demandante'.",
+    )
+    tiene_documento: bool = Field(
+        default=False, description="Si la columna `Doc.` del escrito ofrece algo."
+    )
+    documento_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta entrega el escrito mismo. NULO cuando la fila no trae formulario.",
+    )
+    documento_referencia: str | None = Field(
+        default=None,
+        description="La referencia opaca con la que se pide ese documento. Junto con "
+        "`documento_ruta` es lo único que permite traerlo.",
+    )
+    tiene_anexo: bool = Field(
+        default=False,
+        description="Si el escrito acompañó documentos. Mismo segundo canal que en la "
+        "Historia: `Doc.` trae el escrito y `Anexo` los papeles que se acompañaron.",
+    )
+    anexo_ruta: str | None = Field(
+        default=None,
+        description="A qué panel se piden esos anexos, para `obtener_anexos_escrito`. NULO "
+        "cuando el escrito no trae anexo o cuando su panel no está medido.",
+    )
+    anexo_referencia: str | None = Field(
+        default=None, description="Con qué se piden. NULO por las mismas dos razones."
+    )
+
+
+def parse_escritos_pendientes(
+    html_detalle: str, competencia: str = "civil"
+) -> list[EscritoPendiente]:
+    """Los escritos presentados que el tribunal todavía no resuelve.
+
+    La lista vacía es una respuesta y no un error: significa que no queda nada por proveer, que
+    es el estado normal de una causa al día. Por eso acá NO va el guardia de cero filas que sí
+    tiene la Historia.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.escritos_pendientes is None:
+        raise EstructuraInesperada(
+            f"No está verificado cómo se leen los escritos por resolver en {competencia}. En "
+            "laboral el panel se llama distinto y publica dos columnas que civil no tiene, así "
+            "que leerlo con este mapa correría los campos."
+        )
+    columnas = spec.escritos_pendientes.columnas
+    escritos = []
+    for celdas, txt in _filas_del_panel(html_detalle, spec.escritos_pendientes):
+        documento = _documento_de_la_celda(celdas[columnas.index("doc")])
+        anexo = _anexo_de_la_celda(celdas[columnas.index("anexo")])
+        escritos.append(
+            EscritoPendiente(
+                fecha_ingreso=_fecha(txt["fecha_ingreso"]),
+                tipo=txt["tipo"],
+                solicitante=txt["solicitante"],
+                tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
+                documento_ruta=documento[0],
+                documento_referencia=documento[1],
+                tiene_anexo=bool(celdas[columnas.index("anexo")].xpath(".//form | .//a")),
+                anexo_ruta=anexo[0],
+                anexo_referencia=anexo[1],
+            )
+        )
+    return escritos
+
+
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
     """Quiénes son parte en la causa y con qué calidad.
 
@@ -1928,10 +2038,10 @@ class DetalleCausa(BaseModel):
 
     Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. La respuesta de
     la plataforma trae paneles que este servidor todavía no mapea, y cambian por competencia:
-    los escritos presentados en civil, las diligencias en cobranza, y en laboral las
-    diligencias, las liquidaciones y los escritos pendientes. En apelaciones quedan fuera los
-    exhortos y la incompetencia; en suprema, las causas agregadas. Lo que no está acá **no está
-    dicho**, no está negado.
+    las diligencias en cobranza, y en laboral las diligencias, las liquidaciones y los escritos
+    pendientes. En apelaciones quedan fuera los
+    exhortos y la incompetencia; en suprema, las causas agregadas y la de la Corte de
+    Apelaciones de la que viene. Lo que no está acá **no está dicho**, no está negado.
 
     Y dos canales que sí se pueden pedir y NO vienen incluidos, porque cuestan una petición
     aparte cada uno: los anexos de un folio, con `anexo_ruta` y `anexo_referencia` de su
@@ -2021,6 +2131,12 @@ class DetalleCausa(BaseModel):
         "viene en NULO por eso, no porque la causa no venga de ninguna parte.\n\n"
         "Su `corte` es el NOMBRE y las búsquedas piden el código: se resuelve con "
         "`listar_cortes` antes de consultarla.",
+    )
+    escritos_pendientes: list[EscritoPendiente] | None = Field(
+        default=None,
+        description="Los escritos presentados que el tribunal todavía NO resuelve. La lista "
+        "vacía es una respuesta: no queda nada por proveer. NULO si la competencia no tiene "
+        "medido el panel.",
     )
     piezas_exhorto: list[PiezaExhorto] | None = Field(
         default=None,
@@ -2315,6 +2431,9 @@ class Competencia(NamedTuple):
     #: comparar ni mapeo posicional del que protegerse. Declararle columnas vacías para que
     #: calzara el tipo habría hecho pasar por validado algo que nadie valida.
     causa_de_origen: str | None = None
+    #: Cómo leer los escritos que el tribunal todavía no resuelve, o `None` mientras no se haya
+    #: medido. Mismo default y por la misma razón que los dos de arriba.
+    escritos_pendientes: Panel | None = None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -2368,6 +2487,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         litigantes=LITIGANTES_CIVIL,
         materias=None,
         exhortos=EXHORTOS_CIVIL,
+        escritos_pendientes=ESCRITOS_CIVIL,
         piezas_exhorto=PIEZAS_EXHORTO_CIVIL,
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,

@@ -18,8 +18,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
+  distinto del de la resolución y hasta ahora no se podían pedir. Sólo laboral: las otras
+  diecisiete rutas de anexo del sitio siguen sin ejecutarse y se rechazan.
+- Cada actuación trae `anexo_referencia`, que es con qué se piden sus anexos. Nula donde el
+  folio no tiene o donde su competencia no está medida.
 - Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
   anónima y entrega once archivos troceados por acto procesal. Todavía no se expone.
+
+### Corregido
+
+- Pedir una georreferencia de una competencia que no la ofrece, o sin referencia, levantaba
+  `EstructuraInesperada`, que la referencia documenta como "la plataforma cambió, reportar".
+  Son errores de la llamada y ahora levantan `ValueError`, como el resto.
 
 ## [0.9.0] - 2026-08-22
 

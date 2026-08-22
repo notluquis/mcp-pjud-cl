@@ -317,6 +317,16 @@ HISTORIA_LABORAL = Historia(
     ),
 )
 
+#: Con qué función de JavaScript abre cada competencia el panel de anexos de un folio, y de
+#: cuál se saca la referencia con la que se pide. Sólo va la MEDIDA.
+#:
+#: Las cinco publican una columna `Anexo`, así que la presencia de la columna no distingue
+#: nada acá y esto no se puede derivar de `COMPETENCIAS` como se deriva `GEORREFERENCIA`. Y no
+#: son la misma cosa con otro nombre: en suprema la celda llama a `escritoSuprema` y su icono
+#: se titula "Escrito", que puede ser el escrito mismo y no sus anexos. Poner esa referencia
+#: en un campo llamado `anexo_referencia` sería nombrar como medido algo que nadie miró.
+_MODAL_ANEXO: dict[str, str] = {"laboral": "anexoEscritoLaboral"}
+
 #: Los litigantes de cada competencia. Medidos sobre las fixtures de las cinco.
 #:
 #: Civil llama `Participante` a lo que las otras cuatro llaman `Sujeto`, y laboral agrega dos
@@ -535,9 +545,11 @@ class Actuacion(BaseModel):
     tiene_anexo: bool = Field(
         default=False,
         description="Si la columna `Anexo` del folio ofrece algo. Es un SEGUNDO canal de "
-        "documentos, distinto de `Doc.`, y este servidor todavía no lo puede pedir: la celda "
-        "abre un modal de JavaScript y ninguna de sus rutas está verificada contra la "
-        "plataforma.\n\n"
+        "documentos, distinto de `Doc.`: un folio puede traer la resolución en uno y los "
+        "anexos del escrito en el otro.\n\n"
+        "Se puede pedir SÓLO donde `anexo_referencia` viene con valor. En las demás la celda "
+        "abre un modal de JavaScript cuya ruta no está verificada contra la plataforma, así "
+        "que verdadero significa que hay algo y no que este servidor lo pueda traer.\n\n"
         "Se publica igual porque el silencio es peor. Sin este campo, un folio con anexo se "
         "veía idéntico a uno sin nada, y quien preguntara por los documentos de la causa "
         "recibía una respuesta que parecía completa. Verdadero significa: acá hay algo que "
@@ -556,6 +568,13 @@ class Actuacion(BaseModel):
         "competencia no publica la columna o la actuación no la ofrece.\n\n"
         "Tenerla no garantiza que haya georreferencia: está medido que una de seis abre un "
         "panel que responde que no existe ninguna.",
+    )
+    anexo_referencia: str | None = Field(
+        default=None,
+        description="Con qué se piden los anexos de este folio. NULO cuando el folio no trae "
+        "anexo, y también cuando lo trae y la competencia no está medida: ahí `tiene_anexo` "
+        "queda en verdadero y esto en nulo, que significa que hay anexos y este servidor no "
+        "los puede traer. Medida sólo laboral.",
     )
     documento_referencia: str | None = Field(
         default=None,
@@ -757,7 +776,9 @@ def parse_historia(
             "'no hubo actuaciones'."
         )
     actuaciones = [
-        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        _fila_a_actuacion(
+            celdas, cuaderno, spec.historia.columnas, _MODAL_ANEXO.get(competencia.lower())
+        )
         for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
     ]
 
@@ -779,7 +800,10 @@ def parse_historia(
 
 
 def _fila_a_actuacion(
-    celdas: list, cuaderno: str = "", columnas: tuple[str, ...] = HISTORIA_CIVIL.columnas
+    celdas: list,
+    cuaderno: str = "",
+    columnas: tuple[str, ...] = HISTORIA_CIVIL.columnas,
+    modal_anexo: str | None = None,
 ) -> Actuacion:
     txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
 
@@ -848,6 +872,14 @@ def _fila_a_actuacion(
             bool(celdas[columnas.index("anexo")].xpath(".//form | .//a"))
             if "anexo" in columnas
             else False
+        ),
+        # Sólo donde el nombre de la función está medido. Aceptar cualquier llamada entregaría
+        # la de suprema, que llama a otra y puede no ser lo mismo, con el nombre del campo
+        # afirmando que sí lo es.
+        anexo_referencia=(
+            _referencia_en_modal(celdas[columnas.index("anexo")], modal_anexo)
+            if modal_anexo and "anexo" in columnas
+            else None
         ),
         documento_ruta=documento[0],
         documento_referencia=documento[1],
@@ -1265,10 +1297,11 @@ class PiezaExhorto(BaseModel):
     tiene_documento: bool = Field(description="Si la columna `Doc.` de la pieza ofrece algo.")
     tiene_anexo: bool = Field(
         default=False,
-        description="Si la columna `Anexo` de la pieza ofrece algo. Mismo canal, mismo límite "
-        "y mismo contrato que `Actuacion.tiene_anexo`: la celda abre un modal de JavaScript y "
-        "este servidor todavía no lo puede pedir. La pieza puede traer su documento principal "
-        "y un anexo aparte.",
+        description="Si la columna `Anexo` de la pieza ofrece algo. Es el mismo canal que "
+        "`Actuacion.tiene_anexo`, pero acá NO se puede pedir: las piezas sólo están medidas "
+        "en civil, y de las rutas de anexo sólo se ejecutó la de laboral. Por eso esta pieza "
+        "no trae referencia de anexo y la actuación laboral sí. La pieza puede traer su "
+        "documento principal y un anexo aparte.",
     )
     documento_ruta: str | None = Field(
         default=None,
@@ -1475,6 +1508,99 @@ def parse_georreferencia(html_modal: str) -> Georreferencia:
         hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
         intentos=int(intentos),
     )
+
+
+class Anexo(BaseModel):
+    """Un documento que acompaña a un escrito, en el segundo canal del folio.
+
+    Es lo que la columna `Anexo` de la Historia ofrece y hasta la versión 0.9.0 no se podía
+    pedir. No es una copia de lo que entrega `Doc.`: ahí va la resolución o el escrito, y acá
+    los papeles que se acompañaron, que es donde vive la prueba documental.
+
+    Que el folio SÍ entregue un documento por el otro canal es lo que hacía invisible esta
+    falta: una respuesta con documento se lee como completa mucho mejor que una fila en blanco.
+    """
+
+    folio: str = Field(
+        description="Folio de la causa al que pertenece el anexo. Es el mismo número que trae "
+        "la actuación, así que sirve para volver a ubicarla en la Historia."
+    )
+    fecha: date | None = Field(
+        default=None,
+        description="Fecha que el panel publica para el anexo, en ISO 8601. NO es una fecha "
+        "de plazos: la que corre plazos es `fecha_diligencia` de la actuación.",
+    )
+    descripcion: str = Field(
+        default="",
+        description="Lo que el sitio rotula `Referencia`: qué es el documento, escrito por "
+        "quien lo acompañó. Ej: 'Pasajes aéreos'. Es texto libre, no una clasificación.",
+    )
+    documento_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta de la plataforma entrega este anexo. Sale del formulario de la "
+        "fila, y esa ruta NO se ha ejecutado: lo medido es el panel que la nombra. NULO si la "
+        "fila no trae formulario.",
+    )
+    documento_referencia: str | None = Field(
+        default=None,
+        description="La referencia opaca con la que se pide este anexo. Junto con "
+        "`documento_ruta` es lo único que permite traerlo después.",
+    )
+
+
+#: Los encabezados del panel de anexos, medidos el 22-08-2026 sobre `T-196-2026`. Se validan
+#: por cantidad y posición como los del detalle, porque el mapeo también es posicional: si el
+#: sitio inserta una columna, `Folio` cae en la celda de la descarga.
+_ENCABEZADOS_ANEXO = ("doc.", "folio", "fecha", "referencia")
+
+
+def parse_anexos(html_modal: str) -> list[Anexo]:
+    """Lee el panel de anexos de UN folio.
+
+    Cero filas levanta, y esa es la diferencia con notificaciones y liquidaciones, donde la
+    lista vacía es un estado real de la causa. Acá no lo es: este panel sólo se pide cuando la
+    actuación trajo `anexo_referencia`, o sea cuando el sitio YA dijo que hay algo. Una tabla
+    vacía significa que la ruta cambió o que se pidió la equivocada.
+
+    Está medido en este mismo canal: pedir el listado de audios por la ruta análoga a la de
+    otro modal respondió 200 con la tabla vacía, que devuelta como lista se lee igual que
+    "este folio no tiene anexos".
+    """
+    doc = html.fromstring(html_modal)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    tablas = doc.xpath("//table")
+    if not tablas:
+        raise EstructuraInesperada(
+            "El panel de anexos no trae ninguna tabla. La estructura del sitio cambió."
+        )
+    encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
+    _validar_encabezados(encabezados, _ENCABEZADOS_ANEXO, "anexos")
+
+    anexos = []
+    for fila in tablas[0].xpath(".//tr"):
+        celdas = _celdas(fila)
+        if len(celdas) < len(_ENCABEZADOS_ANEXO):
+            continue
+        ruta, referencia = _documento_de_la_celda(celdas[0])
+        anexos.append(
+            Anexo(
+                folio=" ".join(celdas[1].text_content().split()),
+                fecha=_fecha(" ".join(celdas[2].text_content().split())),
+                descripcion=" ".join(celdas[3].text_content().split()),
+                documento_ruta=ruta,
+                documento_referencia=referencia,
+            )
+        )
+
+    if not anexos:
+        raise EstructuraInesperada(
+            "El panel de anexos trae encabezados y ninguna fila. Este panel sólo se pide "
+            "cuando la actuación ofreció anexos, así que cero filas no significa que el folio "
+            "no tenga: significa que la respuesta cambió o que se pidió otra ruta. Devolver "
+            "una lista vacía diría que el escrito se acompañó sin documentos."
+        )
+    return anexos
 
 
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:

@@ -19,6 +19,7 @@ from mcp_pjud.parser import (
     EstructuraInesperada,
     actuaciones_receptor,
     causa_es_exhorto,
+    parse_anexos,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -1357,6 +1358,76 @@ def test_donde_la_competencia_no_publica_la_columna_el_anexo_es_falso_por_ausenc
     civiles = parse_historia(C1156_APREMIO)
     assert any(a.tiene_anexo for a in civiles), "civil sí publica la columna"
     assert any(not a.tiene_anexo for a in civiles), "y no todos los folios traen anexo"
+
+
+# -- anexos --------------------------------------------------------------------------
+
+ANEXOS_LAB = (FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8")
+
+
+def test_el_panel_de_anexos_entrega_con_que_pedir_cada_documento():
+    """Medido el 22-08-2026 contra T-196-2026: dos anexos de un mismo escrito.
+
+    Saber que hay anexo no sirve para traerlo. Lo que lo hace pedible es la ruta y la
+    referencia del formulario de cada fila, y sin ellas la respuesta dice que existe algo sin
+    decir cuál.
+    """
+    anexos = parse_anexos(ANEXOS_LAB)
+
+    assert [a.folio for a in anexos] == ["70", "71"]
+    assert [a.descripcion for a in anexos] == ["Pasajes aéreos", "Comprobantes alojamientos"]
+    assert all(a.fecha == date(2026, 8, 13) for a in anexos)
+    assert all(a.documento_ruta == "docAnexoLaboral.php" for a in anexos)
+    assert all(a.documento_referencia for a in anexos), (
+        "sin la referencia del formulario el anexo se sabe que existe y no se puede pedir"
+    )
+
+
+def test_un_panel_de_anexos_vacio_levanta_en_vez_de_devolver_lista():
+    """Acá la lista vacía NO es un estado real de la causa, y ésa es la diferencia con las
+    notificaciones y las liquidaciones.
+
+    Este panel sólo se pide cuando la actuación trajo `anexo_referencia`, o sea cuando el sitio
+    ya dijo que hay algo. Cero filas significa que la ruta cambió o que se pidió la
+    equivocada, y está medido en este mismo canal: pedir el listado de audios por la ruta
+    análoga a la de otro modal respondió 200 con la tabla vacía.
+    """
+    sin_filas = re.sub(r"<tbody>.*?</tbody>", "<tbody></tbody>", ANEXOS_LAB, flags=re.S)
+    assert sin_filas != ANEXOS_LAB
+
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_anexos(sin_filas)
+
+
+def test_una_columna_insertada_en_el_panel_de_anexos_levanta():
+    """El mapeo es posicional: con una columna de más, `Folio` cae en la celda de la descarga y
+    el folio que se informa es el de otra cosa."""
+    con_otra = ANEXOS_LAB.replace("<th>Folio</th>", "<th>Cuaderno</th><th>Folio</th>", 1)
+    assert con_otra != ANEXOS_LAB
+
+    with pytest.raises(EstructuraInesperada, match="columnas"):
+        parse_anexos(con_otra)
+
+
+def test_la_referencia_del_anexo_sale_solo_de_la_funcion_medida():
+    """Las cinco competencias publican la columna `Anexo` y no la abren con la misma función.
+
+    En suprema la celda llama a `escritoSuprema` y su icono se titula "Escrito", que puede ser
+    el escrito y no sus anexos. Aceptar cualquier llamada pondría esa referencia en un campo
+    llamado `anexo_referencia`, o sea nombraría como medido algo que nadie miró.
+    """
+    laboral = [a for a in parse_historia(DETALLE_LABORAL, competencia="laboral") if a.tiene_anexo]
+    assert len(laboral) == 2, "la fixture de laboral trae dos folios con anexo"
+    assert all(a.anexo_referencia for a in laboral), (
+        "laboral está medida y sin referencia la herramienta no puede pedir nada"
+    )
+
+    suprema = [a for a in parse_historia(DETALLE_SUPREMA, competencia="suprema") if a.tiene_anexo]
+    assert suprema, "la fixture de suprema trae al menos un folio con la columna ofreciendo algo"
+    assert all(a.anexo_referencia is None for a in suprema), (
+        "suprema no está medida: `tiene_anexo` en verdadero y la referencia en nulo es el "
+        "contrato, y significa que hay algo que este servidor no puede traer"
+    )
 
 
 # -- georreferencia ------------------------------------------------------------------

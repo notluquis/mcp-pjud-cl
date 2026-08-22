@@ -29,7 +29,9 @@ import pytest
 import yaml
 
 from mcp_pjud.client import (
+    ANEXOS,
     CORTES_MEDIDAS,
+    DOCUMENTOS,
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
@@ -44,7 +46,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import COMPETENCIAS, parse_historia
+from mcp_pjud.parser import _ENCABEZADOS_ANEXO, COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -183,11 +185,15 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     for canal in ("tiene_anexo", "expedienteApe", "IncompetenciaApe"):
         assert canal in lista, f"`{canal}` dejó de estar declarado como mapeado sin ejecutar"
 
-    # El JavaScript del sitio es la única fuente de cuántas rutas de anexo hay.
+    # El JavaScript del sitio es la única fuente de cuántas rutas de anexo hay, y `ANEXOS` la
+    # única de cuántas se midieron. Las dos derivadas: escribir la resta a mano deja el número
+    # viejo cuando se mida la siguiente, y ahí la lista diría que sigue sin ejecutarse algo que
+    # el servidor ya ofrece.
     js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
     rutas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
-    assert f"**{len(rutas)} rutas de anexo**" in lista, (
-        f"el sitio nombra {len(rutas)} rutas de anexo y la lista dice otra cosa"
+    assert f"**{len(rutas) - len(ANEXOS)} de las {len(rutas)} rutas de anexo**" in lista, (
+        f"el sitio nombra {len(rutas)} rutas de anexo, {len(ANEXOS)} están medidas y la lista "
+        "dice otra cosa"
     )
 
     # Y el detalle de apelaciones dice cuántos paneles publica.
@@ -202,6 +208,37 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     assert f"se leen **{len(paneles & leidos)}**" in lista, (
         f"apelaciones publica {sorted(paneles)} y se leen {sorted(paneles & leidos)}"
     )
+
+
+def test_la_seccion_de_anexos_nombra_la_ruta_y_los_campos_que_el_codigo_usa():
+    """Lo que la página afirma sobre el canal medido sale del código, no de la memoria.
+
+    Son cuatro datos que se pueden derivar: la ruta del panel, el campo con que se pide, la
+    ruta de descarga de cada fila y su campo. Escribirlos a mano acá los deja envejecer justo
+    donde alguien va a buscarlos para repetir la medición cuando la plataforma cambie.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    seccion = pagina.split("## El segundo canal de documentos")
+    assert len(seccion) == 2, "la sección del canal de anexos desapareció"
+    seccion = seccion[1].split("\n## ")[0]
+
+    ruta, campo = ANEXOS["laboral"]
+    assert f"`{ruta}`" in seccion, f"la sección no nombra {ruta!r}, que es la ruta que se pide"
+    assert f"`{campo}`" in seccion, f"la sección no nombra {campo!r}, el campo con que se pide"
+
+    # La de descarga sale de `DOCUMENTOS` y no de una lista escrita al lado: es la misma tabla
+    # que `obtener_documento` consulta, así que si una deja de estar la otra se entera.
+    descargas = [r for r in DOCUMENTOS["laboral"] if "anexo" in r.lower()]
+    assert len(descargas) == 1, f"laboral declara {descargas} rutas de descarga de anexo"
+    assert f"`{descargas[0]}`" in seccion, "la sección no dice con qué ruta se descarga el anexo"
+    assert f"`{DOCUMENTOS['laboral'][descargas[0]]}`" in seccion, (
+        "la sección no dice con qué campo se pide la descarga"
+    )
+
+    for encabezado in _ENCABEZADOS_ANEXO:
+        assert f"`{encabezado}`" in seccion.lower(), (
+            f"la sección no nombra la columna {encabezado!r}, y el mapeo es posicional"
+        )
 
 
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
@@ -1039,6 +1076,12 @@ def test_el_esquema_de_las_herramientas_anuncia_solo_lo_verificado(expuestas):
         # Ofrece las que publican la columna de georreferencia en su Historia. Suprema no la
         # publica, así que para ella nunca va a haber una referencia que pedir.
         "obtener_georreferencia",
+        # Ofrece aquellas cuya ruta de anexos está MEDIDA, y es la única de esta lista donde
+        # el recorte no sale de lo que la plataforma publica: las cinco publican la columna
+        # `Anexo`. Ofrecer las otras cuatro sería anunciar como disponible algo que nadie
+        # ejecutó contra el sitio, que es la clase de negativo sin medir que este proyecto
+        # rechaza a propósito.
+        "obtener_anexos_escrito",
     }
     descripciones = [
         p.get("description", "")

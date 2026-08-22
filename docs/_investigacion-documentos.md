@@ -433,7 +433,13 @@ comprar una capacidad con la garantía que hace utilizable todo lo demás. Quien
 escaneo abre el archivo, que es lo que un abogado hace con un expediente de todos modos, y esta
 página deja anotado en primer lugar qué habría que medir para cambiar de opinión.
 
-## Qué emite la plataforma: sólo PDF, y hasta dónde está medido
+## Qué emite la plataforma: los DOCUMENTOS son sólo PDF, y hasta dónde está medido
+
+La afirmación es sobre los documentos del expediente, y hay que decirla acotada porque tiene
+una excepción medida: **el canal de audio de audiencia emite `.mp3`**, con `type="audio/mpeg"`
+en el propio marcado del sitio. No es un documento y no viaja por las rutas de documento, así
+que `_MAGIA_PDF` sigue siendo correcto donde se aplica: `obtener_documento` no toca ese canal,
+que tiene su propia herramienta y entrega enlaces en vez de archivos.
 
 Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no contienen ninguna
 referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**.

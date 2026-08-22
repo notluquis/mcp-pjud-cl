@@ -101,10 +101,14 @@ Lo que lo destapó fue leer el JavaScript del sitio en vez de seguir suponiendo:
 prefijo de sesión.
 :::
 
-Qué falta antes de exponerlo: cuánto pesa un archivo, que decide si puede viajar por el
-protocolo o sólo como enlace, y si `audioByPass.php` entrega el MP3 a una consulta anónima o
-sólo el listado. Ninguna de las dos se midió, y bajar un audio de una audiencia es traer a
-disco la voz de personas que son parte en un juicio: eso no se hace para explorar.
+**Se expone el listado y NO el archivo**, y las dos preguntas que faltaban siguen sin medir a
+propósito: cuánto pesa un archivo y si `audioByPass.php` entrega el MP3 a una consulta anónima.
+Ninguna hace falta para entregar el enlace, y bajar un audio de audiencia es traer a disco la
+voz de personas que son parte en un juicio.
+
+Es también lo que sirve: una transcripción automática no reemplaza oír la audiencia, y no
+siempre se puede transcribir. `listar_audios_audiencia` dice qué hay, de qué tramo es cada
+archivo y con qué enlace se baja.
 
 ### Mapeado pero nunca ejecutado
 

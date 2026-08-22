@@ -18,8 +18,10 @@ from mcp_pjud.parser import (
     Competencia,
     EstructuraInesperada,
     actuaciones_receptor,
+    audio_de_la_causa,
     causa_es_exhorto,
     parse_anexos,
+    parse_audios,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -1490,6 +1492,88 @@ def test_el_nombre_del_modal_se_compara_completo_y_no_por_prefijo():
     assert all(a.anexo_ruta is None for a in con_anexo), (
         f"un modal sin medir devolvió la ruta de otro: {[a.anexo_ruta for a in con_anexo]}"
     )
+
+
+# -- audios de audiencia ---------------------------------------------------------------
+
+AUDIOS = (FIXTURES / "listado_audio_laboral.html").read_text(encoding="utf-8")
+
+
+def test_el_listado_de_audios_trae_el_tramo_de_cada_archivo_y_su_enlace():
+    """Medido el 22-08-2026: once archivos para UNA audiencia preparatoria.
+
+    El audio viene troceado por acto procesal, y el nombre del archivo es lo único que dice de
+    qué tramo es: la columna `Fecha` viene vacía en los once. Perder el nombre al leerlo
+    dejaría once archivos indistinguibles.
+    """
+    audios = parse_audios(AUDIOS)
+
+    assert [a.numero for a in audios] == [str(n) for n in range(1, 12)]
+    assert all(a.archivo.endswith(".mp3") for a in audios)
+    assert audios[0].archivo.endswith("Inicio Aud 10.10, Indiv de las partes.mp3")
+    assert audios[-1].archivo.endswith("Fin Aud 10.45.mp3")
+    assert all(a.fecha is None for a in audios), (
+        "la columna `Fecha` viene vacía en los once, y si empieza a traer algo hay que mirarlo"
+    )
+    assert all(a.descarga_url.startswith("https://") for a in audios), (
+        "el enlace se entrega para abrirlo en un navegador: relativo no sirve"
+    )
+    assert len({a.descarga_url for a in audios}) == len(audios), (
+        "dos archivos con el mismo enlace significan que la referencia no se está leyendo"
+    )
+
+
+def test_un_listado_de_audios_vacio_levanta_en_vez_de_devolver_lista():
+    """Sólo se pide cuando la cabecera ofreció el enlace, o sea cuando el sitio ya dijo que hay
+    grabación. Cero filas devueltas como lista se leen como "esta audiencia no se grabó"."""
+    sin_filas = re.sub(r"<tbody>.*?</tbody>", "<tbody></tbody>", AUDIOS, flags=re.S)
+    assert sin_filas != AUDIOS
+
+    with pytest.raises(EstructuraInesperada, match="ninguna fila"):
+        parse_audios(sin_filas)
+
+
+def test_una_fila_de_audio_sin_enlace_levanta():
+    """Entregarla igual diría que el archivo está disponible, y no habría con qué pedirlo."""
+    sin_enlace = AUDIOS.replace("action=download", "action=otro")
+    assert sin_enlace != AUDIOS
+
+    with pytest.raises(EstructuraInesperada, match="enlace de descarga"):
+        parse_audios(sin_enlace)
+
+
+def test_el_correlativo_del_audio_va_en_un_th_dentro_de_la_fila():
+    """El sitio pone el número en un `th`, no en un `td`, así que la cabecera declara cinco
+    columnas y cada fila trae cuatro celdas.
+
+    Descartar las filas por no alcanzar el largo de la cabecera, que es lo que hacen los demás
+    paneles, dejaba el listado en cero: once archivos informados como ninguno.
+    """
+    doc = H.fromstring(AUDIOS)
+    fila = next(tr for tr in doc.iter("tr") if tr.findall("td"))
+
+    assert len(fila.findall("td")) == 4
+    assert len(fila.findall("th")) == 1
+
+
+def test_una_causa_sin_audiencia_grabada_no_inventa_referencia():
+    """La cabecera de laboral ofrece el listado; la de civil no lo publica.
+
+    Las dos vuelven como nulo y eso es correcto: el sitio no distingue "no hubo grabación" de
+    "esta competencia no lo publica", así que inventar la diferencia sería afirmar de más.
+    """
+    assert audio_de_la_causa(DETALLE_LABORAL), "la fixture de laboral ofrece el listado"
+    assert audio_de_la_causa(DETALLE) is None, "civil no publica el enlace de audios"
+
+
+def test_el_modal_de_audio_se_compara_por_nombre_completo():
+    """Mismo criterio que los anexos: la competencia medida es laboral, y un nombre que empiece
+    igual puede ser otra ruta. Un prefijo devolvería la referencia de una competencia sin
+    medir, y pedirla no da error sino otra página."""
+    otra = DETALLE_LABORAL.replace("listadoAudioLaboral(", "listadoAudioLaboralAntiguo(")
+    assert otra != DETALLE_LABORAL
+
+    assert audio_de_la_causa(otra) is None
 
 
 def test_un_modal_de_anexo_sin_medir_deja_la_ruta_en_nulo_y_el_anexo_en_verdadero():

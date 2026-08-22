@@ -18,13 +18,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- `listar_audios_audiencia` dice qué audios de audiencia tiene la causa y con qué enlace se
+  bajan. **No trae los archivos**: entrega los enlaces para que la persona los abra.
+- El detalle de causa trae `audio_referencia`, que además de servir para pedir el listado dice
+  que hubo audiencia grabada. Sólo laboral está medida.
 - `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
   distinto del de la resolución y hasta ahora no se podían pedir. Tres paneles ofrecidos y
   otros cuatro medidos sin ofrecer, porque su referencia no cuelga de un folio.
 - Cada actuación trae `anexo_ruta` y `anexo_referencia`, que es con qué se piden sus anexos.
   Nulas donde el folio no tiene anexo o donde su panel no está medido.
-- Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
-  anónima y entrega once archivos troceados por acto procesal. Todavía no se expone.
 
 ### Corregido
 

@@ -1,12 +1,12 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las 13 herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 14 herramientas MCP, sus parámetros y cada campo que devuelven."
 ---
 
 # Referencia de herramientas
 
-Las 13 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las 14 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real
@@ -334,6 +334,12 @@ Sale de la cabecera de la causa, no de que el panel esté presente: deducirlo de
 ataría la afirmación a que la plataforma no renombre un `id`, y el día que lo renombre la
 respuesta diría "esta causa no es un exhorto" en vez de "no pude leerlo".
 
+Y otro que tampoco es un panel: `audio_referencia`, con qué se pide el listado de audios de las
+audiencias de la causa. Viene con valor cuando la cabecera ofrece el enlace, o sea cuando hay
+audiencia **grabada**, y eso es un dato en sí: la Historia dice que hubo audiencia, y esto dice
+que quedó registrada. Nulo cuando no la hay y también cuando la competencia no está medida,
+que hoy es todas salvo laboral. Se usa con `listar_audios_audiencia`.
+
 El mismo dato como grafo, útil para ver de un vistazo qué competencia sirve para qué pregunta.
 Se genera desde el código igual que la tabla, así que no puede quedar viejo:
 
@@ -473,6 +479,46 @@ panel sólo se pide cuando la actuación ya dijo que hay anexos, así que la tab
 que la respuesta cambió, no que el escrito se haya acompañado sin documentos.
 
 ```{include} _generado/obtener_anexos_escrito.md
+```
+
+## `listar_audios_audiencia`
+
+Qué audios de audiencia tiene la causa, y con qué enlace se bajan. **No los trae.**
+
+| Parámetro | Qué es |
+|---|---|
+| `audio_referencia` | Lo entrega `obtener_detalle_causa`. Cuando viene nula, la causa no ofrece grabación o su competencia no está medida |
+
+:::{important} Entrega los enlaces, no el audio
+Un audio de audiencia son las voces de las partes, los testigos y el tribunal. Una
+transcripción automática no es lo mismo que oírlo, y no siempre se puede transcribir. Lo que
+corresponde es entregar los enlaces y decir qué tramo es cada uno, para que la persona baje el
+que necesita.
+:::
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `numero` | str | El correlativo con que el sitio ordena los archivos |
+| `archivo` | str | Nombre del archivo, tal cual. Trae el tramo al final, y a veces la hora |
+| `fecha` | date \| null | Lo que publica la columna `Fecha`. Medido: **vacía en los once** |
+| `descarga_url` | str | Enlace directo, para abrir en el navegador |
+
+El audio viene **troceado por acto procesal**, no en una pista única: medidos once archivos
+para una sola audiencia preparatoria, del inicio al fin, pasando por el llamado a conciliación
+y los hechos a probar. El nombre de cada archivo es lo más útil que trae, porque la columna
+`Fecha` viene vacía en todos.
+
+El nombre empieza con el **RUC de la causa**: repetirlo completo publica ese identificador, así
+que conviene nombrar el tramo y no el archivo entero.
+
+Los enlaces **caducan**. Si uno deja de funcionar hay que volver a pedir el listado, no
+reintentar el mismo.
+
+Sólo laboral está medida. Un listado sin filas **levanta un error**: sólo se pide cuando el
+detalle ofreció el enlace, así que cero filas significa que la respuesta cambió, no que la
+audiencia no se haya grabado.
+
+```{include} _generado/listar_audios_audiencia.md
 ```
 
 ## `obtener_documento`

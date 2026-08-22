@@ -25,6 +25,15 @@ from typing import NamedTuple
 from lxml import etree, html
 from pydantic import BaseModel, Field
 
+#: El origen de la Oficina Judicial Virtual. Vive acá y no en el cliente porque el parser lo
+#: necesita para armar el enlace de descarga de un audio, y el cliente importa del parser y no
+#: al revés. `client.BASE` es este mismo, reexportado.
+BASE_SITIO = "https://oficinajudicialvirtual.pjud.cl"
+
+#: Los encabezados del listado de audios, medidos el 22-08-2026. El correlativo va en un `th`
+#: dentro de cada fila, así que la cabecera declara cinco columnas y las filas traen cuatro.
+_ENCABEZADOS_AUDIO = ("nro", "descargar", "audio", "fecha", "referencia")
+
 
 class Panel(NamedTuple):
     """Cómo se lee un panel del detalle de causa.
@@ -1847,6 +1856,14 @@ class DetalleCausa(BaseModel):
         "llegaron. NULO significa que la competencia no tiene la pregunta medida, NO que la "
         "causa no lo sea: sin este campo, `piezas_exhorto` en nulo diría las dos cosas a la vez.",
     )
+    audio_referencia: str | None = Field(
+        default=None,
+        description="Con qué se pide el listado de audios de las audiencias de esta causa, si "
+        "las tiene. NULO cuando la causa no ofrece grabación y también cuando su competencia "
+        "no está medida: sólo laboral lo está.\n\n"
+        "Que venga con valor significa que HAY audiencia grabada, que es un dato en sí: la "
+        "Historia dice que hubo audiencia, y esto dice que quedó registrada.",
+    )
     piezas_exhorto: list[PiezaExhorto] | None = Field(
         default=None,
         description="Los trámites que el tribunal de ORIGEN despachó junto con el exhorto, o "
@@ -1854,6 +1871,123 @@ class DetalleCausa(BaseModel):
         "sus plazos. Viene en nulo cuando `causa_es_exhorto` no es verdadero, y ese campo dice "
         "cuál de las dos ausencias es.",
     )
+
+
+class AudioAudiencia(BaseModel):
+    """Un archivo de audio de una audiencia, tal como el sitio lo publica.
+
+    Rompe el supuesto de que todo lo descargable de la plataforma es PDF: acá el archivo es un
+    `.mp3`. Este servidor NO lo trae: entrega qué hay y con qué enlace, para que quien lo
+    necesite lo baje y lo escuche. Un audio de audiencia son las voces de las partes, los
+    testigos y el tribunal, y transcribirlo automáticamente no es lo mismo que oírlo.
+
+    El audio viene TROCEADO por acto procesal, no en una pista única: el nombre de archivo dice
+    de qué tramo es. Medido: once archivos para una sola audiencia preparatoria, del "Inicio" al
+    "Fin", pasando por el llamado a conciliación y los hechos a probar.
+    """
+
+    numero: str = Field(description="El correlativo con que el sitio ordena los archivos.")
+    archivo: str = Field(
+        description="Nombre del archivo, tal cual. Trae el tramo de la audiencia al final, que "
+        "es lo que dice de qué es la grabación. Ej: '...-05-Llamado a conciliacion.mp3'.\n\n"
+        "Empieza con el RUC de la causa, así que nombrarlo completo publica ese identificador."
+    )
+    fecha: date | None = Field(
+        default=None,
+        description="Lo que el sitio publica en su columna `Fecha`. Medido: viene VACÍA en los "
+        "once archivos, aunque la columna existe. La fecha de la audiencia hay que sacarla de "
+        "la Historia o del propio nombre del archivo, no de acá.",
+    )
+    descarga_url: str = Field(
+        description="Enlace directo al archivo, para abrirlo en un navegador. Este servidor no "
+        "lo descarga.\n\nEl enlace lleva una referencia firmada que CADUCA: si deja de "
+        "funcionar hay que volver a pedir el listado. Entregarlo tal cual al usuario es lo "
+        "correcto; guardarlo para después, no."
+    )
+
+
+#: Con qué función abre cada competencia el listado de audios. Sólo laboral está MEDIDA: es la
+#: única de cuyas causas se vio el enlace, y la única cuya respuesta se leyó.
+#:
+#: Se compara el nombre completo, igual que en los anexos: un prefijo mandaría la referencia de
+#: una competencia a la ruta de otra, y eso no da error sino otra página.
+_MODAL_AUDIO: dict[str, str] = {"listadoAudioLaboral": "audio/listadoAudio.php"}
+
+
+def audio_de_la_causa(html_detalle: str) -> str | None:
+    """Con qué se pide el listado de audios de esta causa, si la cabecera lo ofrece.
+
+    Devuelve nulo cuando la causa no tiene audiencia grabada Y cuando la competencia no está
+    medida: las dos son "no hay nada que pedir acá". Lo que las distingue está en la
+    documentación, no en el dato, porque el sitio no publica esa diferencia.
+    """
+    doc = html.fromstring(html_detalle)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+    for elemento in doc.iter():
+        m = _REFERENCIA_EN_MODAL.match(elemento.get("onclick") or "")
+        if m and m.group(1) in _MODAL_AUDIO:
+            return m.group(2)
+    return None
+
+
+def parse_audios(html_modal: str) -> list[AudioAudiencia]:
+    """Lee el listado de audios de una audiencia.
+
+    Cero filas levanta, por lo mismo que en los anexos: este listado sólo se pide cuando el
+    detalle de la causa ofreció el enlace, o sea cuando el sitio ya dijo que hay grabación. Y
+    está medido que la ruta equivocada responde 200 con la tabla vacía, que devuelta como lista
+    se lee igual que "esta audiencia no se grabó".
+
+    El correlativo va en un `th` DENTRO de cada fila, no en un `td`, así que la fila trae cuatro
+    celdas y cinco encabezados. Leerlo con el largo de la cabecera descartaría todas las filas.
+    """
+    doc = html.fromstring(html_modal)
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    tablas = doc.xpath("//table")
+    if not tablas:
+        raise EstructuraInesperada(
+            "El listado de audios no trae ninguna tabla. La estructura del sitio cambió."
+        )
+    encabezados = [
+        " ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//thead//th")
+    ]
+    _validar_encabezados(encabezados, _ENCABEZADOS_AUDIO, "listado de audios")
+
+    audios = []
+    for fila in tablas[0].xpath(".//tr"):
+        celdas = _celdas(fila)
+        numero = fila.xpath("./th")
+        # Una celda MENOS que encabezados: el correlativo viaja en el `th` de la fila. Exigir
+        # el largo de la cabecera, que es lo que hacen los demás paneles, descarta las once.
+        if len(celdas) < len(_ENCABEZADOS_AUDIO) - 1 or not numero:
+            continue
+        enlaces = [
+            a.get("href", "") for a in fila.iter("a") if "action=download" in (a.get("href") or "")
+        ]
+        if not enlaces:
+            # Sin enlace no hay nada que entregar, y una fila sin él se leería como un archivo
+            # disponible que después no se puede abrir.
+            raise EstructuraInesperada(
+                "Una fila del listado de audios no trae enlace de descarga. Entregarla igual "
+                "diría que el archivo está disponible, y no habría con qué pedirlo."
+            )
+        audios.append(
+            AudioAudiencia(
+                numero=" ".join(numero[0].text_content().split()),
+                archivo=" ".join(celdas[3].text_content().split()),
+                fecha=_fecha(" ".join(celdas[2].text_content().split())),
+                descarga_url=f"{BASE_SITIO}/{enlaces[0].removeprefix('./')}",
+            )
+        )
+
+    if not audios:
+        raise EstructuraInesperada(
+            "El listado de audios trae encabezados y ninguna fila. Sólo se pide cuando el "
+            "detalle ofreció el enlace, así que cero filas no significa que la audiencia no se "
+            "haya grabado: significa que la respuesta cambió o que se pidió otra ruta."
+        )
+    return audios
 
 
 def actuaciones_receptor(

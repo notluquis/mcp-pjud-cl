@@ -31,6 +31,8 @@ import yaml
 from mcp_pjud.client import (
     ANEXOS,
     ANEXOS_MEDIDOS_SIN_EXPONER,
+    AUDIO_CAMPO,
+    AUDIO_RUTA,
     CORTES_MEDIDAS,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -94,7 +96,13 @@ def _trozos_de_ruta(url: str) -> list[str]:
     from urllib.parse import urlsplit
 
     partes = urlsplit(url)
-    return [t for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}") if "." in t]
+    # El `.` de una ruta relativa (`./audio/...`) no es un nombre de archivo, y colarse como
+    # uno lo hacía figurar como documento enlazado con extensión vacía.
+    return [
+        t
+        for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}")
+        if "." in t and t.rsplit(".", 1)[1] and t.strip(".")
+    ]
 
 
 def _registro() -> str:
@@ -246,6 +254,29 @@ def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarg
             r for r in DOCUMENTOS[competencia] if "anexo" in r.lower() or "escrito" in r.lower()
         ]
         assert descargas, f"{competencia} no declara ninguna ruta de descarga de anexo"
+
+
+def test_la_seccion_de_audio_nombra_la_ruta_y_el_campo_que_el_cliente_usa():
+    """La página es lo que alguien va a leer para repetir la medición, y su hallazgo central es
+    que la ruta NO cuelga del prefijo de sesión.
+
+    Sale del cliente y no de la memoria: si la ruta cambia, la página tiene que enterarse.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    seccion = pagina.split("### Los audios de audiencia existen")
+    assert len(seccion) == 2, "la sección del canal de audio desapareció"
+    seccion = seccion[1].split("\n### ")[0]
+
+    assert f"`POST /{AUDIO_RUTA}`" in seccion, (
+        f"la sección no nombra {AUDIO_RUTA!r}, que es la ruta que el cliente pide"
+    )
+    assert f"`{AUDIO_CAMPO}`" in seccion, (
+        f"la sección no nombra {AUDIO_CAMPO!r}, el campo con que se pide"
+    )
+    assert "fuera** del prefijo" in seccion or "fuera del prefijo" in seccion, (
+        "la sección dejó de decir que la ruta no cuelga del prefijo de sesión, que es lo que "
+        "distingue esta ruta de todos los demás modales"
+    )
 
 
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
@@ -863,6 +894,22 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     assert not descargables, (
         f"las fixtures enlazan {descargables} y la investigación afirma que todo documento "
         "enlazado es PDF. De esa afirmación cuelga `_MAGIA_PDF`."
+    )
+
+    # La excepción medida, que el arreglo del tokenizador de rutas dejó sin nadie que la
+    # mirara: el canal de audio emite mp3. La evidencia no está en un `href` ni en un `src`
+    # (el enlace apunta a un `.php`), sino en el `type` del `<source>` y en el nombre del
+    # archivo dentro de una celda, o sea justo donde el barrido de arriba no llega.
+    #
+    # Va en las dos direcciones a propósito. Si aparece audio y la página no lo nombra, la
+    # afirmación de "sólo PDF" quedó falsa; si la página lo nombra y no hay audio en ninguna
+    # fixture, está declarando una excepción que nadie midió.
+    hay_audio = bool(re.search(r"""type\s*=\s*['"]audio/""", fixtures) or ".mp3" in fixtures)
+    lo_declara = "audio" in pagina.lower() and ".mp3" in pagina
+    assert hay_audio == lo_declara, (
+        f"las fixtures traen audio: {hay_audio}, y la investigación lo declara como excepción: "
+        f"{lo_declara}. Las dos cosas van juntas o la página afirma de más en una dirección o "
+        "en la otra."
     )
 
     # Lo que se muestra sí puede ser imagen, pero no cualquier cosa: un `.odt` en un `src`

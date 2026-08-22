@@ -26,6 +26,7 @@ from mcp_pjud.parser import (
     COMPETENCIAS,
     EstructuraInesperada,
     parse_anexos,
+    parse_diligencias,
     parse_escritos_pendientes,
     parse_historia,
     parse_resultados,
@@ -2100,6 +2101,30 @@ def test_el_parametro_de_cada_panel_sale_del_javascript_del_sitio():
         assert declarados[ruta] == campo, (
             f"{ruta!r} se pide con {campo!r} y el sitio declara {declarados[ruta]!r}. Pedirla "
             "con el parámetro de otro panel devuelve 200 con la tabla vacía."
+        )
+
+
+def test_las_rutas_de_una_diligencia_son_de_las_que_obtener_documento_acepta():
+    """Mismo acoplamiento que el de los anexos, y el mismo agujero si falta.
+
+    El panel de diligencias de laboral entrega el oficio de ida y el de vuelta, y
+    `obtener_documento` sólo acepta rutas de `DOCUMENTOS`. Si esas dos entradas se borran por
+    parecer no ejecutadas, los campos quedan inservibles y la suite no se entera: el parser no
+    consulta esa tabla y el cliente no consulta el panel.
+    """
+    diligencias = [
+        d
+        for fixture in ("diligencias_laboral.html", "diligencias_laboral_enviada.html")
+        for d in parse_diligencias((FIXTURES / fixture).read_text(encoding="utf-8"), "laboral")
+    ]
+    rutas = {d.documento_ida_ruta for d in diligencias} | {
+        d.documento_vuelta_ruta for d in diligencias
+    }
+    rutas.discard(None)
+    assert len(rutas) == 2, f"el panel dejó de entregar los dos sentidos del oficio: {rutas}"
+    for ruta in rutas:
+        assert ruta in DOCUMENTOS["laboral"], (
+            f"el panel de diligencias entrega {ruta!r} y `obtener_documento` no la acepta"
         )
 
 

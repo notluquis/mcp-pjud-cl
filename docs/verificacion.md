@@ -119,10 +119,9 @@ rechaza en vez de adivinar sus parámetros:
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
 - `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
-- **17 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
-  competencias. La de laboral se midió y se expone; ver la sección propia más abajo. En las
-  otras cinco, cada actuación y cada pieza de exhorto declara `tiene_anexo` y ahí termina lo
-  que se puede hacer
+- **12 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
+  competencias. Seis se midieron; ver la sección propia más abajo. Donde no hay ruta medida,
+  la actuación declara `tiene_anexo` con la ruta en nulo y ahí termina lo que se puede hacer
 - `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
   `IncompetenciaApe`. De los **6** paneles que apelaciones publica se leen **2**
 - `receptorCivil.php`, que devuelve la tabla de **retiro** de documentos, no la de
@@ -317,31 +316,61 @@ sobre la fixture, no de recordarlas.
 
 ## El segundo canal de documentos: los anexos del escrito
 
-Medido el 22 de agosto de 2026 sobre una causa laboral: la ruta
-`laboral/modal/anexoEscritoLaboral.php`, con el campo `dtaAnex` y la referencia que la propia
-celda de la Historia lleva en su `onclick`, respondió **200** con dos anexos de un mismo
-escrito y el formulario de descarga de cada uno.
+Medidos el 22 de agosto de 2026 contra causas reales, uno por uno. Cada panel es una petición
+POST bajo `{competencia}/modal/`, con la referencia que la propia celda de la Historia lleva en
+su `onclick`.
 
-| Dato | Forma |
+| Panel | Parámetro | Columnas | Descarga |
+|---|---|---|---|
+| `anexoCausaCivil.php` | `dtaAnexCau` | Doc. · Fecha · Referencia | `anexoDocCivil.php` (`dtaDoc`) |
+| `anexoCausaSolicitudCivil.php` | `dtaCausaAnex` | Doc. · Fecha · Referencia | `anexoDocCivil.php` (`dtaDoc`) |
+| `anexoEscritoLaboral.php` | `dtaAnex` | Doc. · **Folio** · Fecha · Referencia | `docAnexoLaboral.php` (`dtaDoc`) |
+| `anexoRecursoApelaciones.php` | `dtaAnexRec` | **Doc. Principal** · Doc. · Fecha · Referencia | `anexoDocRecursoApelaciones.php` (`dtaDoc`) |
+| `escritoSuprema.php` | `dtEsc` | Doc. · Doc. Físico · Tipo Documento · Cantidad · Observación del Documento · Docto. Físico | `docEscritosSuprema.php` (`dtaDoc`) |
+| `anexoDemandaUnificado.php` | `dtaAnex` | Doc. · Fecha · Referencia · Tipo | `unificado/documentos/docu.php` (`data`) |
+| `anexoEscritoUnificado.php` | `dtaAnex` | Folio · Documento · Trámite · Fecha Firma | `unificado/documentos/docu.php` (`data`) |
+
+**Los siete no comparten forma, y ése es el hallazgo.** No son la misma tabla con los
+encabezados traducidos: civil no publica folio, apelaciones antepone el documento principal del
+recurso, y suprema publica seis columnas que hablan de otra cosa (cuántos ejemplares hay y si
+el ejemplar físico se exige). Leer uno con el mapa de otro no da error: corre los campos y deja
+la fecha en la celda de la descarga.
+
+**Cuatro de los siete se midieron y no se exponen**, y la razón es siempre la misma: no hay de
+dónde sacar su referencia. Ofrecerlos sería una herramienta cuyo parámetro nadie puede
+conseguir.
+
+| Panel | Dónde vive su referencia |
 |---|---|
-| Encabezados | `Doc.`, `Folio`, `Fecha`, `Referencia` |
-| Descarga | Un formulario por fila a `docAnexoLaboral.php`, campo `dtaDoc` |
+| `anexoCausaCivil.php` | En la cabecera, bajo "Anexos de la causa": es del expediente, no de un escrito |
+| `anexoRecursoApelaciones.php` | En el panel `recursoApe`, que es otro panel del detalle y no está mapeado |
+| `anexoDemandaUnificado.php` | En el detalle de las causas penales, que se abre por `unificado` y no está mapeado |
+| `anexoEscritoUnificado.php` | ídem |
 
-**La descarga en sí no se ejecutó.** `docAnexoLaboral.php` se leyó del formulario de cada
-fila, igual que las cinco rutas civiles de la tabla de más arriba que siguen sin ejecutarse. Lo
-medido es el panel que las nombra.
-| `Referencia` | Texto libre escrito por quien acompañó el documento |
+Los dos de `unificado` apuntan además a una ruta de descarga distinta de todas las demás, con
+el campo `data` en vez de `dtaDoc`.
+
+Los tres que sí se ofrecen son los que una actuación entrega en `anexo_ruta`, o sea los que
+cuelgan de la celda `Anexo` de un folio de la Historia.
 
 **Lo que hacía invisible esta falta es que el folio SÍ entregaba un documento.** Las dos filas
 con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su `docuN.php`: quien
 pidiera el documento del folio recibía un PDF real y quedaba creyendo que tenía el folio
 completo. Un documento entregado tapa mejor lo que falta que una fila en blanco.
 
-**Las otras 17 rutas se rechazan a propósito.** Cada una nombra su ruta y su parámetro
+**Las doce que faltan se rechazan a propósito.** Cada una nombra su ruta y su parámetro
 distinto, y armarlas por analogía no da un error: da una página que no es la que se pidió. Está
 medido en este mismo canal, al buscar el listado de audios de audiencia por la ruta análoga a
 la de otro modal: respondió **200 con la tabla vacía**, o sea con la forma exacta de "este
 folio no tiene anexos". Por eso `parse_anexos` levanta cuando la tabla viene sin filas.
+
+No es que no se hayan intentado: se abrieron **dieciocho** causas buscándolas, nueve de
+cobranza y nueve penales, de 2024 y de 2026, y **ninguna ofrecía** ninguno de los doce que
+faltan. Lo que falta para medirlos no es tiempo de red sino una causa que los traiga.
+
+**La descarga en sí no se ejecutó.** Las rutas de la última columna se leyeron del formulario
+de cada fila, igual que las cinco rutas civiles de la tabla de más arriba que siguen sin
+ejecutarse. Lo medido es el panel que las nombra.
 
 ## Qué devuelve la georreferencia
 

@@ -326,15 +326,27 @@ HISTORIA_LABORAL = Historia(
     ),
 )
 
-#: Con qué función de JavaScript abre cada competencia el panel de anexos de un folio, y de
-#: cuál se saca la referencia con la que se pide. Sólo va la MEDIDA.
+#: A qué ruta lleva cada función de JavaScript que abre un panel de anexos, con el parámetro
+#: que espera. La clave es el nombre EXACTO de la función, que es lo que la celda de la
+#: Historia trae en su `onclick`.
 #:
-#: Las cinco publican una columna `Anexo`, así que la presencia de la columna no distingue
-#: nada acá y esto no se puede derivar de `COMPETENCIAS` como se deriva `GEORREFERENCIA`. Y no
-#: son la misma cosa con otro nombre: en suprema la celda llama a `escritoSuprema` y su icono
-#: se titula "Escrito", que puede ser el escrito mismo y no sus anexos. Poner esa referencia
-#: en un campo llamado `anexo_referencia` sería nombrar como medido algo que nadie miró.
-_MODAL_ANEXO: dict[str, str] = {"laboral": "anexoEscritoLaboral"}
+#: Va por función y no por competencia porque una competencia tiene varias: civil abre
+#: `anexoCausaCivil` y `anexoSolicitudCivil`, con parámetros distintos y en rutas distintas.
+#: Una tabla por competencia sólo podía servir una de las dos.
+#:
+#: El nombre se compara completo, sin prefijos: `anexoSolicitudCivil` y
+#: `anexoSolicitudCivilSII` se diferencian en el sufijo, y quedarse con el prefijo mandaría la
+#: referencia del SII a la ruta que no es. Eso no da error: da otro panel.
+#:
+#: Sólo van las MEDIDAS, una por una, contra causas reales. Las que el sitio nombra y nadie
+#: ejecutó no están: ofrecerlas sería publicar una capacidad que nadie verificó.
+_MODAL_ANEXO: dict[str, str] = {
+    "anexoCausaCivil": "anexoCausaCivil.php",
+    "anexoSolicitudCivil": "anexoCausaSolicitudCivil.php",
+    "anexoEscritoLaboral": "anexoEscritoLaboral.php",
+    "anexoRecursoApelaciones": "anexoRecursoApelaciones.php",
+    "escritoSuprema": "escritoSuprema.php",
+}
 
 #: Los litigantes de cada competencia. Medidos sobre las fixtures de las cinco.
 #:
@@ -578,12 +590,19 @@ class Actuacion(BaseModel):
         "Tenerla no garantiza que haya georreferencia: está medido que una de seis abre un "
         "panel que responde que no existe ninguna.",
     )
+    anexo_ruta: str | None = Field(
+        default=None,
+        description="Qué ruta de la plataforma entrega los anexos de este folio. Va junto con "
+        "`anexo_referencia` y hacen falta las dos, igual que para el documento: una misma "
+        "competencia abre paneles distintos según el trámite, y civil tiene dos con "
+        "parámetros distintos.",
+    )
     anexo_referencia: str | None = Field(
         default=None,
         description="Con qué se piden los anexos de este folio. NULO cuando el folio no trae "
-        "anexo, y también cuando lo trae y la competencia no está medida: ahí `tiene_anexo` "
+        "anexo, y también cuando lo trae por un panel que no está medido: ahí `tiene_anexo` "
         "queda en verdadero y esto en nulo, que significa que hay anexos y este servidor no "
-        "los puede traer. Medida sólo laboral.",
+        "los puede traer.",
     )
     documento_referencia: str | None = Field(
         default=None,
@@ -728,6 +747,27 @@ def _referencia_en_modal(celda, funcion: str) -> str | None:
     return None
 
 
+def _anexo_de_la_celda(celda) -> tuple[str | None, str | None]:
+    """Con qué se piden los anexos de un folio: su ruta y su referencia.
+
+    Mismo contrato que `_documento_de_la_celda` y por la misma razón: saber que HAY anexo no
+    sirve para pedirlo, y la ruta no se puede deducir de la competencia porque civil tiene dos.
+
+    El nombre de la función se compara COMPLETO. `anexoSolicitudCivil` es prefijo de
+    `anexoSolicitudCivilSII`, que vive en otra ruta, y quedarse con el prefijo mandaría la
+    referencia de una a la otra. Eso no devuelve un error: devuelve otro panel.
+
+    Una función que no esté medida deja la ruta en nulo y conserva la referencia en nulo
+    también: `tiene_anexo` sigue en verdadero, que significa "hay algo y este servidor no lo
+    puede traer".
+    """
+    for elemento in celda.iter():
+        m = _REFERENCIA_EN_MODAL.match(elemento.get("onclick") or "")
+        if m and (ruta := _MODAL_ANEXO.get(m.group(1))):
+            return ruta, m.group(2)
+    return None, None
+
+
 def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
     """Con qué se pide el documento de una actuación: su ruta y su referencia.
 
@@ -785,9 +825,7 @@ def parse_historia(
             "'no hubo actuaciones'."
         )
     actuaciones = [
-        _fila_a_actuacion(
-            celdas, cuaderno, spec.historia.columnas, _MODAL_ANEXO.get(competencia.lower())
-        )
+        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
         for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
     ]
 
@@ -809,10 +847,7 @@ def parse_historia(
 
 
 def _fila_a_actuacion(
-    celdas: list,
-    cuaderno: str = "",
-    columnas: tuple[str, ...] = HISTORIA_CIVIL.columnas,
-    modal_anexo: str | None = None,
+    celdas: list, cuaderno: str = "", columnas: tuple[str, ...] = HISTORIA_CIVIL.columnas
 ) -> Actuacion:
     txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(columnas)}
 
@@ -840,6 +875,9 @@ def _fila_a_actuacion(
         diligencia = desde_desc
 
     documento = _documento_de_la_celda(celdas[columnas.index("doc")])
+    anexo = (
+        _anexo_de_la_celda(celdas[columnas.index("anexo")]) if "anexo" in columnas else (None, None)
+    )
     return Actuacion(
         folio=txt["folio"],
         # `etapa` y `georref` no existen en todas: suprema no publica ninguna de las dos.
@@ -882,14 +920,8 @@ def _fila_a_actuacion(
             if "anexo" in columnas
             else False
         ),
-        # Sólo donde el nombre de la función está medido. Aceptar cualquier llamada entregaría
-        # la de suprema, que llama a otra y puede no ser lo mismo, con el nombre del campo
-        # afirmando que sí lo es.
-        anexo_referencia=(
-            _referencia_en_modal(celdas[columnas.index("anexo")], modal_anexo)
-            if modal_anexo and "anexo" in columnas
-            else None
-        ),
+        anexo_ruta=anexo[0],
+        anexo_referencia=anexo[1],
         documento_ruta=documento[0],
         documento_referencia=documento[1],
     )
@@ -1528,11 +1560,17 @@ class Anexo(BaseModel):
 
     Que el folio SÍ entregue un documento por el otro canal es lo que hacía invisible esta
     falta: una respuesta con documento se lee como completa mucho mejor que una fila en blanco.
+
+    Los campos que vienen en nulo dependen del panel: cada competencia publica columnas
+    distintas y no son las mismas cinco con otro nombre. Civil no publica folio, suprema no
+    publica fecha y en cambio dice cuántos ejemplares hay y si el documento físico se exige.
+    Un nulo significa que ESE panel no publica la columna, no que el dato no exista.
     """
 
-    folio: str = Field(
-        description="Folio de la causa al que pertenece el anexo. Es el mismo número que trae "
-        "la actuación, así que sirve para volver a ubicarla en la Historia."
+    folio: str | None = Field(
+        default=None,
+        description="Folio de la causa al que pertenece el anexo, para volver a ubicarlo en "
+        "la Historia. Sólo el panel de escritos de laboral lo publica.",
     )
     fecha: date | None = Field(
         default=None,
@@ -1541,8 +1579,23 @@ class Anexo(BaseModel):
     )
     descripcion: str = Field(
         default="",
-        description="Lo que el sitio rotula `Referencia`: qué es el documento, escrito por "
-        "quien lo acompañó. Ej: 'Pasajes aéreos'. Es texto libre, no una clasificación.",
+        description="Qué es el documento, escrito por quien lo acompañó. Ej: 'Pasajes aéreos'. "
+        "Es texto libre, no una clasificación. Sale de la columna `Referencia`, y en suprema "
+        "de `Observación del Documento`, que es la que cumple ese papel ahí.",
+    )
+    tipo: str | None = Field(
+        default=None,
+        description="Cómo clasifica el sitio el documento. Ej: 'Anexo Escrito'. Sólo suprema "
+        "publica la columna.",
+    )
+    cantidad: str | None = Field(
+        default=None,
+        description="Cuántos ejemplares declara el sitio, tal cual lo emite. Sólo suprema.",
+    )
+    documento_fisico: str | None = Field(
+        default=None,
+        description="Lo que suprema publica en `Docto. Físico`, sin interpretar. Medido: 'No "
+        "Requerido'. Sólo suprema publica la columna.",
     )
     documento_ruta: str | None = Field(
         default=None,
@@ -1557,14 +1610,58 @@ class Anexo(BaseModel):
     )
 
 
-#: Los encabezados del panel de anexos, medidos el 22-08-2026 sobre `T-196-2026`. Se validan
-#: por cantidad y posición como los del detalle, porque el mapeo también es posicional: si el
-#: sitio inserta una columna, `Folio` cae en la celda de la descarga.
-_ENCABEZADOS_ANEXO = ("doc.", "folio", "fecha", "referencia")
+#: Cómo se lee el panel de cada ruta de anexo medida. La clave es la ruta, porque es lo que la
+#: celda de la Historia entrega en `anexo_ruta`.
+#:
+#: **No comparten forma.** Medidos el 22 de agosto de 2026, uno por uno, contra causas reales:
+#: civil trae tres columnas y no publica folio, laboral cuatro con folio, apelaciones agrega
+#: `Doc. Principal` adelante y suprema publica seis que no se parecen a ninguna de las otras.
+#: Leer una con el mapa de otra corre los campos, que es como la fecha termina en la celda de
+#: la descarga.
+_PANELES_ANEXO: dict[str, Panel] = {
+    "anexoCausaCivil.php": Panel(
+        panel="anexoCausaCivil.php",
+        columnas=("doc", "fecha", "descripcion"),
+        encabezados=("doc.", "fecha", "referencia"),
+    ),
+    "anexoCausaSolicitudCivil.php": Panel(
+        panel="anexoCausaSolicitudCivil.php",
+        columnas=("doc", "fecha", "descripcion"),
+        encabezados=("doc.", "fecha", "referencia"),
+    ),
+    "anexoEscritoLaboral.php": Panel(
+        panel="anexoEscritoLaboral.php",
+        columnas=("doc", "folio", "fecha", "descripcion"),
+        encabezados=("doc.", "folio", "fecha", "referencia"),
+    ),
+    "anexoRecursoApelaciones.php": Panel(
+        panel="anexoRecursoApelaciones.php",
+        # `Doc. Principal` es el documento del recurso mismo y no un anexo. En la fila medida
+        # viene vacía y sin formulario, así que no se ofrece: nunca se vio de qué ruta cuelga.
+        columnas=("doc_principal", "doc", "fecha", "descripcion"),
+        encabezados=("doc. principal", "doc.", "fecha", "referencia"),
+    ),
+    "escritoSuprema.php": Panel(
+        panel="escritoSuprema.php",
+        columnas=("doc", "doc_fisico", "tipo", "cantidad", "descripcion", "documento_fisico"),
+        encabezados=(
+            "doc.",
+            "doc. físico",
+            "tipo documento",
+            "cantidad",
+            "observación del documento",
+            "docto. físico",
+        ),
+    ),
+}
 
 
-def parse_anexos(html_modal: str) -> list[Anexo]:
-    """Lee el panel de anexos de UN folio.
+def parse_anexos(html_modal: str, ruta: str) -> list[Anexo]:
+    """Lee el panel de anexos de UN folio, con el mapa de la ruta que lo entregó.
+
+    La ruta la trae cada actuación en `anexo_ruta`. Sin ella no se puede leer el panel: los
+    cinco medidos publican columnas distintas, y elegir el mapa por competencia serviría uno
+    solo de los dos que tiene civil.
 
     Cero filas levanta, y esa es la diferencia con notificaciones y liquidaciones, donde la
     lista vacía es un estado real de la causa. Acá no lo es: este panel sólo se pide cuando la
@@ -1575,36 +1672,48 @@ def parse_anexos(html_modal: str) -> list[Anexo]:
     otro modal respondió 200 con la tabla vacía, que devuelta como lista se lee igual que
     "este folio no tiene anexos".
     """
+    spec = _PANELES_ANEXO.get(ruta)
+    if spec is None:
+        raise ValueError(
+            f"No está medido cómo se lee el panel {ruta!r}. Los medidos son: "
+            f"{', '.join(sorted(_PANELES_ANEXO))}. Leerlo con el mapa de otro correría los "
+            "campos, y la fecha caería en la celda de la descarga."
+        )
+
     doc = html.fromstring(html_modal)
     etree.strip_elements(doc, etree.Comment, with_tail=False)
 
     tablas = doc.xpath("//table")
     if not tablas:
         raise EstructuraInesperada(
-            "El panel de anexos no trae ninguna tabla. La estructura del sitio cambió."
+            f"El panel {ruta!r} no trae ninguna tabla. La estructura del sitio cambió."
         )
     encabezados = [" ".join(th.text_content().split()).lower() for th in tablas[0].xpath(".//th")]
-    _validar_encabezados(encabezados, _ENCABEZADOS_ANEXO, "anexos")
+    _validar_encabezados(encabezados, spec.encabezados, ruta)
 
     anexos = []
     for fila in tablas[0].xpath(".//tr"):
         celdas = _celdas(fila)
-        if len(celdas) < len(_ENCABEZADOS_ANEXO):
+        if len(celdas) < len(spec.columnas):
             continue
-        ruta, referencia = _documento_de_la_celda(celdas[0])
+        txt = {c: " ".join(celdas[i].text_content().split()) for i, c in enumerate(spec.columnas)}
+        documento = _documento_de_la_celda(celdas[spec.columnas.index("doc")])
         anexos.append(
             Anexo(
-                folio=" ".join(celdas[1].text_content().split()),
-                fecha=_fecha(" ".join(celdas[2].text_content().split())),
-                descripcion=" ".join(celdas[3].text_content().split()),
-                documento_ruta=ruta,
-                documento_referencia=referencia,
+                folio=txt.get("folio"),
+                fecha=_fecha(txt.get("fecha", "")),
+                descripcion=txt.get("descripcion", ""),
+                tipo=txt.get("tipo"),
+                cantidad=txt.get("cantidad"),
+                documento_fisico=txt.get("documento_fisico"),
+                documento_ruta=documento[0],
+                documento_referencia=documento[1],
             )
         )
 
     if not anexos:
         raise EstructuraInesperada(
-            "El panel de anexos trae encabezados y ninguna fila. Este panel sólo se pide "
+            f"El panel {ruta!r} trae encabezados y ninguna fila. Este panel sólo se pide "
             "cuando la actuación ofreció anexos, así que cero filas no significa que el folio "
             "no tenga: significa que la respuesta cambió o que se pidió otra ruta. Devolver "
             "una lista vacía diría que el escrito se acompañó sin documentos."

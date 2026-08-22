@@ -32,6 +32,7 @@ Lo que se decidió hacer con esto, y en qué orden, está en la {doc}`hoja de ru
 | Las cuatro capacidades nuevas, de punta a punta | 20 de agosto de 2026, **10 peticiones y todas 200**: 17 cortes, 24 tribunales en Concepción, el detalle de C-1156-2026 con su exhorto, y el documento del folio 9 (975.006 bytes, 1 página, sin capa de texto: un escaneo) |
 | La arista del exhorto, **resuelta y no recorrida** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán, y `listar_tribunales` sobre la corte 45 lo resuelve a código 145. Con eso la búsqueda es posible, pero **E-875-2026 no se consultó**: lo medido es que el dato que faltaba ya está, no que la causa de destino responda |
 | La georreferencia de una actuación | Ver la sección propia más abajo |
+| El detalle de las causas penales | Se abre por `unificado`, no por `penal`. Ver la sección propia más abajo |
 | El panel de anexos de un escrito, en laboral | Ver la sección propia más abajo |
 | El monitor de salas está en otro host y NO comparte cortafuegos | `salas.pjud.cl` responde `Server: Apache`, sin la cookie `TS<hex>` de F5 que sí traen la Oficina Judicial Virtual y el buscador de fallos |
 | Los códigos de tribunal y de corte | Ver la sección propia más abajo |
@@ -133,6 +134,66 @@ servidor expone.
 - **Causas reservadas.** No aparecen y no aparecerán.
 - **Expiración de referencias.** Caducan a los 30 minutos. El flujo cabe holgado, pero no hay
   manejo explícito de expiración a mitad de cadena.
+
+## Penal se lee, y no por la ruta que lleva su nombre
+
+Medido el 22 de agosto de 2026. Penal era la única competencia con cero paneles leídos, y la
+razón resultó no ser la que se suponía: **sus causas no se abren por `penal/`**.
+
+Cada fila del listado de penal llama a `detalleCausaPenalUnificado`, que hace POST a
+`unificado/modal/causaUnificado.php`. En el listado que se revisó fila por fila, **las cinco**
+la llaman; ninguna usa la ruta de `penal/`.
+
+Y responde: **nueve** causas abiertas así, de 2024 y de 2026, todas con 200, y las que se
+miraron panel por panel traían filas reales, con la cabecera llena. Consulta anónima, como el
+resto del sitio.
+
+:::{warning}
+**Pedirle el detalle a `penal/modal/causaPenal.php` responde 200 con una carcasa vacía.**
+
+Es la ruta que el nombre de la competencia sugiere, y fue la primera que se probó. Devolvió
+seis mil bytes con los cuatro paneles, sus encabezados completos... y cero filas en todos, con
+la cabecera en blanco: `RIT : --`, `RUC :`, `Caratulado:`.
+
+Leído sin desconfianza, eso dice "esta causa penal no tiene ninguna actuación, ninguna parte y
+ninguna notificación". Es el mismo falso negativo que ya había aparecido con el listado de
+audios y con los anexos, y por tercera vez lo produjo el instrumento y no la plataforma.
+
+Lo que lo destapó fue leer el `onclick` de la fila en vez de suponer por el nombre.
+:::
+
+Lo que publica el detalle de penal, con los encabezados tal como los emite:
+
+| Panel | Columnas |
+|---|---|
+| `historia` | Folio · Doc. · Anexo · Trámite · Desc. Trámite · Fec. Trámite · **Fec. Firma** · Estado |
+| `litigantes` | Participantes · Persona · Nombre o Razón Social |
+| `notificaciones` | Tipo Notificación · Estado Notificación · Fecha Notificación · Nombre · Estampado · Geo |
+| `relaciones` | Nombre · Materia · Estado Causa · Fecha Cambio Estado |
+
+Tres cosas para quien lo implemente, y ninguna se puede deducir de las otras competencias:
+
+**Los `id` de los paneles son genéricos.** `historia`, `litigantes`, `notificaciones`: sin
+sufijo de competencia, al revés que `historiaCiv`, `movimientoLab` o `notificacionCob`. Un
+mapeo que busque por `id` en la respuesta equivocada va a encontrar algo igual.
+
+**Los litigantes NO traen RUT.** Las otras cinco competencias lo publican y acá la columna no
+existe: hay `Participantes`, `Persona` y `Nombre o Razón Social`. Un modelo compartido con las
+demás informaría el RUT en vacío, que se lee como "el sitio no lo tiene para esta persona".
+
+**`relaciones` no existe en ninguna otra.** Y su primera versión, la que devuelve
+`penal/modal/causaPenal.php`, publica `Nombre · Delito · Estado Relación · Fecha Cambio
+Estado`: la palabra `Delito` aparece ahí y no en la que sirve. Son dos tablas distintas con el
+mismo nombre.
+
+**No se implementa nada de esto todavía.** Lo que falta no es la ruta sino decidir qué se
+entrega: un expediente penal nombra imputados y víctimas, y las columnas que publica no son las
+mismas que las de una causa civil. Eso se decide antes de escribir el mapeo, no después.
+
+Sobre el reCAPTCHA, para que no se repita la conclusión equivocada: el JavaScript del sitio
+adjunta un token a las **seis** rutas de detalle, incluida la de civil, que este proyecto lee
+sin ninguno desde el principio. O sea el token que aparece en el código no es lo que impide
+leer penal, y decir que penal está "detrás de un captcha" sería afirmar de más.
 
 ## Jurisprudencia: qué buscador está medido
 

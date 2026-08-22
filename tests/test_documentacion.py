@@ -639,6 +639,49 @@ def test_lo_medido_del_canal_de_audio_no_se_pierde():
         )
 
 
+def test_lo_medido_de_penal_no_se_pierde():
+    """Penal se lee, y no por la ruta que lleva su nombre.
+
+    Lo caro de esa medición tampoco son las cifras: es que `penal/modal/causaPenal.php`
+    responde 200 con los cuatro paneles, sus encabezados y CERO filas. Quien lo mida de nuevo
+    sin esta advertencia va a concluir que las causas penales no publican nada, que es la misma
+    forma del falso negativo que ya apareció con los audios y con los anexos.
+
+    Y los tres datos que un mapeo futuro no puede deducir de las otras competencias: los `id`
+    genéricos, que sus litigantes no traen RUT, y que `relaciones` existe con dos formas
+    distintas según la ruta.
+    """
+    pagina = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    for afirmacion in (
+        "detalleCausaPenalUnificado",
+        "unificado/modal/causaUnificado.php",
+        "**Pedirle el detalle a `penal/modal/causaPenal.php` responde 200 con una carcasa vacía.**",
+        "Los `id` de los paneles son genéricos",
+        "Los litigantes NO traen RUT",
+        "`relaciones` no existe en ninguna otra",
+    ):
+        assert afirmacion in pagina, (
+            f"`verificacion.md` dejó de decir {afirmacion!r} sobre el detalle de penal"
+        )
+
+    # Y la corrección sobre el captcha, que es lo que impide repetir una conclusión errónea:
+    # el token está en el JavaScript de las SEIS rutas de detalle, incluida la de civil, que
+    # este proyecto lee sin ninguno.
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    con_token = {
+        m.group(1)
+        for m in re.finditer(r"url\s*:\s*'[^']*?/(\w+/modal/causa\w+\.php)'", js)
+        if "tokenCaptcha" in js[m.start() : m.start() + 400]
+    }
+    assert len(con_token) > 1, (
+        f"sólo {sorted(con_token)} adjunta token de captcha en el JavaScript. Si de verdad "
+        "quedara una sola, la afirmación de la página sobre el captcha hay que reescribirla"
+    )
+    assert "civil/modal/causaCivil.php" in con_token, (
+        "la página dice que el token aparece hasta en la ruta de civil, que se lee sin ninguno"
+    )
+
+
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):
     """La referencia afirma que todas están anotadas como solo lectura. Es verificable, así
     que se verifica en vez de confiar en que siga siendo cierto."""

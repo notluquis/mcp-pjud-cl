@@ -18,6 +18,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Queda medido el detalle de las causas penales: se abre por `unificado`, no por la ruta que
+  lleva el nombre de la competencia, y ésa responde 200 con los paneles vacíos. Todavía no se
+  expone; la medición y sus trampas quedan en la documentación de verificación.
+
+### Agregado
+
 - `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
   distinto del de la resolución y hasta ahora no se podían pedir. Sólo laboral: las otras
   diecisiete rutas de anexo del sitio siguen sin ejecutarse y se rechazan.

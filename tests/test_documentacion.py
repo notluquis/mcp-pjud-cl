@@ -2744,6 +2744,9 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
         f"{sorted(culpables)} sigue afirmando que la Historia de cobranza nunca nombra "
         f"receptores, y la nombra {len(nombradas)} veces: {sorted(set(nombradas))}. Leerla de "
         "ahí daría una lista parcial, no una vacía."
+    )
+
+
 def test_la_comparacion_cuenta_las_herramientas_que_la_pagina_lista():
     """La cifra se escribió a mano y quedó vieja al agregar la quinta.
 

@@ -34,6 +34,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- La referencia enumeraba menos paneles de los que el detalle trae, y decía que los escritos no
+  están medidos cuando ya se leen. Ahora un guardia la compara contra los campos del modelo.
 - Tres nombres reales de personas seguían en las fixtures versionadas, invisibles para los
   cuatro guardias porque venían en mayúscula y minúscula o con un sufijo entre paréntesis. Se
   reemplazaron, y hay un guardia nuevo que mira la COLUMNA en vez de la forma del texto.

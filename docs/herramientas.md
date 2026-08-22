@@ -292,14 +292,18 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 
 ## `obtener_detalle_causa`
 
-Historia, litigantes, notificaciones, liquidaciones, diligencias, materias, los dos lados
-del exhorto y la causa de la que subió el recurso, leídos de **una sola cadena de
-peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra
-por defecto.
+Historia, litigantes, notificaciones, liquidaciones, diligencias, materias, escritos por
+resolver, los dos lados del exhorto y la causa de la que subió el recurso, leídos de **una sola
+cadena de peticiones**. Recorre todos los cuadernos, no sólo el que la plataforma muestra por
+defecto.
 
-**No es el expediente completo.** El detalle publica más paneles de los que este servidor sabe
-leer: los escritos todavía no están medidos, así que su ausencia acá
+**No es el expediente completo.** El detalle publica cinco paneles que este servidor todavía no
+sabe leer, y cambian por competencia: en laboral las liquidaciones y los escritos pendientes, en
+apelaciones los exhortos y la incompetencia, y en suprema las causas agregadas. Su ausencia acá
 NO significa que la causa no los tenga.
+
+Están sin mapear por falta de datos y no de trabajo: en cincuenta y cinco causas abiertas a
+propósito para buscarlos, ninguno trajo una sola fila.
 
 :::{warning}
 **La columna `Anexo` es un segundo canal de documentos y no se puede pedir.** Cada actuación

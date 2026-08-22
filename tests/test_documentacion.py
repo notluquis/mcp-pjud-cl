@@ -697,6 +697,48 @@ def test_lo_medido_del_canal_de_audio_no_se_pierde():
         )
 
 
+def test_la_referencia_nombra_los_paneles_que_el_detalle_sí_trae():
+    """La frase que abre la sección enumera lo que llega, y se quedó corta dos veces seguidas.
+
+    Es lo primero que lee quien evalúa si la herramienta le sirve, y cada panel nuevo entró con
+    su fila en la tabla generada mientras esa frase seguía diciendo lo de antes. Los nombres
+    salen de los campos del modelo, no de una lista escrita al lado.
+    """
+    seccion = HERRAMIENTAS.split("## `obtener_detalle_causa`")[1].split("\n## ")[0]
+    # Normalizado: la frase va envuelta, y "escritos por resolver" cae partido en dos líneas.
+    apertura = " ".join(seccion.split("\n\n")[1].split()).lower()
+
+    # Los campos que son paneles, con la palabra que la prosa usa para nombrarlos. Los que no
+    # son paneles quedan fuera con su razón.
+    palabras = {
+        "historia": "historia",
+        "litigantes": "litigantes",
+        "notificaciones": "notificaciones",
+        "liquidaciones": "liquidaciones",
+        "diligencias": "diligencias",
+        "materias": "materias",
+        "escritos_pendientes": "escritos por resolver",
+        "exhortos": "exhorto",
+        "piezas_exhorto": "exhorto",
+        "causa_de_origen": "causa de la que subió el recurso",
+    }
+    fuera = {
+        "causa_encontrada",  # dice si la búsqueda dio con el rol, no es un panel
+        "causa_es_exhorto",  # sale de la cabecera, y tiene su propia explicación abajo
+        "audio_referencia",  # es con qué pedir otra herramienta, y tiene su párrafo aparte
+    }
+    sin_declarar = sorted(set(DetalleCausa.model_fields) - set(palabras) - fuera)
+    assert not sin_declarar, (
+        f"campos nuevos en `DetalleCausa` que este guardia no sabe si son paneles: "
+        f"{sin_declarar}. Agrégalos con la palabra que la prosa usa, o a `fuera` con su razón"
+    )
+    faltan = sorted({p for _campo, p in palabras.items() if p not in apertura})
+    assert not faltan, (
+        f"la frase que abre `obtener_detalle_causa` no nombra {faltan}, que la respuesta sí "
+        "trae. Es lo primero que se lee para saber si la herramienta sirve"
+    )
+
+
 def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
     """La respuesta combinada no es el expediente, y su contrato tiene que decirlo.
 

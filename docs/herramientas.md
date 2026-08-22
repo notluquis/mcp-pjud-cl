@@ -244,7 +244,8 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `georreferencia_referencia` | str \| null | Con qué se pide la georreferencia de esta actuación |
 | `tiene_documento` | bool | Si la columna `Doc.` ofrece algo. `true` NO garantiza que se pueda traer: con `documento_ruta` en nulo, la celda abre un modal de JavaScript cuyo endpoint no está medido |
 | `tiene_anexo` | bool | Si la columna `Anexo` ofrece algo. Segundo canal de documentos, distinto de `Doc.`. Se puede pedir con `obtener_anexos_escrito` sólo donde `anexo_referencia` viene con valor. `false` significa ausente sólo donde la competencia publica la columna |
-| `anexo_referencia` | str \| null | Con qué se piden los anexos de este folio. Nulo cuando el folio no trae anexo, y también cuando lo trae y su competencia no está medida: ahí `tiene_anexo` queda en `true` y esto en nulo |
+| `anexo_ruta` | str \| null | A qué panel se piden los anexos de este folio. Va junto con `anexo_referencia`: una misma competencia abre paneles distintos según el trámite, y civil tiene dos |
+| `anexo_referencia` | str \| null | Con qué se piden. Nulo cuando el folio no trae anexo, y también cuando lo trae por un panel que no está medido: ahí `tiene_anexo` queda en `true` y esto en nulo |
 | `documento_ruta` | str \| null | Qué ruta de la plataforma lo entrega. Cada competencia usa la suya |
 | `documento_referencia` | str \| null | Con qué se pide ese documento. Sin ella se sabe que existe y no cuál es |
 
@@ -431,8 +432,9 @@ Los documentos que un escrito acompañó. Son un canal **distinto** del de la re
 
 | Parámetro | Qué es |
 |---|---|
-| `anexo_referencia` | Lo entrega cada actuación. Cuando viene nula, o el folio no ofrece anexos, o su competencia no está medida |
-| `competencia` | Sólo aquellas cuya ruta está verificada contra la plataforma |
+| `anexo_ruta` | Lo entrega cada actuación, y se usa tal cual. Civil tiene dos paneles con parámetros distintos |
+| `anexo_referencia` | Lo entrega cada actuación. Cuando viene nula, o el folio no ofrece anexos, o su panel no está medido |
+| `competencia` | Sólo aquellas con al menos un panel verificado contra la plataforma |
 
 :::{important} Un folio con documento puede tener otro escondido al lado
 La Historia publica **dos** columnas de documentos por folio: `Doc.` trae la resolución o el
@@ -446,11 +448,17 @@ documento entregado, no.
 
 | Campo | Tipo | Qué es |
 |---|---|---|
-| `folio` | str | El mismo folio de la actuación, para volver a ubicarla en la Historia |
+| `folio` | str \| null | El folio de la actuación. Sólo el panel de escritos de laboral lo publica |
 | `fecha` | date \| null | La que publica el panel. **No** corre plazos: eso lo hace `fecha_diligencia` |
-| `descripcion` | str | Lo que el sitio rotula `Referencia`: qué es el documento, escrito por quien lo acompañó |
+| `descripcion` | str | Qué es el documento, escrito por quien lo acompañó. En suprema sale de `Observación del Documento` |
+| `tipo` | str \| null | Cómo lo clasifica el sitio. Ej: 'Anexo Escrito'. Sólo suprema |
+| `cantidad` | str \| null | Cuántos ejemplares declara. Sólo suprema |
+| `documento_fisico` | str \| null | Lo que suprema publica en `Docto. Físico`. Medido: 'No Requerido' |
 | `documento_ruta` | str \| null | Con qué ruta se pide |
 | `documento_referencia` | str \| null | La referencia opaca con la que se pide |
+
+Un nulo significa que **ese panel no publica la columna**, no que el dato no exista: los cinco
+paneles medidos no comparten forma.
 
 Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento`. Esa
 ruta de descarga se leyó del formulario de cada fila y **no se ha ejecutado**: lo medido es el

@@ -30,6 +30,7 @@ import yaml
 
 from mcp_pjud.client import (
     ANEXOS,
+    ANEXOS_MEDIDOS_SIN_EXPONER,
     CORTES_MEDIDAS,
     DOCUMENTOS,
     INTERVALO_MINIMO,
@@ -46,7 +47,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import _ENCABEZADOS_ANEXO, COMPETENCIAS, parse_historia
+from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -191,9 +192,10 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     # el servidor ya ofrece.
     js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
     rutas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
-    assert f"**{len(rutas) - len(ANEXOS)} de las {len(rutas)} rutas de anexo**" in lista, (
-        f"el sitio nombra {len(rutas)} rutas de anexo, {len(ANEXOS)} están medidas y la lista "
-        "dice otra cosa"
+    medidas = {r for paneles in ANEXOS.values() for r in paneles} | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    assert f"**{len(rutas - medidas)} de las {len(rutas)} rutas de anexo**" in lista, (
+        f"el sitio nombra {len(rutas)} rutas de anexo, {len(rutas & medidas)} están medidas y "
+        "la lista dice otra cosa"
     )
 
     # Y el detalle de apelaciones dice cuántos paneles publica.
@@ -210,35 +212,40 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     )
 
 
-def test_la_seccion_de_anexos_nombra_la_ruta_y_los_campos_que_el_codigo_usa():
-    """Lo que la página afirma sobre el canal medido sale del código, no de la memoria.
+def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
+    """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 
-    Son cuatro datos que se pueden derivar: la ruta del panel, el campo con que se pide, la
-    ruta de descarga de cada fila y su campo. Escribirlos a mano acá los deja envejecer justo
-    donde alguien va a buscarlos para repetir la medición cuando la plataforma cambie.
+    Son siete paneles con cuatro formas distintas, y esa tabla es lo que alguien va a leer para
+    repetir la medición cuando la plataforma cambie. Escribirla a mano la deja envejecer justo
+    ahí, y de a un panel por vez, que es como no se nota.
     """
     pagina = _texto(RAIZ / "docs" / "verificacion.md")
     seccion = pagina.split("## El segundo canal de documentos")
     assert len(seccion) == 2, "la sección del canal de anexos desapareció"
     seccion = seccion[1].split("\n## ")[0]
 
-    ruta, campo = ANEXOS["laboral"]
-    assert f"`{ruta}`" in seccion, f"la sección no nombra {ruta!r}, que es la ruta que se pide"
-    assert f"`{campo}`" in seccion, f"la sección no nombra {campo!r}, el campo con que se pide"
+    medidos = {r: campo for paneles in ANEXOS.values() for r, campo in paneles.items()}
+    medidos.update(ANEXOS_MEDIDOS_SIN_EXPONER)
+    for ruta, campo in medidos.items():
+        assert f"`{ruta}`" in seccion, f"la sección no nombra el panel {ruta!r}"
+        assert f"`{campo}`" in seccion, f"la sección no dice con qué campo se pide {ruta!r}"
 
-    # La de descarga sale de `DOCUMENTOS` y no de una lista escrita al lado: es la misma tabla
-    # que `obtener_documento` consulta, así que si una deja de estar la otra se entera.
-    descargas = [r for r in DOCUMENTOS["laboral"] if "anexo" in r.lower()]
-    assert len(descargas) == 1, f"laboral declara {descargas} rutas de descarga de anexo"
-    assert f"`{descargas[0]}`" in seccion, "la sección no dice con qué ruta se descarga el anexo"
-    assert f"`{DOCUMENTOS['laboral'][descargas[0]]}`" in seccion, (
-        "la sección no dice con qué campo se pide la descarga"
-    )
+    # Las columnas también: son lo que distingue un panel de otro, y la afirmación de la página
+    # es justamente que NO comparten forma.
+    for ruta, spec in _PANELES_ANEXO.items():
+        assert f"`{ruta}`" in seccion, f"{ruta!r} está mapeado y la sección no lo nombra"
+        fila = next(li for li in seccion.splitlines() if f"`{ruta}`" in li)
+        for encabezado in spec.encabezados:
+            assert encabezado in fila.lower(), (
+                f"la fila de {ruta!r} no nombra su columna {encabezado!r}, y el mapeo es posicional"
+            )
 
-    for encabezado in _ENCABEZADOS_ANEXO:
-        assert f"`{encabezado}`" in seccion.lower(), (
-            f"la sección no nombra la columna {encabezado!r}, y el mapeo es posicional"
-        )
+    # Y la ruta de descarga de cada competencia, que sale de `DOCUMENTOS`.
+    for competencia in ANEXOS:
+        descargas = [
+            r for r in DOCUMENTOS[competencia] if "anexo" in r.lower() or "escrito" in r.lower()
+        ]
+        assert descargas, f"{competencia} no declara ninguna ruta de descarga de anexo"
 
 
 def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():

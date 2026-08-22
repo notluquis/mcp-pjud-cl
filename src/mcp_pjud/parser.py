@@ -1298,10 +1298,10 @@ class PiezaExhorto(BaseModel):
     tiene_anexo: bool = Field(
         default=False,
         description="Si la columna `Anexo` de la pieza ofrece algo. Es el mismo canal que "
-        "`Actuacion.tiene_anexo`, pero acá NO se puede pedir: las piezas del exhorto sólo "
-        "están medidas en civil, y de civil no está verificado con qué se abre ese panel. Por "
-        "eso esta pieza no trae referencia de anexo y la actuación laboral sí. La pieza puede "
-        "traer su documento principal y un anexo aparte.",
+        "`Actuacion.tiene_anexo`, pero acá NO se puede pedir: las piezas sólo están medidas "
+        "en civil, y de las rutas de anexo sólo se ejecutó la de laboral. Por eso esta pieza "
+        "no trae referencia de anexo y la actuación laboral sí. La pieza puede traer su "
+        "documento principal y un anexo aparte.",
     )
     documento_ruta: str | None = Field(
         default=None,
@@ -1537,8 +1537,9 @@ class Anexo(BaseModel):
     )
     documento_ruta: str | None = Field(
         default=None,
-        description="Qué ruta de la plataforma entrega este anexo. NULO si la fila no trae "
-        "formulario de descarga.",
+        description="Qué ruta de la plataforma entrega este anexo. Sale del formulario de la "
+        "fila, y esa ruta NO se ha ejecutado: lo medido es el panel que la nombra. NULO si la "
+        "fila no trae formulario.",
     )
     documento_referencia: str | None = Field(
         default=None,

@@ -11,6 +11,7 @@ import pytest
 from mcp_pjud import client
 from mcp_pjud.client import (
     BASE,
+    DOCUMENTOS,
     INTERVALO_MINIMO,
     MODULOS,
     RAFAGA_MAXIMA,
@@ -20,6 +21,7 @@ from mcp_pjud.client import (
 from mcp_pjud.parser import (
     COMPETENCIAS,
     EstructuraInesperada,
+    parse_anexos,
     parse_historia,
     parse_resultados,
 )
@@ -1980,6 +1982,22 @@ def test_los_anexos_se_piden_a_la_ruta_medida_con_su_propio_campo(monkeypatch):
     assert "laboral/modal/anexoEscritoLaboral.php" in url, url
     assert b"dtaAnex=REF-ANEXO" in contenido, contenido
     assert len(anexos) == 2
+
+
+def test_la_ruta_de_descarga_del_anexo_es_una_que_obtener_documento_acepta():
+    """Las dos tablas tienen que casar o el anexo queda igual de inalcanzable que antes.
+
+    `obtener_documento` sólo acepta rutas de `DOCUMENTOS`, así que si la del anexo no está ahí,
+    el panel entrega con qué pedirlo y la herramienta que lo pide lo rechaza. Nada más lo mira:
+    el parser no consulta esa tabla y el cliente no consulta el panel.
+    """
+    anexos = parse_anexos((FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8"))
+    rutas = {a.documento_ruta for a in anexos}
+    assert rutas, "el panel dejó de traer rutas de descarga"
+    for ruta in rutas:
+        assert ruta in DOCUMENTOS["laboral"], (
+            f"el panel de anexos entrega {ruta!r} y `obtener_documento` no la acepta"
+        )
 
 
 def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monkeypatch):

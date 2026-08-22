@@ -452,7 +452,9 @@ documento entregado, no.
 | `documento_ruta` | str \| null | Con qué ruta se pide |
 | `documento_referencia` | str \| null | La referencia opaca con la que se pide |
 
-Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento`.
+Entrega con qué pedir cada anexo, no el anexo: para traerlo se usa `obtener_documento`. Esa
+ruta de descarga se leyó del formulario de cada fila y **no se ha ejecutado**: lo medido es el
+panel que la nombra.
 
 Cuesta **una petición por folio**, con su intervalo. Se pide del folio concreto que importa,
 nunca de barrido.

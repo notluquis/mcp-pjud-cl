@@ -322,6 +322,10 @@ escrito y el formulario de descarga de cada uno.
 |---|---|
 | Encabezados | `Doc.`, `Folio`, `Fecha`, `Referencia` |
 | Descarga | Un formulario por fila a `docAnexoLaboral.php`, campo `dtaDoc` |
+
+**La descarga en sí no se ejecutó.** `docAnexoLaboral.php` se leyó del formulario de cada
+fila, igual que las cinco rutas civiles de la tabla de más arriba que siguen sin ejecutarse. Lo
+medido es el panel que las nombra.
 | `Referencia` | Texto libre escrito por quien acompañó el documento |
 
 **Lo que hacía invisible esta falta es que el folio SÍ entregaba un documento.** Las dos filas

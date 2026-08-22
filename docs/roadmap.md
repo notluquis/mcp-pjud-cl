@@ -133,16 +133,17 @@ fila, así que si el sitio los repite en cada uno llegarían dos veces.
   con detalle mapeado
 - `notificacionesCiv`: con su propio estado y su propia fecha de trámite. **Hecho**
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
-- `escritosCiv`: los presentados, y cuáles siguen por resolver. **Falta**, y es el hueco que
-  queda: los documentos que un escrito acompañó ya se leen por el canal de anexos, pero el
-  listado de escritos con su estado sigue sin mapear
+- `escritosCiv`: **hecho**, y resultó ser otra cosa de la que esta página suponía. No es el
+  listado de los escritos presentados: el sitio rotula la pestaña "Escritos por Resolver", o
+  sea es la COLA de lo que espera proveído. Por eso las causas viejas lo traen vacío con
+  escritos de sobra en su Historia, y una causa de esta semana trae dos
 - `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
 - `piezasExhortoCiv`: el exhorto visto desde el otro lado. **Hecho**, con un campo aparte que
   dice si la causa es un exhorto. Ver abajo
 
-Lo que falta importa más de lo que parece: mientras el de escritos no esté, la respuesta del
-detalle NO es el expediente completo, y su contrato tiene que decirlo para que nadie lea la
-ausencia de un escrito como que la causa no lo tiene.
+La respuesta del detalle sigue sin ser el expediente completo, y su contrato lo dice desde la
+0.10.0: quedan paneles sin leer y son distintos en cada competencia. Que el de escritos ya esté
+no cambia esa advertencia, la acorta.
 
 Los dos lados del exhorto están medidos y la tabla vive en {doc}`verificacion`.
 

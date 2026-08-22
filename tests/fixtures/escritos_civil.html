@@ -1,0 +1,56 @@
+<div class="tab-pane fade" id="escritosCiv"> <!-- INICIO PANEL -->
+							<div class="panel panel-default">
+								
+								<div class="table-responsive">
+
+									<table class="table table-bordered table-striped table-hover">
+										<thead>
+											<tr>
+												<th>Doc.</th>
+												<th>Anexo</th>
+												<th>Fecha de Ingreso</th>
+												<th>Tipo Escrito</th>
+												<th>Solicitante</th>
+											</tr>												
+										</thead>
+										<tbody>
+											<tr>
+												<td align="center">
+													<form name="formAneEsc" action="ADIR_871/civil/documentos/docuN.php" method="get" target="anes1">
+														<input type="hidden" name="dtaDoc" value="referencia-ficticia-001"/>
+														<a href="#" onclick="$(this).closest(&quot;form&quot;).submit();" title="Descargar Documento" role="img">
+															<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"/>
+														</a>
+														
+													</form>
+												</td>
+												<td align="center">
+													<a data-toggle="modal" href="#modalAnexoSolEscritoCivil" title="Anexo solicitud escrito" role="img" onclick="anexoSolicitudCivilEscrit('referencia-ficticia-002');">
+                          <i class="fa fa-folder-open fa-lg" aria-hidden="true" style="cursor:pointer; color:#D7B926"/></a>
+												</td>
+												<td>20/08/2026</td>
+												<td>Designación de Martillero</td>
+												<td>Demandante                                        </td>		
+											</tr>
+											<tr>
+												<td align="center">
+													<form name="formAneEsc" action="ADIR_871/civil/documentos/docuN.php" method="get" target="anes2">
+														<input type="hidden" name="dtaDoc" value="referencia-ficticia-003"/>
+														<a href="#" onclick="$(this).closest(&quot;form&quot;).submit();" title="Descargar Documento" role="img">
+															<i title="Descargar Documento" class="fa fa-file-pdf-o fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"/>
+														</a>
+														
+													</form>
+												</td>
+												<td align="center">
+												</td>
+												<td>20/08/2026</td>
+												<td>Ingreso Exhorto</td>
+												<td>Demandante                                        </td>		
+											</tr>
+										</tbody>
+									</table>
+												
+								</div>
+							</div>
+						</div> 

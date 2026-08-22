@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.9.0] - 2026-08-22
+
 ### Agregado
 
 - Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
@@ -320,7 +322,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.8.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.9.0
 [0.8.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.8.0
 [0.7.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.7.0
 [0.6.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.6.0

@@ -318,7 +318,7 @@ diligencias del ministro de fe viven en un panel propio.
 Su tabla de Historia **sí nombra algunas**, y ésa es la trampa: tres filas dicen
 `Actuacion - Receptor`, sin tilde y con guion, y **ninguna trae fecha de diligencia**. Leerlas
 de ahí daría una lista de completitud **desconocida**: para saber si esas tres son todas
-habría que compararlas contra `diligenciaCob`, que este proyecto no lee. Y ninguna trae el
+habría que compararlas contra `diligenciaCob`. Y ninguna trae el
 dato que se busca. Además `TRAMITE_RECEPTOR` busca `actuación receptor`,
 así que ni siquiera las reconocería: hoy eso no importa porque la competencia se rechaza antes,
 y no se toca el marcador para no dejar una rama que no puede ejecutarse.
@@ -329,12 +329,16 @@ Están en `diligenciaCob`, que tiene estructura propia:
 Doc. Ida | Doc. Vta. | Estado Diligencia | RIT | RUC | Tipo Diligencia | Fecha Trámite | Destinatario | Responsable
 ```
 
-Dos cosas que hay que mirar antes de leerlo: si `Fecha Trámite` trae el formato de fecha doble
-como en civil, y qué significa `Responsable`, que probablemente identifica al receptor.
+Las dos preguntas que quedaban abiertas ya se contestaron. `Fecha Trámite` **no** trae el
+formato de fecha doble de civil: es una sola columna, y en la fila medida imprime el epoch, así
+que se entrega en nulo. Y `RIT` y `RUC` son de la causa **a la que la diligencia se dirige**,
+que no es necesariamente la consultada.
 
-Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver lo
-que la Historia produciría, que son esas tres filas sin fecha y sin saber si son todas. Es el mismo falso negativo que motivó el proyecto, y estuvo brevemente dentro
-de él.
+El panel ya se lee, y viaja en `diligencias` dentro del detalle de causa. Lo que
+sigue rechazándose es pedir esas filas como **actuaciones**: sin fecha de diligencia no son lo
+que `obtener_actuaciones_receptor` promete, y la Historia sólo produciría esas tres filas sin
+fecha y sin saber si son todas. Es el mismo falso negativo que motivó el proyecto, y estuvo
+brevemente dentro de él.
 
 ### El calendario de días hábiles: la pieza que falta para cerrar el círculo
 

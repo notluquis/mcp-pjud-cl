@@ -1395,6 +1395,10 @@ def test_un_panel_que_la_competencia_no_publica_viaja_en_nulo_y_no_vacio(monkeyp
 
     assert detalle.liquidaciones is None, "civil no liquida el crédito: eso es nulo, no vacío"
     assert detalle.materias is None, "civil no publica materias"
+    assert detalle.diligencias is None, (
+        "civil no publica el panel de diligencias del ministro de fe: la lista vacía diría que "
+        "no se practicó ninguna"
+    )
     assert detalle.notificaciones == [], (
         "civil SÍ publica el panel de notificaciones y esta causa no tiene ninguna: eso es "
         "una lista vacía, que es una respuesta, y no un nulo"
@@ -1690,6 +1694,38 @@ def test_la_pregunta_del_exhorto_no_se_responde_en_una_competencia_sin_medir(mon
     assert detalle.causa_es_exhorto is None
     assert detalle.piezas_exhorto is None
     assert detalle.liquidaciones, "y el resto de la lectura sigue funcionando"
+
+
+def test_el_detalle_de_cobranza_trae_las_diligencias_del_ministro_de_fe(monkeypatch):
+    """Es el panel por el que cobranza tiene sentido en este proyecto, y viaja en el detalle.
+
+    Sin la línea que lo junta, el campo llega en NULO y eso significa otra cosa: que la
+    competencia no publica el panel. Cobranza lo publica, así que un nulo acá sería el falso
+    negativo del proyecto con otro nombre.
+
+    Y la fecha tiene que llegar nula por el otro motivo: el sitio imprime el epoch.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / "busqueda_rit_cobranza.html").read_text(encoding="utf-8")
+    cobranza = (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=cobranza)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("C", 9999, 2019, competencia="cobranza", tribunal=1200)
+
+    assert detalle.diligencias is not None, (
+        "cobranza publica `diligenciaCob`: el nulo diría que la competencia no lo publica"
+    )
+    (diligencia,) = detalle.diligencias
+    assert diligencia.estado == "cumplida"
+    assert diligencia.fecha_tramite is None, "el epoch del sitio no se entrega como fecha"
 
 
 # -- documentos ------------------------------------------------------------------

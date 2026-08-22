@@ -16,15 +16,34 @@
 #      protege nada.
 set -uo pipefail
 
-# El detector de push es lo más frágil de todo esto y ya falló una vez, por subcadena. Vive
-# en una función para poder probarlo, y los casos de `--probar` corren contra ESTA función y
-# no contra una copia del patrón pegada en otro archivo: una copia sólo prueba que la copia
-# funciona.
+# El detector de push es un PREFILTRO, no la autoridad, y conviene decirlo porque tres rondas
+# de revisión seguidas encontraron casos nuevos del mismo patrón (separadores entre comillas,
+# prefijos de entorno, `--tags`, otra rama). Analizar una línea de shell con una expresión
+# regular es un juego que no se gana.
+#
+# Quien decide es el estado del remoto: `HEAD == @{u}`. Si eso es cierto, el commit ESTÁ
+# publicado y su pull request de verdad necesita revisión, haya empujado ese comando o no. Un
+# falso positivo pide una revisión legítima antes de tiempo, y la marca por SHA acota el costo
+# a UNA por commit.
+#
+# Por eso el prefiltro se afina para los falsos NEGATIVOS, que son los que importan: un push
+# real que no se revisa. Los prefijos de entorno entran; `cd` y `-C` siguen fuera, porque ahí
+# el riesgo no es pedir de más sino pedir en el repositorio equivocado.
+#
+# Vive en una función para poder probarlo, y los casos de `--probar` corren contra ESTA
+# función y no contra una copia del patrón pegada en otro archivo: una copia sólo prueba que
+# la copia funciona.
 es_un_push() {
   # Un `cd` o un `-C` cambian de repositorio y el hook no puede saber a cuál: se rechazan.
   printf '%s' "$1" | grep -qE '(^|[;&|])[[:space:]]*cd[[:space:]]' && return 1
   printf '%s' "$1" | grep -qE 'git([[:space:]]+-c[[:space:]]+[^[:space:]]+)*[[:space:]]+-C[[:space:]]' && return 1
-  printf '%s' "$1" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)'
+  # `PREFIJO` cubre lo que puede ir delante de `git` sin cambiar de repositorio: `sudo`, `env`
+  # y asignaciones de entorno como `GIT_SSH_COMMAND=...`. Son push reales y quedaban fuera.
+  # El valor de la asignación puede venir entrecomillado y con espacios:
+  # `GIT_SSH_COMMAND="ssh -i /clave" git push` es un push real.
+  local ASIG='[A-Za-z_][A-Za-z0-9_]*=("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]*)[[:space:]]+'
+  local PREFIJO="(${ASIG}|sudo[[:space:]]+|env[[:space:]]+)*"
+  printf '%s' "$1" | grep -qE "(^|[;&|])[[:space:]]*${PREFIJO}git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|\$)"
 }
 
 if [[ "${1:-}" == "--probar" ]]; then
@@ -50,6 +69,9 @@ if [[ "${1:-}" == "--probar" ]]; then
   probar 1 'git log --oneline'
   probar 1 'gh pr view 81'
   probar 1 'git status'
+  probar 0 'GIT_SSH_COMMAND="ssh -i /k" git push'
+  probar 0 'env git push'
+  probar 0 'GIT_TRACE=1 sudo git push -f'
   # Estas dos NO se aceptan, y no es un descuido. El hook corre aparte y resuelve el
   # repositorio desde SU directorio, no desde donde ocurrió el push: con `cd /otro/repo` o
   # `git -C /otro/repo`, un push a otro repositorio publicaría el pedido en un pull request
@@ -58,11 +80,16 @@ if [[ "${1:-}" == "--probar" ]]; then
   probar 1 'git -C /otro/repo push'
   probar 1 'cd /otro/repo && git push'
   probar 1 'cd /x; git push'
+  # Estos dos SE ACEPTAN a propósito, y no es un descuido. `echo '"'"'; git push '"'"'` no empuja
+  # nada, y `git push --tags` empuja etiquetas y no la rama. Los dos pasan el prefiltro, y ahí
+  # decide el remoto: si `HEAD == @{u}`, el commit está publicado y su pull request necesita
+  # revisión igual. La marca por SHA acota el costo a una petición por commit.
+  probar 0 'git push --tags'
   if [[ $fallos -gt 0 ]]; then
-    echo "$fallos de 15 casos del detector de push fallaron." >&2
+    echo "$fallos de 19 casos del detector de push fallaron." >&2
     exit 1
   fi
-  echo "15 casos del detector de push, todos como se espera."
+  echo "19 casos del detector de push, todos como se espera."
   exit 0
 fi
 

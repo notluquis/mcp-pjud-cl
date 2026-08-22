@@ -32,7 +32,7 @@ mkdir -p "$marcas" 2>/dev/null || exit 0
 # Una sola consulta para todos los pull requests abiertos: esto corre al final de CADA
 # turno, así que una llamada por PR se paga en cada respuesta.
 # UNA consulta para todo, no una por pull request. La versión anterior prometía eso en un
-# comentario y hacía `1 + 3N` llamadas seriales: el `gh pr list`, más una GraphQL y DOS
+# comentario y hacía `1 + 3N` llamadas seriales: una lista, más una GraphQL y DOS
 # `gh repo view` por PR, dentro del bucle. Corre al final de CADA turno, así que el costo se
 # paga en cada respuesta aunque no haya nada que avisar.
 #
@@ -44,7 +44,16 @@ repo=$(gh repo view --json owner,name --jq '"\(.owner.login) \(.name)"' 2>/dev/n
 # La consulta y el filtro en variables de una línea. Pasarlos con saltos de línea dentro de
 # `-f query=` hacía que `gh` no reconociera sus propias banderas y devolviera el texto de uso:
 # fallaba en silencio, con salida 0 y sin hilos, o sea el hook no avisaba nunca.
-consulta='query($duenio: String!, $nombre: String!, $cursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 25, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { number reviewThreads(first: 100) { nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } } } } } } }'
+# La variable se llama `$endCursor` y no otra cosa: `gh api --paginate` exige ese nombre
+# exacto («requires that the original query accepts an `$endCursor: String` variable»). Con
+# `$cursor`, la segunda página fallaba, el error iba a `/dev/null` y el hook no avisaba ni
+# siquiera de los hilos de la primera.
+#
+# Y los hilos van con `last`, no con `first`. `--paginate` sólo recorre la conexión externa,
+# así que la interna se trunca igual por mucho que se suba el número. `last` trae los MÁS
+# RECIENTES, que es exactamente lo que este hook busca: hallazgos nuevos. Uno viejo sin
+# resolver ya tiene su marca, así que perderlo no cambia nada.
+consulta='query($duenio: String!, $nombre: String!, $endCursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 50, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { number reviewThreads(last: 100) { nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } } } } } } }'
 filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThreads.nodes[] | select(.isResolved == false) | select(.comments.nodes[0].author.login == "chatgpt-codex-connector") | "\($n)\t\(.id)\t\(.path):\(.line)\t\(.comments.nodes[0].body | split("\n")[0] | sub("^.*</sub></sub>\\s*"; "") | gsub("\\*\\*"; ""))"'
 
 # El filtro va por una tubería a `jq` y no por `--jq`: `gh` rechaza `--slurp` junto con

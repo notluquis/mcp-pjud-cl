@@ -99,13 +99,46 @@ def otra(n: str) -> str:
     return ("9" if n[0] != "9" else "8") + n[1:]
 
 
+#: Cuánto se le da a una corrida de la suite antes de darla por colgada. La suite entera
+#: tarda unos tres segundos, así que esto es holgado por dos órdenes de magnitud: existe para
+#: que un cuelgue no deje el trabajo de CI trabado sin decir por qué, no para acotar nada real.
+SEGUNDOS_POR_CORRIDA = 300
+
+
+class SuiteColgada(RuntimeError):
+    pass
+
+
+class PatronCiego(RuntimeError):
+    pass
+
+
+class MutacionSinEfecto(RuntimeError):
+    pass
+
+
 def suite_en_rojo() -> bool:
-    r = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/test_documentacion.py", "-x", "-q", "--no-header"],
-        cwd=RAIZ,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        r = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_documentacion.py",
+                "-x",
+                "-q",
+                "--no-header",
+            ],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            timeout=SEGUNDOS_POR_CORRIDA,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise SuiteColgada(
+            f"la suite no terminó en {SEGUNDOS_POR_CORRIDA} s. Se levanta en vez de seguir, "
+            "porque un cuelgue dentro del bucle deja el trabajo de CI trabado sin decir nada."
+        ) from e
     return r.returncode != 0
 
 
@@ -115,13 +148,17 @@ def main() -> int:
     args = ap.parse_args()
 
     candidatas, vistas = cifras()
-    # S101: no es una comprobación de tipos que se pueda apagar con -O, es lo único que
-    # impide que este arnés informe 'todo cubierto' sin haber mirado nada.
-    assert vistas >= MINIMO_QUE_DEBE_VER_EL_PATRON, (  # noqa: S101
-        f"el patrón vio {vistas} cifras y tiene que ver al menos "
-        f"{MINIMO_QUE_DEBE_VER_EL_PATRON}. Antes de bajar el mínimo hay que mirar el patrón: "
-        "un arnés que no encuentra nada informa 'todo cubierto' con el mismo texto que uno sano."
-    )
+    # Comprobación explícita y no `assert`: con `python -O` los asserts DESAPARECEN, y las dos
+    # de este arnés son justamente lo que impide que informe "todo cubierto" sin haber mirado
+    # nada. Un guardia que se apaga con una bandera del intérprete es la misma clase de guardia
+    # inerte que este arnés existe para cazar.
+    if vistas < MINIMO_QUE_DEBE_VER_EL_PATRON:
+        raise PatronCiego(
+            f"el patrón vio {vistas} cifras y tiene que ver al menos "
+            f"{MINIMO_QUE_DEBE_VER_EL_PATRON}. Antes de bajar el mínimo hay que mirar el "
+            "patrón: un arnés que no encuentra nada informa 'todo cubierto' con el mismo "
+            "texto que uno sano."
+        )
     if args.rapido:
         candidatas = candidatas[:10]
 
@@ -156,10 +193,9 @@ def main() -> int:
         mutado = re.sub(rf"(?<![\d.,]){re.escape(n)}(?!\d)(?![.,]\d)", otra(n), original)
         # Sin esto el arnés mide lo mismo que no hacer nada, que es como se cuela un guardia
         # inerte: la ruptura tiene que haberse aplicado de verdad.
-        # S101: ídem. Sin esto, una mutación que no se aplica se mide como cifra guardada.
-        assert mutado != original, (  # noqa: S101
-            f"la mutación de {n} en {archivo.name} no cambió el archivo"
-        )
+        # Ídem: sin esto, una mutación que no se aplica se mide como cifra guardada.
+        if mutado == original:
+            raise MutacionSinEfecto(f"la mutación de {n} en {archivo.name} no cambió el archivo")
         archivo.write_text(mutado, encoding="utf-8")
         try:
             roja = suite_en_rojo()

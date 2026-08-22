@@ -214,6 +214,93 @@ def test_la_referencia_no_afirma_que_ocultas_en_cero_sea_lista_completa():
     )
 
 
+def test_cada_hook_declarado_existe_y_es_ejecutable():
+    """Un script de hook sin su `settings.json` es código muerto que parece vivo.
+
+    Las dos mitades se pueden versionar por separado y una sola no hace nada: el script sin la
+    declaración no corre nunca, y la declaración sin el script falla en cada llamada.
+
+    Y `settings.local.json` NO rescata a un script de ser huérfano, aunque sí se le exige que
+    lo que declare exista. Está en el `.gitignore`, así que un cableado que vive sólo ahí no
+    viaja: darlo por bueno es el mismo modo de falla que este guardia persigue, entrando por la
+    puerta de al lado.
+    """
+    import json
+    import os
+    import shlex
+
+    def declarados_en(ajustes: Path) -> list[str]:
+        if not ajustes.exists():
+            return []
+        return [
+            h["command"]
+            for grupo in json.loads(_texto(ajustes)).get("hooks", {}).values()
+            for entrada in grupo
+            for h in entrada.get("hooks", [])
+            if h.get("type") == "command"
+        ]
+
+    versionado = RAIZ / ".claude" / "settings.json"
+    local = RAIZ / ".claude" / "settings.local.json"
+    if not versionado.exists() and not local.exists():
+        pytest.skip("este repositorio no declara hooks de proyecto")
+
+    del_repo = declarados_en(versionado)
+    assert del_repo or not versionado.exists(), "`settings.json` existe y no declara ningún comando"
+
+    # Lo que declare cualquiera de los dos tiene que existir, poder ejecutarse, y llevar la
+    # variable ENTRECOMILLADA: sin comillas, un checkout cuya ruta tenga espacios parte la
+    # expansión y no corre ningún hook. Se resuelve la cadena tal cual está declarada en vez
+    # de armar la ruta con `Path`, que es lo que hacía que el guardia no viera el problema.
+    for comando in [*del_repo, *declarados_en(local)]:
+        assert '"$CLAUDE_PROJECT_DIR"' in comando or "$CLAUDE_PROJECT_DIR" not in comando, (
+            f"{comando} usa `$CLAUDE_PROJECT_DIR` sin comillas: en una ruta con espacios el "
+            "shell parte la expansión y el hook no corre"
+        )
+        partes = shlex.split(comando.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))
+        ruta = Path(partes[0])
+        assert ruta.exists(), f"un settings declara {comando} y ese archivo no existe"
+        assert os.access(ruta, os.X_OK), f"{comando} no tiene permiso de ejecución"
+
+    # Y si un hook trae su propia prueba, se corre. La parte más frágil de un hook suele ser
+    # un patrón de texto, y probarlo desde otro archivo con una copia del patrón sólo prueba
+    # que la copia funciona: los casos tienen que correr contra la función del hook.
+    for comando in del_repo:
+        ruta = Path(shlex.split(comando.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))[0])
+        if "--probar" not in _texto(ruta):
+            continue
+        # `stdin` cerrado y con tope. Lo primero es lo que impide el cuelgue real: un hook que
+        # declare la bandera sin implementarla cae en su `cat` y con la entrada cerrada recibe
+        # EOF y sale en milisegundos (medido: 33 ms). Desde una terminal, en cambio, `cat`
+        # espera para siempre, y ese cuelgue es de la shell y no del hook.
+        #
+        # El tope es por otra cosa: acá corre dentro de la suite, y un subproceso colgado por
+        # cualquier motivo (una llamada de red que no vuelve) deja CI trabado sin decir nada.
+        try:
+            r = subprocess.run(  # noqa: S603
+                [str(ruta), "--probar"],
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                timeout=30,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail(f"{ruta.name} --probar no terminó en 30 s")
+        assert r.returncode == 0, f"{ruta.name} --probar falló:\n{r.stdout}\n{r.stderr}"
+
+    # Pero sólo el versionado rescata de ser huérfano.
+    escritos = {p.name for p in (RAIZ / ".claude" / "hooks").glob("*.sh")}
+    declarados_nombre = {
+        Path(shlex.split(c.replace("$CLAUDE_PROJECT_DIR", str(RAIZ)))[0]).name for c in del_repo
+    }
+    huerfanos = sorted(escritos - declarados_nombre)
+    assert not huerfanos, (
+        f"{huerfanos} viven en `.claude/hooks/` y `.claude/settings.json` no los declara, así "
+        "que no viajan cableados: en otra copia del repositorio no corren"
+    )
+
+
 def test_todo_trabajo_que_corre_la_suite_clona_la_historia_completa():
     """Un guardia de la suite lee un commit anterior, así que con clon superficial se cae.
 

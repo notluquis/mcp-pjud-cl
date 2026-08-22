@@ -1230,9 +1230,11 @@ class PjudClient(Transporte):
                 "lee.\n\n"
                 "Su tabla de Historia SÍ nombra algunas: medido sobre una respuesta real, tres "
                 "filas dicen 'Actuacion - Receptor', sin tilde y con guion, y ninguna trae "
-                "fecha de diligencia. O sea leerla de ahí no daría una lista vacía sino una "
-                "PARCIAL y sin el dato que se busca, y una lista parcial es peor que una vacía "
-                "porque se ve completa.\n\n"
+                "fecha de diligencia.\n\n"
+                "Si esas tres son todas las diligencias o sólo una parte NO está medido: haría "
+                "falta compararlas contra `diligenciaCob`, que este proyecto todavía no lee. "
+                "Entregarlas sería informar una lista de completitud desconocida como si fuera "
+                "el total, y sin el dato que se busca.\n\n"
                 "Se rechaza por eso, y no por falta de filas."
             )
         return self._recorrer_cuadernos(

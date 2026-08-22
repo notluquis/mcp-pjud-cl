@@ -945,7 +945,7 @@ def test_pedir_actuaciones_de_cobranza_dice_que_estan_en_otro_panel():
     )
 
     c = _sin_red()
-    with pytest.raises(ValueError, match="lista parcial"):
+    with pytest.raises(ValueError, match="completitud desconocida"):
         c.actuaciones_receptor("C", 208, 2019, competencia="cobranza")
 
 

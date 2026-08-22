@@ -210,7 +210,8 @@ lee, así que la llamada se **rechaza**.
 
 Su Historia sí nombra algunas, y por eso el rechazo: tres filas dicen `Actuacion - Receptor` y
 ninguna trae fecha de diligencia, o sea leerlas de ahí daría una lista **parcial y sin el dato
-que se busca**. Una lista parcial es peor que una vacía, porque se ve completa.
+que se busca**. Si son todas o sólo una parte no está medido, y entregarlas sería
+informar una completitud desconocida como si fuera el total.
 
 En laboral, penal, apelaciones y suprema no existen: en todo el sitio sólo hay
 `receptorCivil` y `receptorCobranza`.

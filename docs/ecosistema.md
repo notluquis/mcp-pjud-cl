@@ -263,8 +263,9 @@ diligencias del ministro de fe viven en un panel propio.
 
 Su tabla de Historia **sí nombra algunas**, y ésa es la trampa: tres filas dicen
 `Actuacion - Receptor`, sin tilde y con guion, y **ninguna trae fecha de diligencia**. Leerlas
-de ahí no daría una lista vacía sino una **parcial y sin el dato que se busca**, que es peor,
-porque una lista parcial se ve completa. Además `TRAMITE_RECEPTOR` busca `actuación receptor`,
+de ahí daría una lista de completitud **desconocida**: para saber si esas tres son todas
+habría que compararlas contra `diligenciaCob`, que este proyecto no lee. Y ninguna trae el
+dato que se busca. Además `TRAMITE_RECEPTOR` busca `actuación receptor`,
 así que ni siquiera las reconocería: hoy eso no importa porque la competencia se rechaza antes,
 y no se toca el marcador para no dejar una rama que no puede ejecutarse.
 
@@ -278,8 +279,7 @@ Dos cosas que hay que mirar antes de leerlo: si `Fecha Trámite` trae el formato
 como en civil, y qué significa `Responsable`, que probablemente identifica al receptor.
 
 Mientras no esté medido, pedir actuaciones de cobranza se **rechaza** en vez de devolver lo
-que la Historia produciría, que son esas tres filas sin fecha: una lista parcial que se leería
-como el total. Es el mismo falso negativo que motivó el proyecto, y estuvo brevemente dentro
+que la Historia produciría, que son esas tres filas sin fecha y sin saber si son todas. Es el mismo falso negativo que motivó el proyecto, y estuvo brevemente dentro
 de él.
 
 ### El calendario de días hábiles: la pieza que falta para cerrar el círculo

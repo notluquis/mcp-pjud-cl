@@ -72,8 +72,8 @@ compara el formulario enviado contra lo que ella declara.
   aparte, con estructura propia (`Estado Diligencia`, `Tipo Diligencia`, `Destinatario`,
   `Responsable`). Su Historia **sí nombra algunas**: tres filas dicen `Actuacion - Receptor`,
   sin tilde y con guion, y ninguna trae fecha de diligencia. Hoy `actuaciones_receptor` rechaza
-  cobranza, y es lo correcto mientras el panel no esté medido: leerlas de la Historia daría una
-  lista **parcial**, que se ve completa.
+  cobranza, y es lo correcto mientras el panel no esté medido: no se sabe si esas tres son
+  todas, y entregarlas se leería como el total.
 
   **Medido, y la respuesta es que hoy no sirve.** De cinco causas de cobranza, sólo una trae
   filas en ese panel, y sus tres diligencias traen `31/12/1969` en la columna de fecha: el

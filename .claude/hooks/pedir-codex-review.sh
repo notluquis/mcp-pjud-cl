@@ -147,10 +147,16 @@ aviso=""
 # nunca en un push- así que un push tiene que despertarlos a ambos. Y encuentran cosas
 # distintas: Gemini vio en el arnés de mutación una falla que Codex no vio en catorce rondas
 # sobre el mismo archivo.
-if gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1 \
-  && gh pr comment "$numero" --body "/gemini review" >/dev/null 2>&1; then
+# Cada pedido por su lado y no encadenados con `&&`: si el primero falla, el segundo tiene
+# que salir igual, y si el segundo falla el primero ya se hizo y hay que decirlo. Encadenar
+# ataba dos peticiones independientes al resultado de la primera.
+pedidos=0
+gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1 && pedidos=$((pedidos + 1))
+gh pr comment "$numero" --body "/gemini review" >/dev/null 2>&1 && pedidos=$((pedidos + 1))
+
+if [[ $pedidos -gt 0 ]]; then
   if : > "$marca" 2>/dev/null; then
-    aviso+="Revisión pedida a Codex y a Gemini en #$numero para ${local_sha:0:7}."
+    aviso+="Revisión pedida a $pedidos de 2 revisores en #$numero para ${local_sha:0:7}."
   else
     # Sin marca no hay protección contra el duplicado, y decirlo es mejor que fingir que sí.
     aviso+="Revisión pedida en #$numero, pero no se pudo dejar la marca en $marca: el próximo push del mismo commit la va a repetir."

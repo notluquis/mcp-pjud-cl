@@ -59,6 +59,11 @@ filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThread
 # El filtro va por una tubería a `jq` y no por `--jq`: `gh` rechaza `--slurp` junto con
 # `--jq` («the `--slurp` option is not supported with `--jq`»), y con el error mandado a
 # `/dev/null` eso se veía como cero hilos. El hook salía 0 sin avisar de nada.
+# Pedidos sin responder: el último `@codex review` de cada pull request abierto que no tenga
+# una respuesta de Codex después.
+consulta_pedidos='query($duenio: String!, $nombre: String!, $endCursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 50, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { number comments(last: 60) { nodes { createdAt body author { login } } } reviews(last: 60) { nodes { submittedAt author { login } } } } } } }'
+filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | ((.comments.nodes | map(select(.body == "@codex review")) | last) // empty) as $p | ((([.comments.nodes[] | select(.author.login == "chatgpt-codex-connector") | .createdAt] + [.reviews.nodes[] | select(.author.login == "chatgpt-codex-connector") | .submittedAt]) | map(select(. > $p.createdAt)) | length) == 0) as $sin | if $sin then "\($n)\t\($p.createdAt)" else empty end'
+
 hilos=$(gh api graphql --paginate --slurp -f query="$consulta" \
   -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null | jq -r "$filtro" 2>/dev/null) || exit 0
 
@@ -72,7 +77,37 @@ while IFS=$'\t' read -r n id donde titulo; do
 "
 done <<< "$hilos"
 
-[[ -n "$nuevos" ]] || exit 0
+# Si no hay hallazgos nuevos, todavía puede haber un pedido EN VUELO. Ése es el agujero que
+# el diseño tenía: cuando lo último del turno es un push, este hook consulta una vez, la
+# revisión todavía no llegó, el turno termina y no hay otro evento `Stop` cuando Codex
+# publica minutos después. O sea el caso más común -empujar y dar por terminado- era
+# justamente el que se perdía.
+#
+# Se interrumpe una vez por pedido, no por turno: la marca lleva el instante del pedido, así
+# que el mismo no vuelve a frenar y uno nuevo sí. Sin eso, o se frena para siempre o se frena
+# una sola vez y el segundo push del turno queda sin cubrir.
+if [[ -z "$nuevos" ]]; then
+  pendiente=$(gh api graphql --paginate --slurp -f query="$consulta_pedidos" \
+    -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null \
+    | jq -r "$filtro_pedidos" 2>/dev/null) || exit 0
+  [[ -n "$pendiente" ]] || exit 0
+
+  while IFS=$'\t' read -r n cuando; do
+    [[ -n "$cuando" ]] || continue
+    marca="$marcas/pedido-$n-${cuando//[:.]/-}"
+    [[ -f "$marca" ]] && continue
+    : > "$marca" 2>/dev/null || continue
+    cat >&2 <<MSG
+Hay una revisión de Codex pedida en #$n y todavía sin responder ($cuando).
+
+Llega en minutos y este es el último aviso: si el turno termina acá, nadie la va a mirar.
+Espérala en segundo plano y revisa los hallazgos antes de cerrar. Cada pedido avisa una
+sola vez.
+MSG
+    exit 2
+  done <<< "$pendiente"
+  exit 0
+fi
 
 cat >&2 <<MSG
 Codex dejó hallazgos sin resolver que todavía no se han mirado:

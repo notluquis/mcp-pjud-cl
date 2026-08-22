@@ -1151,9 +1151,8 @@ class CausaDeOrigen(BaseModel):
     )
     anio: int = Field(description="Año de ingreso a la corte, cuatro dígitos.")
     recurso: str = Field(
-        description="Qué se recurrió, tal como el sitio lo emite. Ej: '(Civil) Apelación "
-        "Protección'. Es el mismo texto que la cabecera de la causa de suprema publica en "
-        "`Tipo`, así que no agrega materia: agrega desde qué causa llegó."
+        description="Qué se recurrió, tal como el sitio lo emite y sin normalizar. Ej: "
+        "'(Civil) Apelación Protección'."
     )
 
 
@@ -1487,6 +1486,10 @@ def parse_piezas_exhorto(
 #: Cómo el panel publica el rol de la causa de origen: número, guion y año, con espacios
 #: alrededor del guion. Los espacios van en el patrón porque son los que trae la respuesta
 #: medida (`14988 - 2020`), no una tolerancia por si acaso.
+#:
+#: Se aplica con `fullmatch` y no con `search`: buscar dentro se quedaría con los primeros
+#: dígitos de cualquier cosa que el sitio agregue en esa celda, y un rol truncado se ve tan
+#: bien como uno correcto.
 _ROL_DE_ORIGEN = re.compile(r"(\d+)\s*-\s*(\d{4})")
 
 #: Los cuatro rótulos que el panel tiene que traer. Se busca cada uno por su nombre y no por

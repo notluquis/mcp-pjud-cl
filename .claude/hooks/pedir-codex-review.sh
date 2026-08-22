@@ -134,18 +134,23 @@ numero=$(printf '%s' "$datos" | /usr/bin/python3 -c \
 # revisó. Se avisa y se pide igual, porque puede haberse repuesto la ventana.
 sin_contestar=$(gh pr view "$numero" --json comments,reviews --jq '
   [.comments[], .reviews[]]
-  | (map(select(.author.login != "chatgpt-codex-connector" and (.body // "") == "@codex review")) | last) as $pedido
+  | (map(select((.body // "") == "@codex review" or (.body // "") == "/gemini review")) | last) as $pedido
   | if $pedido == null then "no"
-    else (map(select(.author.login == "chatgpt-codex-connector"
+    else (map(select((.author.login | test("codex|gemini"))
                      and ((.createdAt // .submittedAt) > ($pedido.createdAt // $pedido.submittedAt))))
           | if length == 0 then "si" else "no" end)
     end' 2>/dev/null)
 aviso=""
-[[ "$sin_contestar" == "si" ]] && aviso="El pedido anterior en #$numero sigue sin respuesta de Codex: puede ser la cuota agotada. "
+[[ "$sin_contestar" == "si" ]] && aviso="El pedido anterior en #$numero sigue sin respuesta: puede ser la cuota agotada. "
 
-if gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1; then
+# Se piden los DOS. Tienen el mismo agujero -revisan al abrir el pull request y a pedido,
+# nunca en un push- así que un push tiene que despertarlos a ambos. Y encuentran cosas
+# distintas: Gemini vio en el arnés de mutación una falla que Codex no vio en catorce rondas
+# sobre el mismo archivo.
+if gh pr comment "$numero" --body "@codex review" >/dev/null 2>&1 \
+  && gh pr comment "$numero" --body "/gemini review" >/dev/null 2>&1; then
   if : > "$marca" 2>/dev/null; then
-    aviso+="Revisión de Codex pedida en #$numero para ${local_sha:0:7}."
+    aviso+="Revisión pedida a Codex y a Gemini en #$numero para ${local_sha:0:7}."
   else
     # Sin marca no hay protección contra el duplicado, y decirlo es mejor que fingir que sí.
     aviso+="Revisión pedida en #$numero, pero no se pudo dejar la marca en $marca: el próximo push del mismo commit la va a repetir."

@@ -59,8 +59,9 @@ filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThread
 # El filtro va por una tubería a `jq` y no por `--jq`: `gh` rechaza `--slurp` junto con
 # `--jq` («the `--slurp` option is not supported with `--jq`»), y con el error mandado a
 # `/dev/null` eso se veía como cero hilos. El hook salía 0 sin avisar de nada.
-# Pedidos sin responder: el último `@codex review` de cada pull request abierto que no tenga
-# una respuesta de Codex después.
+# Pedidos sin responder: el último pedido de revisión de cada pull request abierto que no
+# tenga respuesta después. Los dos revisores se piden distinto -`@codex review` y
+# `/gemini review`- y el hook mira los dos, porque un push debería despertarlos a ambos.
 # El login de Codex se compara con `test("codex")` y no por igualdad, y la razón es del
 # ESQUEMA y no del bot: REST siempre devuelve `chatgpt-codex-connector[bot]`, GraphQL lo
 # devuelve sin sufijo en `reviews.author` y `comments.author` -que son de tipo `Actor`- y CON
@@ -72,14 +73,20 @@ filtro='.[].data.repository.pullRequests.nodes[] | .number as $n | .reviewThread
 # una REACCIÓN de pulgar arriba en el pull request, que no aparece ni en `comments` ni en
 # `reviews`. Medido acá: el #79 quedó aprobado a las 12:20:47 con reacción y nada más, así que
 # mirar dos superficies lo daba por pendiente para siempre.
-consulta_pedidos='query($duenio: String!, $nombre: String!, $endCursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 50, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { number headRefOid comments(last: 60) { nodes { createdAt body author { login } } } reviews(last: 60) { nodes { submittedAt body author { login } } } reactions(last: 20) { nodes { createdAt user { login } } } } } } }'
-# Responder no basta: la respuesta tiene que ser SOBRE el commit de ahora. Codex a veces
-# contesta en segundos con una revisión de un commit anterior, que es justamente el problema
+consulta_pedidos='query($duenio: String!, $nombre: String!, $endCursor: String) { repository(owner: $duenio, name: $nombre) { pullRequests(states: OPEN, first: 50, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { number headRefOid comments(last: 60) { nodes { createdAt body author { login } } } reviews(last: 60) { nodes { submittedAt body author { login } commit { oid } } } reactions(last: 20) { nodes { createdAt user { login } } } } } } }'
+# Responder no basta: la respuesta tiene que ser SOBRE el commit de ahora. Un revisor puede
+# contestar en segundos con una revisión de un commit anterior, que es justamente el problema
 # que estos hooks existen para cerrar; tomarla por respuesta lo reintroduce.
 #
-# Cuenta como respondido: una reacción después del pedido (una pasada limpia no deja más que
-# eso), o una revisión o comentario posterior cuyo cuerpo nombre el `headRefOid`.
-filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review")) | last) // empty) as $p | ([.reactions.nodes[] | select(.user.login | test("codex")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.comments.nodes[] | select(.author.login | test("codex")) | select(.createdAt > $p.createdAt) | .body] + [.reviews.nodes[] | select(.author.login | test("codex")) | select(.submittedAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | ([.comments.nodes[] | select(.author.login | test("codex")) | select(.createdAt > $p.createdAt) | .body] | map(select(test("usage limits|reached your Codex"))) | length) as $sin_cuota | if ($ok_reaccion + $ok_sha) == 0 then "\($n)\t\($p.createdAt)\t\(if $sin_cuota > 0 then "cuota" else "espera" end)" else empty end'
+# El campo que lo dice es `reviews.nodes[].commit.oid`, y es estrictamente mejor que buscar
+# un sha en la prosa: lo traen los DOS revisores (Codex imprime `Reviewed commit` en el
+# cuerpo, Gemini no imprime ninguno) y no depende del orden temporal, que da falso positivo
+# cuando la revisión llega tarde y ya hubo otro push.
+#
+# Cuenta como respondido: una revisión sobre el commit de ahora, una reacción posterior al
+# pedido (una pasada limpia de Codex no deja más que eso), o un comentario posterior cuyo
+# cuerpo nombre el commit, que es como Codex publica su veredicto limpio.
+filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review" or .body == "/gemini review")) | last) // empty) as $p | ([.reactions.nodes[] | select(.user.login | test("codex|gemini")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.reviews.nodes[] | select(.commit.oid | startswith($sha))] | length) as $ok_review | ([.comments.nodes[] | select(.author.login | test("codex|gemini")) | select(.createdAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | ([.comments.nodes[] | select(.author.login | test("codex|gemini")) | select(.createdAt > $p.createdAt) | .body] | map(select(test("usage limits|reached your Codex"))) | length) as $sin_cuota | if ($ok_reaccion + $ok_review + $ok_sha) == 0 then "\($n)\t\($p.createdAt)\t\(if $sin_cuota > 0 then "cuota" else "espera" end)" else empty end'
 
 hilos=$(gh api graphql --paginate --slurp -f query="$consulta" \
   -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null | jq -r "$filtro" 2>/dev/null) || exit 0

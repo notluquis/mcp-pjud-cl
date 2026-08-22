@@ -377,6 +377,10 @@ DOCUMENTOS: dict[str, dict[str, str]] = {
     "laboral": {
         # Medida el 22-08-2026: la entrega el formulario de cada fila del panel de anexos.
         "docAnexoLaboral.php": "dtaDoc",
+        # Medidas el 22-08-2026: las entrega el panel de diligencias, una por sentido del
+        # oficio. Cada una con su propio campo, que no es el de las demás rutas de laboral.
+        "docDiligenciaIdaLaboral.php": "dtaDocIda",
+        "docDiligenciaVueltaLaboral.php": "dtaDocVta",
         "docReformadoLaboral.php": "valorRef",
         "docReformadoEscritoLaboral.php": "valorRefEsc",
         "newebooklaboral.php": "dtaEbook",

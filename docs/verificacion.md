@@ -131,6 +131,28 @@ Las cuatro búsquedas (`consultaRit*`, `consultaNombre*`, `consultaJuridica*` y
 `consultaFecha*`) salieron de esta lista: están verificadas en las seis competencias que el
 servidor expone.
 
+### Los cinco paneles que quedan sin mapear, y por qué
+
+No es falta de trabajo: es falta de datos. Se abrieron **cincuenta y cinco causas** el 22 de
+agosto de 2026, en cuatro barridos y sobre cinco competencias, buscando una fila en cada uno.
+Ninguno la trajo.
+
+| Panel | Competencia | Qué es | Causas abiertas sin verlo |
+|---|---|---|---|
+| `EscPendLab` | laboral | "Escritos Pendientes", el equivalente de `escritosCiv` | 20 |
+| `liquidacionLab` | laboral | Liquidación del crédito en cumplimiento | 20 |
+| `ExhortosApe` | apelaciones | Exhortos de la corte | 10, y en la mitad el panel **ni siquiera existe** |
+| `IncompetenciaApe` | apelaciones | Declaraciones de incompetencia | ídem |
+| `agregadosSup` | suprema | Causas agregadas a la de suprema | 16, siempre presente y siempre vacío |
+
+Los de apelaciones tienen algo que los demás no: en la mitad de los detalles el `id` **no
+aparece**, así que ni siquiera se sabe si el panel existe para esa clase de causa.
+
+Lo que falta para medirlos no es tiempo de red sino una causa que los traiga, y la forma
+barata de conseguirla es que aparezca en una consulta real. Buscarlos al azar ya se agotó: los
+paneles de cola sólo se llenan mientras algo está pendiente, y los de una etapa sólo en las
+causas que llegaron a esa etapa.
+
 ### Sin cubrir del todo
 
 - **Causas reservadas.** No aparecen y no aparecerán.
@@ -374,13 +396,13 @@ regla de siempre: se mide antes de exponerla.
 Y no son sólo las de civil. `obtener_documento` acepta la ruta que la actuación entrega, así
 que la tabla que decide qué es una ruta válida cubre las cinco competencias con detalle
 mapeado. Todas salen del `action` de un formulario de la respuesta, y **ninguna de las
-veinticinco se ha ejecutado salvo `docuN.php`**:
+veintisiete se ha ejecutado salvo `docuN.php`**:
 
 | Competencia | Rutas |
 |---|---|
 | `civil` | las seis de arriba, más `anexoDocCivil.php` (`dtaDoc`), que entregan los dos paneles de anexo |
 | `cobranza` | `docuCobranza.php`, `docDemandaCobranza.php` (`valorDocDmda`), `docLiquidacionCobranza.php` (`valorLiq`), `docOficioCobranza.php` (`dtaDocOf`), `newebookcobranza.php` (`dtaEbook`), `docCertificadoEscrito.php` (`dtaCert`) |
-| `laboral` | `docAnexoLaboral.php` (`dtaDoc`), `docReformadoLaboral.php` (`valorRef`), `docReformadoEscritoLaboral.php` (`valorRefEsc`), `newebooklaboral.php`, `docCertificadoDemanda.php`, `docCertificadoEscrito.php` |
+| `laboral` | `docAnexoLaboral.php` (`dtaDoc`), `docDiligenciaIdaLaboral.php` (`dtaDocIda`), `docDiligenciaVueltaLaboral.php` (`dtaDocVta`), `docReformadoLaboral.php` (`valorRef`), `docReformadoEscritoLaboral.php` (`valorRefEsc`), `newebooklaboral.php`, `docCertificadoDemanda.php`, `docCertificadoEscrito.php` |
 | `apelaciones` | `anexoDocRecursoApelaciones.php` (`dtaDoc`), `docCausaApelaciones.php` (`valorDoc`), `newebookapelaciones.php` |
 | `suprema` | `docEscritosSuprema.php` (`dtaDoc`), `docCausaSuprema.php` (`valorFile`), `newebooksuprema.php` |
 

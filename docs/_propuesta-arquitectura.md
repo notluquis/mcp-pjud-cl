@@ -12,11 +12,12 @@ Documento de trabajo, no publicado. Responde a la incidencia
 [#57](https://github.com/notluquis/mcp-pjud-cl/issues/57) y la amplía: la pregunta no es dónde
 mover secciones, sino cuál es la arquitectura correcta sabiendo que hay dos audiencias.
 
-Lleva `orphan: true` porque no cuelga de ningún `toctree`. Sin eso, Sphinx emite
-`toc.not_included` y la propuesta de la sección 4 (encender `-W`) haría fallar el build por
-culpa de este mismo archivo. Aun con `orphan`, la página **sí** aparece en `llms.txt`,
-ordenada al final: está medido en 2.1f. Cuando esta propuesta se ejecute o se
-descarte, el archivo se borra.
+No se publica porque `docs/conf.py` excluye `_*.md` del build. Eso llegó después, y por un
+hallazgo que este mismo párrafo dejaba a la vista: **`orphan: true` no excluye nada**, sólo
+calla el aviso `toc.not_included`, así que la página se generaba igual y aparecía en `llms.txt`,
+ordenada al final. O sea decía "no publicado" y se publicaba. El `orphan` de la cabecera hoy es
+inerte y se deja como red por si alguien toca `exclude_patterns`. Cuando esta propuesta se
+ejecute o se descarte, el archivo se borra.
 
 Y una nota que es la tesis de este documento cayéndole encima: `orphan: true` resuelve `-W` y
 **no** resuelve `PROSA`, que es un glob de `docs/*.md` sin más filtro que `_build`. O sea este

@@ -63,6 +63,19 @@ def _texto(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def _trozos_de_ruta(url: str) -> list[str]:
+    """Los trozos de una URL que pueden ser un nombre de archivo.
+
+    Sin el esquema ni el host: `https://www.pjud.cl/ayuda` partido a lo bruto entrega
+    `www.pjud.cl`, y de ahí `cl` se lee como una extensión ajena. Sería un rojo sobre un
+    enlace externo perfectamente legítimo, o sea un guardia que estorba en vez de proteger.
+    """
+    from urllib.parse import urlsplit
+
+    partes = urlsplit(url)
+    return [t for t in re.split(r"[?&=/#]", f"{partes.path}?{partes.query}") if "." in t]
+
+
 def _registro() -> str:
     return _texto(RAIZ / "CHANGELOG.md")
 
@@ -312,6 +325,249 @@ def test_los_topes_declarados_coinciden_con_el_codigo():
     quien lea pedirá un valor que la herramienta rechaza antes de consultar."""
     assert f"de 1 a {FILAS_MAXIMAS}" in HERRAMIENTAS, (
         f"la referencia no declara el tope real de filas ({FILAS_MAXIMAS})"
+    )
+
+
+#: Los bytes del único documento que este proyecto pidió: folio 9 de C-1156-2026, una página
+#: escaneada. No sale de ninguna constante porque es una medición y no una decisión, así que
+#: vive acá y el guardia exige que `verificacion.md` la siga declarando.
+BYTES_DEL_DOCUMENTO_MEDIDO = 975_006
+
+
+def test_los_documentos_de_trabajo_no_se_publican():
+    """`orphan: true` no excluye nada: sólo calla el aviso de no colgar de un `toctree`.
+
+    La página se genera igual y aparece en el buscador y en `llms.txt`, así que un documento
+    que se declara de trabajo terminaba publicado en Read the Docs. Lo que sí lo excluye es
+    `exclude_patterns`, y la convención de nombre es el `_` adelante.
+    """
+    import ast
+    import fnmatch
+
+    # Se lee la lista y se prueba cada documento contra ella, en vez de buscar el literal
+    # `"_*.md"`: lo que importa es que el archivo quede excluido, no con qué patrón.
+    m = re.search(r"^exclude_patterns = (\[[^\]]*\])", _texto(RAIZ / "docs" / "conf.py"), re.M)
+    assert m, "`docs/conf.py` dejó de declarar `exclude_patterns`"
+    patrones = ast.literal_eval(m.group(1))
+
+    publicados = [
+        f.name
+        for f in sorted((RAIZ / "docs").glob("_*.md"))
+        if not any(fnmatch.fnmatch(f.name, p) for p in patrones)
+    ]
+    assert not publicados, (
+        f"estos documentos de trabajo se van a publicar: {publicados}. Ninguno de los patrones "
+        f"de `exclude_patterns` ({patrones}) los excluye, y todos dicen 'no publicado'."
+    )
+
+    # No se exige `orphan: true`: con el archivo excluido Sphinx nunca lo descubre, así que no
+    # puede emitir `toc.not_included`. Pedirlo pondría CI en rojo por algo que ya no falla.
+
+
+def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
+    """De esa afirmación cuelga `_MAGIA_PDF`, que rechaza en duro lo que no empiece en `%PDF-`.
+
+    Si una fixture llega a traer evidencia de otro formato y nadie lo mira, el documento de
+    trabajo sigue diciendo "sólo PDF" y la implementación que salga de él rechaza un documento
+    real informando que la referencia caducó. Se deriva de las fixtures, que es donde la página
+    dice haberlo buscado.
+    """
+    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
+    fixtures = "\n".join(_texto(f) for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html")))
+
+    # Sin enumerar formatos, igual que abajo: la lista cerrada dejaba entrar un `.pptx`, un
+    # `.odt` o un `.txt` en cualquier fixture que no fuera de detalle, y ahí la afirmación de
+    # que las demás páginas enlazan exclusivamente PDF ya sería falsa.
+    #
+    # Se leen los `src` y `href`, que es lo que significa "la página enlaza un archivo", y del
+    # HTML crudo porque el sitio arma marcado dentro de su JavaScript. `Content-Disposition`
+    # no se busca: es una cabecera HTTP y las fixtures guardan cuerpos, o sea era un guardia
+    # que no podía fallar.
+    # Y se separa lo que la página MUESTRA de lo que ENLAZA. La afirmación es que todos los
+    # documentos enlazados son PDF: un `<img src="icono.png">` es un recurso de presentación y
+    # no la contradice, pero un `<a href="resolucion.jpg">` sí, y aceptar las imágenes en
+    # bloque dejaba pasar justo ése. Un documento se enlaza con `href`.
+    NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
+
+    def enlazados_por(atributo: str) -> set[str]:
+        return {
+            trozo
+            for valor in re.findall(rf"""{atributo}\s*=\s*['"]([^'"]+)['"]""", fixtures)
+            for trozo in _trozos_de_ruta(valor)
+            if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+        }
+
+    descargables = sorted(e for e in enlazados_por("href") if not e.lower().endswith(".pdf"))
+    assert not descargables, (
+        f"las fixtures enlazan {descargables} y la investigación afirma que todo documento "
+        "enlazado es PDF. De esa afirmación cuelga `_MAGIA_PDF`."
+    )
+
+    # Lo que se muestra sí puede ser imagen, pero no cualquier cosa: un `.odt` en un `src`
+    # tampoco tiene explicación.
+    mostrados = sorted(
+        e
+        for e in enlazados_por("src")
+        if not e.lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".svg", ".ico", ".pdf"))
+    )
+    assert not mostrados, (
+        f"las fixtures muestran {mostrados}, que no es un recurso de presentación ni un PDF"
+    )
+
+    # La afirmación es sobre lo que EL DETALLE nombra, así que se miran sólo las fixtures que
+    # son un detalle: las que traen algún panel de historia. Reunir los `*.png` de todas hacía
+    # que una fixture nueva con un logotipo pusiera el guardia en rojo sin contradecir nada.
+    paneles = {c.historia.panel for c in COMPETENCIAS.values() if c.historia is not None}
+    detalles = "\n".join(
+        t
+        for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html"))
+        if any(p in (t := _texto(f)) for p in paneles)
+    )
+    assert detalles, "no quedó ninguna fixture de detalle"
+    # TODO archivo nombrado, no sólo los `.png`: la frase dice que el detalle no nombra ningún
+    # documento, así que un `.pdf` colándose ahí la desmiente igual que otro icono. El prefijo
+    # `ADIR_` cambia con la sesión, así que se comparan los nombres de archivo.
+    # No se busca en el texto suelto sino en lo que apunta a un archivo, que es lo que
+    # significa "la página nombra un archivo". Y se lee del HTML crudo y no del árbol, porque
+    # el sitio arma marcado dentro de su JavaScript: `pagLoad.gif` viaja en un `src` que sólo
+    # existe como cadena, y un enlace a un documento podría venir igual.
+    #
+    # Enumerar extensiones dejaba entrar un `.pptx` o un `.odt` sin que nada lo notara, y
+    # buscar cualquier punto se llevaba puesta la prosa del sitio (`Gar.de`, `AB.DTE`,
+    # `Pend.Art.52`). Exigir que venga de un `src` o un `href` distingue las dos cosas sin
+    # tener que adivinar qué formatos existen.
+    NO_SON_ARCHIVOS = {"php", "js", "css", "html", "htm"}
+    nombrados = sorted(
+        {
+            trozo
+            for valor in re.findall(r"""(?:src|href)\s*=\s*['"]([^'"]+)['"]""", detalles)
+            for trozo in _trozos_de_ruta(valor)
+            if trozo.rsplit(".", 1)[1].lower() not in NO_SON_ARCHIVOS
+        }
+    )
+    assert nombrados == ["icono_PDF.png", "pagLoad.gif"], (
+        f"el detalle nombra {nombrados}, y la página afirma que no nombra ningún documento: "
+        "sólo el icono y el indicador de carga del propio sitio. El documento se pide por una "
+        "referencia opaca, no por su nombre."
+    )
+    for archivo in nombrados:
+        assert archivo in pagina, f"la página dejó de nombrar {archivo}"
+
+    marcas = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html").count("fa-file-pdf-o")
+    assert f"**{marcas}** veces con el icono `fa-file-pdf-o`" in pagina, (
+        f"el cuaderno principal de C-1156-2026 marca {marcas} enlaces con `fa-file-pdf-o` y la "
+        "página dice otra cosa"
+    )
+
+
+def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
+    """Esa página razona sobre el presupuesto de una respuesta y sobre cuántas veces lo pasa un
+    documento medido. Las dos cifras son derivadas, no copiadas, y por eso quedan viejas sin que
+    nadie las toque: basta con mover `CARACTERES_DE_UNA_RESPUESTA` para que la página describa
+    una aritmética que ya no es la del código.
+
+    Se ancla también la medición de origen. Una página que deriva de una cifra que
+    `verificacion.md` dejó de declarar está razonando sobre algo que el proyecto ya no afirma.
+    """
+    from mcp_pjud.client import CARACTERES_DE_UNA_RESPUESTA
+
+    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
+    # Cuatro caracteres por cada tres bytes, redondeando hacia arriba: es la aritmética de
+    # base64 que la propia página explica.
+    en_base64 = -(-BYTES_DEL_DOCUMENTO_MEDIDO // 3) * 4
+    veces = en_base64 // CARACTERES_DE_UNA_RESPUESTA
+
+    # Cada MENCIÓN del tamaño, no que aparezca en algún lado: la página lo cita tres veces (el
+    # párrafo de la cifra que decide, la fila de la tabla, y la sección de alcance), y buscarlo
+    # en la página entera dejaba que una quedara vieja mientras otra la rescataba. Una misma
+    # investigación publicando dos tamaños distintos es peor que una cifra vieja sola.
+    # Acotado a las menciones que hablan DEL FOLIO: la página cita también los 81.566 bytes de
+    # la hoja sintética rasterizada, que es otra medición y tiene que poder ser distinta.
+    plana = " ".join(pagina.split())
+    del_folio = {
+        m.group(1)
+        for m in re.finditer(r"(\d{1,3}(?:\.\d{3})+) bytes", plana)
+        if re.search(r"(folio|El documento)", plana[max(0, m.start() - 90) : m.end() + 90])
+    }
+    assert del_folio == {miles(BYTES_DEL_DOCUMENTO_MEDIDO)}, (
+        f"la investigación atribuye al folio medido {sorted(del_folio)} bytes y son "
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)}: todas las menciones tienen que decir lo mismo"
+    )
+    assert pagina.count(miles(BYTES_DEL_DOCUMENTO_MEDIDO)) >= 3, (
+        "la página citaba el tamaño medido tres veces y ahora menos: si se quitó una mención "
+        "a propósito, hay que bajar este número con ella"
+    )
+
+    faltan = [
+        cifra
+        for cifra in (
+            miles(CARACTERES_DE_UNA_RESPUESTA),
+            miles(en_base64),
+            f"**{veces}**",
+        )
+        if cifra not in pagina
+    ]
+    assert not faltan, (
+        f"la investigación de documentos no cita estas cifras vigentes: {faltan}. "
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes son {miles(en_base64)} caracteres en "
+        f"base64, o sea {veces} veces los {miles(CARACTERES_DE_UNA_RESPUESTA)} de una respuesta."
+    )
+
+    # No sólo el tamaño: la recomendación cuelga igual de que el folio sea UNA página y NO
+    # traiga capa de texto. Con esas dos corregidas y el tamaño intacto, la página seguiría
+    # tratándolo como el peor caso de una hoja escaneada, que es lo que hace fuerte al
+    # argumento. `verificacion` las declara en dos lugares y los dos tienen que decir lo mismo.
+    verificacion = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    for afirmacion in (
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, 1 página, sin capa de texto",
+        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, un escaneo de una página",
+    ):
+        assert afirmacion in verificacion, (
+            f"verificacion.md dejó de declarar que el folio medido es {afirmacion!r}, y la "
+            "investigación deriva de que sea una hoja escaneada y no sólo de su tamaño"
+        )
+    # En la sección de alcance, no en cualquier parte de la página: "una página" aparece en
+    # varios párrafos y rescataba la afirmación aunque el alcance dijera otra cosa.
+    alcance = " ".join(pagina.split("## Lo que falta medir")[1].split("Falta, en este")[0].split())
+    for afirmacion in ("tiene una página", "no trae capa de texto"):
+        assert afirmacion in alcance, (
+            f"el alcance de la investigación dejó de decir que el folio medido {afirmacion!r}"
+        )
+
+    # Y la relación entre los dos topes, que es la que obliga a que pedir texto reemplace el
+    # archivo: el máximo embebido ocupa el presupuesto ENTERO, así que cualquier otra cosa lo
+    # pasa. Si alguien afloja `LIMITE_EMBEBIDO`, la afirmación deja de ser cierta y hay que
+    # reescribir la propuesta, no sólo la cifra.
+    from mcp_pjud.client import LIMITE_EMBEBIDO
+
+    assert -(-LIMITE_EMBEBIDO // 3) * 4 == CARACTERES_DE_UNA_RESPUESTA, (
+        "el máximo embebido ya no ocupa el presupuesto entero, así que la propuesta no puede "
+        "seguir justificando con aritmética que pedir texto reemplace el archivo"
+    )
+    assert "el mismo parámetro de rango del" in pagina, (
+        "la propuesta dejó de decir cómo se continúa un índice truncado, y sin eso el corte "
+        "no tiene salida: repetir la llamada regenera el mismo prefijo"
+    )
+    assert "reemplaza el archivo embebido por un `ResourceLink`" in pagina, (
+        "la propuesta dejó de decir que pedir texto reemplaza el archivo, y sin eso los dos "
+        "topes se cumplen por separado y suman uno que no se cumple"
+    )
+
+    # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento
+    # sintético que no se reproduce acá, pero lo que se hace CON ellos es aritmética contra el
+    # presupuesto, o sea la mitad que sí queda vieja si alguien mueve la constante o edita la
+    # cifra sin recalcular las otras dos.
+    m = re.search(r"\*\*([\d.]+) bytes\*\*, o sea \*\*([\d.]+) caracteres\*\*", pagina)
+    assert m, "la página dejó de decir cuánto pesa la hoja rasterizada y cuánto ocupa en base64"
+    bytes_raster = int(m.group(1).replace(".", ""))
+    en_base64_raster = -(-bytes_raster // 3) * 4
+    assert m.group(2).replace(".", "") == str(en_base64_raster), (
+        f"{m.group(1)} bytes son {miles(en_base64_raster)} caracteres en base64, no {m.group(2)}"
+    )
+    veces_raster = en_base64_raster // CARACTERES_DE_UNA_RESPUESTA
+    assert f"**más de {veces_raster} veces**" in pagina, (
+        f"la hoja rasterizada pasa {veces_raster} veces el presupuesto de una respuesta y la "
+        "página dice otra cosa"
     )
 
 

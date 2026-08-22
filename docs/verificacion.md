@@ -368,6 +368,23 @@ ejecutó** (folio 9 de esa causa, 975.006 bytes, un escaneo de una página); las
 siguen sin ejecutarse, así que vale la
 regla de siempre: se mide antes de exponerla.
 
+Y no son sólo las de civil. `obtener_documento` acepta la ruta que la actuación entrega, así
+que la tabla que decide qué es una ruta válida cubre las cinco competencias con detalle
+mapeado. Todas salen del `action` de un formulario de la respuesta, y **ninguna de las
+veinticinco se ha ejecutado salvo `docuN.php`**:
+
+| Competencia | Rutas |
+|---|---|
+| `civil` | las seis de arriba, más `anexoDocCivil.php` (`dtaDoc`), que entregan los dos paneles de anexo |
+| `cobranza` | `docuCobranza.php`, `docDemandaCobranza.php` (`valorDocDmda`), `docLiquidacionCobranza.php` (`valorLiq`), `docOficioCobranza.php` (`dtaDocOf`), `newebookcobranza.php` (`dtaEbook`), `docCertificadoEscrito.php` (`dtaCert`) |
+| `laboral` | `docAnexoLaboral.php` (`dtaDoc`), `docReformadoLaboral.php` (`valorRef`), `docReformadoEscritoLaboral.php` (`valorRefEsc`), `newebooklaboral.php`, `docCertificadoDemanda.php`, `docCertificadoEscrito.php` |
+| `apelaciones` | `anexoDocRecursoApelaciones.php` (`dtaDoc`), `docCausaApelaciones.php` (`valorDoc`), `newebookapelaciones.php` |
+| `suprema` | `docEscritosSuprema.php` (`dtaDoc`), `docCausaSuprema.php` (`valorFile`), `newebooksuprema.php` |
+
+El parámetro cambia por ruta y no por competencia, y por eso se lee del formulario en vez de
+deducirlo: `docuN.php` usa `dtaDoc` y `docReformadoLaboral.php` usa `valorRef`, en la misma
+columna de la misma tabla.
+
 ## Cómo se mapearon los endpoints
 
 No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de

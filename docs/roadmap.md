@@ -21,6 +21,9 @@ Las tres, no dos de tres:
 
 1. **Más de una competencia verificada** contra el sistema real, con fixtures propias.
 2. **Esquema de salida estable**, sin cambios de campos por al menos dos versiones menores.
+   El contador va en cero: la 0.9.0 agregó `anexo_referencia` a cada actuación y lo que vino
+   después agregó `anexo_ruta` y `audio_referencia`. Cada canal nuevo que se abre lo reinicia,
+   y eso es esperable mientras queden canales sin leer.
 3. **Seis meses sin que un cambio de la plataforma rompa el parser**, o con al menos un cambio
    detectado y corregido dentro de la semana.
 
@@ -128,7 +131,9 @@ fila, así que si el sitio los repite en cada uno llegarían dos veces.
   con detalle mapeado
 - `notificacionesCiv`: con su propio estado y su propia fecha de trámite. **Hecho**
 - `liquidacionCob` y `materiasLab`: cuánto se debe, y qué se litiga. **Hecho**
-- `escritosCiv`: los presentados, y cuáles siguen por resolver. Falta
+- `escritosCiv`: los presentados, y cuáles siguen por resolver. **Falta**, y es el hueco que
+  queda: los documentos que un escrito acompañó ya se leen por el canal de anexos, pero el
+  listado de escritos con su estado sigue sin mapear
 - `exhortosCiv`: el exhorto visto desde el tribunal de origen. **Hecho**
 - `piezasExhortoCiv`: el exhorto visto desde el otro lado. **Hecho**, con un campo aparte que
   dice si la causa es un exhorto. Ver abajo
@@ -304,11 +309,22 @@ por `obtener_detalle_causa`; penal no, y la razón es la de siempre.
 | `laboral` | `movimientoLab` | Como civil, con `Estado` donde civil pone `Foja` |
 | `suprema` | `movimientosSup` | Sin `Etapa` ni `Georref.`; agrega `Salas`, `Correlativo` y el año |
 | `apelaciones` | `movimientosApe` | Llama `Descripción` y `Fecha` a lo que civil llama `Desc. Trámite` y `Fec. Trámite`, y su georreferencia se escribe `Georeferencia` |
-| `penal` | `historiaPen` | **Cero filas**, igual que sus otros tres paneles |
+| `penal` | `historiaPen` | **Cero filas**, y la razón no era la que decía acá |
 
-**Penal queda sin mapear a propósito.** El panel existe y sus encabezados están a la vista, pero
-la causa medida no trae ninguna fila: declarar sus columnas sería escribir un mapa que nada
-comprobó. Hace falta encontrar una causa penal con historia y volver a medir.
+**Penal sigue sin mapear, y ya no por falta de datos.** Lo que esta página afirmaba, que la
+causa medida no traía filas, era cierto y el diagnóstico era falso: se estaba pidiendo la ruta
+equivocada. Las causas penales **no se abren por `penal/`**. Cada fila del listado llama a
+`detalleCausaPenalUnificado`, que va a `unificado/modal/causaUnificado.php`, y ésa responde con
+la cabecera llena y los paneles con filas. Medido el 22 de agosto de 2026 sobre nueve causas de
+2024 y 2026; la tabla de paneles y columnas está en {doc}`verificacion`.
+
+La ruta que lleva el nombre de la competencia devuelve **200 con los cuatro paneles, sus
+encabezados y cero filas**: la forma exacta de "esta causa penal no tiene nada".
+
+Lo que falta ahora no es medir sino decidir qué se entrega. Un expediente penal nombra
+imputados y víctimas, sus litigantes no publican RUT donde las otras cinco sí, y sus `id` de
+panel son genéricos (`historia`, `litigantes`), así que un mapeo descuidado lee la respuesta
+equivocada sin enterarse. Eso se resuelve antes de escribir el código, no después.
 
 **Ninguna de las cuatro tiene receptor.** La palabra no aparece ni una vez en las tres
 respuestas mapeadas, y ninguna fila trae la fecha doble. Por eso la historia se lee aparte de
@@ -319,6 +335,35 @@ Un detalle del recorrido que conviene no perder: el nombre del panel se guarda c
 como sufijo. Antes el código anteponía `historia`, lo que funcionaba con dos competencias que se
 llamaban así y no generaliza: dos de las nuevas van en plural (`movimientos…`) y una en singular
 (`movimiento…`).
+
+### 0.10: los otros dos canales del folio — hecho parcialmente
+
+La Historia publica más de un canal por folio y hasta la 0.9.0 se leía uno solo.
+
+**Anexos: tres paneles ofrecidos de siete medidos.** La columna `Anexo` es un segundo canal de
+documentos, distinto de `Doc.`: ahí va la resolución o el escrito, y acá los papeles que se
+acompañaron, o sea donde suele estar la prueba documental. Lo que hacía invisible la falta es
+que el folio SÍ entregaba un documento por el otro canal, así que la respuesta parecía completa.
+
+Cada actuación trae ahora `anexo_ruta` y `anexo_referencia`. Van las dos porque una competencia
+tiene varios paneles: civil abre dos desde la misma columna, con parámetros distintos.
+
+De las dieciocho rutas que el sitio nombra hay seis medidas, más la de suprema, que el sitio
+llama "Escrito". Se ofrecen tres: las que una actuación puede entregar. Las otras cuatro
+respondieron con filas y no se ofrecen porque su referencia no cuelga de un folio, o sea no
+habría de dónde sacar el parámetro. Las doce que faltan siguen sin ejecutarse: se abrieron
+dieciocho causas buscándolas y ninguna las ofrecía. La tabla está en {doc}`verificacion`.
+
+**Audios de audiencia: hecho, y a propósito sin descargar.** `listar_audios_audiencia` dice qué
+hay y con qué enlace se baja cada archivo. No trae los archivos, y eso no es una limitación
+técnica: un audio de audiencia son las voces de las partes, los testigos y el tribunal, una
+transcripción automática no reemplaza oírlo, y no siempre se puede transcribir.
+
+Es el primer canal de la plataforma que no entrega PDF, y viene troceado por acto procesal:
+once archivos para una sola audiencia preparatoria. Sólo laboral está medida.
+
+Por lo mismo siguen sin medir, deliberadamente, cuánto pesa un archivo y si el endpoint de
+descarga responde a una consulta anónima: ninguna de las dos hace falta para entregar el enlace.
 
 ### 0.9: familia
 

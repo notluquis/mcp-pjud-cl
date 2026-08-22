@@ -1500,9 +1500,13 @@ _ROTULOS_ORIGEN = ("corte", "libro", "rol ing", "recurso")
 def parse_causa_de_origen(html_detalle: str, competencia: str = "suprema") -> CausaDeOrigen | None:
     """La causa de la Corte de Apelaciones de la que subió el recurso.
 
-    Devuelve `None` cuando, y sólo cuando, la competencia NO publica el panel. Todo lo demás
-    levanta, porque lo que hay acá es la identidad de OTRA causa y media identidad no ubica
-    ninguna.
+    Devuelve `None` en dos casos, los dos medidos: cuando la competencia no publica el panel, y
+    cuando la causa no trae ninguno porque no subió desde una Corte de Apelaciones. Lo segundo
+    es tres de dieciséis causas de suprema, no una rareza.
+
+    Lo que sí levanta es el panel PRESENTE y sin los cuatro rótulos, que nunca se observó: lo
+    que hay ahí es la identidad de OTRA causa, y media identidad no ubica ninguna. Un
+    `CausaDeOrigen` con la corte y sin el rol se lee como que el sitio no publica el dato.
 
     No pasa por `Panel` ni por la validación posicional: no es una tabla de filas sino cuatro
     pares de rótulo y valor, con el rótulo en un `<strong>` y el valor en su cola. Es la misma
@@ -1521,12 +1525,14 @@ def parse_causa_de_origen(html_detalle: str, competencia: str = "suprema") -> Ca
 
     panes = doc.xpath(f'//*[@id="{spec.causa_de_origen}"]')
     if not panes:
-        raise EstructuraInesperada(
-            f"El detalle de {competencia} no trae el panel {spec.causa_de_origen!r}, donde se "
-            "publica la causa de la Corte de Apelaciones de la que viene el recurso. Devolver "
-            "nulo diría que esta causa no viene de ninguna, que es una afirmación falsa y no "
-            "un error: el nulo está reservado para las competencias que no publican el panel."
-        )
+        # MEDIDO el 22 de agosto de 2026, sobre dieciséis causas de suprema: TRES no traen el
+        # panel. No es una respuesta rota, es una causa que no subió desde una Corte de
+        # Apelaciones, y las hay de sobra (exequátur, contienda de competencia, desafuero).
+        #
+        # Levantar acá era la conducta anterior, decidida cuando este estado no estaba medido, y
+        # se llevaba puesto el detalle ENTERO de casi una de cada cinco causas de suprema. El
+        # nulo dice lo que corresponde: no hay causa de origen que publicar.
+        return None
 
     valores: dict[str, str] = {}
     for etiqueta in panes[0].xpath('.//table[contains(@class, "table-titulos")]//td/strong'):

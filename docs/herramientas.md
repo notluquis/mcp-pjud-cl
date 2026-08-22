@@ -351,9 +351,15 @@ que hoy es todas salvo laboral. Se usa con `listar_audios_audiencia`.
 
 `causa_de_origen` está en la tabla y tampoco trae filas: es la causa de la Corte de Apelaciones
 desde la que **subió** el recurso, y cierra hacia abajo la misma clase de arista que los
-exhortos cierran hacia el lado. Sólo suprema publica el panel. O llega completa, o llega en
-nulo porque la competencia no lo publica: un panel presente que no se entiende levanta, porque
-un rol sin corte no ubica ninguna causa.
+exhortos cierran hacia el lado. Sólo suprema publica el panel.
+
+Viene en **nulo** en dos casos, los dos medidos: la competencia no publica el panel, o la causa
+no subió desde una Corte de Apelaciones y el sitio no emite el panel. Lo segundo es **tres de
+dieciséis** causas de suprema, así que no es una rareza: exequátur, contienda de competencia y
+desafuero llegan a la Corte Suprema sin pasar por una corte.
+
+Lo que **levanta** es el panel presente y sin sus cuatro datos, que nunca se observó: un rol
+sin corte no ubica ninguna causa, y media identidad se lee como que el sitio no la publica.
 
 :::{important} La corte viene por su nombre
 `causa_de_origen.corte` dice `C.A. DE CONCEPCIÓN`, y las búsquedas piden un entero. Hay que

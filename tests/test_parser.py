@@ -1467,17 +1467,23 @@ def test_un_rol_que_no_es_un_rol_levanta_en_vez_de_entregarlo_en_nulo():
 
 
 def test_un_panel_renombrado_no_se_lee_como_que_la_causa_no_viene_de_una_corte():
-    """El mismo modo de falla que cierra el contrato de las piezas del exhorto.
+    """El panel ausente es un estado REAL de la causa, y está medido: tres de dieciséis causas
+    de suprema no lo traen, porque no subieron desde una Corte de Apelaciones.
 
-    Devolver nulo porque el `id` no está ata la afirmación a que la plataforma no lo renombre.
-    El día que lo renombre, la respuesta no diría "no pude leerlo": diría que esta causa no
-    viene de ninguna Corte de Apelaciones, que es una afirmación falsa y no un error.
+    Por eso acá el nulo no es una salida silenciosa sino la respuesta. Lo que sí levanta es el
+    panel presente y sin los cuatro rótulos, que es el caso que nunca se observó: ahí falta
+    media identidad de otra causa y con media identidad no se ubica ninguna.
+
+    El costo de haberlo elegido al revés era concreto: `obtener_detalle_causa` reventaba entero
+    en casi una de cada cinco causas de suprema.
     """
     renombrado = DETALLE_SUPREMA.replace('id="corteApelaciones"', 'id="corteApelacionesSup"')
     assert renombrado != DETALLE_SUPREMA, "la fixture no se pudo deformar"
 
-    with pytest.raises(EstructuraInesperada, match="no trae el panel"):
-        parse_causa_de_origen(renombrado, "suprema")
+    assert parse_causa_de_origen(renombrado, "suprema") is None, (
+        "una causa de suprema puede no traer el panel, y está medido: tres de dieciséis. "
+        "Levantar ahí se lleva puesto el detalle entero de casi una de cada cinco"
+    )
 
 
 # -- anexos --------------------------------------------------------------------------

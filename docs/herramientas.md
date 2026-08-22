@@ -1,12 +1,12 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las once herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 12 herramientas MCP, sus parámetros y cada campo que devuelven."
 ---
 
 # Referencia de herramientas
 
-Las cinco están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
+Las 12 están anotadas en el protocolo como `readOnlyHint: true` y `destructiveHint: false`.
 
 :::{note}
 Las anotaciones MCP son **pistas**, no garantías verificables por el cliente. La garantía real

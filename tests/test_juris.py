@@ -14,6 +14,8 @@ from mcp_pjud.juris import (
 )
 from mcp_pjud.parser import EstructuraInesperada, PlataformaRechaza
 
+from .conftest import CARACTERES_DE_UNA_SENTENCIA
+
 FIXTURES = Path(__file__).parent / "fixtures"
 AMPLIA = (FIXTURES / "juris_busqueda_amplia.json").read_text(encoding="utf-8")
 CITA = (FIXTURES / "juris_cita_unica.json").read_text(encoding="utf-8")
@@ -261,7 +263,7 @@ def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
     """Una sentencia de trece páginas son unos 25.000 caracteres, medido. Diez por búsqueda
     serían 250.000, así que `Sentencia` lleva el preview y no el fallo."""
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    c = _con_respuesta(_con_texto("X" * 25473))
+    c = _con_respuesta(_con_texto("X" * CARACTERES_DE_UNA_SENTENCIA))
     s = c.buscar(rol=34546, anio=2025).sentencias[0]
     assert "texto" not in s.model_dump(), "el texto completo no puede viajar en cada fila"
     # La extensión sí viaja: es lo que permite decidir si pedir el resto.

@@ -47,6 +47,24 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import COMPETENCIAS, parse_historia
 from mcp_pjud.server import mcp
 
+from .conftest import CARACTERES_DE_UNA_SENTENCIA
+
+#: Para derivar la fecha corta de la larga en vez de escribir las dos al lado.
+_MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
 RAIZ = Path(__file__).parents[1]
 HERRAMIENTAS = (RAIZ / "docs" / "herramientas.md").read_text(encoding="utf-8")
 
@@ -228,6 +246,254 @@ def test_todo_trabajo_que_corre_la_suite_clona_la_historia_completa():
     )
 
 
+#: Los conteos que la prosa escribe con letras, para poder derivarlos igual.
+_EN_PALABRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
+
+#: Los radios de precisión que devolvió la única causa donde se midió la georreferencia. No
+#: salen de ninguna constante, porque son una medición y no una decisión: viven acá, y el
+#: guardia exige que las tres copias de la documentación digan los mismos cinco.
+PRECISIONES_MEDIDAS = ("6,0", "10,04", "26,68", "56,22", "103,13")
+
+
+def test_la_referencia_dice_cuantas_herramientas_hay_de_verdad(expuestas):
+    """La descripción de la página se quedó en once cuando entró la doce.
+
+    Es el `<meta name="description">` de la página publicada y la línea que la ecosistema y
+    `llms.txt` muestran como resumen, o sea lo primero que lee alguien que llega. Nada la
+    comparaba contra el servidor: el guardia de secciones exige que cada herramienta tenga la
+    suya, y eso sigue pasando con un conteo viejo al lado.
+    """
+    pagina = _texto(RAIZ / "docs" / "herramientas.md")
+    assert f"las {len(expuestas)} herramientas MCP" in pagina.split("---")[1], (
+        f"el servidor expone {len(expuestas)} herramientas y la descripción de la referencia "
+        "dice otra cosa"
+    )
+    # Y el conteo del cuerpo, que es otra copia y quedó vieja aparte: decía "Las cinco" con
+    # doce expuestas. Arreglar la descripción y dejar ésta es el mismo error una línea abajo.
+    assert f"Las {len(expuestas)} están anotadas en el protocolo" in pagina, (
+        f"la referencia dice que están anotadas otras que las {len(expuestas)} expuestas"
+    )
+
+
+def test_las_rutas_de_georreferencia_son_las_que_el_sitio_declara():
+    """`verificacion` afirma cuántas hay, y sale del JavaScript del sitio.
+
+    Son una por competencia más una unificada. El cliente ofrece menos, porque descarta las
+    que no tienen tabla de Historia medida, y ésa es justamente la distinción que el conteo
+    del sitio deja ver: lo que la plataforma publica no es lo que este servidor puede pedir.
+    """
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    rutas = set(re.findall(r"(geoReferencia\w*\.php)", js))
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    assert f"Hay {_EN_PALABRAS[len(rutas)]} rutas, una por competencia más una unificada" in (
+        pagina
+    ), f"el sitio declara {len(rutas)} rutas de georreferencia: {sorted(rutas)}"
+
+
+def test_la_pagina_de_uso_nombra_campos_que_existen():
+    """Es la página que le enseña al abogado a leer la salida, y no la miraba nadie.
+
+    Vaciarla entera no ponía ni un test en rojo. Nombra los campos de una actuación en su lista
+    de definiciones, empezando por `fecha_diligencia`, que es el que corre los plazos: si uno se
+    renombra, esa página queda enseñando a buscar algo que la respuesta ya no trae.
+    """
+    from mcp_pjud.parser import Actuacion
+
+    pagina = _texto(RAIZ / "docs" / "uso.md")
+    # Los términos de la lista de definiciones: una línea que es sólo un identificador entre
+    # comillas invertidas, seguida de otra que empieza con dos puntos.
+    lineas = pagina.splitlines()
+    nombrados = {
+        m.group(1)
+        for i, linea in enumerate(lineas[:-1])
+        if (m := re.fullmatch(r"`(\w+)`", linea.strip())) and lineas[i + 1].startswith(":")
+    }
+    assert nombrados, "la página de uso dejó de tener su lista de campos"
+
+    faltan = sorted(n for n in nombrados if n not in Actuacion.model_fields)
+    assert not faltan, (
+        f"la página de uso enseña a leer {faltan}, y una actuación no trae esos campos"
+    )
+    assert "fecha_diligencia" in nombrados, (
+        "la página de uso dejó de explicar `fecha_diligencia`, que es la que corre los plazos"
+    )
+
+
+def test_la_licencia_dice_lo_mismo_en_los_cuatro_lugares_donde_está():
+    """La licencia está escrita en cuatro archivos y nada los comparaba.
+
+    Vaciar `docs/licencia.md` entera no ponía ni un test en rojo, así que la página que explica
+    qué se puede hacer con este software podía decir una licencia y el paquete distribuir otra.
+    Es la afirmación con más consecuencias del repositorio después de las de plazos.
+    """
+    identificador = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["license"]
+    nombre = identificador.removeprefix("LicenseRef-").replace("-", " ").replace(" 1 0 0", " 1.0.0")
+
+    assert identificador in _texto(RAIZ / "CITATION.cff"), (
+        f"CITATION.cff declara una licencia distinta de {identificador}"
+    )
+    assert _texto(RAIZ / "LICENSE.md").startswith(
+        f"# {nombre.replace('Strict', 'Strict License')}"
+    ), f"LICENSE.md no es el texto de {nombre}"
+    # Se barre la prosa entera en vez de enumerar dónde está declarada. Enumerar es lo que
+    # falló dos veces: primero el guardia aceptaba cualquier mención (la insignia del README
+    # rescataba una declaración cambiada), después miraba dos páginas y se le escapaban las de
+    # `uso`, `index` e `instalacion`. Cualquier nombre de licencia que no sea el declarado es
+    # una contradicción, esté donde esté.
+    # Se buscan las DECLARACIONES sobre este software, no cualquier nombre de licencia. El
+    # barrido por nombre fue una sobrecorrección: la investigación de documentos compara las
+    # licencias de PyMuPDF, pypdf y pypdfium2 en prosa, y eso no es una declaración sobre
+    # esto. Prohibir nombres ponía el guardia en rojo sobre una página correcta.
+    #
+    # Una declaración se reconoce por su frase, y son pocas y estables: "el proyecto usa X",
+    # "se entrega bajo X", "[X] permite", "La licencia ([X])". Si alguna cambia de licencia,
+    # la frase sigue estando y el nombre que trae adentro es el que se compara.
+    DECLARACIONES = (
+        r"[Ee]l proyecto usa \[([^\]]+)\]",
+        r"[Ss]e entrega bajo \[([^\]]+)\]",
+        r"[Ss]e distribuye bajo \[([^\]]+)\]",
+        r"^\[([^\]]+)\]\([^)]*\)[.,]? [Pp]ermite",
+        r"^\*\*([^*]+)\*\* permite",
+        r"La licencia \(\[([^\]]+)\]",
+    )
+    ajenas = {}
+    for pagina in PROSA:
+        texto = _texto(pagina)
+        halladas = {
+            m.group(1) for patron in DECLARACIONES for m in re.finditer(patron, texto, re.M)
+        }
+        otras = sorted(h for h in halladas if h != nombre)
+        if otras:
+            ajenas[pagina.name] = otras
+    assert not ajenas, (
+        f"estas páginas declaran una licencia que no es la que el paquete distribuye: "
+        f"{ajenas}. La declarada es {nombre}."
+    )
+
+    # Y que al menos una página la declare, para que borrarla no pase por silencio.
+    assert any(nombre in _texto(p) for p in PROSA), (
+        f"ninguna página nombra {nombre}, que es bajo lo que se distribuye"
+    )
+
+
+def test_las_precisiones_medidas_dicen_lo_mismo_en_las_cuatro_copias():
+    """Cinco cifras escritas a mano en cuatro lugares, y ninguna las comparaba.
+
+    `herramientas` las repite dos veces (tabla de campos y aviso), `verificacion` una, y la
+    cuarta es la que de verdad lee el modelo: el esquema de salida que el servidor anuncia.
+    Mirar sólo las de Markdown dejaba que la documentación y el protocolo dijeran cosas
+    distintas, que es peor que dos páginas en desacuerdo.
+
+    Se comparan los números completos y no por pertenencia: con `in`, cambiar `10,04` por
+    `110,04` dejaba el guardia verde, porque la cadena vieja sigue adentro de la nueva. Es el
+    mismo error que buscar `.doc` dentro de `_window.document.close()`.
+    """
+    from mcp_pjud.parser import Georreferencia
+
+    ref = _texto(RAIZ / "docs" / "herramientas.md")
+    copias = {
+        "herramientas.md (tabla)": ref.split("`precision_metros`")[1][:200],
+        "herramientas.md (aviso)": ref.split("Medidas en una sola causa:")[1][:200],
+        "verificacion.md": _texto(RAIZ / "docs" / "verificacion.md").split(
+            "Medidas en una sola causa:"
+        )[1][:200],
+        "el esquema que anuncia el servidor": (
+            Georreferencia.model_fields["precision_metros"].description or ""
+        ),
+    }
+    # Y el rango que el contrato de la herramienta publica, que es una quinta copia derivada:
+    # actualizar las cuatro y dejarla conserva los extremos viejos en lo que lee el modelo.
+    from mcp_pjud.server import obtener_georreferencia
+
+    numeros = sorted(float(p.replace(",", ".")) for p in PRECISIONES_MEDIDAS)
+    minimo, maximo = int(numeros[0]), int(numeros[-1])
+    contrato = " ".join((obtener_georreferencia.__doc__ or "").split())
+    assert f"varía entre {minimo} y {maximo} metros" in contrato, (
+        f"`obtener_georreferencia` publica un rango que no es {minimo} a {maximo} metros, que "
+        "es lo medido"
+    )
+    assert f"con {maximo} la coordenada dice el sector" in contrato, (
+        f"el contrato razona sobre un radio que no es el máximo medido ({maximo})"
+    )
+
+    esperadas = sorted(PRECISIONES_MEDIDAS)
+    mal = {
+        donde: sorted(set(re.findall(r"\d+,\d+", texto)))
+        for donde, texto in copias.items()
+        if sorted(set(re.findall(r"\d+,\d+", texto))) != esperadas
+    }
+    assert not mal, (
+        f"estas copias no citan exactamente las precisiones medidas: {mal}. Son "
+        f"{' · '.join(PRECISIONES_MEDIDAS)} metros, y las cuatro tienen que decir lo mismo."
+    )
+
+
+def test_la_aritmetica_de_diez_sentencias_sale_de_la_sentencia_medida():
+    """Las dos páginas razonan lo mismo con distinta precisión, y el producto es derivado.
+
+    `roadmap` cita los 25.473 caracteres exactos y `herramientas` los redondea, pero las dos
+    concluyen con el mismo "devolver diez serían 250.000". Si se vuelve a medir la sentencia,
+    ese producto queda viejo en los dos lados sin que nadie lo mire.
+    """
+    redondeado = round(CARACTERES_DE_UNA_SENTENCIA, -3)
+    # El piso que las dos páginas citan, redondeado hacia abajo al múltiplo de diez mil.
+    piso = (CARACTERES_DE_UNA_SENTENCIA * 10) // 10_000 * 10_000
+
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    assert f"{miles(CARACTERES_DE_UNA_SENTENCIA)} caracteres" in hoja, (
+        f"la hoja de ruta dejó de citar los {miles(CARACTERES_DE_UNA_SENTENCIA)} caracteres "
+        "de la sentencia medida"
+    )
+    # Con la cifra exacta al lado, el producto NO puede escribirse como si fuera exacto: son
+    # 254.730 y no 250.000. La hoja lo dice como piso, que es lo que sí es cierto.
+    assert f"serían más de {miles(piso)}" in hoja, (
+        f"la hoja de ruta cita la sentencia exacta y presenta el producto como {miles(piso)} "
+        f"redondos. Diez son {miles(CARACTERES_DE_UNA_SENTENCIA * 10)}."
+    )
+
+    # La referencia redondea la entrada, así que su producto sí es exacto.
+    ref = _texto(RAIZ / "docs" / "herramientas.md")
+    assert f"unos {miles(redondeado)} caracteres" in ref, (
+        f"la referencia redondea la sentencia medida a otra cosa que {miles(redondeado)}"
+    )
+    assert f"serían {miles(redondeado * 10)}" in ref, (
+        f"la referencia parte de {miles(redondeado)} y no concluye {miles(redondeado * 10)}"
+    )
+
+    # Y las copias que anuncia el protocolo, que son las que el modelo lee de verdad: la
+    # descripción de `obtener_texto_sentencia` y la del propio modelo de resultado. Escriben
+    # la magnitud en palabras, así que se comparan contra la misma constante deletreada.
+    from mcp_pjud.juris import TextoSentencia
+    from mcp_pjud.server import obtener_texto_sentencia
+
+    en_palabras = {25_000: "veinticinco mil", 30_000: "treinta mil", 20_000: "veinte mil"}
+    esperado = en_palabras.get(redondeado)
+    assert esperado, (
+        f"no está escrita en palabras la magnitud {miles(redondeado)}, y las descripciones "
+        "del protocolo la citan así"
+    )
+    for donde, texto in (
+        ("obtener_texto_sentencia", obtener_texto_sentencia.__doc__ or ""),
+        ("el modelo TextoSentencia", TextoSentencia.__doc__ or ""),
+    ):
+        assert f"unos {esperado} caracteres" in " ".join(texto.split()), (
+            f"{donde} anuncia una magnitud distinta de {esperado} caracteres, así que el "
+            "protocolo y la documentación dicen cosas distintas"
+        )
+
+    # Y el producto, que el modelo también escribe en palabras: actualizar sólo la magnitud
+    # dejaba a `TextoSentencia` concluyendo diez veces la cifra vieja.
+    productos = {250_000: "doscientos cincuenta mil", 300_000: "trescientos mil"}
+    producto = productos.get(redondeado * 10)
+    assert producto, (
+        f"no está escrito en palabras el producto {miles(redondeado * 10)}, y la descripción "
+        "del modelo lo cita así"
+    )
+    assert producto in " ".join((TextoSentencia.__doc__ or "").split()), (
+        f"`TextoSentencia` dice que diez sentencias son otra cosa que {producto}"
+    )
+
+
 def test_las_anotaciones_de_solo_lectura_siguen_puestas(expuestas):
     """La referencia afirma que todas están anotadas como solo lectura. Es verificable, así
     que se verifica en vez de confiar en que siga siendo cierto."""
@@ -311,13 +577,57 @@ def test_ninguna_otra_pagina_cita_la_medicion_a_medias():
 
 
 def test_la_fecha_de_la_medicion_acompana_a_las_cifras():
-    """Una cifra medida sin fecha no se puede evaluar: quien la lea no sabe si sigue vigente."""
-    for p in PROSA:
-        t = _texto(p)
-        if miles(INDEXADAS_MEDIDAS) in t:
-            assert FECHA_MEDICION in t or "16-08-2026" in t or "16 de agosto" in t, (
-                f"{p.relative_to(RAIZ)} cita la medición sin decir cuándo se hizo"
+    """Una cifra medida sin fecha no se puede evaluar: quien la lea no sabe si sigue vigente.
+
+    Sin alternativas, y ésa es la corrección: antes aceptaba también `"16-08-2026"` y
+    `"16 de agosto"` escritos a mano, así que volver a medir movía `FECHA_MEDICION` y las
+    páginas se quedaban con la fecha vieja en verde. Un `or` que nombra el valor de hoy no es
+    una tolerancia de formato: es el guardia rescatando justo la copia que vino a atrapar.
+
+    Lo que sí hace falta es normalizar los espacios, porque la fecha se parte entre líneas.
+    """
+    # Se barre la prosa Y el código: `juris.py` repite la fecha y las dos cifras en el
+    # docstring de su módulo, y ahí es donde vive la constante, así que era la copia con más
+    # posibilidades de quedar vieja sin que nadie la mirara.
+    # `juris.py` va SIEMPRE, no sólo si ya trae la cifra vigente: al volver a medir, su
+    # docstring puede conservar juntas las dos cifras y la fecha viejas, no contener el total
+    # nuevo, caer en el `continue` y dejar la suite verde. Es la copia que vive junto a la
+    # constante, o sea la que más fácil se queda atrás.
+    obligatorias = {RAIZ / "src" / "mcp_pjud" / "juris.py"}
+    for p in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
+        # En un `.py` se mira SÓLO el docstring del módulo, no el archivo entero. Con el
+        # archivo completo, la asignación de `FECHA_MEDICION` que está unas líneas más abajo
+        # rescataba a su propia copia vieja del docstring: la constante contiene el valor que
+        # el guardia venía a verificar contra ella.
+        crudo = _texto(p)
+        if p.suffix == ".py":
+            m = ast.get_docstring(ast.parse(crudo))
+            crudo = m or ""
+        t = " ".join(crudo.split())
+        if p in obligatorias:
+            # Obligatoria significa que TIENE que traer las dos cifras vigentes, no sólo que
+            # se la mire. Con el bypass anterior, una medición nueva que actualizara la fecha
+            # y las visibles y dejara el total viejo pasaba: el `continue` se saltaba, pero
+            # nada exigía el total, así que las aserciones de abajo daban verde.
+            assert miles(INDEXADAS_MEDIDAS) in t, (
+                f"{p.relative_to(RAIZ)} tiene que citar las {miles(INDEXADAS_MEDIDAS)} "
+                "coincidencias declaradas, y quedó con otra cifra"
             )
+        elif miles(INDEXADAS_MEDIDAS) not in t:
+            continue
+        # El código la escribe en formato corto, así que la corta se DERIVA de la larga y no
+        # se escribe al lado: un `or` con la fecha de hoy es lo que dejaba pasar la copia vieja.
+        m = re.fullmatch(r"(\d{1,2}) de (\w+) de (\d{4})", FECHA_MEDICION)
+        assert m, "`FECHA_MEDICION` dejó de tener la forma que este guardia sabe derivar"
+        corta = f"{int(m[1]):02d}-{_MESES.index(m[2].lower()) + 1:02d}-{m[3]}"
+        assert FECHA_MEDICION in t or corta in t, (
+            f"{p.relative_to(RAIZ)} cita la medición con una fecha que no es {FECHA_MEDICION!r} "
+            f"ni {corta!r}"
+        )
+        assert miles(VISIBLES_MEDIDAS) in t, (
+            f"{p.relative_to(RAIZ)} cita las coincidencias declaradas sin las visibles, que es "
+            "la mitad que importa"
+        )
 
 
 def test_los_topes_declarados_coinciden_con_el_codigo():
@@ -2735,6 +3045,52 @@ def test_ninguna_version_del_registro_repite_una_seccion():
     assert not repetidas, (
         f"Versiones del registro con una sección repetida: {repetidas}. La publicación copia "
         "el tramo entero, así que el encabezado saldría dos veces en la página."
+    )
+
+
+#: Lo que el contrato de cada herramienta NO puede perder, porque sin eso el modelo informa
+#: algo que no puede afirmar. Cada entrada nombra un aviso, no una redacción: se busca el
+#: término, así que reescribir el párrafo alrededor no rompe nada y borrarlo sí.
+AVISOS_QUE_NO_SE_PUEDEN_PERDER = {
+    "obtener_actuaciones_receptor": (
+        # La razón de existir del proyecto, y su contrato se podía vaciar entero sin que nada
+        # se pusiera en rojo: `obtener_detalle_causa` tenía guardia y ésta no.
+        "fecha_diligencia",
+        "fecha_registro",
+        "plazos",
+        "ebook",
+    ),
+    "buscar_jurisprudencia": ("ocultas", "no_entregadas", "subconjunto"),
+    "obtener_documento": ("escaneo", "OCR", "no es un PDF"),
+    # `fecha_diligencia` es el aviso que más importa de los cuatro: sin él, un modelo puede
+    # tomar la hora del aparato como la fecha que corre el plazo, y ésta es una TERCERA
+    # fuente para contrastar, no un reemplazo. Faltaba justo ése.
+    "obtener_georreferencia": (
+        "precision_metros",
+        "hora",
+        "existe",
+        "fecha_diligencia",
+        "NO reemplaza",
+    ),
+}
+
+
+@pytest.mark.parametrize("nombre", sorted(AVISOS_QUE_NO_SE_PUEDEN_PERDER))
+def test_el_contrato_de_cada_herramienta_conserva_sus_avisos(expuestas, nombre):
+    """Lo que el modelo lee antes de llamar es lo único que le dice qué NO puede afirmar.
+
+    `obtener_detalle_causa` ya tenía este guardia. Las demás no, y eso incluía a
+    `obtener_actuaciones_receptor`, que `AGENTS.md` llama la razón de existir del proyecto:
+    su descripción entera se podía reemplazar por "Devuelve una lista" y la suite seguía
+    verde. Sin ese contrato, un modelo devuelve `fecha_registro` creyendo que corre plazos.
+    """
+    herramienta = expuestas.get(nombre)
+    assert herramienta is not None, f"{nombre} ya no está expuesta"
+    contrato = (herramienta.description or "").lower()
+    faltan = [a for a in AVISOS_QUE_NO_SE_PUEDEN_PERDER[nombre] if a.lower() not in contrato]
+    assert not faltan, (
+        f"el contrato de {nombre} dejó de mencionar {faltan}, y sin eso el modelo informa "
+        "un dato que no puede afirmar"
     )
 
 

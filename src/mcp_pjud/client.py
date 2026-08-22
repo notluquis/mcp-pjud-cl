@@ -298,12 +298,8 @@ GEORREFERENCIA: dict[str, str] = {
 #: audios, que por la ruta análoga respondió 200 con la tabla VACÍA, o sea con la forma exacta
 #: de "esta causa no tiene nada".
 ANEXOS: dict[str, dict[str, str]] = {
-    "civil": {
-        "anexoCausaCivil.php": "dtaAnexCau",
-        "anexoCausaSolicitudCivil.php": "dtaCausaAnex",
-    },
+    "civil": {"anexoCausaSolicitudCivil.php": "dtaCausaAnex"},
     "laboral": {"anexoEscritoLaboral.php": "dtaAnex"},
-    "apelaciones": {"anexoRecursoApelaciones.php": "dtaAnexRec"},
     # El sitio la llama "Escrito" y no "Anexo", y su panel publica seis columnas que no se
     # parecen a las de nadie: tipo de documento, cantidad y si el ejemplar físico se exige. Es
     # el mismo canal igual, porque es lo que abre la columna `Anexo` de su Historia.
@@ -321,6 +317,18 @@ ANEXOS: dict[str, dict[str, str]] = {
 ANEXOS_MEDIDOS_SIN_EXPONER: dict[str, str] = {
     "anexoDemandaUnificado.php": "dtaAnex",
     "anexoEscritoUnificado.php": "dtaAnex",
+    # Éstos dos respondieron con filas y tampoco se exponen, por la misma razón y no por la
+    # misma causa: su referencia NO vive en la celda de un folio, así que `anexo_ruta` nunca los
+    # va a entregar.
+    #
+    # `anexoCausaCivil` cuelga de la cabecera, en "Anexos de la causa", o sea es del expediente
+    # y no de un escrito. `anexoRecursoApelaciones` vive en el panel `recursoApe`, que es otro
+    # panel del detalle y no está mapeado.
+    #
+    # Se midieron igual y la medición queda escrita: lo que falta para ofrecerlos no es la ruta
+    # sino de dónde sacar la referencia.
+    "anexoCausaCivil.php": "dtaAnexCau",
+    "anexoRecursoApelaciones.php": "dtaAnexRec",
 }
 
 DOCUMENTOS: dict[str, dict[str, str]] = {

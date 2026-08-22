@@ -19,8 +19,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 ### Agregado
 
 - `obtener_anexos_escrito` trae los documentos que un escrito acompañó, que son un canal
-  distinto del de la resolución y hasta ahora no se podían pedir. Cinco paneles medidos en
-  cuatro competencias; los doce que faltan siguen sin ejecutarse y se rechazan.
+  distinto del de la resolución y hasta ahora no se podían pedir. Tres paneles ofrecidos y
+  otros cuatro medidos sin ofrecer, porque su referencia no cuelga de un folio.
 - Cada actuación trae `anexo_ruta` y `anexo_referencia`, que es con qué se piden sus anexos.
   Nulas donde el folio no tiene anexo o donde su panel no está medido.
 - Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta

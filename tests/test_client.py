@@ -2028,9 +2028,8 @@ def test_la_ruta_de_descarga_del_anexo_es_una_que_obtener_documento_acepta():
     el parser no consulta esa tabla y el cliente no consulta el panel.
     """
     paneles = {
-        "civil": ("anexoCausaCivil.php", "anexo_causa_civil.html"),
+        "civil": ("anexoCausaSolicitudCivil.php", "anexo_solicitud_civil.html"),
         "laboral": ("anexoEscritoLaboral.php", "anexo_escrito_laboral.html"),
-        "apelaciones": ("anexoRecursoApelaciones.php", "anexo_recurso_apelaciones.html"),
         "suprema": ("escritoSuprema.php", "escrito_suprema.html"),
     }
     assert set(paneles) == set(ANEXOS), (
@@ -2042,6 +2041,34 @@ def test_la_ruta_de_descarga_del_anexo_es_una_que_obtener_documento_acepta():
             assert a.documento_ruta in DOCUMENTOS[competencia], (
                 f"el panel {ruta} entrega {a.documento_ruta!r} y `obtener_documento` no la acepta"
             )
+
+
+def test_toda_ruta_ofrecida_sale_de_la_celda_de_alguna_actuacion():
+    """Una ruta que ninguna actuación entrega es una herramienta cuyo parámetro nadie puede
+    conseguir.
+
+    Pasó, y por eso este guardia existe: el barrido que midió los paneles buscaba las llamadas
+    en TODO el detalle, y dos de las que encontró no viven en la celda de un folio.
+    `anexoCausaCivil` cuelga de la cabecera, en "Anexos de la causa", y
+    `anexoRecursoApelaciones` vive en el panel de recursos. Las dos respondieron con filas, así
+    que los tests de parseo pasaban; lo que faltaba era comprobar de dónde sale su referencia.
+    """
+    detalles = {
+        "civil": ("c1156_apremio.html", "civil"),
+        "laboral": ("detalle_laboral.html", "laboral"),
+        "suprema": ("detalle_suprema.html", "suprema"),
+    }
+    assert set(detalles) == set(ANEXOS), (
+        "hay una competencia con panel ofrecido que este guardia no cubre. Si no hay fixture "
+        "que la alcance, el panel va a `ANEXOS_MEDIDOS_SIN_EXPONER` con su razón."
+    )
+    for competencia, (fixture, nombre) in detalles.items():
+        html = (FIXTURES / fixture).read_text(encoding="utf-8")
+        ofrecidas = {a.anexo_ruta for a in parse_historia(html, competencia=nombre) if a.anexo_ruta}
+        assert ofrecidas == set(ANEXOS[competencia]), (
+            f"{competencia} ofrece {sorted(ANEXOS[competencia])} y sus actuaciones entregan "
+            f"{sorted(ofrecidas)}"
+        )
 
 
 def test_pedir_anexos_de_una_competencia_sin_ruta_medida_no_gasta_peticion(monkeypatch):

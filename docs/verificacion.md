@@ -332,10 +332,22 @@ recurso, y suprema publica seis columnas que hablan de otra cosa (cuántos ejemp
 el ejemplar físico se exige). Leer uno con el mapa de otro no da error: corre los campos y deja
 la fecha en la celda de la descarga.
 
-Los dos de `unificado` se midieron y **no se exponen**: son los que sirven a las causas
-penales, que se abren por otro detalle que todavía no está mapeado, así que no habría de dónde
-sacar su referencia. Su columna de descarga apunta a una ruta distinta de las demás, con el
-campo `data` en vez de `dtaDoc`.
+**Cuatro de los siete se midieron y no se exponen**, y la razón es siempre la misma: no hay de
+dónde sacar su referencia. Ofrecerlos sería una herramienta cuyo parámetro nadie puede
+conseguir.
+
+| Panel | Dónde vive su referencia |
+|---|---|
+| `anexoCausaCivil.php` | En la cabecera, bajo "Anexos de la causa": es del expediente, no de un escrito |
+| `anexoRecursoApelaciones.php` | En el panel `recursoApe`, que es otro panel del detalle y no está mapeado |
+| `anexoDemandaUnificado.php` | En el detalle de las causas penales, que se abre por `unificado` y no está mapeado |
+| `anexoEscritoUnificado.php` | ídem |
+
+Los dos de `unificado` apuntan además a una ruta de descarga distinta de todas las demás, con
+el campo `data` en vez de `dtaDoc`.
+
+Los tres que sí se ofrecen son los que una actuación entrega en `anexo_ruta`, o sea los que
+cuelgan de la celda `Anexo` de un folio de la Historia.
 
 **Lo que hacía invisible esta falta es que el folio SÍ entregaba un documento.** Las dos filas
 con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su `docuN.php`: quien

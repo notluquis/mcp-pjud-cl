@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.11.0] - 2026-08-22
+
 ### Agregado
 
 - El detalle de una causa laboral trae `diligencias`, con el oficio despachado y el que volvió.
@@ -379,7 +381,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.10.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.11.0
 [0.10.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.10.0
 [0.9.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.9.0
 [0.8.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.8.0

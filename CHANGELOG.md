@@ -16,6 +16,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- El detalle lee tres paneles más: los escritos pendientes y la liquidación de laboral, y las
+  causas agregadas de suprema. De ninguno se ha visto una fila en sesenta y una causas, así que
+  sus columnas salen del encabezado: `SIN_FILAS_OBSERVADAS` los nombra y la referencia lo
+  advierte.
+
 ## [0.11.0] - 2026-08-22
 
 ### Agregado

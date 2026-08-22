@@ -430,6 +430,52 @@ ESCRITOS_CIVIL = Panel(
     encabezados=("doc.", "anexo", "fecha de ingreso", "tipo escrito", "solicitante"),
 )
 
+#: Los paneles cuyas columnas salen del ENCABEZADO y de los que nunca se vio una fila.
+#:
+#: La distinción importa y por eso está acá y no en un comentario suelto: de los demás paneles
+#: se midió qué trae cada celda, y de éstos sólo cómo se llaman las columnas. El sitio las
+#: publica en su tabla vacía, así que el orden y la cantidad SÍ están medidos y la validación
+#: posicional protege igual. Lo que no está medido es el contenido: si una celda trae un
+#: formulario donde acá se lee texto, va a salir vacía en vez de romper.
+#:
+#: Se abrieron sesenta y una causas el 22 de agosto de 2026, en cinco barridos, buscando una
+#: fila de cualquiera de los tres. Ninguna la trajo: son paneles de una etapa (la liquidación
+#: en cumplimiento, la acumulación en suprema) o de una cola transitoria (los escritos
+#: pendientes), así que aparecen cuando la causa está en ese momento y no antes.
+#:
+#: Lo que se gana mapeándolos igual: el día que una causa los traiga, la respuesta los va a
+#: incluir en vez de descartarlos en silencio. Lo que se pierde si el mapeo está mal: una
+#: columna leída de la celda equivocada, que es lo que la validación de encabezados acota.
+SIN_FILAS_OBSERVADAS = frozenset({"EscPendLab", "liquidacionLab", "agregadosSup"})
+
+#: Los escritos por resolver de laboral. El sitio rotula su pestaña "Escritos Pendientes".
+#:
+#: No es el de civil con una columna más: agrega `Referencia` y pone `Solicitante` ANTES de
+#: `Tipo Ingreso`, al revés que civil. Leerlo con el mapa de civil pondría el solicitante en el
+#: tipo de escrito.
+ESCRITOS_LABORAL = Panel(
+    panel="EscPendLab",
+    columnas=("doc", "anexo", "fecha_ingreso", "referencia", "solicitante", "tipo"),
+    encabezados=("doc.", "anexo", "fecha ing.", "referencia", "solicitante", "tipo ingreso"),
+)
+
+#: La liquidación de laboral, que no se parece a la de cobranza.
+#:
+#: Cobranza liquida el crédito por documento y fecha; laboral publica a QUIÉN se le paga: RUT,
+#: nombre y monto. Son dos preguntas distintas con el mismo rótulo, y por eso son dos mapas.
+LIQUIDACIONES_LABORAL = Liquidaciones(
+    panel="liquidacionLab",
+    columnas=("documento", "rut", "nombre", "monto"),
+    encabezados=("liquidación", "rut", "nombre", "monto líquido"),
+)
+
+#: Las causas agregadas a una de la Corte Suprema: las que se ven junto con ella.
+CAUSAS_AGREGADAS_SUPREMA = Panel(
+    panel="agregadosSup",
+    columnas=("doc", "folio", "anio", "rit", "tribunal", "materia", "caratulado"),
+    encabezados=("doc.", "folio", "año", "rit causa", "tribunal", "materia", "caratulado"),
+)
+
 #: Los litigantes de cada competencia. Medidos sobre las fixtures de las cinco.
 #:
 #: Civil llama `Participante` a lo que las otras cuatro llaman `Sujeto`, y laboral agrega dos
@@ -1123,11 +1169,26 @@ class Liquidacion(BaseModel):
         description="Monto líquido en pesos, sin separadores. Es el total adeudado A ESA "
         "FECHA, no un cargo que se sume a los demás: la deuda vigente es el monto de la "
         "liquidación más reciente. NULO si no se pudo leer con la forma medida, y nulo NO es "
-        "cero, que sería una deuda saldada.",
+        "cero, que sería una deuda saldada.\n\n"
+        "La forma medida es la de cobranza (`$24.563.365.-`). En laboral el panel nunca trajo "
+        "una fila, así que si imprime el monto de otra manera esto va a venir nulo con "
+        "`monto_publicado` lleno, y ahí el dato está en el segundo.",
     )
     monto_publicado: str = Field(
         description="El monto tal como lo imprime el sitio, ej: '$24.563.365.-'. Se conserva "
         "porque es lo que aparece en el expediente y es contra lo que alguien va a comparar."
+    )
+    rut: str | None = Field(
+        default=None,
+        description="A QUIÉN se le paga, en las liquidaciones de laboral. Es un RUT de persona "
+        "natural: dato personal de un tercero. NULO en cobranza, que liquida el crédito por "
+        "documento y no por persona, y también mientras el panel de laboral no traiga una fila: "
+        "su contenido sale del encabezado y nadie lo ha visto lleno.",
+    )
+    nombre: str | None = Field(
+        default=None,
+        description="El nombre de esa persona, tal como el sitio lo publica. NULO en cobranza "
+        "por lo mismo.",
     )
 
 
@@ -1140,20 +1201,24 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
     spec = COMPETENCIAS[competencia.lower()]
     if spec.liquidaciones is None:
         raise EstructuraInesperada(
-            f"La competencia {competencia!r} no publica liquidaciones: sólo cobranza tiene el "
-            "panel. Leerlo en otra devolvería una lista vacía, que se leería como que no hay "
-            "deuda liquidada."
+            f"La competencia {competencia!r} no publica liquidaciones. Leerlo en otra "
+            "devolvería una lista vacía, que se leería como que no hay deuda liquidada."
         )
 
     liquidaciones = []
     for _celdas_crudas, txt in _filas_del_panel(html_detalle, spec.liquidaciones):
         liquidaciones.append(
             Liquidacion(
-                fecha=_fecha(txt["fecha"]),
-                cuaderno=txt["cuaderno"],
-                estado=txt["estado"],
+                # Con `get` y no corchetes: los dos paneles comparten el monto y nada más, así
+                # que pedir por índice lo que la otra competencia no publica reventaría con un
+                # KeyError en vez de decir que ese panel no trae la columna.
+                fecha=_fecha(txt.get("fecha", "")),
+                cuaderno=txt.get("cuaderno", ""),
+                estado=txt.get("estado", ""),
                 monto=_monto(txt["monto"]),
                 monto_publicado=txt["monto"],
+                rut=txt.get("rut"),
+                nombre=txt.get("nombre"),
             )
         )
     return liquidaciones
@@ -2082,6 +2147,11 @@ class EscritoPendiente(BaseModel):
         description="Quién lo presentó, por su calidad procesal y no por su nombre. Ej: "
         "'Demandante'.",
     )
+    referencia: str | None = Field(
+        default=None,
+        description="Lo que laboral publica en su columna `Referencia`. NULO en civil, que no "
+        "la publica, y en laboral mientras no se vea una fila: su contenido no está medido.",
+    )
     tiene_documento: bool = Field(
         default=False, description="Si la columna `Doc.` del escrito ofrece algo."
     )
@@ -2135,6 +2205,7 @@ def parse_escritos_pendientes(
                 fecha_ingreso=_fecha(txt["fecha_ingreso"]),
                 tipo=txt["tipo"],
                 solicitante=txt["solicitante"],
+                referencia=txt.get("referencia"),
                 tiene_documento=bool(celdas[columnas.index("doc")].xpath(".//form | .//a")),
                 documento_ruta=documento[0],
                 documento_referencia=documento[1],
@@ -2144,6 +2215,66 @@ def parse_escritos_pendientes(
             )
         )
     return escritos
+
+
+class CausaAgregada(BaseModel):
+    """Otra causa que se ve JUNTO con ésta en la Corte Suprema.
+
+    Es lo que la plataforma rotula "Agregados". No es la causa de origen ni un exhorto: son
+    causas distintas que el tribunal ve en la misma cuenta, así que lo que ocurra en ellas puede
+    resolverse el mismo día y no aparece en la historia de ésta.
+
+    **Sus columnas salen del encabezado y ninguna fila se ha visto.** El panel vino vacío en las
+    veintidós causas de suprema que se abrieron para medirlo, así que lo que trae cada celda no
+    está comprobado: si una publica un formulario donde acá se lee texto, el campo va a salir
+    vacío en vez de fallar.
+    """
+
+    folio: str = Field(default="", description="Folio con que la causa agregada figura acá.")
+    anio: str = Field(default="", description="Año que el panel publica en columna aparte.")
+    rit: str = Field(default="", description="Rol de la causa agregada.")
+    tribunal: str = Field(default="", description="Tribunal de esa causa, por su nombre.")
+    materia: str = Field(default="", description="Qué se litiga en ella.")
+    caratulado: str = Field(default="", description="Carátula de esa causa.")
+    documento_ruta: str | None = Field(
+        default=None, description="Qué ruta entrega su documento, si la fila lo trae."
+    )
+    documento_referencia: str | None = Field(
+        default=None, description="Con qué se pide. Va junto con su ruta."
+    )
+
+
+def parse_causas_agregadas(html_detalle: str, competencia: str = "suprema") -> list[CausaAgregada]:
+    """Las causas que se ven junto con ésta. Sólo suprema publica el panel.
+
+    La lista vacía es una respuesta: la mayoría de las causas no tiene ninguna agregada, y de
+    hecho es lo único que se ha visto. Levantar acá diría que la respuesta vino rota cuando lo
+    normal es justamente que no haya nada.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.causas_agregadas is None:
+        raise EstructuraInesperada(
+            f"La competencia {competencia!r} no publica el panel de causas agregadas: sólo "
+            "suprema lo tiene. Leerlo en otra devolvería una lista vacía, que se leería como "
+            "que esta causa no tiene ninguna agregada."
+        )
+    columnas = spec.causas_agregadas.columnas
+    agregadas = []
+    for celdas, txt in _filas_del_panel(html_detalle, spec.causas_agregadas):
+        documento = _documento_de_la_celda(celdas[columnas.index("doc")])
+        agregadas.append(
+            CausaAgregada(
+                folio=txt["folio"],
+                anio=txt["anio"],
+                rit=txt["rit"],
+                tribunal=txt["tribunal"],
+                materia=txt["materia"],
+                caratulado=txt["caratulado"],
+                documento_ruta=documento[0],
+                documento_referencia=documento[1],
+            )
+        )
+    return agregadas
 
 
 def parse_litigantes(html_detalle: str, competencia: str = "civil") -> list[Litigante]:
@@ -2218,14 +2349,16 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
 class DetalleCausa(BaseModel):
     """Los paneles MAPEADOS del detalle, leídos de una sola vez. No es el expediente completo.
 
-    Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. La respuesta de
-    la plataforma trae cinco paneles que este servidor todavía no mapea, y cambian por
-    competencia: en laboral las liquidaciones y los escritos pendientes, en apelaciones los
-    exhortos y la incompetencia, y en suprema las causas agregadas. Lo que no está acá **no
-    está dicho**, no está negado.
+    Decirlo es parte del contrato, porque la ausencia se lee como inexistencia. Quedan dos
+    paneles sin mapear, los dos de apelaciones: los exhortos de la corte y la incompetencia. Lo
+    que no está acá **no está dicho**, no está negado.
 
-    Los cinco están sin mapear por falta de datos y no de trabajo: en cincuenta y cinco causas
-    abiertas a propósito para buscarlos, ninguno trajo una sola fila.
+    No se mapean porque no hay qué mapear: su tabla trae dos columnas, la primera en blanco y la
+    segunda con el rótulo, y en la mitad de los detalles de apelaciones el panel ni siquiera
+    aparece.
+
+    Y tres de los que SÍ se leen tienen las columnas medidas del encabezado y ninguna fila
+    observada, que es otra cosa que conviene saber: `SIN_FILAS_OBSERVADAS` los nombra.
 
     Y dos canales que sí se pueden pedir y NO vienen incluidos, porque cuestan una petición
     aparte cada uno: los anexos de un folio, con `anexo_ruta` y `anexo_referencia` de su
@@ -2327,6 +2460,11 @@ class DetalleCausa(BaseModel):
         description="Los escritos presentados que el tribunal todavía NO resuelve. La lista "
         "vacía es una respuesta: no queda nada por proveer. NULO si la competencia no tiene "
         "medido el panel.",
+    )
+    causas_agregadas: list[CausaAgregada] | None = Field(
+        default=None,
+        description="Las causas que se ven JUNTO con ésta en la Corte Suprema. La lista vacía "
+        "es lo normal y es una respuesta. NULO donde la competencia no publica el panel.",
     )
     piezas_exhorto: list[PiezaExhorto] | None = Field(
         default=None,
@@ -2631,6 +2769,8 @@ class Competencia(NamedTuple):
     #: Cómo leer los escritos que el tribunal todavía no resuelve, o `None` mientras no se haya
     #: medido. Mismo default y por la misma razón que los dos de arriba.
     escritos_pendientes: Panel | None = None
+    #: Cómo leer las causas agregadas a ésta, o `None` si la competencia no las publica.
+    causas_agregadas: Panel | None = None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -2646,6 +2786,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
             "tribunal": 6,
         },
         litigantes=LITIGANTES_SUPREMA,
+        causas_agregadas=CAUSAS_AGREGADAS_SUPREMA,
         materias=None,
         liquidaciones=None,
         notificaciones=None,
@@ -2701,7 +2842,8 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         litigantes=LITIGANTES_LABORAL,
         materias=MATERIAS_LABORAL,
         diligencias=DILIGENCIAS_LABORAL,
-        liquidaciones=None,
+        escritos_pendientes=ESCRITOS_LABORAL,
+        liquidaciones=LIQUIDACIONES_LABORAL,
         notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,
         campos_rit={},

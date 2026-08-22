@@ -15,6 +15,7 @@ from lxml import html as H
 from mcp_pjud.client import MODULOS
 from mcp_pjud.parser import (
     COMPETENCIAS,
+    SIN_FILAS_OBSERVADAS,
     Competencia,
     EstructuraInesperada,
     actuaciones_receptor,
@@ -23,6 +24,7 @@ from mcp_pjud.parser import (
     parse_anexos,
     parse_audios,
     parse_causa_de_origen,
+    parse_causas_agregadas,
     parse_cuadernos,
     parse_diligencias,
     parse_escritos_pendientes,
@@ -1700,6 +1702,104 @@ def test_el_nombre_del_modal_se_compara_completo_y_no_por_prefijo():
     )
 
 
+# -- los paneles cuyas columnas salen del encabezado ------------------------------------
+
+
+def _con_una_fila(html_detalle: str, panel: str, celdas: list[str]) -> str:
+    """Mete una fila sintética en un panel real de una fixture.
+
+    Es lo que permite comprobar el mapeo de un panel del que nunca se vio una fila: los
+    encabezados son los del sitio, la fila es de prueba, y lo que se verifica es que cada
+    columna caiga en el campo que le toca. Misma técnica que usa el test de la columna `Anexo`
+    de las piezas del exhorto.
+    """
+    arbol = H.fromstring(html_detalle)
+    tabla = arbol.get_element_by_id(panel).findall(".//table")[0]
+    fila = H.fromstring("<tr>" + "".join(f"<td>{c}</td>" for c in celdas) + "</tr>")
+    (tabla.findall(".//tbody") or [tabla])[0].append(fila)
+    return H.tostring(arbol, encoding="unicode")
+
+
+def test_los_escritos_pendientes_de_laboral_no_se_leen_con_el_orden_de_civil():
+    """Laboral pone `Solicitante` ANTES de `Tipo Ingreso`, al revés que civil, y agrega
+    `Referencia` al medio.
+
+    Con el orden de civil, el solicitante saldría como tipo de escrito: una fila plausible y
+    equivocada, que es la falla que no se nota.
+    """
+    con_fila = _con_una_fila(
+        DETALLE_LABORAL,
+        "EscPendLab",
+        ["", "", "20/08/2026", "REFERENCIA DE PRUEBA", "Demandante", "Ingreso Solicitud"],
+    )
+    escrito = parse_escritos_pendientes(con_fila, "laboral")[0]
+
+    assert escrito.fecha_ingreso == date(2026, 8, 20)
+    assert escrito.referencia == "REFERENCIA DE PRUEBA"
+    assert escrito.solicitante == "Demandante"
+    assert escrito.tipo == "Ingreso Solicitud"
+
+
+def test_la_liquidacion_de_laboral_dice_a_quien_se_le_paga_y_la_de_cobranza_no():
+    """Cobranza liquida el crédito por documento y fecha; laboral publica RUT, nombre y monto.
+
+    Son dos preguntas distintas con el mismo rótulo. Leer una con el mapa de la otra pondría el
+    RUT en la fecha.
+    """
+    con_fila = _con_una_fila(
+        DETALLE_LABORAL,
+        "liquidacionLab",
+        ["Liquidación 1", "11111111-1", "PERSONA UNO", "$1.000.-"],
+    )
+    liquidacion = parse_liquidaciones(con_fila, "laboral")[0]
+
+    assert liquidacion.rut == "11111111-1"
+    assert liquidacion.nombre == "PERSONA UNO"
+    assert liquidacion.monto == 1000
+    assert liquidacion.monto_publicado == "$1.000.-"
+    assert liquidacion.fecha is None, "laboral no publica la columna de fecha"
+
+
+def test_las_causas_agregadas_de_suprema_se_leen_en_el_orden_del_sitio():
+    """El panel viene vacío en las veintidós causas de suprema abiertas para medirlo, así que
+    lo único comprobable es el mapeo: qué columna cae en qué campo."""
+    con_fila = _con_una_fila(
+        DETALLE_SUPREMA,
+        "agregadosSup",
+        ["", "12", "2020", "C-99-2019", "1º Juzgado Civil", "Materia de prueba", "UNO/OTRO"],
+    )
+    agregada = parse_causas_agregadas(con_fila, "suprema")[0]
+
+    assert agregada.folio == "12"
+    assert agregada.anio == "2020"
+    assert agregada.rit == "C-99-2019"
+    assert agregada.tribunal == "1º Juzgado Civil"
+    assert agregada.materia == "Materia de prueba"
+    assert agregada.caratulado == "UNO/OTRO"
+
+
+def test_los_tres_paneles_sin_filas_vistas_siguen_declarados_como_tales():
+    """`SIN_FILAS_OBSERVADAS` es una afirmación sobre las fixtures, así que se verifica contra
+    ellas: si alguna empieza a traer una fila, el panel tiene que salir de la lista y su
+    contrato dejar de advertirlo.
+
+    Al revés también: declarar ahí un panel del que sí se vieron filas rebaja lo medido.
+    """
+    fixtures = {
+        "EscPendLab": (DETALLE_LABORAL, "laboral", parse_escritos_pendientes),
+        "liquidacionLab": (DETALLE_LABORAL, "laboral", parse_liquidaciones),
+        "agregadosSup": (DETALLE_SUPREMA, "suprema", parse_causas_agregadas),
+    }
+    assert set(fixtures) == set(SIN_FILAS_OBSERVADAS), (
+        "hay un panel declarado sin filas vistas que este guardia no comprueba"
+    )
+    for panel, (detalle, competencia, leer) in fixtures.items():
+        assert leer(detalle, competencia) == [], (
+            f"{panel} trae filas en la fixture y sigue declarado como no observado: hay que "
+            "sacarlo de `SIN_FILAS_OBSERVADAS` y medir lo que traen sus celdas"
+        )
+
+
 # -- diligencias de laboral ------------------------------------------------------------
 
 DILIGENCIAS_LAB = (FIXTURES / "diligencias_laboral.html").read_text(encoding="utf-8")
@@ -1811,11 +1911,23 @@ def test_una_causa_sin_escritos_por_resolver_devuelve_lista_vacia():
     assert parse_escritos_pendientes(DETALLE) == []
 
 
-def test_una_competencia_sin_el_panel_medido_no_se_lee_con_el_mapa_de_civil():
-    """En laboral el panel se llama `EscPendLab` y publica seis columnas donde civil trae
-    cinco. Leerlo con este mapa correría el solicitante al tipo de escrito."""
-    with pytest.raises(EstructuraInesperada, match="escritos por resolver"):
-        parse_escritos_pendientes(DETALLE_LABORAL, competencia="laboral")
+def test_laboral_no_se_lee_con_el_mapa_de_civil():
+    """En laboral el panel se llama `EscPendLab`, publica seis columnas donde civil trae cinco,
+    y pone `Solicitante` ANTES de `Tipo Ingreso`, al revés que civil.
+
+    Cada una declara el suyo. Lo que este test protege es que no se lean cruzados: con el mapa
+    de civil, el solicitante caería en el tipo de escrito.
+    """
+    assert parse_escritos_pendientes(DETALLE_LABORAL, competencia="laboral") == [], (
+        "la fixture de laboral trae el panel vacío: ninguna de las veinte causas abiertas lo "
+        "trajo con filas"
+    )
+
+    con_el_id_de_civil = DETALLE_LABORAL.replace('id="EscPendLab"', 'id="escritosCiv"')
+    assert con_el_id_de_civil != DETALLE_LABORAL
+
+    with pytest.raises(EstructuraInesperada, match="columnas"):
+        parse_escritos_pendientes(con_el_id_de_civil, competencia="civil")
 
 
 def test_una_columna_insertada_en_los_escritos_levanta():

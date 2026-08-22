@@ -48,6 +48,7 @@ from .parser import (
     parse_anexos,
     parse_audios,
     parse_causa_de_origen,
+    parse_causas_agregadas,
     parse_cuadernos,
     parse_diligencias,
     parse_escritos_pendientes,
@@ -1540,6 +1541,7 @@ class PjudClient(Transporte):
             materias=_juntar(parse_materias, spec.materias),
             exhortos=_juntar(parse_exhortos, spec.exhortos),
             escritos_pendientes=_juntar(parse_escritos_pendientes, spec.escritos_pendientes),
+            causas_agregadas=_juntar(parse_causas_agregadas, spec.causas_agregadas),
             # De la cabecera y no de que el panel de piezas haya llegado: es lo único que
             # distingue "esta competencia no publica el panel" de "esta causa no es un
             # exhorto", y sin esa distinción `piezas_exhorto` en nulo diría las dos cosas.

@@ -189,9 +189,13 @@ demás informaría el RUT en vacío, que se lee como "el sitio no lo tiene para 
 Estado`: la palabra `Delito` aparece ahí y no en la que sirve. Son dos tablas distintas con el
 mismo nombre.
 
-**No se implementa nada de esto todavía.** Lo que falta no es la ruta sino decidir qué se
-entrega: un expediente penal nombra imputados y víctimas, y las columnas que publica no son las
-mismas que las de una causa civil. Eso se decide antes de escribir el mapeo, no después.
+**Y no se implementa: decidido el 22 de agosto de 2026, después de medir.** El detalle de penal
+queda fuera de alcance. No por falta de datos, que están acá arriba, sino porque el criterio que
+sostiene al resto del proyecto, devolver lo que la plataforma publica sin identificarse, no se
+traslada solo a un expediente que nombra imputados y víctimas.
+
+Penal sigue siendo buscable, que es lo que ya estaba: rol, tribunal, RUC, caratulado y estado.
+Lo que no se expone es el contenido de la causa.
 
 Sobre el reCAPTCHA, para que no se repita la conclusión equivocada: el JavaScript del sitio
 adjunta un token a las **seis** rutas de detalle, incluida la de civil, que este proyecto lee

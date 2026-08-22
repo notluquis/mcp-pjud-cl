@@ -788,6 +788,7 @@ def test_lo_medido_de_penal_no_se_pierde():
     """
     pagina = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
     for afirmacion in (
+        "queda fuera de alcance",
         "detalleCausaPenalUnificado",
         "unificado/modal/causaUnificado.php",
         "**Pedirle el detalle a `penal/modal/causaPenal.php` responde 200 con una carcasa vacía.**",

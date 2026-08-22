@@ -50,7 +50,7 @@ from mcp_pjud.juris import (
     VISIBLES_MEDIDAS,
     miles,
 )
-from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, DetalleCausa, parse_historia
+from mcp_pjud.parser import _PANELES_ANEXO, COMPETENCIAS, DetalleCausa, Panel, parse_historia
 from mcp_pjud.server import mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA
@@ -689,6 +689,12 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
     Los paneles se derivan de las fixtures y no de una lista escrita al lado: si mañana se mapea
     uno, este guardia exige que salga del contrato, y si el sitio publica uno nuevo, exige que
     entre.
+
+    Ojo con lo que NO puede hacer: busca el concepto en el contrato entero, así que si el
+    docstring nombra un panel por otro motivo, el guardia lo da por declarado y deja de ver ese
+    panel. Al mapear `corteApelaciones` hubo que sacar "Corte de Apelaciones" de todo el
+    docstring, no sólo de la frase de los paneles sin leer: con el nombre puesto en la frase que
+    describe el campo nuevo, desmapear el panel volvía a este test verde. Se midió rompiéndolo.
     """
     fixtures = {
         "civil": "detalle_causa_civil.html",
@@ -705,6 +711,7 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
         "materias",
         "exhortos",
         "piezas_exhorto",
+        "causa_de_origen",
     )
     # Normalizado: el docstring va envuelto a 96 columnas, así que "Corte de Apelaciones"
     # puede venir partido en dos líneas y una comparación cruda no lo encuentra.
@@ -721,8 +728,10 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
             for e in con_tabla
             if not any(otro is not e and otro in e.iterdescendants() for otro in con_tabla)
         }
+        # `causa_de_origen` declara el `id` a secas y no un `Panel`: su panel no es una tabla
+        # de filas sino pares de rótulo y valor, así que no tiene columnas ni encabezados.
         leidos = {
-            panel.panel
+            panel.panel if isinstance(panel, Panel) else panel
             for atributo in paneles
             if (panel := getattr(COMPETENCIAS[competencia], atributo, None)) is not None
         }
@@ -2839,6 +2848,7 @@ def test_las_tablas_de_competencias_de_la_referencia_salen_del_codigo():
         "materias",
         "exhortos",
         "piezas_exhorto",
+        "causa_de_origen",
     ):
         fila = next((f for f in paneles.splitlines() if f.startswith(f"| `{campo}`")), None)
         assert fila, f"la tabla de paneles no tiene fila para {campo!r}"

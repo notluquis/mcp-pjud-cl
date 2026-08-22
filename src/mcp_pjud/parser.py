@@ -1120,6 +1120,43 @@ class Exhorto(BaseModel):
     )
 
 
+class CausaDeOrigen(BaseModel):
+    """La causa de la Corte de Apelaciones de la que subió el recurso.
+
+    Cierra la arista hacia ABAJO, igual que `Exhorto` la cierra hacia el lado: sin esto el
+    detalle de una causa de la Corte Suprema dice que hubo una apelación y no dice dónde está
+    la causa apelada, que es donde vive todo lo que ocurrió antes.
+
+    Los cuatro rótulos del panel son UN dato, la identidad de una causa, y por eso ninguno
+    viaja en nulo: el mismo número de rol existe en las diecisiete cortes y, dentro de una, en
+    varios libros a la vez. Un rol sin corte no ubica nada.
+    """
+
+    corte: str = Field(
+        description="NOMBRE de la Corte de Apelaciones, tal como el sitio lo emite. Ej: 'C.A. "
+        "DE CONCEPCIÓN'. NO es el código que las búsquedas exigen: para consultar esta causa "
+        "hay que resolverlo con `listar_cortes` y pasar el entero, igual que con el tribunal "
+        "de destino de un exhorto. Pasar el nombre donde va el código no devuelve un error, "
+        "devuelve las causas de otra jurisdicción."
+    )
+    libro: str = Field(
+        description="Libro en que la corte tramitó el recurso. Ej: 'Protección'. Es lo que va "
+        "en `tipo` al buscar en apelaciones, que es la única competencia donde el rol lleva el "
+        "libro adelante en vez de una letra: sin él, `14988-2020` no identifica una causa."
+    )
+    rol: int = Field(
+        description="Número de rol en la corte, sin el libro ni el año. El sitio lo publica "
+        "junto al año y con espacios alrededor del guion ('14988 - 2020'); se entrega partido "
+        "porque es así como lo piden las búsquedas de este servidor, que exigen enteros."
+    )
+    anio: int = Field(description="Año de ingreso a la corte, cuatro dígitos.")
+    recurso: str = Field(
+        description="Qué se recurrió, tal como el sitio lo emite. Ej: '(Civil) Apelación "
+        "Protección'. Es el mismo texto que la cabecera de la causa de suprema publica en "
+        "`Tipo`, así que no agrega materia: agrega desde qué causa llegó."
+    )
+
+
 class Georreferencia(BaseModel):
     """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
 
@@ -1445,6 +1482,93 @@ def parse_piezas_exhorto(
             "el tribunal de origen no despachó ninguna pieza."
         )
     return piezas
+
+
+#: Cómo el panel publica el rol de la causa de origen: número, guion y año, con espacios
+#: alrededor del guion. Los espacios van en el patrón porque son los que trae la respuesta
+#: medida (`14988 - 2020`), no una tolerancia por si acaso.
+_ROL_DE_ORIGEN = re.compile(r"(\d+)\s*-\s*(\d{4})")
+
+#: Los cuatro rótulos que el panel tiene que traer. Se busca cada uno por su nombre y no por
+#: su posición: acá no hay mapeo posicional del que protegerse, que es lo que `Panel` cuida.
+_ROTULOS_ORIGEN = ("corte", "libro", "rol ing", "recurso")
+
+
+def parse_causa_de_origen(html_detalle: str, competencia: str = "suprema") -> CausaDeOrigen | None:
+    """La causa de la Corte de Apelaciones de la que subió el recurso.
+
+    Devuelve `None` cuando, y sólo cuando, la competencia NO publica el panel. Todo lo demás
+    levanta, porque lo que hay acá es la identidad de OTRA causa y media identidad no ubica
+    ninguna.
+
+    No pasa por `Panel` ni por la validación posicional: no es una tabla de filas sino cuatro
+    pares de rótulo y valor, con el rótulo en un `<strong>` y el valor en su cola. Es la misma
+    forma que la cabecera de la causa, y por eso la búsqueda va ACOTADA al panel y no al
+    documento: las dos tablas llevan la clase `table-titulos` y la cabecera de suprema publica
+    su propio `Libro`, con otro valor (`Civil / 135500 - 2020` contra `Protección`). Buscar
+    suelto devuelve el de la causa que se está mirando en el campo de la causa de la que viene.
+    """
+    spec = COMPETENCIAS[competencia.lower()]
+    if spec.causa_de_origen is None:
+        return None
+
+    doc = html.fromstring(html_detalle)
+    # Los comentarios del detalle traen copias de los valores; sin esto se leen dos veces.
+    etree.strip_elements(doc, etree.Comment, with_tail=False)
+
+    panes = doc.xpath(f'//*[@id="{spec.causa_de_origen}"]')
+    if not panes:
+        raise EstructuraInesperada(
+            f"El detalle de {competencia} no trae el panel {spec.causa_de_origen!r}, donde se "
+            "publica la causa de la Corte de Apelaciones de la que viene el recurso. Devolver "
+            "nulo diría que esta causa no viene de ninguna, que es una afirmación falsa y no "
+            "un error: el nulo está reservado para las competencias que no publican el panel."
+        )
+
+    valores: dict[str, str] = {}
+    for etiqueta in panes[0].xpath('.//table[contains(@class, "table-titulos")]//td/strong'):
+        # Se recorta por los dos lados porque el sitio no es parejo con el espacio adelante
+        # del dos puntos: esta misma respuesta escribe `Libro :` en la cabecera.
+        rotulo = " ".join(etiqueta.text_content().split()).rstrip(":").strip().lower()
+        valores.setdefault(rotulo, " ".join((etiqueta.tail or "").split()))
+
+    # Decisión: el panel presente y sin los cuatro rótulos LEVANTA, no vuelve con campos nulos.
+    #
+    # Los dos silencios no cuestan lo mismo. Un `CausaDeOrigen` con la corte y sin el rol
+    # afirma que hay una causa de origen, no dice cuál, y se lee como que el sitio no publica
+    # el dato: es la mitad inútil, y es la mitad que se ve bien. Levantar se nota.
+    #
+    # Y el estado vacío no está medido: el sitio trae un aviso `No Existen Registros.` para
+    # este panel, pero en la única respuesta guardada viene oculto con `display:none` JUNTO con
+    # los cuatro datos, así que no hay con qué distinguir "esta causa no subió de una corte"
+    # de "la estructura cambió". Adivinar cuál de las dos es sería exponer sin medir; el día
+    # que alguien consulte una causa de suprema sin causa de origen, esto va a levantar y el
+    # mensaje dice qué hay que medir.
+    faltan = [r for r in _ROTULOS_ORIGEN if not valores.get(r)]
+    if faltan:
+        raise EstructuraInesperada(
+            f"El panel {spec.causa_de_origen!r} existe y no publica {faltan}. O esta causa no "
+            "subió desde una Corte de Apelaciones, y el estado vacío del panel no está medido, "
+            "o la estructura cambió. No se entregan los campos en nulo: un rol sin corte no "
+            "ubica ninguna causa, porque el mismo número existe en las diecisiete."
+        )
+
+    rol = _ROL_DE_ORIGEN.fullmatch(valores["rol ing"])
+    if not rol:
+        raise EstructuraInesperada(
+            f"El panel {spec.causa_de_origen!r} publica {valores['rol ing']!r} donde va el rol "
+            "de la causa de origen, y eso no es un rol. Se levanta en vez de entregarlo en "
+            "nulo, porque un nulo se leería como que el sitio no lo publica y sin el rol la "
+            "causa apelada no se puede buscar."
+        )
+
+    return CausaDeOrigen(
+        corte=valores["corte"],
+        libro=valores["libro"],
+        rol=int(rol.group(1)),
+        anio=int(rol.group(2)),
+        recurso=valores["recurso"],
+    )
 
 
 def _estado_de_parte(celdas, columnas: tuple[str, ...]) -> str | None:
@@ -1797,8 +1921,8 @@ class DetalleCausa(BaseModel):
     la plataforma trae paneles que este servidor todavía no mapea, y cambian por competencia:
     los escritos presentados en civil, las diligencias en cobranza, y en laboral las
     diligencias, las liquidaciones y los escritos pendientes. En apelaciones quedan fuera los
-    exhortos y la incompetencia; en suprema, las causas agregadas y la de la Corte de
-    Apelaciones de la que viene. Lo que no está acá **no está dicho**, no está negado.
+    exhortos y la incompetencia; en suprema, las causas agregadas. Lo que no está acá **no está
+    dicho**, no está negado.
 
     Y dos canales que sí se pueden pedir y NO vienen incluidos, porque cuestan una petición
     aparte cada uno: los anexos de un folio, con `anexo_ruta` y `anexo_referencia` de su
@@ -1825,6 +1949,10 @@ class DetalleCausa(BaseModel):
     no es un exhorto" son cosas distintas, y meter las dos en `None` borra justo la distinción
     que la lista de arriba protege. Por eso viaja al lado `causa_es_exhorto`, con el mismo
     oficio que `causa_encontrada`: nombrar cuál de los dos silencios es éste.
+
+    `causa_de_origen` no es una lista, así que nunca viene en `[]`: o trae entera la causa de
+    la que subió el recurso, o viene en nulo porque la competencia no publica ese panel. Un
+    panel presente que no se entiende levanta, y no se degrada a campos vacíos.
     """
 
     causa_encontrada: bool = Field(
@@ -1875,6 +2003,15 @@ class DetalleCausa(BaseModel):
         "no está medida: sólo laboral lo está.\n\n"
         "Que venga con valor significa que HAY audiencia grabada, que es un dato en sí: la "
         "Historia dice que hubo audiencia, y esto dice que quedó registrada.",
+    )
+    causa_de_origen: CausaDeOrigen | None = Field(
+        default=None,
+        description="La causa de la Corte de Apelaciones desde la que subió el recurso. Es "
+        "cómo se sigue la causa hacia abajo: sin ella el detalle dice que hubo apelación y no "
+        "dice dónde está lo que ocurrió antes. Sólo suprema publica el panel, y en las demás "
+        "viene en NULO por eso, no porque la causa no venga de ninguna parte.\n\n"
+        "Su `corte` es el NOMBRE y las búsquedas piden el código: se resuelve con "
+        "`listar_cortes` antes de consultarla.",
     )
     piezas_exhorto: list[PiezaExhorto] | None = Field(
         default=None,
@@ -2161,6 +2298,14 @@ class Competencia(NamedTuple):
     #: leer el panel sin poder contrastarlo contra la cabecera devuelve la ambigüedad que
     #: `causa_es_exhorto` existe para deshacer.
     piezas_exhorto: Panel | None = None
+    #: El `id` del panel donde la competencia publica la causa de la que subió el recurso, o
+    #: `None` si no lo publica.
+    #:
+    #: Va como `id` suelto y no como `Panel`, que es el único caso de la tabla: ese panel no es
+    #: una tabla de filas sino cuatro pares de rótulo y valor, así que no hay encabezados que
+    #: comparar ni mapeo posicional del que protegerse. Declararle columnas vacías para que
+    #: calzara el tipo habría hecho pasar por validado algo que nadie valida.
+    causa_de_origen: str | None = None
 
 
 #: Verificado leyendo los encabezados que `consultaUnificada.php` arma para cada competencia.
@@ -2185,6 +2330,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         receptor=False,
         receptor_en_historia=False,
         acota_por=None,
+        causa_de_origen="corteApelaciones",
     ),
     "apelaciones": Competencia(
         2,

@@ -325,6 +325,10 @@ def listar_cortes() -> list[Corte]:
 
     Llamar esto ANTES de buscar por nombre, RUT o fecha en apelaciones: el parámetro `corte`
     es obligatorio ahí y su valor no aparece en ninguna otra respuesta.
+
+    También es la forma de bajar desde una causa de la Corte Suprema a la causa apelada. El
+    detalle entrega la corte de origen por su NOMBRE, y la búsqueda pide el código: se resuelve
+    acá y con él se busca por rol, indicando en `tipo` el libro que informa `causa_de_origen`.
     """
     with _cliente() as c:
         return c.listar_cortes()
@@ -520,6 +524,11 @@ def obtener_detalle_causa(
 
     Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente: el exhorto
     abre una causa nueva en el tribunal destino, y las actuaciones de esa parte NO están acá.
+
+    `causa_de_origen` cierra la misma clase de arista hacia abajo: es la causa de la Corte de
+    Apelaciones desde la que subió el recurso, y sólo suprema la publica. Trae la corte por su
+    NOMBRE, así que para consultarla hay que resolver el código con `listar_cortes`, igual que
+    con el tribunal de destino de un exhorto.
     """
     with _cliente() as c:
         return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)

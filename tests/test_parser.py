@@ -22,6 +22,7 @@ from mcp_pjud.parser import (
     causa_es_exhorto,
     parse_anexos,
     parse_audios,
+    parse_causa_de_origen,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -1360,6 +1361,123 @@ def test_donde_la_competencia_no_publica_la_columna_el_anexo_es_falso_por_ausenc
     civiles = parse_historia(C1156_APREMIO)
     assert any(a.tiene_anexo for a in civiles), "civil sí publica la columna"
     assert any(not a.tiene_anexo for a in civiles), "y no todos los folios traen anexo"
+
+
+# -- la causa de la Corte de Apelaciones de la que subió el recurso ------------------
+
+
+def test_la_causa_de_suprema_dice_de_qué_causa_de_apelaciones_viene():
+    """Cierra la arista hacia abajo, igual que el exhorto la cierra hacia el lado.
+
+    Sin esto el detalle de una causa de la Corte Suprema dice que hubo una apelación y no dice
+    dónde está la causa apelada, que es donde vive todo lo que pasó antes de llegar acá.
+    """
+    origen = parse_causa_de_origen(DETALLE_SUPREMA, "suprema")
+
+    assert origen is not None
+    assert origen.corte == "C.A. DE CONCEPCIÓN"
+    assert origen.libro == "Protección"
+    assert origen.recurso == "(Civil) Apelación Protección"
+
+    # El sitio lo publica con espacios alrededor del guion, y se entrega partido en enteros
+    # porque es así como lo piden las búsquedas de este servidor.
+    assert "14988 - 2020" in DETALLE_SUPREMA, "la fixture dejó de traer el rol espaciado"
+    assert origen.rol == 14988
+    assert origen.anio == 2020
+
+
+def test_el_libro_sale_del_panel_y_no_de_la_cabecera_de_la_causa():
+    """El panel repite la forma de la cabecera, con la misma clase `table-titulos`, y las dos
+    publican un `Libro` con valores distintos.
+
+    La cabecera dice `Civil / 135500 - 2020`, que es la causa que se está mirando; el panel
+    dice `Protección`, que es el libro de la causa de la que viene. Buscar el rótulo suelto en
+    el documento devuelve el primero, o sea la causa equivocada, y se ve perfectamente bien.
+    """
+    assert "<strong>Libro :</strong> Civil / 135500 - 2020" in DETALLE_SUPREMA, (
+        "la cabecera dejó de publicar su propio Libro: este test ya no cubre la colisión"
+    )
+
+    origen = parse_causa_de_origen(DETALLE_SUPREMA, "suprema")
+
+    assert origen is not None
+    assert origen.libro == "Protección"
+
+
+@pytest.mark.parametrize(
+    ("competencia", "fixture"),
+    [("civil", "detalle_causa_civil.html"), ("laboral", "detalle_laboral.html")],
+)
+def test_una_competencia_que_no_publica_el_panel_devuelve_nulo(competencia, fixture):
+    """El nulo tiene un solo significado acá: esta competencia no publica el panel.
+
+    Sólo suprema lo trae, porque sólo ahí la causa subió desde una Corte de Apelaciones.
+    """
+    detalle = (FIXTURES / fixture).read_text(encoding="utf-8")
+
+    assert parse_causa_de_origen(detalle, competencia) is None
+
+
+def test_el_panel_vacío_levanta_en_vez_de_devolver_una_causa_de_origen_sin_datos():
+    """La decisión de contrato de este panel, y por qué es levantar.
+
+    Los cuatro rótulos son UN dato, la identidad de una causa: un rol sin corte no ubica nada,
+    porque el mismo número existe en las diecisiete. Un objeto con los campos en nulo afirma
+    que hay una causa de origen, no dice cuál, y se lee como que el sitio no publica el dato.
+    Es la mitad inútil y encima es la que se ve bien.
+
+    El estado vacío tampoco está medido: el sitio trae un aviso `No Existen Registros.` para
+    este panel, y en la única respuesta guardada viene oculto JUNTO con los cuatro datos, así
+    que no hay con qué distinguir "esta causa no subió de una corte" de "la estructura cambió".
+    """
+    panel = DETALLE_SUPREMA.index('id="corteApelaciones"')
+    tabla = DETALLE_SUPREMA.index("<table", panel)
+    fin = DETALLE_SUPREMA.index("</table>", tabla) + len("</table>")
+    # Queda el panel con su aviso y sin tabla, que es exactamente la forma en que esta misma
+    # respuesta trae `primeraInstancia`.
+    vacío = DETALLE_SUPREMA[:tabla] + DETALLE_SUPREMA[fin:]
+    assert vacío != DETALLE_SUPREMA, "la fixture no se pudo deformar: el test no probaría nada"
+
+    with pytest.raises(EstructuraInesperada, match="no publica"):
+        parse_causa_de_origen(vacío, "suprema")
+
+
+def test_al_panel_le_falta_un_rótulo_y_levanta_igual():
+    """Mismo criterio que el panel vacío, con el modo de falla al revés: acá el sitio sigue
+    diciendo de qué corte viene y deja de decir con qué rol.
+
+    Entregar la corte sin el rol es peor que no entregar nada: una corte tramita miles de
+    causas, así que el dato no acota nada y sí parece completo.
+    """
+    sin_rol = DETALLE_SUPREMA.replace("<strong>Rol Ing: </strong>", "<strong>Ingreso: </strong>")
+    assert sin_rol != DETALLE_SUPREMA, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match="rol ing"):
+        parse_causa_de_origen(sin_rol, "suprema")
+
+
+def test_un_rol_que_no_es_un_rol_levanta_en_vez_de_entregarlo_en_nulo():
+    """Un rol nulo se leería como que el sitio no lo publica, y sin él la causa apelada no se
+    puede buscar: la búsqueda por rol exige número y año."""
+    torcido = DETALLE_SUPREMA.replace("14988 - 2020", "Sin rol asignado")
+    assert torcido != DETALLE_SUPREMA, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match="no es un rol"):
+        parse_causa_de_origen(torcido, "suprema")
+
+
+def test_un_panel_renombrado_no_se_lee_como_que_la_causa_no_viene_de_una_corte():
+    """El mismo modo de falla que cierra el contrato de las piezas del exhorto.
+
+    Devolver nulo porque el `id` no está ata la afirmación a que la plataforma no lo renombre.
+    El día que lo renombre, la respuesta no diría "no pude leerlo": diría que esta causa no
+    viene de ninguna Corte de Apelaciones, que es una afirmación falsa y no un error.
+    """
+    renombrado = DETALLE_SUPREMA.replace('id="corteApelaciones"', 'id="corteApelacionesSup"')
+    assert renombrado != DETALLE_SUPREMA, "la fixture no se pudo deformar"
+
+    with pytest.raises(EstructuraInesperada, match="no trae el panel"):
+        parse_causa_de_origen(renombrado, "suprema")
 
 
 # -- anexos --------------------------------------------------------------------------

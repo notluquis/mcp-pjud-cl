@@ -47,6 +47,7 @@ from .parser import (
     leer_aviso,
     parse_anexos,
     parse_audios,
+    parse_causa_de_origen,
     parse_cuadernos,
     parse_exhortos,
     parse_georreferencia,
@@ -1531,6 +1532,10 @@ class PjudClient(Transporte):
             causa_es_exhorto=(
                 causa_es_exhorto(primera, competencia) if spec.piezas_exhorto else None
             ),
+            # No es una lista, así que no pasa por `_juntar`: no hay filas que deduplicar. Se
+            # lee del PRIMER cuaderno por lo mismo que `causa_es_exhorto`, que la causa de la
+            # que subió el recurso es de la causa entera y no de uno de sus cuadernos.
+            causa_de_origen=parse_causa_de_origen(primera, competencia),
             piezas_exhorto=_juntar(parse_piezas_exhorto, spec.piezas_exhorto),
         )
 

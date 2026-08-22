@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- El detalle de una causa de la Corte Suprema trae `causa_de_origen`, la causa de la Corte de
+  Apelaciones desde la que subió el recurso. La corte llega por su nombre, así que para
+  consultarla hay que resolver el código con `listar_cortes`.
+
 ## [0.10.0] - 2026-08-22
 
 ### Agregado

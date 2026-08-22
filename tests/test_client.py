@@ -1329,6 +1329,50 @@ def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):
         c.detalle_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
 
 
+def test_el_detalle_de_suprema_trae_la_causa_de_apelaciones_de_la_que_viene(monkeypatch):
+    """La arista hacia abajo, armada de punta a punta y no sólo en el parser.
+
+    No pasa por `_juntar` porque no es una lista, así que si la lectura se quedara fuera de la
+    respuesta combinada ningún test del parser lo notaría: el campo vendría en nulo, que es
+    exactamente lo que significa "esta competencia no publica el panel".
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
+    detalle = (FIXTURES / "detalle_suprema.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        pedidos.append(peticion.content.decode("utf-8"))
+        return httpx.Response(200, text=listado if len(pedidos) == 1 else detalle)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle_causa = c.detalle_causa("", 999999, 2020, competencia="suprema")
+
+    origen = detalle_causa.causa_de_origen
+    assert origen is not None, "suprema publica el panel y el detalle tiene que traerlo"
+    assert origen.corte == "C.A. DE CONCEPCIÓN"
+    assert origen.libro == "Protección"
+    assert origen.rol == 14988
+    assert origen.anio == 2020
+
+
+def test_una_competencia_sin_el_panel_deja_la_causa_de_origen_en_nulo(monkeypatch):
+    """El otro lado del contrato: el nulo dice que la competencia no publica el panel, no que
+    la causa no venga de ninguna parte.
+
+    Se prueba justamente en apelaciones, que ES la Corte de Apelaciones: ahí la pregunta no
+    tiene sentido, y el detalle no trae el panel.
+    """
+    c, _ = _cliente_apelaciones(monkeypatch)
+
+    detalle = c.detalle_causa("Protección", 9999, 2019, competencia="apelaciones", corte=46)
+
+    assert detalle.causa_de_origen is None
+
+
 def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
     """Es la razón de existir de la lectura combinada, y va como número.
 

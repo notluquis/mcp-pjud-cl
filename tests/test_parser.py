@@ -845,7 +845,9 @@ def test_las_diligencias_de_cobranza_se_leen_enteras():
     assert diligencia.tipo == "Oficios Varios 3"
     assert diligencia.destinatario == "No Asignado"
     assert diligencia.rit == "C-208-2019"
-    assert diligencia.ruc == "18- 4-140954-4"
+    # El RUC va ceroizado en la fixture, como en el resto: su cuerpo de seis dígitos también
+    # tenía forma de RUT y pasaba por debajo del guardia.
+    assert diligencia.ruc == "00- 0-0000000-0"
 
     # El nombre real no se escribe acá: la fixture trae el de una persona natural. Se comprueba
     # la FORMA, que es lo que distingue la celda del responsable de la de al lado.

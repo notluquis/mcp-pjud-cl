@@ -125,6 +125,19 @@ def main() -> int:
     if args.rapido:
         candidatas = candidatas[:10]
 
+    # La suite tiene que estar VERDE antes de empezar. Si ya está en rojo -un test roto, un
+    # error de sintaxis- entonces cada mutación "rompe" la suite, las 19 cifras salen
+    # cubiertas y el arnés termina en 0 sin haber verificado nada. Es exactamente la clase de
+    # guardia inerte que vino a cazar, dentro de sí mismo, y la más difícil de ver porque el
+    # informe de éxito es idéntico al de un repositorio sano.
+    if suite_en_rojo():
+        print(
+            "La suite ya está en rojo ANTES de mutar nada, así que este arnés no puede medir: "
+            "cualquier cifra parecería cubierta. Arregla la suite primero.",
+            file=sys.stderr,
+        )
+        return 1
+
     print(
         f"El patrón ve {vistas} cifras; {vistas - len(candidatas)} están declaradas sin "
         f"fuente derivable. Mutando las {len(candidatas)} restantes.\n",
@@ -133,7 +146,14 @@ def main() -> int:
     sin_guardia = []
     for archivo, n in candidatas:
         original = archivo.read_text(encoding="utf-8")
-        mutado = original.replace(n, otra(n))
+        # Con límites de palabra: `original.replace("2.000", ...)` también toca el `12.000`
+        # que esté al lado, así que la mutación cambiaría una cifra que no es la que se está
+        # midiendo y el resultado no diría nada de ninguna de las dos.
+        #
+        # A la derecha se excluye un dígito, o un punto o coma SEGUIDO de dígito: eso es un
+        # separador de miles y sigue siendo la misma cifra. Un punto final es puntuación, y
+        # excluirlo dejaba sin mutar toda cifra que cierre una frase.
+        mutado = re.sub(rf"(?<![\d.,]){re.escape(n)}(?!\d)(?![.,]\d)", otra(n), original)
         # Sin esto el arnés mide lo mismo que no hacer nada, que es como se cuela un guardia
         # inerte: la ruptura tiene que haberse aplicado de verdad.
         # S101: ídem. Sin esto, una mutación que no se aplica se mide como cifra guardada.

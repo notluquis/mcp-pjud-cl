@@ -16,12 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
-## [0.9.0] - 2026-08-22
-
 ### Agregado
 
 - Queda medido el canal de audios de audiencia de laboral: existe, responde a una consulta
   anónima y entrega once archivos troceados por acto procesal. Todavía no se expone.
+
+## [0.9.0] - 2026-08-22
+
+### Agregado
+
 - Un arnés que rompe cada cifra de la documentación y exige que algún test se caiga. `mutmut`
   muta el código y nada mutaba lo medido, que es lo que este proyecto publica.
 

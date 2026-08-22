@@ -15,6 +15,7 @@ mano. Lo que hacen es comparar cada dato repetido contra su única fuente, para 
 divergencia salga en CI y no en el uso.
 """
 
+import ast
 import asyncio
 import base64
 import contextlib
@@ -2121,15 +2122,38 @@ def test_nadie_vuelve_a_afirmar_que_cobranza_no_nombra_receptores():
     # fixture. Se compara contra lo que la fixture trae de verdad, que es la fuente.
     _EN_LETRAS = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}
     cuantas = _EN_LETRAS[len(nombradas)]
-    copias = {
-        f.name: " ".join(_texto(f).split())
-        for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
-    }
+
+    def legible(f: Path) -> str:
+        """El texto tal como lo LEE alguien, no como está escrito en el archivo.
+
+        En `client.py` el mensaje se arma con literales adyacentes, así que en el fuente
+        aparece `tres "` y `"filas` y la frase nunca está entera. Se juntan con `ast`, que es
+        lo que hace el intérprete: si no, el guardia mira una cadena que nadie va a leer.
+        """
+        crudo = _texto(f)
+        if f.suffix != ".py":
+            return " ".join(crudo.split())
+        # Las dos cosas: los literales unidos por `ast`, para las cadenas partidas, MÁS el
+        # fuente crudo, porque los comentarios `#:` de `COMPETENCIAS` también afirman la cifra
+        # y `ast` no los ve. Mirar sólo los literales dejaba esa copia sin guardia.
+        textos = [n.value for n in ast.walk(ast.parse(crudo)) if isinstance(n, ast.Constant)]
+        unidos = " ".join(" ".join(str(t).split()) for t in textos if isinstance(t, str))
+        return f"{unidos} {' '.join(crudo.split())}"
+
+    copias = {f.name: legible(f) for f in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]}
+    # La cifra puede ir antes o después de la palabra: el registro escribe "los nombra tres
+    # veces", con el sujeto adelante, y el patrón que sólo miraba hacia la derecha lo perdía.
+    # Sólo palabras de cantidad, no cualquier palabra antes de "filas": con `\w+` el guardia
+    # se llevaba el "de" de "no por falta de filas" y reportaba "qué" como si fuera una cifra.
+    NUM = r"(?:una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)"
+    cerca = (
+        rf"(?:[Rr]eceptor\w*[^.]{{0,80}}?({NUM}) (?:filas|veces)"
+        rf"|({NUM}) (?:filas|veces)[^.]{{0,80}}?[Rr]eceptor)"
+    )
     mal = {
-        nombre: m
+        nombre: sorted({g for par in m for g in par if g})
         for nombre, texto in copias.items()
-        if (m := re.findall(r"(\w+) (?:filas|veces)[^.]{0,60}Receptor", texto))
-        and any(c != cuantas for c in m)
+        if (m := re.findall(cerca, texto)) and any(g and g != cuantas for par in m for g in par)
     }
     assert not mal, (
         f"estas copias dicen otra cantidad de filas con receptor que las {cuantas} que trae "

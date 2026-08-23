@@ -48,6 +48,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   Historia, y volver a pedirlo es una consulta regalada contra la misma institución.
 - Las cabeceras con que se piden los tres modales (anexos, georreferencia y audios) no las
   comprobaba nadie, y sin ellas la plataforma responde otra cosa en vez de un error.
+- `obtener_detalle_causa` podía perder el tribunal camino a la búsqueda, igual que las
+  actuaciones de receptor: la respuesta habría sido el detalle de la causa de otro juzgado.
 
 ### Agregado
 

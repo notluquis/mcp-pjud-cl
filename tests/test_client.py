@@ -557,6 +557,48 @@ def test_los_tres_modales_se_piden_como_ajax(monkeypatch):
         assert vistas[-1].headers["Referer"].endswith("/consultaUnificada.php"), fixture
 
 
+def test_el_detalle_acota_con_el_tribunal_y_no_repite_el_cuaderno(monkeypatch):
+    """El mismo par de defectos que `actuaciones_receptor`, en el camino del detalle.
+
+    Encontrado con testing de mutación: el `tribunal` se podía perder camino a la búsqueda, y
+    ahí la respuesta es el detalle de la causa homónima de otro juzgado, con su historia y sus
+    fechas. Y con un solo cuaderno, el corte se podía aflojar para que volviera a pedir el
+    detalle que ya tenía.
+
+    Los dos caminos leen cuadernos y ninguno de los dos comparte código con el otro, así que
+    cada uno necesita su prueba: es lo que dice el docstring de `_recorrer_cuadernos`.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    detalle = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    formularios: list[dict[str, str]] = []
+    detalles = 0
+
+    def transporte(req: httpx.Request) -> httpx.Response:
+        nonlocal detalles
+        formularios.append(
+            dict(urllib.parse.parse_qsl(req.content.decode(), keep_blank_values=True))
+        )
+        if "consultaRit" in str(req.url):
+            return httpx.Response(200, text=listado)
+        detalles += 1
+        return httpx.Response(200, text=detalle)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    d = c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert formularios[0]["conTribunal"] == "162", (
+        "sin el tribunal, el detalle que llega es el de la causa homónima de otro juzgado"
+    )
+    assert detalles == 1, f"un solo cuaderno y el detalle se pidió {detalles} veces"
+    assert d.historia is not None
+    assert len(d.historia) == 12
+    assert {a.cuaderno for a in d.historia} == {"0 - Principal"}
+
+
 def test_sin_resultados_devuelve_lista_vacia_sin_reventar():
     sin_coincidencias = (
         "<tr><td colspan='8'>No se han encontrado resultados con los datos ingresados.</td></tr>"

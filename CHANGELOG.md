@@ -21,7 +21,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 ### Agregado
 
 - `buscar_jurisprudencia` acepta cuatro buscadores más: **Civiles**, **Cobranza**, **Familia**
-  y **Salud CS**. Con ellos son ocho de los diez medidos y siete expuestos.
+  y **Salud CS**. Con ellos ocho de los diez están medidos y siete se exponen.
 - El rol de Civiles lleva la letra del tipo de causa y su origen es un juzgado y no una corte;
   el de Salud CS es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser

@@ -944,7 +944,7 @@ def buscar_jurisprudencia(
         Field(
             # "Verificados" era la palabra equivocada: el de penales también lo está y no
             # aparece acá, porque se decidió no ofrecerlo.
-            description=f"Cuál de los buscadores de fallos consultar. Se aceptan: "
+            description="Cuál de los buscadores de fallos consultar. Se aceptan: "
             f"{', '.join(sorted(BUSCADORES))}. En `laborales` el origen es un juzgado y no "
             "una corte."
         ),

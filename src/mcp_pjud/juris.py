@@ -43,7 +43,7 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Tres de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
+#: Cuatro de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
 #: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
 #: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
@@ -164,6 +164,28 @@ BUSCADORES: Mapping[str, Buscador] = {
         # corpus y no la consulta.
         coincidencias_por_consulta=False,
     ),
+    "civiles": Buscador(
+        "Civiles",
+        {
+            # Acá el rol SÍ lleva la letra del tipo de causa: `C-528-2025`. Es al revés que en
+            # laborales, y por eso las dos filas no se pueden compartir aunque el campo Solr se
+            # llame igual: lo que cambia es qué trae adentro.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            # Como en laborales, el origen es un juzgado y no una corte.
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido el 23 de agosto de 2026: 954.129 tanto para una búsqueda de texto con 38.757
+        # coincidencias como para un rol imposible con cero. Es el corpus, no la consulta.
+        coincidencias_por_consulta=False,
+    ),
 }
 
 #: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir sesión
@@ -172,7 +194,7 @@ BUSCADORES: Mapping[str, Buscador] = {
 #: Existe porque los tres números están escritos en `verificacion`, y un dato repetido a mano es
 #: un dato que va a quedar viejo. Un guardia compara la tabla contra esto; sin él la constante
 #: era código muerto, que es como estuvo hasta el 22 de agosto de 2026.
-IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271}
+IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271, "civiles": 328}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")

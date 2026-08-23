@@ -122,6 +122,42 @@ def test_extrae_los_datos_de_cita():
 # -- fallo ruidoso ---------------------------------------------------------------
 
 
+CIVILES = (FIXTURES / "juris_civiles.json").read_text(encoding="utf-8")
+
+
+def test_el_buscador_de_civiles_trae_el_juzgado_y_el_rol_con_su_letra():
+    """Medido el 23-08-2026. Dos cosas lo separan de los otros tres, y las dos importan para
+    verificar una cita.
+
+    Su rol SÍ lleva la letra del tipo de causa (`C-528-2025`), al revés que laborales, donde
+    pedir el 364 de 2020 devuelve el `O-364-2020` que es otra causa. Y su origen es un juzgado,
+    no una corte, así que `corte_origen` cambia de significado aunque el campo del modelo sea
+    el mismo.
+    """
+    r = parse_sentencias(CIVILES, "civiles")
+
+    assert r.visibles == 38757
+    assert [s.rol for s in r.sentencias][:2] == ["C-528-2025", "C-1455-2022"]
+    assert r.sentencias[0].corte_origen == "1º Juzgado de Letras de Osorno"
+    fecha = r.sentencias[0].fecha_sentencia
+    assert fecha is not None, "la fecha es indispensable: sin ella la cita no se puede verificar"
+    assert fecha.isoformat() == "2026-08-17"
+
+
+def test_en_civiles_el_desglose_cuenta_el_corpus_y_no_la_consulta():
+    """Medido con dos consultas: 954.129 para una búsqueda con 38.757 coincidencias y el mismo
+    número para un rol imposible con cero.
+
+    Por eso `ocultas` viene en nulo: informar la resta sería dar por medido que ese número
+    cuenta esta consulta, y cuenta el índice entero.
+    """
+    r = parse_sentencias(CIVILES, "civiles")
+
+    assert r.coincidencias is None
+    assert r.ocultas is None
+    assert r.no_entregadas == 38754, "las visibles que esta página no trajo siguen contándose"
+
+
 def test_una_respuesta_que_no_es_json_se_levanta():
     with pytest.raises(EstructuraInesperada, match="no devolvió JSON"):
         parse_sentencias("<html>mantención</html>")

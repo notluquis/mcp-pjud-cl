@@ -345,9 +345,15 @@ def test_cambiar_de_buscador_reabre_la_sesion(monkeypatch):
     )
     c._token, c._id_buscador = "tok", "528"
     c._buscador_de_la_sesion = "suprema"
-    monkeypatch.setattr(
-        JurisClient, "abrir_sesion", lambda self, buscador="suprema": abiertos.append(buscador)
-    )
+
+    def abrir(self, buscador="suprema"):
+        # El doble deja el estado como lo deja la real: sin eso, la segunda consulta al mismo
+        # buscador volvería a reabrir y el test no podría distinguir "reabre cuando cambia" de
+        # "reabre siempre", que son cosas distintas y la segunda gasta una petición de más.
+        abiertos.append(buscador)
+        self._buscador_de_la_sesion = buscador
+
+    monkeypatch.setattr(JurisClient, "abrir_sesion", abrir)
 
     c.buscar(todas="notificación", buscador="suprema")
     assert abiertos == [], "la sesión de suprema ya estaba abierta"
@@ -356,6 +362,9 @@ def test_cambiar_de_buscador_reabre_la_sesion(monkeypatch):
     assert abiertos == ["civiles"], (
         f"cambiar de buscador tiene que reabrir la sesión, y con el nombre pedido: {abiertos}"
     )
+
+    c.buscar(todas="notificación", buscador="civiles")
+    assert abiertos == ["civiles"], "seguir en el mismo buscador no reabre: sería una petición más"
 
 
 def test_buscar_sin_criterios_se_rechaza_antes_de_consultar():

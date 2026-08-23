@@ -1039,6 +1039,42 @@ def test_la_busqueda_por_rol_manda_el_radio_rit(monkeypatch):
     )
 
 
+def test_lo_que_identifica_la_causa_viaja_con_su_valor(monkeypatch):
+    """Los valores del formulario no los miraba nadie, sólo los nombres de campo.
+
+    Encontrado con testing de mutación: `"conRolCausa": str(None)` dejaba la suite verde. Contra
+    la plataforma eso no da error: da un listado sin coincidencias, que se lee como que la causa
+    no existe. Es el falso negativo de la regla 4 entrando por el formulario en vez de por el
+    parser.
+
+    Va también el acotamiento, que es lo que distingue una causa de su homónima en otro juzgado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True))
+    c.buscar_por_rit("C", 1156, 2026, tribunal=162)
+
+    assert enviados[0]["conTipoCausa"] == "C"
+    assert enviados[0]["conRolCausa"] == "1156"
+    assert enviados[0]["conEraCausa"] == "2026"
+    assert enviados[0]["conTribunal"] == "162", (
+        "sin el tribunal, el mismo rol de otro juzgado responde y se ve igual de válido"
+    )
+
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+    c.buscar_por_nombre(apellido_paterno="GONZALEZ", apellido_materno="PEREZ", tribunal=162)
+
+    assert enviados[0]["nomApePaterno"] == "GONZALEZ"
+    assert enviados[0]["nomApeMaterno"] == "PEREZ"
+    assert enviados[0]["nomTribunal"] == "162"
+
+    # Y donde no hay con qué acotar, el campo va en CERO y no en cualquier otro relleno: el
+    # sitio deshabilita los dos selectores en suprema, y el cero es lo que él manda.
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+    c.buscar_por_rit("A", 1, 2026, competencia="suprema")
+    assert enviados[0]["conTribunal"] == "0"
+    assert enviados[0]["conCorte"] == "0"
+
+
 def test_suprema_no_exige_ni_tribunal_ni_corte(monkeypatch):
     """Medido: las tres búsquedas de suprema andan sin corte ni tribunal.
 

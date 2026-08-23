@@ -686,7 +686,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
 | `filas` | int | Cuántas traer, de 1 a 250 |
 | `desplazamiento` | int | Desde qué coincidencia empezar. Cero es la primera; para la siguiente página, `desplazamiento + filas` |
-| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza` o `salud` |
+| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
 búsqueda.
@@ -767,8 +767,10 @@ No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero 
 serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
 quien lo necesite entra.
 
-Están verificados seis de los diez buscadores: **suprema**, **apelaciones**, **laborales**,
-**civiles**, **cobranza** y **salud**.
+Están verificados siete de los diez buscadores y se exponen seis: **suprema**, **apelaciones**,
+**laborales**, **civiles**, **cobranza**, **familia** y **salud**. El de **penales** se midió y
+queda fuera por decisión, por lo mismo que el detalle de las causas penales: sus caratulados
+llegan con el nombre del imputado cuando el fallo no está anonimizado.
 Se eligen con el parámetro `buscador`.
 
 Cada uno declara sus propios campos, y ésa es la razón de que esto sea una tabla y no un
@@ -800,7 +802,7 @@ El texto completo de una sentencia, de una en una.
 |---|---|---|
 | `rol` | int | Rol de la sentencia, sin el año |
 | `anio` | int | Año del rol |
-| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza` o `salud` |
+| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
 
 Está separado de la búsqueda a propósito, y la razón es de tamaño: **una sentencia de trece
 páginas son unos 25.000 caracteres**, medido. Devolver diez con cada búsqueda serían 250.000.

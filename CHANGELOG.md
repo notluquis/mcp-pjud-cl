@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- El buscador de **Familia** queda verificado y expuesto: la propia plataforma entrega su
+  caratulado como `ANONIMIZADO`, así que lo publicado no identifica a las partes.
 - Los buscadores de **Cobranza** y **Salud CS** quedan verificados: son seis de los diez. El de
   salud es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
 - El buscador de **Civiles** queda verificado y expuesto: son cuatro de los diez. Su rol lleva
@@ -29,6 +31,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   cuesta una consulta más.
 - Un PDF cifrado deja de informarse con el mismo mensaje que uno truncado: lo que le falta es
   una contraseña que este servidor no tiene.
+
+### Decidido
+
+- El buscador de fallos **penales** queda fuera, medido y no expuesto, por lo mismo que el
+  detalle de las causas penales: sus caratulados llegan con el nombre del imputado.
 
 ### Corregido
 

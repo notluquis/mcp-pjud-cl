@@ -43,7 +43,10 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Seis de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
+#: Siete de los diez buscadores están verificados contra el sistema real. El de Penales se midió
+#: y NO se expone: es una decisión del titular, del 23 de agosto de 2026, por lo mismo que el
+#: detalle de las causas penales queda fuera. Sus caratulados llegan con el nombre del imputado
+#: cuando el fallo está marcado como no anonimizable. No es prudencia de más:
 #: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
 #: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
@@ -205,6 +208,28 @@ BUSCADORES: Mapping[str, Buscador] = {
         # mismo número para un rol imposible.
         coincidencias_por_consulta=False,
     ),
+    "familia": Buscador(
+        "Familia",
+        {
+            # La plataforma anonimiza esta materia por su cuenta: en las tres sentencias
+            # medidas el caratulado llega literalmente como `ANONIMIZADO` y la condición de
+            # publicación dice "anonimizada". O sea lo que se entrega acá no identifica a las
+            # partes, que en familia suelen ser niños.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido el 23 de agosto de 2026: 3.722.878 para una búsqueda con 8.524 coincidencias y
+        # el mismo número para un rol imposible.
+        coincidencias_por_consulta=False,
+    ),
     "salud": Buscador(
         "Salud_CS",
         {
@@ -244,6 +269,7 @@ IDENTIFICADORES_MEDIDOS = {
     "laborales": 271,
     "civiles": 328,
     "cobranza": 269,
+    "familia": 270,
     "salud": 127,
 }
 

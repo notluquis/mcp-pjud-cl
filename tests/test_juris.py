@@ -218,6 +218,41 @@ def test_el_identificador_relleno_con_ceros_sigue_siendo_el_mismo(monkeypatch):
     assert c._id_buscador == "0528", "se guarda tal cual vino, que es lo que la petición usa"
 
 
+FAMILIA = (FIXTURES / "juris_familia.json").read_text(encoding="utf-8")
+
+
+def test_en_familia_la_plataforma_ya_entrega_el_caratulado_anonimizado():
+    """Las tres sentencias medidas llegan con el caratulado literalmente en `ANONIMIZADO`.
+
+    Es la razón por la que este buscador se expone y el de penales no: acá lo que la plataforma
+    publica no identifica a las partes, que en familia suelen ser niños.
+    """
+    r = parse_sentencias(FAMILIA, "familia")
+
+    assert r.visibles == 59880
+    assert {s.caratulado for s in r.sentencias} == {"ANONIMIZADO"}
+    assert all(s.anonimizada for s in r.sentencias)
+    assert all("anonimizada" in s.condicion_publicacion for s in r.sentencias)
+    # Su origen es un juzgado, como en civiles y laborales: leerlo con el campo de corte de
+    # suprema dejaría el único dato que ubica la causa en vacío, sin que nada lo diga.
+    assert r.sentencias[0].corte_origen == "Juzgado de Familia Copiapó"
+
+
+def test_el_buscador_de_penales_no_se_ofrece():
+    """Se midió el 23-08-2026 y queda fuera POR DECISIÓN, no por no saber leerlo.
+
+    Es la misma razón por la que el detalle de las causas penales no se expone: sus caratulados
+    llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. Que el
+    dato sea consultable en la plataforma no obliga a republicarlo desde acá.
+    """
+    assert "penales" not in BUSCADORES
+    assert "penal" not in BUSCADORES
+
+    c = JurisClient("test@example.cl")
+    with pytest.raises(ValueError, match="no verificado"):
+        c.buscar(todas="homicidio", buscador="penales")
+
+
 def test_una_respuesta_que_no_es_json_se_levanta():
     with pytest.raises(EstructuraInesperada, match="no devolvió JSON"):
         parse_sentencias("<html>mantención</html>")

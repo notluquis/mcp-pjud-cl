@@ -44,7 +44,8 @@ total. La respuesta correcta es devolver el listado para que el usuario elija cu
 ### 0.3: jurisprudencia — hecho parcialmente
 
 `buscar_jurisprudencia` anda contra seis de los diez buscadores: Corte Suprema, Cortes de
-Apelaciones, Laborales, Civiles, Cobranza y Salud CS. Con la paginación medida, una búsqueda ya no se corta en la coincidencia
+Apelaciones, Laborales, Civiles, Cobranza, Familia y Salud CS. El de Penales está medido y no se
+expone, por decisión y por lo mismo que el detalle de las causas penales. Con la paginación medida, una búsqueda ya no se corta en la coincidencia
 250. Lo que falta son los siete buscadores restantes, y está en la sección de jurisprudencia más
 abajo.
 

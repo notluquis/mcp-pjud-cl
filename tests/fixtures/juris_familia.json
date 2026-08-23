@@ -1,0 +1,63 @@
+{
+ "response": {
+  "numFound": 59880,
+  "docs": [
+   {
+    "rol_era_sup_s": "C-1008-2025",
+    "caratulado_s": "ANONIMIZADO",
+    "fec_sentencia_sup_dt": "2026-08-20T00:00:00Z",
+    "gls_juz_s": "Juzgado de Familia Copiapó",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, anonimizada",
+    "sit_fallo_anonimizado_i": 2,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/1",
+    "texto_sentencia_anon_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   },
+   {
+    "rol_era_sup_s": "C-4754-2025",
+    "caratulado_s": "ANONIMIZADO",
+    "fec_sentencia_sup_dt": "2026-08-20T00:00:00Z",
+    "gls_juz_s": "Juzgado de Familia Antofagasta",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, anonimizada",
+    "sit_fallo_anonimizado_i": 2,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/2",
+    "texto_sentencia_anon_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   },
+   {
+    "rol_era_sup_s": "C-1180-2026",
+    "caratulado_s": "ANONIMIZADO",
+    "fec_sentencia_sup_dt": "2026-08-20T00:00:00Z",
+    "gls_juz_s": "Juzgado de Familia Arica",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, anonimizada",
+    "sit_fallo_anonimizado_i": 2,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/3",
+    "texto_sentencia_anon_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   }
+  ]
+ },
+ "condition_pub_sf": {
+  "numFound_sf": 3722878,
+  "counts": [
+   "En proceso anonimizacion",
+   2806820,
+   "Anonimizadas",
+   372297,
+   "Excluido anonimizable",
+   296394,
+   "Sin interes jurisprudencial, anonimizable",
+   219888,
+   "Sin interes jurisprudencial, no anonimizable",
+   25408,
+   "Reservadas por motivos distintos a protección datos personales",
+   1017,
+   "Con interes jurisprudencial, anonimizada",
+   699,
+   "Con interes jurisprudencial, en proceso anonimización",
+   213,
+   "Con interes jurisprudencial, no anonimizable",
+   142
+  ]
+ }
+}

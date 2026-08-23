@@ -427,7 +427,7 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 | `tipo` | str | Letra del rol, o el libro en Cortes de Apelaciones |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
-| `competencia` | str | Las verificadas. `penal` se rechaza: ningún panel suyo está medido |
+| `competencia` | str | Las verificadas. `penal` se rechaza por decisión, no por falta de medición: su detalle se lee y no se expone |
 | `tribunal` | int, opcional | Código del tribunal |
 | `corte` | int, opcional | **Omitir salvo certeza** |
 
@@ -664,7 +664,9 @@ existe, así que ahí `ocultas` y `coincidencias` vienen en **nulo**.
 
 **Nulo no es cero.** Cero significa "no hay nada reservado"; nulo significa "en este buscador no
 se puede saber", y entonces un resultado vacío puede igual corresponder a algo reservado.
-`apelaciones` está en nulo por precaución: los cuatro intentos de medirlo murieron por timeout.
+`apelaciones` está en nulo por MEDICIÓN: el 17 de agosto de 2026 devolvió el mismo número para
+un rol que existe y para uno imposible, o sea cuenta el corpus y no la consulta. Los cuatro
+intentos anteriores habían muerto por timeout, y el timeout era nuestro.
 :::
 
 :::{warning}

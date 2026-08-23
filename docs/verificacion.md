@@ -118,9 +118,9 @@ rechaza en vez de adivinar sus parámetros:
 
 - `familia`, que la propia plataforma declara reservada y sólo entrega por Clave Única
 - `detalleExhortos.php`, `causaOrigenCivil.php`, `geoReferenciaCivil.php`
-- `anexoCausaCivil.php` y la descarga de documentos por `docuN.php`
+- `anexoCausaCivil.php`
 - **11 de las 18 rutas de anexo** que el JavaScript del sitio nombra, repartidas en las seis
-  competencias. Seis se midieron; ver la sección propia más abajo. Donde no hay ruta medida,
+  competencias. Siete se midieron; ver la sección propia más abajo. Donde no hay ruta medida,
   la actuación declara `tiene_anexo` con la ruta en nulo y ahí termina lo que se puede hacer
 - `expedienteApe` (la pestaña "Expediente Primera Instancia" del detalle de apelaciones) y
   `IncompetenciaApe`. De los **6** paneles que apelaciones publica se leen **2**
@@ -263,9 +263,9 @@ fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué 
 | Buscador | Estado |
 |---|---|
 | Corte Suprema | **Verificado.** `id_buscador` 528 |
-| Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias |
+| Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias. `id_buscador` 168 |
 | Civiles | Mapeado, sin ejecutar |
-| Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema |
+| Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema. `id_buscador` 271 |
 | Penales | Mapeado, sin ejecutar |
 | Familia | Mapeado, sin ejecutar |
 | Cobranza | Mapeado, sin ejecutar |

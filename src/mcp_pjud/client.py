@@ -356,6 +356,17 @@ ANEXOS_MEDIDOS_SIN_EXPONER: dict[str, str] = {
     "anexoRecursoApelaciones.php": "dtaAnexRec",
 }
 
+#: De las rutas de arriba, las que se PIDIERON contra la plataforma y respondieron un PDF.
+#:
+#: `DOCUMENTOS` dice qué ruta emite el sitio; esto dice cuál se ejecutó, que no es lo mismo y se
+#: confundió una vez en la documentación: la misma página tenía a `docuN.php` en la lista de lo
+#: nunca ejecutado y en la de lo medido, con la suite entera verde porque ningún guardia miraba
+#: esa afirmación.
+#:
+#: Medida el 20 de agosto de 2026: folio 9 de C-1156-2026, 975.006 bytes, una página, sin capa
+#: de texto.
+DOCUMENTOS_EJECUTADAS: frozenset[str] = frozenset({"docuN.php"})
+
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {
         # La entrega el formulario de cada fila de los dos paneles de anexo de civil.
@@ -511,8 +522,10 @@ def _describir_pdf(contenido: bytes) -> tuple[int | None, int | None, str | None
     lista vacía de la regla 4, porque la lista vacía se nota y un texto plausible con una
     palabra cambiada no.
 
-    Corta en la primera página con texto: a un PDF con capa de texto le basta la primera, y a
-    uno escaneado hay que recorrerlo entero para poder afirmar que no la tiene en ninguna.
+    Recorre TODAS las páginas y cuenta cuántas traen texto. Antes cortaba en la primera, y con
+    eso una sola página con capa de texto declaraba digital un expediente que mezcla
+    resoluciones con anexos escaneados: quien lo leyera daría por transcribible la mitad que no
+    lo es.
 
     El `except` es ancho a propósito, y la razón es cuál es la respuesta segura. `pypdf`
     levanta media docena de excepciones distintas ante un archivo cifrado, truncado o mal

@@ -43,10 +43,11 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Sólo Corte Suprema está verificada contra el sistema real. No es prudencia de más: cada
-#: buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
-#: Apelaciones), así que exponer los otros sin medirlos devolvería campos vacíos en vez de
-#: un error, que es la falla que este proyecto existe para no cometer.
+#: Tres de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
+#: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
+#: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
+#: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
+#: existe para no cometer.
 
 
 class Buscador(NamedTuple):
@@ -165,8 +166,12 @@ BUSCADORES: Mapping[str, Buscador] = {
     ),
 }
 
-#: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir
-#: sesión y no se hardcodean; esto queda como referencia de lo medido el 17 de agosto de 2026.
+#: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir sesión
+#: y NO se hardcodean: esto es la constancia de lo medido, no la fuente de la petición.
+#:
+#: Existe porque los tres números están escritos en `verificacion`, y un dato repetido a mano es
+#: un dato que va a quedar viejo. Un guardia compara la tabla contra esto; sin él la constante
+#: era código muerto, que es como estuvo hasta el 22 de agosto de 2026.
 IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')

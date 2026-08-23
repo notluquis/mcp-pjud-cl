@@ -327,8 +327,10 @@ def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
     # El aviso decía lo contrario de lo que el servidor hace, y eso no lo atrapa contar. Se
     # busca el bloque por su contenido y no por su posición: contar bloques deja el guardia
     # mirando otro aviso en cuanto alguien agrega uno más arriba.
+    # Desde el segundo trozo: el primero es lo que va ANTES del primer aviso, y si esa parte
+    # nombrara la columna el guardia se pondría verde mirando texto que no es el aviso.
     aviso = next(
-        b for b in referencia.split(":::{warning}") if "La columna `Anexo`" in b.split(":::")[0]
+        b for b in referencia.split(":::{warning}")[1:] if "La columna `Anexo`" in b.split(":::")[0]
     ).split(":::")[0]
     assert "obtener_anexos_escrito" in aviso, (
         "el aviso de la columna `Anexo` no nombra la herramienta que la pide"

@@ -30,6 +30,7 @@ from mcp_pjud.client import (
     PjudBloqueado,
     PjudClient,
     _describir_pdf,
+    _hay_capa_de_texto,
     _hojas,
     _tamano_en_cm,
 )
@@ -2132,6 +2133,29 @@ def test_la_pagina_ilegible_no_se_cuenta_como_pagina_sin_texto(monkeypatch):
     assert d.paginas_ilegibles == 2
     assert d.paginas_con_texto == 0
     assert d.rangos_con_texto == []
+    # Y la parte que el docstring afirmaba sin comprobar: falso significa ESCANEO, o sea una
+    # afirmación sobre todas las páginas, y acá no se leyó ninguna.
+    assert _hay_capa_de_texto(d) is None
+
+
+def test_una_pagina_con_texto_sostiene_la_capa_aunque_otra_falle(monkeypatch):
+    """Verdadero se sostiene con una sola página: se VIO texto, y que otra haya fallado no lo
+    desmiente. El nulo es sólo para cuando ninguna de las leídas trajo nada."""
+    original = PageObject.extract_text
+    llamadas = {"n": 0}
+
+    def falla_en_la_segunda(self, *args, **kwargs):
+        llamadas["n"] += 1
+        if llamadas["n"] == 2:
+            raise ValueError("fuente corrupta")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(PageObject, "extract_text", falla_en_la_segunda)
+    d = _describir_pdf(PDF_MIXTO)
+
+    assert d.paginas_con_texto == 1
+    assert d.paginas_ilegibles == 1
+    assert _hay_capa_de_texto(d) is True
 
 
 def test_una_caja_con_las_coordenadas_invertidas_no_publica_una_hoja_negativa():

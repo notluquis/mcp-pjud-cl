@@ -622,6 +622,11 @@ Y una página que no se deja leer **no cuesta el archivo entero**: se cuenta en
 `paginas_ilegibles` y el resto se describe igual. No se cuenta como página sin texto, porque
 eso convertiría un error de lectura en la afirmación de que ahí hay una imagen.
 
+Por lo mismo, si NINGUNA de las páginas leídas trajo texto y alguna falló, `capa_de_texto` queda
+en **nulo y no en falso**: falso significa escaneo, que es una afirmación sobre todas las
+páginas, y de las que fallaron no se sabe. Verdadero, en cambio, se sostiene con una sola: se
+vio texto, y que otra haya fallado no lo desmiente.
+
 Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
 texto no es lo mismo que saber que no tiene. `problema_al_leer` separa dos casos que no son el
 mismo problema: a uno **cifrado** le falta una contraseña que este servidor no tiene, y uno

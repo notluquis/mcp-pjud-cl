@@ -833,6 +833,23 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
     )
 
 
+def _hay_capa_de_texto(d: _DescripcionPdf) -> bool | None:
+    """Si el archivo trae texto que se pueda citar, con el nulo bien puesto.
+
+    Falso significa ESCANEO, o sea una afirmación sobre TODAS las páginas. No se puede hacer si
+    alguna no se dejó leer: ninguna de las leídas trajo texto, y de las otras no se sabe. Ahí el
+    nulo es la respuesta honesta, la misma que cuando el archivo no se abre.
+
+    Verdadero, en cambio, se sostiene con una sola página: se vio texto, y que otra haya fallado
+    no lo desmiente.
+    """
+    if d.paginas_con_texto is None:
+        return None
+    if d.paginas_con_texto == 0 and d.paginas_ilegibles:
+        return None
+    return d.paginas_con_texto > 0
+
+
 def _por_que_no_se_abrio(lector: PdfReader | None, e: Exception) -> str:
     """Por qué falló la lectura, separando el cifrado de todo lo demás.
 
@@ -1676,7 +1693,7 @@ class PjudClient(Transporte):
             paginas=d.paginas,
             paginas_con_texto=d.paginas_con_texto,
             paginas_ilegibles=d.paginas_ilegibles,
-            capa_de_texto=None if d.paginas_con_texto is None else d.paginas_con_texto > 0,
+            capa_de_texto=_hay_capa_de_texto(d),
             rangos_con_texto=d.rangos_con_texto,
             rangos_hasta_pagina=d.rangos_hasta_pagina,
             rangos_omitidos=d.rangos_omitidos,

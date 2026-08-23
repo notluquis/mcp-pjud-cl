@@ -16,6 +16,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- `obtener_documento` dice CUÁLES páginas traen texto, por tramos, y entrega los marcadores del
+  archivo y cuánto mide su página. Todo sale de la lectura del PDF que ya se hacía, así que no
+  cuesta una consulta más.
+- Un PDF cifrado deja de informarse con el mismo mensaje que uno truncado: llegó completo y lo
+  que falta es su contraseña.
+
 ### Corregido
 
 - Nueve afirmaciones de la documentación que el código contradecía, entre ellas dos

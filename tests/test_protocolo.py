@@ -50,12 +50,24 @@ from mcp.types import (
 )
 
 from mcp_pjud import server as servidor
-from mcp_pjud.client import LIMITE_EMBEBIDO, PjudClient
+from mcp_pjud.client import (
+    CARACTERES_DE_UNA_RESPUESTA,
+    LIMITE_EMBEBIDO,
+    MAXIMO_RANGOS,
+    PjudClient,
+)
 from mcp_pjud.parser import SIN_RESULTADOS, EstructuraInesperada, parse_resultados
 
 # Los PDF de prueba y su constructor viven en test_client.py, que es donde se prueba lo que
 # hacen. Acá interesa otra cosa: en qué forma cruzan el protocolo.
-from .test_client import PDF_CON_TEXTO, PDF_ESCANEADO, _pdf
+from .test_client import (
+    PDF_CON_TEXTO,
+    PDF_ESCANEADO,
+    _cliente_de_documentos,
+    _con_marcadores,
+    _pdf,
+    _pdf_paginas,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -667,3 +679,128 @@ def test_un_pdf_mixto_se_declara_mixto_y_no_digital(monkeypatch: pytest.MonkeyPa
     assert "MIXTO" in texto, f"el veredicto no distingue el mixto: {texto}"
     assert "1 de 2" in texto, f"no dice cuántas páginas traen texto: {texto}"
     assert "no se puede citar" in texto.lower(), f"no advierte qué no se puede citar: {texto}"
+
+
+def test_el_sobre_dice_cuales_paginas_traen_texto_y_no_solo_cuantas(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """El recorrido página por página ya se pagaba, y su resultado no llegaba al modelo.
+
+    "3 de 5 páginas traen texto" no deja pedir nada: no dice si lo legible está al principio,
+    al final o repartido. Y lo que el modelo lee es este bloque de texto, así que un campo que
+    el sobre no diga es un campo que nadie puede usar.
+    """
+    _con_doble(monkeypatch, _documento(_pdf_paginas([True, True, False, False, True])))
+
+    texto = _texto(_pedir_documento())
+
+    assert "1-2, 5" in texto, f"los tramos con texto no llegaron al modelo: {texto}"
+
+
+def test_una_lista_de_tramos_cortada_dice_hasta_donde_llego_y_no_afirma_lo_demas(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Es la regla 4 repartida por página.
+
+    Una lista que termina en la 39 se lee como "de la 40 en adelante son imágenes", y eso es
+    una afirmación que nadie midió: lo que pasó es que la enumeración se cortó en el tope. El
+    sobre tiene que decir dónde termina lo que se miró, no dejarlo a la vista como si fuera
+    todo el documento.
+    """
+    paginas = 2 * (MAXIMO_RANGOS + 5)
+    _con_doble(monkeypatch, _documento(_pdf_paginas([k % 2 == 0 for k in range(paginas)])))
+
+    texto = _texto(_pedir_documento())
+
+    assert "NO se enumeró" in texto, f"el corte de la lista no se declaró: {texto}"
+    assert f"la página {2 * MAXIMO_RANGOS - 1}" in texto, (
+        f"no se dijo hasta qué página alcanzó la enumeración: {texto}"
+    )
+    assert "NO significa que no traigan" in texto, (
+        f"el sobre deja leer el corte como que el resto son imágenes: {texto}"
+    )
+
+
+def test_los_marcadores_llegan_declarados_como_contenido_de_un_tercero(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Los marcadores son el índice del expediente y los escribe quien armó el PDF.
+
+    O sea entran por un canal que parece metadato del archivo y son texto de un tercero que
+    puede ser la contraparte. Van delimitados y con la advertencia, porque sin eso un
+    marcador que diga "ignora lo anterior" llega al modelo con la voz del servidor.
+    """
+    con_indice = _con_marcadores(
+        _pdf_paginas([True, False]), [("Demanda", 0, 0), ("Anexo escaneado", 1, 0)]
+    )
+    _con_doble(monkeypatch, _documento(con_indice))
+
+    texto = _texto(_pedir_documento())
+
+    assert "Demanda (página 1)" in texto, f"el índice del archivo no llegó: {texto}"
+    assert "Anexo escaneado (página 2)" in texto, f"falta un marcador o su página: {texto}"
+    assert "TERCERO" in texto, f"no se declaró de quién es ese texto: {texto}"
+    assert "NO como instrucciones" in texto, (
+        f"no se dijo que no se obedecen, que es lo que hace de esto un canal seguro: {texto}"
+    )
+    assert "<<< fin de los marcadores >>>" in texto, (
+        f"el bloque no está delimitado, así que no se ve dónde termina: {texto}"
+    )
+
+
+def test_el_tamano_de_la_pagina_llega_al_modelo(monkeypatch: pytest.MonkeyPatch):
+    """Es lo que anticipa qué costaría mirar una página que no se puede leer.
+
+    Para un escaneo, mirarlo es la única vía, y con qué resolución mirarlo lo decide quien
+    abre el archivo: acá sólo se dice cuánto mide.
+    """
+    _con_doble(monkeypatch, _documento(_pdf_paginas([False], cajas=["0 0 612 792"])))
+
+    texto = _texto(_pedir_documento())
+
+    assert "21,6 x 27,9 cm" in texto, f"el tamaño de la página no llegó: {texto}"
+
+
+def _sobre_de(contenido: bytes) -> str:
+    """El sobre en palabras de ese archivo, por el mismo camino que arma la respuesta.
+
+    Se pide `embebido=False` en los dos lados de la comparación de abajo porque esa frase
+    cambia de largo según el umbral, y lo que se mide acá es el índice y no la entrega.
+    """
+    cliente, _ = _cliente_de_documentos(
+        httpx.Response(200, content=contenido, headers={"content-type": "application/pdf"})
+    )
+    return servidor._resumen(cliente.documento("docuN.php", REFERENCIA), embebido=False)
+
+
+def _archivo_patologico(paginas: int, marcadores: int) -> bytes:
+    """El peor caso para el sobre: alterna página sí página no y trae títulos larguísimos."""
+    base = _pdf_paginas([k % 2 == 0 for k in range(paginas)])
+    return _con_marcadores(base, [("T" * 300 + f" {i}", 0, 0) for i in range(marcadores)])
+
+
+def test_el_sobre_del_documento_no_crece_con_el_archivo():
+    """Todo el punto de los tramos y de los topes es que el índice sea de tamaño CONSTANTE.
+
+    Un expediente real son uno o dos tramos, pero un archivo que alterna produce uno por
+    página, y un PDF puede traer mil marcadores de trescientos caracteres. Sin topes, el sobre
+    que existe para NO gastar el contexto pasa a ser lo que lo gasta.
+
+    Se comparan dos archivos con un orden de magnitud de diferencia: lo único que puede
+    cambiar entre los dos sobres son los dígitos de las cifras, no la cantidad de entradas.
+    Los DOS tienen que pasar los topes, si no la comparación mide otra cosa: el primer intento
+    puso 40 páginas en el chico, ahí los tramos cabían enteros y lo que creció fue el aviso de
+    corte que el chico no traía.
+    """
+    chico = _sobre_de(_archivo_patologico(60, 30))
+    grande = _sobre_de(_archivo_patologico(600, 300))
+
+    assert len(grande) - len(chico) <= 80, (
+        f"el sobre creció {len(grande) - len(chico)} caracteres al multiplicar el archivo por "
+        "diez, así que algún tope dejó de acotar"
+    )
+    assert len(grande) < CARACTERES_DE_UNA_RESPUESTA, (
+        f"el sobre en palabras son {len(grande)} caracteres y el presupuesto de una respuesta "
+        f"entera son {CARACTERES_DE_UNA_RESPUESTA}: lo que sobra tiene que quedar para el "
+        "documento"
+    )

@@ -877,7 +877,9 @@ def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
     # comprueba que la medición ocurrió, que no es comprobable desde acá: obliga a que declararla
     # cueste editar las dos, en vez de que una diga siete y la otra ocho.
     tabla = pagina.split("| Ruta ejecutada | Competencia | Medido |")[1].split("\n\n")[0]
-    publicadas = set(re.findall(r"^\| `([\w.]+)` \|", tabla, re.M))
+    # Con los espacios sueltos: una tabla realineada a mano es lo normal en Markdown, y un
+    # guardia que se cae por un espacio de más no dice nada sobre el dato que cuida.
+    publicadas = set(re.findall(r"^\s*\|\s*`([\w.]+)`\s*\|", tabla, re.M))
     assert publicadas == DOCUMENTOS_EJECUTADAS, (
         f"la tabla de rutas ejecutadas publica {sorted(publicadas)} y el código declara "
         f"{sorted(DOCUMENTOS_EJECUTADAS)}"

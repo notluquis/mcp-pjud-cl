@@ -239,11 +239,15 @@ leer penal, y decir que penal está "detrás de un captcha" sería afirmar de m�
 
 ### Los diez buscadores
 
-Ocho de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada buscador declara
-sus propios campos**, y esa es la
-razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
-Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería
-campos vacíos en vez de un error, que es exactamente el falso negativo que el proyecto evita.
+Ocho de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada
+buscador declara sus propios campos**, y esa es la razón por la que ninguno se agrega sin
+medirlo: Corte Suprema entrega `rol_era_sup_s` y Apelaciones `rol_era_ape_s`. Un cliente que
+asuma los campos de Suprema devolvería campos vacíos en vez de un error, que es exactamente el
+falso negativo que el proyecto evita.
+
+Que un buscador quede fuera tiene dos causas distintas y conviene no juntarlas: el de penales
+está medido y no se ofrece **por decisión**, y los dos que faltan no se ofrecen porque **nadie
+los ha medido**.
 
 El mecanismo ya no es el obstáculo: `juris.BUSCADORES` es una tabla que mapea nombre del
 modelo a campo Solr, igual que `parser.COMPETENCIAS` para las causas, y `parse_sentencias`
@@ -271,7 +275,7 @@ fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué 
 | Familia | **Verificado** el 23 de agosto de 2026: 8.524 coincidencias, y las tres medidas llegan con el caratulado en `ANONIMIZADO`, puesto por la propia plataforma. `id_buscador` 270 |
 | Cobranza | **Verificado** el 23 de agosto de 2026: 1.865 coincidencias para una búsqueda de texto, con el juzgado de cobranza como origen. `id_buscador` 269 |
 | Compendio Extranjería | Sin ejecutar, y su ruta NO es `Compendio_Extranjeria`: ese nombre devolvió 200 con la página de Cobranza |
-| Líneas Jurisprudenciales | Sin mapear: su respuesta no trae `response.numFound` y no tiene la forma de las otras seis. `id_buscador` 628, 457 documentos |
+| Líneas Jurisprudenciales | Sin mapear: su respuesta no trae `response.numFound` y no tiene la forma de los que sí están medidos. `id_buscador` 628, 457 documentos |
 | Salud CS | **Verificado** el 23 de agosto de 2026: 262 coincidencias, y su corpus entero son 303 sentencias. Es el único con la forma de suprema: corte, sala, recurso y resultado. `id_buscador` 127 |
 
 El identificador de cada buscador se deriva de su propia página, no se hardcodea. Verificar uno

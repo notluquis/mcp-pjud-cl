@@ -55,6 +55,7 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import (
     _PANELES_ANEXO,
     COMPETENCIAS,
+    SIN_FILAS_OBSERVADAS,
     Competencia,
     DetalleCausa,
     Panel,
@@ -105,6 +106,24 @@ EN_LETRAS = {
     8: "ocho",
     9: "nueve",
     10: "diez",
+    11: "once",
+    12: "doce",
+    13: "trece",
+    14: "catorce",
+    15: "quince",
+    16: "dieciséis",
+    17: "diecisiete",
+    18: "dieciocho",
+    19: "diecinueve",
+    20: "veinte",
+    21: "veintiuno",
+    22: "veintidós",
+    23: "veintitrés",
+    24: "veinticuatro",
+    25: "veinticinco",
+    26: "veintiséis",
+    27: "veintisiete",
+    28: "veintiocho",
 }
 
 
@@ -265,10 +284,71 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     )
 
 
+def test_la_hoja_de_ruta_cuenta_los_paneles_de_anexo_como_el_codigo():
+    """El encabezado de la sección contaba tres ofrecidos de siete medidos, y son cuatro de ocho.
+
+    El párrafo de más abajo de esa misma sección ya decía "se ofrecen cuatro", así que la página
+    se contradecía consigo misma: la frase en negrita es la que alguien lee al pasar, y era la
+    equivocada. Pasó porque el cuarto panel entró con la 0.11.0 y sólo se tocó el párrafo.
+    """
+    ofrecidas = {r for paneles in ANEXOS.values() for r in paneles}
+    medidas = ofrecidas | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    dicho = re.search(r"\*\*Anexos: (\w+) paneles ofrecidos de (\w+) medidos\.\*\*", hoja)
+    assert dicho, "la hoja de ruta ya no dice cuántos paneles de anexo se ofrecen"
+    assert dicho.group(1) == EN_LETRAS[len(ofrecidas)], (
+        f"la hoja de ruta ofrece {dicho.group(1)} paneles y `ANEXOS` trae {len(ofrecidas)}"
+    )
+    assert dicho.group(2) == EN_LETRAS[len(medidas)], (
+        f"la hoja de ruta mide {dicho.group(2)} paneles y el código anota {len(medidas)}"
+    )
+
+
+def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
+    """Tres cuentas que estaban escritas a mano y ningún guardia miraba.
+
+    La peor no era un número: la referencia decía que la columna `Anexo` **no se puede pedir**,
+    y `obtener_anexos_escrito` existe desde la 0.10.0. La misma página, veinte líneas más
+    arriba, ya explicaba cómo pedirla en la tabla de campos. Una página que se contradice sola
+    se lee entera como poco confiable, y la mitad equivocada era la que va en un aviso.
+    """
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    nombradas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    ofrecidas = {r for paneles in ANEXOS.values() for r in paneles}
+    assert f"nombra {EN_LETRAS[len(nombradas)]} rutas" in referencia, (
+        f"el sitio nombra {len(nombradas)} rutas de anexo y la referencia dice otra cosa"
+    )
+    assert f"se ofrecen {EN_LETRAS[len(ofrecidas)]} paneles" in referencia, (
+        f"`ANEXOS` ofrece {len(ofrecidas)} paneles y la referencia dice otra cosa"
+    )
+    # El aviso decía lo contrario de lo que el servidor hace, y eso no lo atrapa contar. Se
+    # busca el bloque por su contenido y no por su posición: contar bloques deja el guardia
+    # mirando otro aviso en cuanto alguien agrega uno más arriba.
+    aviso = next(
+        b for b in referencia.split(":::{warning}") if "La columna `Anexo`" in b.split(":::")[0]
+    ).split(":::")[0]
+    assert "obtener_anexos_escrito" in aviso, (
+        "el aviso de la columna `Anexo` no nombra la herramienta que la pide"
+    )
+
+    sin_filas = EN_LETRAS[len(SIN_FILAS_OBSERVADAS)].capitalize()
+    assert f"{sin_filas} paneles se leen con las columnas" in referencia, (
+        f"`SIN_FILAS_OBSERVADAS` trae {len(SIN_FILAS_OBSERVADAS)} y la referencia dice otra cosa"
+    )
+
+    civil, total = len(DOCUMENTOS["civil"]), sum(len(r) for r in DOCUMENTOS.values())
+    assert f"son {EN_LETRAS[civil]} en civil y **{EN_LETRAS[total]}**" in hoja, (
+        f"`DOCUMENTOS` trae {civil} rutas en civil y {total} en total, y la hoja dice otra cosa"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 
-    Son siete paneles con cuatro formas distintas, y esa tabla es lo que alguien va a leer para
+    Son ocho paneles con formas distintas, y esa tabla es lo que alguien va a leer para
     repetir la medición cuando la plataforma cambie. Escribirla a mano la deja envejecer justo
     ahí, y de a un panel por vez, que es como no se nota.
     """

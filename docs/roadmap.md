@@ -209,7 +209,7 @@ lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
 ### 0.7: documentos
 
-No es una ruta, son seis en civil y **veintisiete** contando las cinco competencias. Todas son
+No es una ruta, son siete en civil y **veintisiete** contando las cinco competencias. Todas son
 `GET` con un solo parámetro oculto que lleva una referencia opaca, igual que el resto del sitio,
 y todas salen del `action` de un formulario de la respuesta.
 
@@ -376,7 +376,7 @@ ya dictadas, con el caratulado anonimizado por la propia plataforma.
 
 La Historia publica más de un canal por folio y hasta la 0.9.0 se leía uno solo.
 
-**Anexos: tres paneles ofrecidos de siete medidos.** La columna `Anexo` es un segundo canal de
+**Anexos: cuatro paneles ofrecidos de ocho medidos.** La columna `Anexo` es un segundo canal de
 documentos, distinto de `Doc.`: ahí va la resolución o el escrito, y acá los papeles que se
 acompañaron, o sea donde suele estar la prueba documental. Lo que hacía invisible la falta es
 que el folio SÍ entregaba un documento por el otro canal, así que la respuesta parecía completa.

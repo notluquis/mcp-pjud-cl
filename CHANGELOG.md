@@ -62,6 +62,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   en dos de tres, así que un cero en `civiles` se leía como "no hay nada reservado".
 - El parámetro `rol` de `buscar_jurisprudencia` se describía como el rol ante la Corte Suprema,
   y es el del buscador que se consulte.
+- La referencia decía que la columna `Anexo` **no se puede pedir**, y `obtener_anexos_escrito`
+  existe desde la 0.10.0. La tabla de campos de esa misma página ya explicaba cómo pedirla.
+- Cuatro cifras que el código contradecía: los paneles de anexo ofrecidos y medidos, las rutas
+  de documento de civil, y por qué quedan fuera los buscadores sin medir.
 
 ## [0.12.0] - 2026-08-22
 

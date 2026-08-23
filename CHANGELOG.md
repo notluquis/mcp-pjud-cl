@@ -55,6 +55,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - La tabla de las veintisiete rutas de documento se genera desde `client.DOCUMENTOS`, con qué
   parámetro lleva cada una y cuáles se pidieron de verdad.
+- El estado de cada buscador y de cada competencia sale de `docs/estado-de-verificacion.yml` y
+  ya no de la prosa: lo que no se expone tiene que decir por qué, y eso se comprueba en CI.
 
 ## [0.13.0] - 2026-08-23
 

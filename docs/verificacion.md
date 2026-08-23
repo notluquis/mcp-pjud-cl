@@ -56,6 +56,14 @@ Lo que se decidió hacer con esto, y en qué orden, está en la {doc}`hoja de ru
 | Su reCAPTCHA no bloquea la búsqueda | Sesión anónima sin token → 200 con resultados reales |
 | El tope real de filas por página es 250 | Se pidieron 250 y entregó 250, pese a que su configuración declara `10-20-50` |
 
+### El estado de cada competencia
+
+Sale del mismo archivo de datos que la tabla de buscadores, con la misma regla: lo que no se
+expone tiene que decir por qué, y la suite compara cada fila contra `MODULOS` y `COMPETENCIAS`.
+
+```{include} _generado/estado-competencias.md
+```
+
 ### Verificado sólo contra fixtures
 
 Funciona sobre HTML real guardado, pero **nunca se ejercitó contra el sistema en vivo**:
@@ -266,18 +274,12 @@ privado de documentos que el repositorio no contiene ni debe contener. Fijarlo e
 fingiría una verificabilidad que no existe. Lo que corresponde es lo que está escrito: la
 fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué peso darle.
 
-| Buscador | Estado |
-|---|---|
-| Corte Suprema | **Verificado.** `id_buscador` 528 |
-| Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias. `id_buscador` 168 |
-| Civiles | **Verificado** el 23 de agosto de 2026: 38.757 coincidencias visibles para una búsqueda de texto, con el juzgado como origen. `id_buscador` 328 |
-| Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema. `id_buscador` 271 |
-| Penales | **Medido y no expuesto**, por decisión del 23 de agosto de 2026: sus caratulados llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. `id_buscador` 268, 1.884.905 documentos |
-| Familia | **Verificado** el 23 de agosto de 2026: 8.524 coincidencias, y las tres medidas llegan con el caratulado en `ANONIMIZADO`, puesto por la propia plataforma. `id_buscador` 270 |
-| Cobranza | **Verificado** el 23 de agosto de 2026: 1.865 coincidencias para una búsqueda de texto, con el juzgado de cobranza como origen. `id_buscador` 269 |
-| Compendio Extranjería | Sin ejecutar, y su ruta NO es `Compendio_Extranjeria`: ese nombre devolvió 200 con la página de Cobranza |
-| Líneas Jurisprudenciales | Sin mapear: su respuesta no trae `response.numFound` y no tiene la forma de los que sí están medidos. `id_buscador` 628, 457 documentos |
-| Salud CS | **Verificado** el 23 de agosto de 2026: 262 coincidencias, y su corpus entero son 303 sentencias. Es el único con la forma de suprema: corte, sala, recurso y resultado. `id_buscador` 127 |
+La tabla se genera desde `docs/estado-de-verificacion.yml`, que es donde vive el estado de cada
+buscador. Ahí un estado distinto de expuesto **obliga a escribir la razón**, y eso lo comprueba
+la suite: escrito a mano, "no cubierto" no cuesta nada y la razón se pierde.
+
+```{include} _generado/estado-buscadores.md
+```
 
 El identificador de cada buscador se deriva de su propia página, no se hardcodea. Verificar uno
 nuevo es sobre todo comprobar qué campos declara su `parametros_buscador`.

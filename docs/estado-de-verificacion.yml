@@ -1,0 +1,90 @@
+# Qué está verificado contra la plataforma, y cuándo NO lo está, por qué.
+#
+# Este archivo es la fuente de las tablas de estado de `verificacion.md`, que se generan en el
+# build. Existe por una razón que no es la comodidad: escrito a mano, "no cubierto" no cuesta
+# nada y la razón se pierde. Acá un estado distinto de `expuesto` OBLIGA a escribir `razon`, y
+# eso lo comprueba `tests/test_documentacion.py`, no la buena voluntad de quien edita.
+#
+# Y no se sale con la suya al revés: los mismos guardias comparan cada entrada contra el
+# código, o sea contra `MODULOS`, `COMPETENCIAS`, `BUSCADORES` e `IDENTIFICADORES_MEDIDOS`.
+# Este archivo no puede declarar expuesto lo que el cliente rechaza ni al revés.
+#
+# Estados:
+#   expuesto            el servidor lo ofrece, y está medido contra la plataforma
+#   medido-no-expuesto  se midió y se decidió no ofrecerlo. `razon` dice por qué
+#   sin-medir           nadie lo midió. `razon` dice qué falta para poder hacerlo
+#   fuera-de-alcance    la plataforma no lo publica a una consulta anónima
+
+buscadores:
+  - nombre: suprema
+    id: 528
+    estado: expuesto
+    evidencia: "Primer buscador medido, y el único cuyo desglose por condición de publicación cuenta la consulta y no el índice."
+  - nombre: apelaciones
+    id: 168
+    estado: expuesto
+    evidencia: "Rol 1504-2019, tres sentencias. Dos consultas tardaron 115,6 s y 177,0 s."
+  - nombre: laborales
+    id: 271
+    estado: expuesto
+    fecha: 2026-08-20
+    evidencia: "106.068 sentencias visibles, y responde en 1,6 s contra los 47,8 a 177,0 s de suprema."
+  - nombre: civiles
+    id: 328
+    estado: expuesto
+    fecha: 2026-08-23
+    evidencia: "38.757 coincidencias visibles para una búsqueda de texto, con el juzgado como origen."
+  - nombre: cobranza
+    id: 269
+    estado: expuesto
+    fecha: 2026-08-23
+    evidencia: "1.865 coincidencias para una búsqueda de texto, con el juzgado de cobranza como origen."
+  - nombre: familia
+    id: 270
+    estado: expuesto
+    fecha: 2026-08-23
+    evidencia: "8.524 coincidencias, y las tres medidas llegan con el caratulado en ANONIMIZADO, puesto por la propia plataforma."
+  - nombre: salud
+    id: 127
+    estado: expuesto
+    fecha: 2026-08-23
+    evidencia: "262 coincidencias y un corpus de 303 sentencias. El único de los nuevos con la forma de suprema: corte, sala, recurso y resultado."
+  - nombre: penales
+    id: 268
+    estado: medido-no-expuesto
+    fecha: 2026-08-23
+    evidencia: "1.884.905 documentos."
+    razon: "Sus caratulados llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. Que el dato sea consultable no obliga a republicarlo desde acá."
+  - nombre: compendio_extranjeria
+    estado: sin-medir
+    razon: "No se conoce su ruta: `Compendio_Extranjeria` devolvió 200 con la página de Cobranza, o sea una ruta plausible contesta con el buscador equivocado. Falta leerla del HTML del portal."
+  - nombre: lineas_jurisprudenciales
+    id: 628
+    estado: sin-medir
+    evidencia: "457 documentos."
+    razon: "Su respuesta no trae `response.numFound` y no tiene la forma de los que sí están medidos, así que el parser actual no la puede leer sin medirla antes."
+
+competencias:
+  - nombre: civil
+    estado: expuesto
+    evidencia: "La primera medida, y la que tiene fixtures de todo: historia, litigantes, notificaciones, exhorto y sus piezas."
+  - nombre: laboral
+    estado: expuesto
+    evidencia: "Una causa real, columnas confirmadas. Publica `Estado` donde civil pone `Foja`."
+  - nombre: cobranza
+    estado: expuesto
+    evidencia: "Publica RUC, que civil no tiene, y sus diligencias viven en un panel aparte."
+  - nombre: apelaciones
+    estado: expuesto
+    evidencia: "Llama `Descripción` y `Fecha` a lo que civil llama `Desc. Trámite` y `Fec. Trámite`, y escribe `Georeferencia` sin la primera r."
+  - nombre: suprema
+    estado: expuesto
+    evidencia: "Sin `Etapa` ni `Georref.`; agrega `Salas`, `Correlativo` y el año."
+  - nombre: penal
+    estado: medido-no-expuesto
+    fecha: 2026-08-22
+    evidencia: "Se busca, y su detalle se abre por `unificado/modal/causaUnificado.php` y no por `penal/`."
+    razon: "El detalle no se expone por decisión del titular: sus caratulados traen el nombre del imputado. Se busca porque el listado no lo publica."
+  - nombre: familia
+    estado: fuera-de-alcance
+    razon: "La plataforma reserva esas causas: sólo se llega a ellas por Clave Única, desde Mis Causas, y este servidor consulta lo público."

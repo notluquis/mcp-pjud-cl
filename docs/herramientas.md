@@ -607,6 +607,12 @@ El umbral sale de la aritmética de base64, que son cuatro caracteres por cada t
 el techo de una respuesta de texto. Deja el enlace como caso normal y lo embebido como
 excepción, que es el lado barato de equivocarse.
 
+No es una elección de comodidad: **18.750 bytes en base64 son exactamente 25.000 caracteres**,
+o sea una respuesta entera. Un documento justo en el límite se come el presupuesto completo y
+deja **cero** para el índice, el texto y la advertencia de que el contenido es de un tercero.
+Por eso el tope va sobre la respuesta y no sobre cada pieza por separado: dos topes que se
+cumplen cada uno por su lado suman uno que no se cumple.
+
 ### Un escaneo se declara y NO se transcribe
 
 Si el PDF no trae capa de texto es una imagen, y eso se dice. **No se le pasa OCR**: una

@@ -1511,7 +1511,7 @@ def test_los_documentos_de_trabajo_no_se_publican():
     # puede emitir `toc.not_included`. Pedirlo pondría CI en rojo por algo que ya no falla.
 
 
-def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
+def test_la_verificacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     """De esa afirmación cuelga `_MAGIA_PDF`, que rechaza en duro lo que no empiece en `%PDF-`.
 
     Si una fixture llega a traer evidencia de otro formato y nadie lo mira, el documento de
@@ -1519,7 +1519,7 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
     real informando que la referencia caducó. Se deriva de las fixtures, que es donde la página
     dice haberlo buscado.
     """
-    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
     fixtures = "\n".join(_texto(f) for f in sorted((RAIZ / "tests" / "fixtures").glob("*.html")))
 
     # Sin enumerar formatos, igual que abajo: la lista cerrada dejaba entrar un `.pptx`, un
@@ -1617,124 +1617,36 @@ def test_la_investigacion_afirma_solo_pdf_y_las_fixtures_lo_sostienen():
         assert archivo in pagina, f"la página dejó de nombrar {archivo}"
 
     marcas = _texto(RAIZ / "tests" / "fixtures" / "c1156_principal.html").count("fa-file-pdf-o")
-    assert f"**{marcas}** veces con el icono `fa-file-pdf-o`" in pagina, (
+    # Normalizado: la frase va envuelta y el salto cae en medio.
+    assert f"**{marcas}** veces con el icono `fa-file-pdf-o`" in " ".join(pagina.split()), (
         f"el cuaderno principal de C-1156-2026 marca {marcas} enlaces con `fa-file-pdf-o` y la "
         "página dice otra cosa"
     )
 
 
-def test_la_investigacion_de_documentos_deriva_sus_cifras_del_codigo():
-    """Esa página razona sobre el presupuesto de una respuesta y sobre cuántas veces lo pasa un
-    documento medido. Las dos cifras son derivadas, no copiadas, y por eso quedan viejas sin que
-    nadie las toque: basta con mover `CARACTERES_DE_UNA_RESPUESTA` para que la página describa
-    una aritmética que ya no es la del código.
+def test_el_umbral_de_lo_embebido_es_exactamente_una_respuesta():
+    """La referencia afirma una igualdad, y una igualdad se comprueba o no se escribe.
 
-    Se ancla también la medición de origen. Una página que deriva de una cifra que
-    `verificacion.md` dejó de declarar está razonando sobre algo que el proyecto ya no afirma.
+    Es la razón por la que el tope va sobre la respuesta entera y no sobre cada pieza: un
+    documento justo en el límite gasta el presupuesto completo. Si alguien mueve
+    `LIMITE_EMBEBIDO` o `CARACTERES_DE_UNA_RESPUESTA`, la frase pasa a describir una aritmética
+    que ya no es la del código, y ahí el umbral deja de tener la justificación que dice tener.
     """
     from mcp_pjud.client import CARACTERES_DE_UNA_RESPUESTA
+    from mcp_pjud.server import LIMITE_EMBEBIDO
 
-    pagina = _texto(RAIZ / "docs" / "_investigacion-documentos.md")
-    # Cuatro caracteres por cada tres bytes, redondeando hacia arriba: es la aritmética de
-    # base64 que la propia página explica.
-    en_base64 = -(-BYTES_DEL_DOCUMENTO_MEDIDO // 3) * 4
-    veces = en_base64 // CARACTERES_DE_UNA_RESPUESTA
-
-    # Cada MENCIÓN del tamaño, no que aparezca en algún lado: la página lo cita tres veces (el
-    # párrafo de la cifra que decide, la fila de la tabla, y la sección de alcance), y buscarlo
-    # en la página entera dejaba que una quedara vieja mientras otra la rescataba. Una misma
-    # investigación publicando dos tamaños distintos es peor que una cifra vieja sola.
-    # Acotado a las menciones que hablan DEL FOLIO: la página cita también los 81.566 bytes de
-    # la hoja sintética rasterizada, que es otra medición y tiene que poder ser distinta.
-    plana = " ".join(pagina.split())
-    del_folio = {
-        m.group(1)
-        for m in re.finditer(r"(\d{1,3}(?:\.\d{3})+) bytes", plana)
-        if re.search(r"(folio|El documento)", plana[max(0, m.start() - 90) : m.end() + 90])
-    }
-    assert del_folio == {miles(BYTES_DEL_DOCUMENTO_MEDIDO)}, (
-        f"la investigación atribuye al folio medido {sorted(del_folio)} bytes y son "
-        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)}: todas las menciones tienen que decir lo mismo"
+    en_base64 = -(-LIMITE_EMBEBIDO // 3) * 4
+    assert en_base64 == CARACTERES_DE_UNA_RESPUESTA, (
+        f"el umbral ya no es una respuesta entera: {en_base64} contra "
+        f"{CARACTERES_DE_UNA_RESPUESTA}. La referencia afirma que son exactamente iguales"
     )
-    assert pagina.count(miles(BYTES_DEL_DOCUMENTO_MEDIDO)) >= 3, (
-        "la página citaba el tamaño medido tres veces y ahora menos: si se quitó una mención "
-        "a propósito, hay que bajar este número con ella"
+    dicho = (
+        f"**{miles(LIMITE_EMBEBIDO)} bytes en base64 son exactamente "
+        f"{miles(en_base64)} caracteres**"
     )
-
-    faltan = [
-        cifra
-        for cifra in (
-            miles(CARACTERES_DE_UNA_RESPUESTA),
-            miles(en_base64),
-            f"**{veces}**",
-        )
-        if cifra not in pagina
-    ]
-    assert not faltan, (
-        f"la investigación de documentos no cita estas cifras vigentes: {faltan}. "
-        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes son {miles(en_base64)} caracteres en "
-        f"base64, o sea {veces} veces los {miles(CARACTERES_DE_UNA_RESPUESTA)} de una respuesta."
+    assert dicho in " ".join(_texto(RAIZ / "docs" / "herramientas.md").split()), (
+        f"la referencia dejó de decir la igualdad que justifica el umbral: {dicho}"
     )
-
-    # No sólo el tamaño: la recomendación cuelga igual de que el folio sea UNA página y NO
-    # traiga capa de texto. Con esas dos corregidas y el tamaño intacto, la página seguiría
-    # tratándolo como el peor caso de una hoja escaneada, que es lo que hace fuerte al
-    # argumento. `verificacion` las declara en dos lugares y los dos tienen que decir lo mismo.
-    verificacion = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
-    for afirmacion in (
-        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, 1 página, sin capa de texto",
-        f"{miles(BYTES_DEL_DOCUMENTO_MEDIDO)} bytes, un escaneo de una página",
-    ):
-        assert afirmacion in verificacion, (
-            f"verificacion.md dejó de declarar que el folio medido es {afirmacion!r}, y la "
-            "investigación deriva de que sea una hoja escaneada y no sólo de su tamaño"
-        )
-    # En la sección de alcance, no en cualquier parte de la página: "una página" aparece en
-    # varios párrafos y rescataba la afirmación aunque el alcance dijera otra cosa.
-    alcance = " ".join(pagina.split("## Lo que falta medir")[1].split("Falta, en este")[0].split())
-    for afirmacion in ("tiene una página", "no trae capa de texto"):
-        assert afirmacion in alcance, (
-            f"el alcance de la investigación dejó de decir que el folio medido {afirmacion!r}"
-        )
-
-    # Y la relación entre los dos topes, que es la que obliga a que pedir texto reemplace el
-    # archivo: el máximo embebido ocupa el presupuesto ENTERO, así que cualquier otra cosa lo
-    # pasa. Si alguien afloja `LIMITE_EMBEBIDO`, la afirmación deja de ser cierta y hay que
-    # reescribir la propuesta, no sólo la cifra.
-    from mcp_pjud.client import LIMITE_EMBEBIDO
-
-    assert -(-LIMITE_EMBEBIDO // 3) * 4 == CARACTERES_DE_UNA_RESPUESTA, (
-        "el máximo embebido ya no ocupa el presupuesto entero, así que la propuesta no puede "
-        "seguir justificando con aritmética que pedir texto reemplace el archivo"
-    )
-    assert "el mismo parámetro de rango del" in pagina, (
-        "la propuesta dejó de decir cómo se continúa un índice truncado, y sin eso el corte "
-        "no tiene salida: repetir la llamada regenera el mismo prefijo"
-    )
-    assert "reemplaza el archivo embebido por un `ResourceLink`" in pagina, (
-        "la propuesta dejó de decir que pedir texto reemplaza el archivo, y sin eso los dos "
-        "topes se cumplen por separado y suman uno que no se cumple"
-    )
-
-    # La misma aritmética sobre la hoja rasterizada. Los bytes salen de un experimento
-    # sintético que no se reproduce acá, pero lo que se hace CON ellos es aritmética contra el
-    # presupuesto, o sea la mitad que sí queda vieja si alguien mueve la constante o edita la
-    # cifra sin recalcular las otras dos.
-    m = re.search(r"\*\*([\d.]+) bytes\*\*, o sea \*\*([\d.]+) caracteres\*\*", pagina)
-    assert m, "la página dejó de decir cuánto pesa la hoja rasterizada y cuánto ocupa en base64"
-    bytes_raster = int(m.group(1).replace(".", ""))
-    en_base64_raster = -(-bytes_raster // 3) * 4
-    assert m.group(2).replace(".", "") == str(en_base64_raster), (
-        f"{m.group(1)} bytes son {miles(en_base64_raster)} caracteres en base64, no {m.group(2)}"
-    )
-    veces_raster = en_base64_raster // CARACTERES_DE_UNA_RESPUESTA
-    assert f"**más de {veces_raster} veces**" in pagina, (
-        f"la hoja rasterizada pasa {veces_raster} veces el presupuesto de una respuesta y la "
-        "página dice otra cosa"
-    )
-
-
-# -- lo que la documentación promete que está verificado -------------------------
 
 
 def test_la_referencia_nombra_exactamente_las_competencias_verificadas():
@@ -3009,8 +2921,8 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
 AHREFS = {"dominios": "137.210", "sin_peticiones": "97%", "fecha": "mayo de 2026"}
 
 
-def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
-    """La cifra está escrita a mano en `ecosistema.md`, en `conf.py` y en la propuesta.
+def test_las_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
+    """La cifra está escrita a mano en `ecosistema.md` y en `conf.py`.
 
     No sale de ningún código, así que ningún guardia puede verificarla: es una fuente externa.
     Lo que sí se puede impedir es que una se corrija y las otras dos queden diciendo otra cosa.
@@ -3019,7 +2931,7 @@ def test_las_tres_copias_del_estudio_de_llms_txt_dicen_lo_mismo():
     excluía del chequeo justo a la página que divergía, y se comprobó cambiando el número en
     una de las tres. Se identifican por citar el estudio, no la cifra.
     """
-    donde = ("docs/ecosistema.md", "docs/conf.py", "docs/_propuesta-arquitectura.md")
+    donde = ("docs/ecosistema.md", "docs/conf.py")
     citan = [d for d in donde if "Ahrefs" in _texto(RAIZ / d)]
     assert len(citan) == len(donde), (
         f"el estudio se citaba en {len(donde)} lugares y ahora en {len(citan)}: {citan}. Si se "

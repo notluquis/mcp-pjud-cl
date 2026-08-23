@@ -454,6 +454,35 @@ El parámetro cambia por ruta y no por competencia, y por eso se lee del formula
 deducirlo: `docuN.php` usa `dtaDoc` y `docReformadoLaboral.php` usa `valorRef`, en la misma
 columna de la misma tabla.
 
+## Los documentos son sólo PDF, y hasta dónde está medido
+
+De acá cuelga `_MAGIA_PDF`, que rechaza en duro lo que no empiece en `%PDF-`, así que conviene
+decir la afirmación acotada. Tiene una excepción medida: **el canal de audio de audiencia emite
+`.mp3`**, con `type="audio/mpeg"` en el marcado del sitio. No es un documento y no viaja por las
+rutas de documento, así que el guardia sigue siendo correcto donde se aplica: `obtener_documento`
+no toca ese canal, que tiene su propia herramienta y entrega enlaces en vez de archivos.
+
+Buscado en las fixtures antes de suponer nada. Las páginas guardadas **no contienen ninguna
+referencia a `.doc`, `.docx`, `.xls` ni `.rtf`**.
+
+Los **detalles de causa** no nombran ningún documento: los dos únicos archivos que aparecen ahí
+son `icono_PDF.png` y `pagLoad.gif`, o sea el icono y el indicador de carga del propio sitio. El
+documento no se nombra porque no viaja por su nombre: se pide por una referencia opaca. Y en el
+cuaderno principal de C-1156-2026 los enlaces de descarga se marcan **12** veces con el icono
+`fa-file-pdf-o`.
+
+Las otras páginas guardadas sí enlazan documentos, y eso apoya la conclusión en vez de
+debilitarla: la ley 20.886, el auto acordado, las condiciones de uso y los manuales, **todos
+PDF**.
+
+De las **cabeceras** de respuesta no se sabe nada, y conviene decirlo en vez de darlo por
+comprobado: las fixtures son cuerpos HTML, así que ningún `Content-Disposition` aparece ahí ni
+podría aparecer. Lo medido es lo que el detalle **dibuja**, no lo que las rutas responden.
+
+La forma honesta de decirlo es que la plataforma marca sus enlaces como PDF y que siete de las
+veintisiete rutas se ejecutaron. No hace falta investigar otros formatos: hace falta ejecutar
+las que faltan cuando haya dónde probarlas.
+
 ## Cómo se mapearon los endpoints
 
 No hay sitemap, así que el mapeo de endpoints se hizo leyendo el JavaScript de

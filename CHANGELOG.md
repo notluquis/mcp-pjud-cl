@@ -16,6 +16,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Nueve afirmaciones de la documentación que el código contradecía, entre ellas dos
+  contradicciones de una página consigo misma: la ruta de documento que estaba a la vez medida y
+  nunca ejecutada, y el rechazo de penal explicado por falta de medición después de haberla
+  medido.
+
 ## [0.12.0] - 2026-08-22
 
 ### Agregado

@@ -36,6 +36,7 @@ from mcp_pjud.client import (
     AUDIO_RUTA,
     CORTES_MEDIDAS,
     DOCUMENTOS,
+    DOCUMENTOS_EJECUTADAS,
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
@@ -46,6 +47,7 @@ from mcp_pjud.juris import (
     BUSCADORES,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
+    IDENTIFICADORES_MEDIDOS,
     INDEXADAS_MEDIDAS,
     VISIBLES_MEDIDAS,
     miles,
@@ -831,14 +833,59 @@ def test_el_contrato_del_detalle_nombra_los_paneles_que_no_lee():
     )
 
 
+def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
+    """La página se contradecía consigo misma y la suite estaba verde.
+
+    `docuN.php` aparecía en la lista de "mapeado pero nunca ejecutado" y, treinta líneas más
+    arriba, entre lo medido contra la plataforma. Los cuatro guardias de rutas de documento
+    verifican nombres y parámetros; ninguno miraba la afirmación de haberla EJECUTADO, que es la
+    que distingue "el sitio emite esta ruta" de "esta ruta responde".
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    sin_ejecutar = pagina.split("### Mapeado pero nunca ejecutado")[1].split("\n### ")[0]
+
+    coladas = sorted(r for r in DOCUMENTOS_EJECUTADAS if f"`{r}`" in sin_ejecutar)
+    assert not coladas, (
+        f"{coladas} se ejecutaron contra la plataforma y siguen en la lista de lo nunca "
+        "ejecutado. Las dos afirmaciones no pueden convivir"
+    )
+    for ruta in DOCUMENTOS_EJECUTADAS:
+        assert re.search(rf"`[\w/]*{re.escape(ruta)}`", pagina), (
+            f"{ruta!r} se ejecutó y la página no la nombra en ninguna parte"
+        )
+    # Y al revés: lo ejecutado tiene que ser una ruta que el cliente acepte, o la constante
+    # estaría declarando una medición sobre algo que nadie puede pedir.
+    aceptadas = {r for rutas in DOCUMENTOS.values() for r in rutas}
+    assert aceptadas >= DOCUMENTOS_EJECUTADAS, (
+        f"{sorted(DOCUMENTOS_EJECUTADAS - aceptadas)} figura como ejecutada y `obtener_documento` "
+        "no la acepta"
+    )
+
+
+def test_los_identificadores_de_buscador_medidos_son_los_que_la_pagina_publica():
+    """Los tres números están escritos a mano en la tabla de los diez buscadores.
+
+    La constante existía desde la primera medición y no la consumía nadie: código muerto de un
+    lado y prosa sin fuente del otro, que es la forma más barata de que las dos se separen.
+    """
+    tabla = _texto(RAIZ / "docs" / "verificacion.md").split("### Los diez buscadores")[1]
+    tabla = tabla.split("\n### ")[0]
+    for buscador, identificador in IDENTIFICADORES_MEDIDOS.items():
+        assert f"`id_buscador` {identificador}" in tabla, (
+            f"la tabla no publica el identificador {identificador} de {buscador!r}, que es el "
+            "que se midió"
+        )
+
+
 def test_toda_ruta_de_documento_que_el_cliente_acepta_esta_nombrada():
     """`obtener_documento` rechaza lo que no esté en `DOCUMENTOS`, así que esa tabla es la
     lista de lo que el servidor puede entregar, y la página que dice qué entrega la plataforma
     tiene que nombrarlas todas.
 
-    Doce de las veinticinco no estaban: la sección se escribió cuando eran seis, todas de
-    civil, y cada competencia nueva agregó las suyas sin volver a la página. Quien la leyera
-    para saber qué puede pedir veía menos de la mitad.
+    Doce de las entonces veinticinco no estaban: la sección se escribió cuando eran seis, todas
+    de civil, y cada competencia nueva agregó las suyas sin volver a la página. Quien la leyera
+    para saber qué puede pedir veía menos de la mitad. Hoy son veintisiete, y ese número no se
+    escribe acá: el guardia recorre la tabla.
     """
     pagina = _texto(RAIZ / "docs" / "verificacion.md")
     faltan = sorted(
@@ -866,6 +913,17 @@ def test_lo_medido_de_penal_no_se_pierde():
     genéricos, que sus litigantes no traen RUT, y que `relaciones` existe con dos formas
     distintas según la ruta.
     """
+    # Barre las tres páginas Y el código: la razón vieja ("ningún panel suyo está medido")
+    # sobrevivió en la referencia y en un comentario de `server.py` después de que la decisión
+    # se tomara, y este guardia miraba una sola página.
+    razon_vieja = "ningún panel suyo está medido"
+    donde = [*PROSA, *sorted((RAIZ / "src" / "mcp_pjud").glob("*.py"))]
+    quedan = [str(p.relative_to(RAIZ)) for p in donde if razon_vieja in _texto(p)]
+    assert not quedan, (
+        f"{quedan} explica el rechazo de penal por falta de medición, y se midió: queda fuera "
+        "por decisión. La copia que el modelo lee es la descripción, no la página"
+    )
+
     pagina = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
     for afirmacion in (
         "queda fuera de alcance",

@@ -21,9 +21,10 @@ Las tres, no dos de tres:
 
 1. **Más de una competencia verificada** contra el sistema real, con fixtures propias.
 2. **Esquema de salida estable**, sin cambios de campos por al menos dos versiones menores.
-   El contador va en cero: la 0.9.0 agregó `anexo_referencia` a cada actuación y lo que vino
-   después agregó `anexo_ruta` y `audio_referencia`. Cada canal nuevo que se abre lo reinicia,
-   y eso es esperable mientras queden canales sin leer.
+   El contador va en cero, y se reinició cuatro veces seguidas: la 0.10.0 agregó `anexo_ruta`,
+   `anexo_referencia` y `audio_referencia`; la 0.11.0, `diligencias`, `escritos_pendientes` y
+   `causa_de_origen`; la 0.12.0, `causas_agregadas`. Cada canal nuevo que se abre lo reinicia, y
+   eso es esperable mientras queden canales sin leer.
 3. **Seis meses sin que un cambio de la plataforma rompa el parser**, o con al menos un cambio
    detectado y corregido dentro de la semana.
 
@@ -363,11 +364,12 @@ que el folio SÍ entregaba un documento por el otro canal, así que la respuesta
 Cada actuación trae ahora `anexo_ruta` y `anexo_referencia`. Van las dos porque una competencia
 tiene varios paneles: civil abre dos desde la misma columna, con parámetros distintos.
 
-De las dieciocho rutas que el sitio nombra hay seis medidas, más la de suprema, que el sitio
-llama "Escrito". Se ofrecen tres: las que una actuación puede entregar. Las otras cuatro
-respondieron con filas y no se ofrecen porque su referencia no cuelga de un folio, o sea no
-habría de dónde sacar el parámetro. Las doce que faltan siguen sin ejecutarse: se abrieron
-dieciocho causas buscándolas y ninguna las ofrecía. La tabla está en {doc}`verificacion`.
+De las dieciocho rutas que el sitio nombra hay siete medidas, más la de suprema, que el sitio
+llama "Escrito". Se ofrecen cuatro: las que una fila puede entregar, tres desde un folio de la
+Historia y una desde un escrito por resolver. Las otras cuatro respondieron con filas y no se
+ofrecen porque su referencia no cuelga de ninguna fila que este servidor lea, o sea no habría de
+dónde sacar el parámetro. Las once que faltan siguen sin ejecutarse: se abrieron sesenta y una
+causas buscándolas y ninguna las ofrecía. La tabla está en {doc}`verificacion`.
 
 **Audios de audiencia: hecho, y a propósito sin descargar.** `listar_audios_audiencia` dice qué
 hay y con qué enlace se baja cada archivo. No trae los archivos, y eso no es una limitación

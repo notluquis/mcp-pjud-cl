@@ -280,9 +280,10 @@ CompetenciaConAnexos = Annotated[
     ),
 ]
 
-#: Las competencias con al menos un panel del detalle medido. `penal` no está: ninguno de los
-#: suyos lo está, así que la lectura combinada la rechaza siempre. Ofrecerla en el esquema hace
-#: que el modelo la intente, reciba un error y se lo atribuya a la plataforma.
+#: Las competencias con al menos un panel del detalle mapeado. `penal` no está, y la razón ya
+#: no es que no se pueda leer: se midió el 22 de agosto de 2026 y queda fuera POR DECISIÓN,
+#: porque un expediente penal nombra imputados y víctimas. Ofrecerla en el esquema hace que el
+#: modelo la intente, reciba un error y se lo atribuya a la plataforma.
 _CON_DETALLE = sorted(
     n
     for n in MODULOS

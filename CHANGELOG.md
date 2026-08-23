@@ -66,6 +66,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   existe desde la 0.10.0. La tabla de campos de esa misma página ya explicaba cómo pedirla.
 - Cuatro cifras que el código contradecía: los paneles de anexo ofrecidos y medidos, las rutas
   de documento de civil, y por qué quedan fuera los buscadores sin medir.
+- Cinco páginas decían que sólo civil está verificada, incluidas `AGENTS.md` y la de soporte.
+  Son seis buscables y cinco con detalle desde la 0.4.0, y ahora un guardia barre esa frase.
 
 ## [0.12.0] - 2026-08-22
 

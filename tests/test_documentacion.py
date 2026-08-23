@@ -345,6 +345,50 @@ def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
     )
 
 
+def test_la_pagina_de_uso_no_promete_menos_competencias_de_las_que_hay():
+    """Decía "sólo cubre causas civiles" con seis buscables y cinco con detalle.
+
+    Está en la sección "Qué NO hace", que es la que alguien lee para decidir si la herramienta
+    le sirve. Prometer de menos ahí no es prudente: manda a un abogado de cobranza a buscar por
+    otro lado algo que este servidor ya entrega.
+    """
+    uso = _texto(RAIZ / "docs" / "uso.md")
+    con_detalle = {n for n in MODULOS if COMPETENCIAS[n].historia is not None}
+    assert f"Las otras {EN_LETRAS[len(MODULOS)]} se buscan" in uso, (
+        f"el servidor busca en {len(MODULOS)} competencias y la página de uso dice otra cosa"
+    )
+    assert f"el detalle se lee en {EN_LETRAS[len(con_detalle)]}" in uso, (
+        f"el detalle se lee en {len(con_detalle)} competencias y la página de uso dice otra cosa"
+    )
+    # Dentro del paréntesis y no en la página entera: `cobranza` y `penal` aparecen sueltos más
+    # arriba, así que buscarlos en todo el archivo daba un guardia que no puede fallar.
+    listadas = re.search(r"se buscan \(([^)]+)\)", uso)
+    assert listadas, "la página de uso ya no enumera las competencias que busca"
+    for nombre in MODULOS:
+        assert nombre in listadas.group(1), (
+            f"la página de uso no nombra la competencia {nombre!r} entre las que busca"
+        )
+
+
+def test_ninguna_pagina_dice_que_sólo_civil_esta_implementada():
+    """Fue cierto hasta la 0.4.0 y quedó escrito en tres páginas distintas.
+
+    Es la afirmación que más caro sale de las que envejecieron: manda a quien lee a resolver por
+    otro lado algo que este servidor ya entrega. Se barre la prosa entera en vez de arreglar la
+    copia que se encontró, porque las tres se escribieron en momentos distintos.
+    """
+    coladas = []
+    for f in PROSA:
+        texto = " ".join(_texto(f).split()).lower()
+        for frase in ("sólo civil está", "solo civil está", "sólo cubre causas civiles"):
+            # El registro de cambios cuenta lo que pasó en su día y ahí la frase es correcta.
+            if frase in texto and f.name != "CHANGELOG.md":
+                coladas.append(f"{f.relative_to(RAIZ).as_posix()}: {frase!r}")
+    assert not coladas, (
+        f"{coladas} quedó de cuando civil era la única competencia, y hoy son {len(MODULOS)}"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

@@ -34,7 +34,7 @@ Reportar cosas no es modificar el software, así que esto lo puedes hacer direct
 | **La Oficina Judicial Virtual cambió y algo se rompió** | Es lo más valioso que puedes reportar. Ver la plantilla correspondiente |
 | **Una causa donde el resultado no calza con el expediente** | Un dato mal leído acá puede costar un plazo |
 | **Errores en la documentación jurídica** | Si citamos mal una norma, hay que corregirlo rápido |
-| **Competencias sin cubrir** | Sólo civil está verificada; laboral, cobranza y las demás faltan |
+| **Competencias sin cubrir** | Familia queda fuera porque la plataforma la reserva, y en penal se busca sin abrir el detalle |
 
 ## Si vas a tocar código
 

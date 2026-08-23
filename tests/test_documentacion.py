@@ -2558,6 +2558,46 @@ def test_las_cinco_reglas_dicen_lo_mismo_donde_sea_que_se_escriban():
 CORTE_DE_LA_HOJA_DE_RUTA = "356ffce"
 
 
+#: Versiones publicadas que la hoja de ruta NO tiene por qué contar, con su razón.
+#:
+#: Cada entrada se agrega de a una. Que este conjunto crezca sin motivo escrito es la forma
+#: barata de que la hoja vuelva a quedarse atrás sin que nada lo diga.
+VERSIONES_SIN_SECCION = {
+    # La primera. La hoja de ruta empieza donde empezó el trabajo que hubo que planificar, y
+    # antes de la 0.2.0 no había nada que planificar todavía.
+    "0.1",
+}
+
+
+def test_toda_version_publicada_tiene_su_seccion_en_la_hoja_de_ruta():
+    """La hoja se quedó atrás tres veces seguidas y nadie se enteró.
+
+    Cada versión entraba con su entrada en el registro, la suite quedaba verde, y la página que
+    dice hacia dónde va el proyecto seguía describiendo el estado de dos versiones antes. Quien
+    la lea para evaluar si esto le sirve está leyendo lo que era cierto hace tres publicaciones.
+
+    Las versiones salen del registro y no de una lista escrita acá, que es lo que se quedó
+    corto. Los parches (`0.2.1`) no cuentan: los encabezados de la hoja van por versión menor.
+    """
+    registro = _registro()
+    menores = {
+        ".".join(v.split(".")[:2]) for v in re.findall(r"^## \[(\d+\.\d+\.\d+)\]", registro, re.M)
+    }
+    assert len(menores) > 5, f"el barrido del registro encontró {menores}: dejó de ver versiones"
+
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    # `\D` y no `[:a-z]`: lo que sigue al número puede ser dos puntos, una letra de hito
+    # (`0.7a`) o cualquier otra cosa, y exigir una forma de título convierte un cambio de
+    # redacción en un fallo que no dice nada. Lo que sí importa es que NO sea un dígito, o
+    # `0.10` se leería como `0.1`.
+    titulos = re.findall(r"^#{2,4} (\d+\.\d+)\D", hoja, re.M)
+    faltan = sorted(menores - set(titulos) - VERSIONES_SIN_SECCION)
+    assert not faltan, (
+        f"estas versiones se publicaron y la hoja de ruta no las cuenta: {faltan}. O entra su "
+        "sección, o entra a `VERSIONES_SIN_SECCION` con la razón escrita"
+    )
+
+
 def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte():
     """Al partir la hoja de ruta, sus fragmentos publicados quedaron apuntando al vacío.
 

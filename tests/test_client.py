@@ -535,39 +535,26 @@ def test_los_tres_modales_se_piden_como_ajax(monkeypatch):
     """Las cabeceras del modal no las miraba nadie, y son lo que distingue una respuesta útil.
 
     Encontrado con testing de mutación: `X-Requested-With` y `Referer` se podían borrar o
-    escribir en otra caja en los tres modales. Sin ellas la plataforma no devuelve un error:
+    escribir con otro valor en los tres modales. Sin ellas la plataforma no devuelve un error:
     devuelve otra cosa, y este proyecto ya midió que una respuesta con la forma equivocada se
     lee como "este folio no tiene nada".
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    respuestas = {
-        "anexo": (FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8"),
-        "geo": (FIXTURES / "georreferencia_civil.html").read_text(encoding="utf-8"),
-        "audio": (FIXTURES / "listado_audio_laboral.html").read_text(encoding="utf-8"),
-    }
-    for cual, llamar in (
-        ("anexo", lambda c: c.anexos("anexoEscritoLaboral.php", "ref", "laboral")),
-        ("geo", lambda c: c.georreferencia("ref")),
-        ("audio", lambda c: c.audios("ref")),
+    for fixture, llamar in (
+        (
+            "anexo_escrito_laboral.html",
+            lambda c: c.anexos("anexoEscritoLaboral.php", "r", "laboral"),
+        ),
+        ("georreferencia_civil.html", lambda c: c.georreferencia("r")),
+        ("listado_audio_laboral.html", lambda c: c.audios("r")),
     ):
-        vistas: list[httpx.Request] = []
-
-        def transporte(
-            req: httpx.Request,
-            cual: str = cual,
-            vistas: list[httpx.Request] = vistas,
-        ) -> httpx.Response:
-            vistas.append(req)
-            return httpx.Response(200, text=respuestas[cual])
-
-        c = PjudClient("test@example.cl")
-        c._http = httpx.Client(transport=httpx.MockTransport(transporte))
-        c._adir, c._token = "ADIR_1", "0" * 32
+        cuerpo = (FIXTURES / fixture).read_text(encoding="utf-8")
+        c, vistas = _cliente_de_documentos(httpx.Response(200, text=cuerpo))
         llamar(c)
 
-        assert vistas[-1].method == "POST", cual
-        assert vistas[-1].headers["X-Requested-With"] == "XMLHttpRequest", cual
-        assert vistas[-1].headers["Referer"].endswith("/consultaUnificada.php"), cual
+        assert vistas[-1].method == "POST", fixture
+        assert vistas[-1].headers["X-Requested-With"] == "XMLHttpRequest", fixture
+        assert vistas[-1].headers["Referer"].endswith("/consultaUnificada.php"), fixture
 
 
 def test_sin_resultados_devuelve_lista_vacia_sin_reventar():

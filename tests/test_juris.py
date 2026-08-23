@@ -250,8 +250,10 @@ def test_la_busqueda_manda_los_siete_campos_que_el_sitio_espera(monkeypatch):
         "orden",
         "personalizacion",
     }, "el sitio espera estos siete y ni uno más: con el juego completo de claves vacías da 500"
-    assert visto["campos"]["_token"] == "tok"
-    assert visto["campos"]["id_buscador"] == "528"
+    # Contra lo que la sesión derivó, no contra el literal: así el guardia también dice que el
+    # token que viaja es el de ESTA sesión y no uno de antes.
+    assert visto["campos"]["_token"] == c._token
+    assert visto["campos"]["id_buscador"] == c._id_buscador
     assert visto["campos"]["numero_filas_paginacion"] == "20"
     assert visto["campos"]["orden"] == "recientes"
     assert visto["campos"]["personalizacion"] == "false"

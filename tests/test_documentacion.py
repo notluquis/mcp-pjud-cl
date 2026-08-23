@@ -3543,12 +3543,21 @@ def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
         9: "nueve",
         10: "diez",
     }
-    esperado = numeros[len(BUSCADORES)]
+    # Dos cuentas distintas, y la confusión entre ellas ya se coló una vez: los MEDIDOS son los
+    # que tienen identificador anotado, incluido el que se decidió no ofrecer, y los EXPUESTOS
+    # son los que el cliente acepta. La prosa decía "siete verificados y seis expuestos" con
+    # siete en la tabla y ocho medidos, y el guardia sólo miraba la primera mitad de la frase.
     referencia = _texto(RAIZ / "docs" / "herramientas.md")
-    dicho = re.search(r"Están verificados (\w+) de los \w+ buscadores", referencia)
-    assert dicho, "la referencia ya no dice cuántos buscadores están verificados"
-    assert dicho.group(1) == esperado, (
-        f"la referencia dice {dicho.group(1)} buscadores verificados y el código registra "
+    dicho = re.search(
+        r"Están verificados (\w+) de los \w+ buscadores y se exponen (\w+):", referencia
+    )
+    assert dicho, "la referencia ya no dice cuántos buscadores están verificados y expuestos"
+    assert dicho.group(1) == numeros[len(IDENTIFICADORES_MEDIDOS)], (
+        f"la referencia dice {dicho.group(1)} buscadores medidos y el código anota "
+        f"{len(IDENTIFICADORES_MEDIDOS)}"
+    )
+    assert dicho.group(2) == numeros[len(BUSCADORES)], (
+        f"la referencia dice {dicho.group(2)} buscadores expuestos y el cliente acepta "
         f"{len(BUSCADORES)}"
     )
     for nombre in BUSCADORES:

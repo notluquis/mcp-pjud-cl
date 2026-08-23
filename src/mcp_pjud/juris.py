@@ -43,7 +43,8 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Siete de los diez buscadores están verificados contra el sistema real. El de Penales se midió
+#: Ocho de los diez buscadores se midieron contra el sistema real y siete se exponen. El de
+#: Penales se midió
 #: y NO se expone: es una decisión del titular, del 23 de agosto de 2026, por lo mismo que el
 #: detalle de las causas penales queda fuera. Sus caratulados llegan con el nombre del imputado
 #: cuando el fallo está marcado como no anonimizable. No es prudencia de más:
@@ -271,6 +272,9 @@ IDENTIFICADORES_MEDIDOS = {
     "cobranza": 269,
     "familia": 270,
     "salud": 127,
+    # Medido y NO expuesto, por decisión. Va acá igual: esta tabla es la constancia de lo que se
+    # midió, y dejarlo fuera obligaría a medirlo de nuevo el día que se decida distinto.
+    "penales": 268,
 }
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')

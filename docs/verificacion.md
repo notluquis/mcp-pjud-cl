@@ -239,7 +239,7 @@ leer penal, y decir que penal está "detrás de un captcha" sería afirmar de m�
 
 ### Los diez buscadores
 
-Siete de los diez están verificados y seis se exponen, y la tabla de abajo dice cuáles. **Cada buscador declara
+Ocho de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada buscador declara
 sus propios campos**, y esa es la
 razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
 Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería

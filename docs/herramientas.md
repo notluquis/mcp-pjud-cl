@@ -767,7 +767,7 @@ No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero 
 serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
 quien lo necesite entra.
 
-Están verificados siete de los diez buscadores y se exponen seis: **suprema**, **apelaciones**,
+Están verificados ocho de los diez buscadores y se exponen siete: **suprema**, **apelaciones**,
 **laborales**, **civiles**, **cobranza**, **familia** y **salud**. El de **penales** se midió y
 queda fuera por decisión, por lo mismo que el detalle de las causas penales: sus caratulados
 llegan con el nombre del imputado cuando el fallo no está anonimizado.

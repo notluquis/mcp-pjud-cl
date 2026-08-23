@@ -480,6 +480,34 @@ def test_la_directiva_avisa_donde_ocultas_viene_en_nulo():
     )
 
 
+def test_los_paneles_que_nombra_la_hoja_de_ruta_son_los_que_el_codigo_pide():
+    """La tabla dice con qué panel se lee cada competencia, y ese nombre es lo que se manda.
+
+    Un nombre mal escrito acá no rompe nada hoy, y por eso envejece tranquilo: la próxima
+    persona que mida una competencia nueva copia el de al lado. `movimientoLab` va en singular y
+    `movimientosSup` en plural, que es la clase de detalle que nadie recuerda y que la
+    plataforma no perdona.
+    """
+    seccion = _texto(RAIZ / "docs" / "roadmap.md").split("### 0.8:")[1].split("\n### ")[0]
+    filas = re.findall(r"^\| `(\w+)` \| `(\w+)` \|", seccion, re.M)
+    assert filas, "la tabla de competencia y panel de la sección 0.8 desapareció"
+    pedidos = {c.historia.panel for c in COMPETENCIAS.values() if c.historia is not None}
+    for competencia, panel in filas:
+        historia = COMPETENCIAS[competencia].historia
+        if historia is None:
+            # La fila de penal está a propósito: documenta el panel que se PIDIÓ y no existe,
+            # que es la parte cara de esa medición. Lo que hay que cuidar es que no se cuele
+            # como si fuera un panel que este servidor usa.
+            assert panel not in pedidos, (
+                f"{competencia!r} no está mapeada y la tabla nombra {panel!r}, que sí se pide"
+            )
+            continue
+        assert historia.panel == panel, (
+            f"la hoja de ruta dice que {competencia!r} se lee del panel {panel!r} y el código "
+            f"pide {historia.panel!r}"
+        )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

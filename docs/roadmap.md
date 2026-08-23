@@ -43,8 +43,10 @@ total. La respuesta correcta es devolver el listado para que el usuario elija cu
 
 ### 0.3: jurisprudencia — hecho parcialmente
 
-Existe `buscar_jurisprudencia` contra el buscador de Corte Suprema. Lo que falta está en la
-sección de jurisprudencia, más abajo.
+`buscar_jurisprudencia` anda contra tres de los diez buscadores: Corte Suprema, Cortes de
+Apelaciones y Laborales. Con la paginación medida, una búsqueda ya no se corta en la coincidencia
+250. Lo que falta son los siete buscadores restantes, y está en la sección de jurisprudencia más
+abajo.
 
 ### 0.4: las seis competencias buscables — hecho
 
@@ -202,10 +204,13 @@ lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
 ### 0.7: documentos
 
-No es una ruta, son seis, y estaban a la vista en las fixtures. Todas son `GET` con un solo
-parámetro oculto que lleva una referencia opaca, igual que el resto del sitio:
+No es una ruta, son seis en civil y **veintisiete** contando las cinco competencias. Todas son
+`GET` con un solo parámetro oculto que lleva una referencia opaca, igual que el resto del sitio,
+y todas salen del `action` de un formulario de la respuesta.
 
-Las seis rutas y su parámetro están en {doc}`verificacion`.
+Siete se han ejecutado de verdad, una por competencia como mínimo; las veinte que faltan esperan
+una causa que ofrezca la fila que las entrega. La tabla, con lo que midió cada una, está en
+{doc}`verificacion`.
 
 **Y hasta ahora la respuesta no decía cuál documento.** `tiene_documento` era un booleano: la
 actuación informaba que HAY documento y no CUÁL, y con eso no se puede pedir. La referencia
@@ -352,6 +357,12 @@ como sufijo. Antes el código anteponía `historia`, lo que funcionaba con dos c
 llamaban así y no generaliza: dos de las nuevas van en plural (`movimientos…`) y una en singular
 (`movimiento…`).
 
+### 0.9: familia
+
+La única competencia que no se expone, y no por falta de medición: la propia plataforma
+responde que las causas de familia son reservadas y sólo se llega a ellas por Clave Única,
+desde "Mis Causas". Queda fuera de alcance mientras eso siga así.
+
 ### 0.10: los otros dos canales del folio — hecho parcialmente
 
 La Historia publica más de un canal por folio y hasta la 0.9.0 se leía uno solo.
@@ -382,11 +393,43 @@ once archivos para una sola audiencia preparatoria. Sólo laboral está medida.
 Por lo mismo siguen sin medir, deliberadamente, cuánto pesa un archivo y si el endpoint de
 descarga responde a una consulta anónima: ninguna de las dos hace falta para entregar el enlace.
 
-### 0.9: familia
+### 0.11: los paneles que quedaban del detalle — hecho
 
-La única competencia que no se expone, y no por falta de medición: la propia plataforma
-responde que las causas de familia son reservadas y sólo se llega a ellas por Clave Única,
-desde "Mis Causas". Queda fuera de alcance mientras eso siga así.
+Cuatro paneles que la respuesta ya traía y este servidor tiraba.
+
+**Los escritos por resolver de civil resultaron ser otra cosa** de la que esta página suponía:
+no son los escritos presentados sino la COLA de lo que espera proveído, que es lo que el sitio
+rotula en la pestaña. Por eso las causas viejas lo traen vacío con escritos de sobra en su
+Historia. Responden una pregunta que la Historia no responde, porque ahí el escrito aparece
+cuando YA fue resuelto.
+
+**Las diligencias del ministro de fe**, en cobranza y en laboral, cada una con su forma. En
+cobranza la fecha viene nula cuando el sitio imprime el epoch `31/12/1969`, que es el valor cero
+y no una diligencia de 1969. En laboral, que una diligencia no traiga el oficio de vuelta es el
+dato de que todavía no vuelve.
+
+**La causa de origen de suprema** cierra hacia abajo la misma arista que los exhortos cierran
+hacia el lado: de qué causa de apelaciones subió el recurso. Su panel falta en tres de dieciséis
+causas, porque no todas suben desde una corte, y eso vuelve nulo y no error.
+
+Y una fuga que había que retirar de lo publicado: tres nombres reales de personas seguían en las
+fixtures versionadas, invisibles para los cuatro guardias porque venían en mayúscula y minúscula
+o con un sufijo entre paréntesis.
+
+### 0.12: los tres paneles sin una fila vista — hecho
+
+Los escritos pendientes y la liquidación de laboral, y las causas agregadas de suprema. De los
+tres se midieron los ENCABEZADOS y de ninguno se vio una fila: sesenta y una causas abiertas en
+cinco barridos, cero filas.
+
+La distinción con el resto no vive en un comentario: `SIN_FILAS_OBSERVADAS` los nombra, la
+referencia lo advierte y un guardia compara esa lista contra las fixtures en las dos
+direcciones. Se leen igual para que el día que una causa los traiga la respuesta los incluya, en
+vez de descartarlos en silencio.
+
+Quedan dos paneles sin mapear, los de apelaciones, y ahí no hay qué mapear: su tabla son dos
+columnas, la primera en blanco y la segunda con el rótulo, y en la mitad de los detalles el
+panel ni siquiera aparece.
 
 ### Sin versión asignada
 

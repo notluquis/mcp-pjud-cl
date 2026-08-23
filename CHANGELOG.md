@@ -38,6 +38,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   sin cubrir.
 - Siete de las veintisiete rutas de documento se pidieron de verdad contra la plataforma, en las
   cinco competencias, y antes era una. Las veinte que faltan esperan una causa que las ofrezca.
+- La hoja de ruta no contaba las tres últimas versiones y describía el estado de hace tres
+  publicaciones. Un guardia nuevo exige que toda versión publicada tenga su sección.
 
 ## [0.12.0] - 2026-08-22
 

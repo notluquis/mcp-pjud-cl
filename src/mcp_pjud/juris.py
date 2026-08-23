@@ -43,7 +43,7 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Cuatro de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
+#: Seis de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
 #: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
 #: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
@@ -186,6 +186,50 @@ BUSCADORES: Mapping[str, Buscador] = {
         # coincidencias como para un rol imposible con cero. Es el corpus, no la consulta.
         coincidencias_por_consulta=False,
     ),
+    "cobranza": Buscador(
+        "Cobranza",
+        {
+            # Como en civiles, el rol trae la letra del libro: `P-34224-2018`.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido el 23 de agosto de 2026: 28.368 para una búsqueda con 1.865 coincidencias y el
+        # mismo número para un rol imposible.
+        coincidencias_por_consulta=False,
+    ),
+    "salud": Buscador(
+        "Salud_CS",
+        {
+            # El único de los cinco medidos que tiene la forma de suprema y no la de los
+            # juzgados: trae corte, sala, tipo de recurso y resultado, más el rol de la causa de
+            # apelaciones de la que subió. Es un compendio de la Corte Suprema sobre isapres.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "sala": "gls_sala_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "corte_origen": "gls_corte_s",
+            "rol_corte_apelaciones": "rol_era_ape_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido el 23 de agosto de 2026: 303 para una búsqueda con 262 coincidencias, el mismo
+        # número para un rol imposible. Es el corpus, y acá el corpus entero son 303 sentencias.
+        coincidencias_por_consulta=False,
+    ),
 }
 
 #: Identificadores que el sitio asigna a cada buscador. Se derivan de la página al abrir sesión
@@ -194,7 +238,14 @@ BUSCADORES: Mapping[str, Buscador] = {
 #: Existe porque los tres números están escritos en `verificacion`, y un dato repetido a mano es
 #: un dato que va a quedar viejo. Un guardia compara la tabla contra esto; sin él la constante
 #: era código muerto, que es como estuvo hasta el 22 de agosto de 2026.
-IDENTIFICADORES_MEDIDOS = {"suprema": 528, "apelaciones": 168, "laborales": 271, "civiles": 328}
+IDENTIFICADORES_MEDIDOS = {
+    "suprema": 528,
+    "apelaciones": 168,
+    "laborales": 271,
+    "civiles": 328,
+    "cobranza": 269,
+    "salud": 127,
+}
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")
@@ -511,6 +562,24 @@ class JurisClient(Transporte):
                 "No se pudo derivar el token de sesión ni el identificador del buscador "
                 f"desde {BASE}/busqueda. El sitio cambió: consultar igual produciría "
                 "resultados vacíos indistinguibles de 'no hay jurisprudencia'."
+            )
+        # El identificador que la página entrega tiene que ser el que se midió para ESTE
+        # buscador. No es paranoia: el 23 de agosto de 2026, pedir una ruta que no existe
+        # (`Compendio_Extranjeria`) devolvió 200 con la página de OTRO buscador, con su
+        # identificador y sus campos, y las búsquedas siguientes contestaron su corpus.
+        #
+        # Sin esta comprobación eso es indistinguible de haber consultado el buscador pedido:
+        # la respuesta tiene la forma correcta y los resultados son de otra cosa.
+        # Comparados como enteros: el patrón sólo captura dígitos, y si el sitio empezara a
+        # rellenar con ceros (`0269`) la comparación de cadenas diría que cambió el buscador
+        # cuando es el mismo. Un guardia que salta por el formato deja de decir algo del dato.
+        medido = IDENTIFICADORES_MEDIDOS.get(buscador)
+        if medido is not None and int(ident.group(1)) != medido:
+            raise EstructuraInesperada(
+                f"La página de {buscador!r} entregó el identificador {ident.group(1)} y lo "
+                f"medido es {medido}. O el sitio reasignó los identificadores, o esa ruta está "
+                "sirviendo la página de otro buscador, que responde con su corpus y no con el "
+                "que se pidió."
             )
         self._token, self._id_buscador = token.group(1), ident.group(1)
         self._buscador_de_la_sesion = buscador

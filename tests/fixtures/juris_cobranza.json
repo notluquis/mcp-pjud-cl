@@ -1,0 +1,58 @@
+{
+ "response": {
+  "numFound": 7687,
+  "docs": [
+   {
+    "rol_era_sup_s": "P-34224-2018",
+    "caratulado_s": "EMPRESA FICTICIA UNO/EMPRESA FICTICIA DOS",
+    "fec_sentencia_sup_dt": "2026-08-20T00:00:00Z",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/1",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "gls_juz_s": "Jdo. Cob. Laboral y Previsional de Santiago"
+   },
+   {
+    "rol_era_sup_s": "P-31549-2025",
+    "caratulado_s": "PERSONA FICTICIA 41/EMPRESA FICTICIA TRES",
+    "fec_sentencia_sup_dt": "2026-08-06T00:00:00Z",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/2",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "gls_juz_s": "Jdo. Cob. Laboral y Previsional de Santiago"
+   },
+   {
+    "rol_era_sup_s": "P-42905-2024",
+    "caratulado_s": "EMPRESA FICTICIA CUATRO/PERSONA FICTICIA 42",
+    "fec_sentencia_sup_dt": "2026-08-06T00:00:00Z",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/3",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia.",
+    "gls_juz_s": "Jdo. Cob. Laboral y Previsional de Santiago"
+   }
+  ]
+ },
+ "condition_pub_sf": {
+  "numFound_sf": 28368,
+  "counts": [
+   "Publicable",
+   26042,
+   "Sin interes jurisprudencial, no anonimizable",
+   1987,
+   "Con interes jurisprudencial, no anonimizable",
+   216,
+   "Sin interes jurisprudencial, anonimizable",
+   75,
+   "Anonimizadas",
+   38,
+   "En proceso anonimizacion",
+   6,
+   "Con interes jurisprudencial, anonimizada",
+   3,
+   "Excluido anonimizable",
+   1
+  ]
+ }
+}

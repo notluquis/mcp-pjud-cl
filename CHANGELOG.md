@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Los buscadores de **Cobranza** y **Salud CS** quedan verificados: son seis de los diez. El de
+  salud es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
 - El buscador de **Civiles** queda verificado y expuesto: son cuatro de los diez. Su rol lleva
   la letra del tipo de causa y su origen es un juzgado, no una corte.
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
@@ -29,6 +31,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   una contraseña que este servidor no tiene.
 
 ### Corregido
+
+- Una ruta de buscador que no existe devolvía 200 con la página de OTRO buscador, y sus
+  búsquedas contestaban ese corpus. Ahora se compara el identificador contra lo medido.
 
 - Una página de PDF que no se dejaba leer hacía que el documento entero se informara como
   ilegible. Ahora se cuenta aparte y el resto se describe igual.

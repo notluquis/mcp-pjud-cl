@@ -844,13 +844,25 @@ def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
     pagina = _texto(RAIZ / "docs" / "verificacion.md")
     sin_ejecutar = pagina.split("### Mapeado pero nunca ejecutado")[1].split("\n### ")[0]
 
-    coladas = sorted(r for r in DOCUMENTOS_EJECUTADAS if f"`{r}`" in sin_ejecutar)
+    # Con el mismo patrón tolerante que la aserción de abajo: la página escribe unas rutas
+    # sueltas y otras con su carpeta delante (`civil/documentos/docuN.php`), y buscar sólo la
+    # forma suelta dejaba pasar la otra. Un guardia que no ve la mitad de las formas en que se
+    # escribe el dato es el que no puede fallar.
+    #
+    # El prefijo termina en `/` o no existe. Sin esa barra, `docu.php` calzaba dentro de
+    # `otro_docu.php`: tolerante de más también deja de distinguir, y `DOCUMENTOS` tiene cuatro
+    # rutas que empiezan igual.
+    coladas = sorted(
+        r
+        for r in DOCUMENTOS_EJECUTADAS
+        if re.search(rf"`(?:[\w/]*/)?{re.escape(r)}`", sin_ejecutar)
+    )
     assert not coladas, (
         f"{coladas} se ejecutaron contra la plataforma y siguen en la lista de lo nunca "
         "ejecutado. Las dos afirmaciones no pueden convivir"
     )
     for ruta in DOCUMENTOS_EJECUTADAS:
-        assert re.search(rf"`[\w/]*{re.escape(ruta)}`", pagina), (
+        assert re.search(rf"`(?:[\w/]*/)?{re.escape(ruta)}`", pagina), (
             f"{ruta!r} se ejecutó y la página no la nombra en ninguna parte"
         )
     # Y al revés: lo ejecutado tiene que ser una ruta que el cliente acepte, o la constante
@@ -859,6 +871,18 @@ def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
     assert aceptadas >= DOCUMENTOS_EJECUTADAS, (
         f"{sorted(DOCUMENTOS_EJECUTADAS - aceptadas)} figura como ejecutada y `obtener_documento` "
         "no la acepta"
+    )
+
+    # La tabla de lo medido tiene que decir exactamente lo mismo que la constante. Esto NO
+    # comprueba que la medición ocurrió, que no es comprobable desde acá: obliga a que declararla
+    # cueste editar las dos, en vez de que una diga siete y la otra ocho.
+    tabla = pagina.split("| Ruta ejecutada | Competencia | Medido |")[1].split("\n\n")[0]
+    # Con los espacios sueltos: una tabla realineada a mano es lo normal en Markdown, y un
+    # guardia que se cae por un espacio de más no dice nada sobre el dato que cuida.
+    publicadas = set(re.findall(r"^\s*\|\s*`([\w.]+)`\s*\|", tabla, re.M))
+    assert publicadas == DOCUMENTOS_EJECUTADAS, (
+        f"la tabla de rutas ejecutadas publica {sorted(publicadas)} y el código declara "
+        f"{sorted(DOCUMENTOS_EJECUTADAS)}"
     )
 
 
@@ -894,7 +918,7 @@ def test_toda_ruta_de_documento_que_el_cliente_acepta_esta_nombrada():
         for ruta in rutas
         # La tabla de civil las escribe con su carpeta delante (`civil/documentos/docu.php`) y
         # las demás sueltas. Las dos formas nombran la ruta, que es lo que este guardia mide.
-        if not re.search(rf"`[\w/]*{re.escape(ruta)}`", pagina)
+        if not re.search(rf"`(?:[\w/]*/)?{re.escape(ruta)}`", pagina)
     )
     assert not faltan, (
         f"`obtener_documento` acepta estas rutas y `verificacion` no las nombra: {faltan}"

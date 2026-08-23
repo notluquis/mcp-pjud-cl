@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
+  inalcanzable, y el tope lo ponía este cliente y no la plataforma.
 - `obtener_documento` dice CUÁLES páginas traen texto, por tramos, y entrega los marcadores del
   archivo y cuánto mide su página. Todo sale de la lectura del PDF que ya se hacía, así que no
   cuesta una consulta más.
@@ -30,6 +32,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   contradicciones de una página consigo misma: la ruta de documento que estaba a la vez medida y
   nunca ejecutada, y el rechazo de penal explicado por falta de medición después de haberla
   medido.
+- Doce de los veintitrés paneles del detalle no pasaban por el arnés que comprueba que un cambio
+  de columnas del sitio no corra el mapeo en silencio, entre ellos los cinco de litigantes. La
+  lista de paneles ahora se deriva de `COMPETENCIAS` y un guardia se pone rojo si alguno queda
+  sin cubrir.
+- Siete de las veintisiete rutas de documento se pidieron de verdad contra la plataforma, en las
+  cinco competencias, y antes era una. Las veinte que faltan esperan una causa que las ofrezca.
 
 ## [0.12.0] - 2026-08-22
 

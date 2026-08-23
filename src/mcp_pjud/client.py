@@ -364,9 +364,23 @@ ANEXOS_MEDIDOS_SIN_EXPONER: dict[str, str] = {
 #: nunca ejecutado y en la de lo medido, con la suite entera verde porque ningún guardia miraba
 #: esa afirmación.
 #:
-#: Medida el 20 de agosto de 2026: folio 9 de C-1156-2026, 975.006 bytes, una página, sin capa
-#: de texto.
-DOCUMENTOS_EJECUTADAS: frozenset[str] = frozenset({"docuN.php"})
+#: Medidas el 20 y el 23 de agosto de 2026, una por competencia y por ruta alcanzable desde una
+#: causa conocida. Las siete respondieron un PDF con capa de texto, entre 15.948 y 377.949 bytes.
+#:
+#: Las veinte que faltan no son inalcanzables por la ruta sino por la fila: hacen falta causas
+#: que ofrezcan un certificado de envío, un oficio, una liquidación o un anexo. El ebook completo
+#: se dejó fuera a propósito: es el expediente entero y no agrega nada que las demás no digan.
+DOCUMENTOS_EJECUTADAS: frozenset[str] = frozenset(
+    {
+        "docuN.php",
+        "docuS.php",
+        "docuCobranza.php",
+        "docReformadoLaboral.php",
+        "docReformadoEscritoLaboral.php",
+        "docCausaApelaciones.php",
+        "docCausaSuprema.php",
+    }
+)
 
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {
@@ -781,10 +795,14 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
 def _por_que_no_se_abrio(lector: PdfReader | None, e: Exception) -> str:
     """Por qué falló la lectura, separando el cifrado de todo lo demás.
 
-    Los dos casos caían en el mismo mensaje genérico y no son el mismo problema: un archivo
-    cifrado llegó COMPLETO y se abre con su contraseña, mientras que uno truncado o mal
-    formado no se abre nunca. Quien lea "no se pudo abrir" a secas no tiene cómo saber cuál de
-    los dos le tocó, y sólo uno tiene salida.
+    Los dos casos caían en el mismo mensaje genérico y no son el mismo problema: al cifrado le
+    falta una contraseña, y al truncado o mal formado no hay contraseña que lo arregle. Quien
+    lea "no se pudo abrir" a secas no tiene cómo saber cuál de los dos le tocó, y sólo uno
+    tiene salida.
+
+    Lo que se afirma es lo que se midió, y no más: `is_encrypted` dice que el archivo está
+    cifrado, NO que haya llegado entero. `pypdf` puede reconstruir la tabla de referencias de
+    un archivo cortado, así que uno cifrado Y cortado también cae acá.
     """
     try:
         cifrado = lector is not None and lector.is_encrypted
@@ -793,7 +811,7 @@ def _por_que_no_se_abrio(lector: PdfReader | None, e: Exception) -> str:
     if cifrado:
         return (
             f"el archivo viene CIFRADO y la contraseña vacía no lo abre ({type(e).__name__}). "
-            "Llegó completo: lo que falta es la contraseña, no el documento."
+            "Lo que falta para leerlo es la contraseña, que este servidor no tiene."
         )
     return f"{type(e).__name__}: {e}"
 

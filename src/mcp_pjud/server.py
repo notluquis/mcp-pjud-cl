@@ -928,6 +928,16 @@ def buscar_jurisprudencia(
     filas: Annotated[
         int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
     ] = 10,
+    desplazamiento: Annotated[
+        int,
+        Field(
+            description="Desde qué coincidencia empezar. Cero es la primera. Para la página "
+            "siguiente: `desplazamiento + filas`.\n\n"
+            "Pedir más allá de `visibles` devuelve una lista VACÍA, no un error, así que una "
+            "página vacía acá significa que se pasó del final y no que no haya coincidencias.",
+            ge=0,
+        ),
+    ] = 0,
     buscador: Annotated[
         str,
         Field(
@@ -946,6 +956,10 @@ def buscar_jurisprudencia(
     cero, la lista es un subconjunto y no se puede afirmar que falte lo que no aparece:
     `ocultas` son las que la plataforma reserva, `no_entregadas` las que sí se podrían ver
     y no se pidieron.
+
+    `no_entregadas` mayor que cero ahora se puede resolver: se vuelve a llamar con
+    `desplazamiento` en `desplazamiento + filas` hasta que llegue a cero. Cada página cuesta una
+    petición con su intervalo, así que se recorre lo que hace falta y no el índice entero.
     """
     with JurisClient(_contacto()) as c:
         return c.buscar(
@@ -958,6 +972,7 @@ def buscar_jurisprudencia(
             hasta=hasta,
             filas=filas,
             buscador=buscador,
+            desplazamiento=desplazamiento,
         )
 
 

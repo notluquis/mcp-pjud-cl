@@ -283,9 +283,16 @@ class ResultadoJurisprudencia(BaseModel):
         "la pregunta no tiene respuesta acá, y un resultado sin coincidencias puede igual "
         "corresponder a algo reservado."
     )
+    desplazamiento: int = Field(
+        default=0,
+        description="Desde qué coincidencia empieza esta página. Cero es la primera.\n\n"
+        "Sirve para pedir la siguiente: `desplazamiento + filas`. Medido el 22 de agosto de "
+        "2026: pedir más allá de `visibles` devuelve una página VACÍA con 200, no un error.",
+    )
     no_entregadas: int = Field(
-        description="Coincidencias visibles que esta llamada NO trajo, porque `filas` acota "
-        "cuántas se piden. Si es mayor que cero, la lista es un subconjunto de lo visible.\n\n"
+        description="Coincidencias visibles que esta llamada NO trajo: las que quedan DESPUÉS "
+        "de esta página, contando desde `desplazamiento`. Si es mayor que cero, la lista es un "
+        "subconjunto de lo visible y se puede pedir el resto.\n\n"
         "Es distinto de `ocultas`, y hay que mirar los dos: `ocultas` son las que la "
         "plataforma reserva, `no_entregadas` son las que sí se podrían ver y no se pidieron. "
         "Un resultado con `ocultas` en cero puede igual estar recortado."
@@ -315,7 +322,9 @@ def _lista(valor: str | None) -> list[str]:
     return [p.strip() for p in (valor or "").split(",") if p.strip()]
 
 
-def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurisprudencia:
+def parse_sentencias(
+    cuerpo: str, buscador: str = "suprema", desplazamiento: int = 0
+) -> ResultadoJurisprudencia:
     """Convierte la respuesta del buscador en el modelo. Sin red: se prueba offline.
 
     Levanta `EstructuraInesperada` en vez de devolver una lista vacía, por la misma razón
@@ -424,10 +433,15 @@ def parse_sentencias(cuerpo: str, buscador: str = "suprema") -> ResultadoJurispr
         visibles=visibles,
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
+        desplazamiento=desplazamiento,
         # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y en dos de
         # los tres buscadores viene en nulo, así que ésta es la única señal de recorte que
         # funciona en los tres.
-        no_entregadas=max(0, visibles - len(sentencias)),
+        #
+        # El desplazamiento entra en la resta desde que la paginación existe. Sin él, la
+        # segunda página de una búsqueda de 59.819 declararía casi todas las visibles como no
+        # entregadas, o sea diría que falta lo que ya se entregó en la página anterior.
+        no_entregadas=max(0, visibles - desplazamiento - len(sentencias)),
         condiciones_de_publicacion=condiciones,
     )
 
@@ -492,13 +506,22 @@ class JurisClient(Transporte):
         filas: int = 10,
         orden: str = "recientes",
         buscador: str = "suprema",
+        desplazamiento: int = 0,
     ) -> ResultadoJurisprudencia:
         """Busca sentencias. Sin ningún criterio devolvería el índice entero, y eso no es
-        una búsqueda: es un volcado."""
+        una búsqueda: es un volcado.
+
+        `desplazamiento` es desde qué coincidencia empieza la página. Medido el 22 de agosto de
+        2026 contra el buscador de Corte Suprema: con 0, 10 y 250 devuelve tres páginas SIN una
+        sola sentencia repetida, así que la coincidencia 251 sí se alcanza. Pedir más allá de
+        `visibles` devuelve una página vacía con 200, no un error.
+        """
         if orden not in ORDENES:
             raise ValueError(f"Orden '{orden}' desconocido. Usar una de: {', '.join(ORDENES)}.")
         if not 1 <= filas <= FILAS_MAXIMAS:
             raise ValueError(f"Las filas por página van de 1 a {FILAS_MAXIMAS}.")
+        if desplazamiento < 0:
+            raise ValueError("El desplazamiento no puede ser negativo.")
 
         # Sólo se envían las claves con valor. Medido: mandar el juego completo de claves
         # vacías que arma su formulario hace que el servidor responda 500.
@@ -535,7 +558,7 @@ class JurisClient(Transporte):
                 "id_buscador": (None, self._id_buscador),
                 "filtros": (None, json.dumps(filtros, ensure_ascii=False)),
                 "numero_filas_paginacion": (None, str(filas)),
-                "offset_paginacion": (None, "0"),
+                "offset_paginacion": (None, str(desplazamiento)),
                 "orden": (None, orden),
                 "personalizacion": (None, "false"),
             },
@@ -544,7 +567,7 @@ class JurisClient(Transporte):
                 "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
         ).text
-        return parse_sentencias(self._ultima_respuesta, buscador)
+        return parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
 
     def texto(self, *, rol: int, anio: int, buscador: str = "suprema") -> TextoSentencia:
         """El texto completo de una sentencia, de una en una.

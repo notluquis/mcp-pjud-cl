@@ -778,8 +778,12 @@ def _validar_encabezados(encabezados: list[str], esperados: tuple[str, ...], pan
 
     Lo que se entrega entonces no se ve roto: se ve como una fila con otros valores. En la
     Historia eso deja `fecha_diligencia` en nulo y el trámite corrido, con lo que
-    `actuaciones_receptor` devuelve lista vacía SIN error. Medido con `tests/test_resistencia.py`:
-    diez de los cuarenta y cinco casos de deformación pasaban en silencio.
+    `actuaciones_receptor` devuelve lista vacía SIN error. Vuelto a medir el 23-08-2026, con
+    esta función devuelta al `any(esperado in real for real in encabezados)` que tenía y con
+    `tests/test_resistencia.py` cubriendo los veintitrés paneles: cuarenta y seis de sus ciento
+    quince casos de deformación pasan en silencio. Es un piso y no un total: se midió con los
+    encabezados COMPLETOS de hoy, y los de entonces eran listas parciales que exigían menos.
+    Antes se midieron diez de cuarenta y cinco, con nueve paneles cubiertos.
     """
     if len(encabezados) != len(esperados):
         raise EstructuraInesperada(

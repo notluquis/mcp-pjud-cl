@@ -200,6 +200,24 @@ def test_una_ruta_que_sirve_la_pagina_de_otro_buscador_se_levanta(monkeypatch):
         c.abrir_sesion("suprema")
 
 
+def test_el_identificador_relleno_con_ceros_sigue_siendo_el_mismo(monkeypatch):
+    """El patrón captura dígitos, y `0528` es el mismo buscador que `528`.
+
+    Comparando cadenas, un cambio de formato del sitio se leería como que la ruta empezó a
+    servir otro buscador: el guardia saltaría por algo que no tiene que ver con el dato.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    con_ceros = '<input name="_token" value="tok"><script>id_buscador_activo = 0528</script>'
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=con_ceros))
+    )
+    c.abrir_sesion("suprema")
+
+    assert c._id_buscador == "0528", "se guarda tal cual vino, que es lo que la petición usa"
+
+
 def test_una_respuesta_que_no_es_json_se_levanta():
     with pytest.raises(EstructuraInesperada, match="no devolvió JSON"):
         parse_sentencias("<html>mantención</html>")

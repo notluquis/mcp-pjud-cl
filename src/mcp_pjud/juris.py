@@ -570,8 +570,11 @@ class JurisClient(Transporte):
         #
         # Sin esta comprobación eso es indistinguible de haber consultado el buscador pedido:
         # la respuesta tiene la forma correcta y los resultados son de otra cosa.
+        # Comparados como enteros: el patrón sólo captura dígitos, y si el sitio empezara a
+        # rellenar con ceros (`0269`) la comparación de cadenas diría que cambió el buscador
+        # cuando es el mismo. Un guardia que salta por el formato deja de decir algo del dato.
         medido = IDENTIFICADORES_MEDIDOS.get(buscador)
-        if medido is not None and ident.group(1) != str(medido):
+        if medido is not None and int(ident.group(1)) != medido:
             raise EstructuraInesperada(
                 f"La página de {buscador!r} entregó el identificador {ident.group(1)} y lo "
                 f"medido es {medido}. O el sitio reasignó los identificadores, o esa ruta está "

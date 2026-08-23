@@ -120,8 +120,10 @@ exclude = ["tests/fuzz_parser.py"]
 
 [tool.mutmut]
 # Se muta el parser y el cliente: ahí vive la lógica que puede costar un plazo.
-paths_to_mutate = ["src/mcp_pjud/"]
-tests_dir = ["tests/"]
+# Los nombres viejos (`paths_to_mutate` y `tests_dir`) siguen funcionando y avisan en cada
+# corrida; mutmut 3 los renombró.
+source_paths = ["src/mcp_pjud/"]
+pytest_add_cli_args_test_selection = ["tests/"]
 
 [tool.ruff.lint.per-file-ignores]
 # El harness de fuzzing importa atheris, que se instala a demanda y no es dependencia.

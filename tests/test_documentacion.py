@@ -63,7 +63,7 @@ from mcp_pjud.parser import (
 )
 from mcp_pjud.server import mcp
 
-from .conftest import CARACTERES_DE_UNA_SENTENCIA
+from .conftest import CARACTERES_DE_UNA_SENTENCIA, raiz_del_repo
 
 #: Para derivar la fecha corta de la larga en vez de escribir las dos al lado.
 _MESES = (
@@ -81,7 +81,7 @@ _MESES = (
     "diciembre",
 )
 
-RAIZ = Path(__file__).parents[1]
+RAIZ = raiz_del_repo()
 HERRAMIENTAS = (RAIZ / "docs" / "herramientas.md").read_text(encoding="utf-8")
 
 #: Todo lo que un lector puede tomar por cierto. Se recorre entero en vez de mirar una página,
@@ -341,7 +341,15 @@ def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
         f"`SIN_FILAS_OBSERVADAS` trae {len(SIN_FILAS_OBSERVADAS)} y la referencia dice otra cosa"
     )
 
+    ejecutadas = EN_LETRAS[len(DOCUMENTOS_EJECUTADAS)]
     civil, total = len(DOCUMENTOS["civil"]), sum(len(r) for r in DOCUMENTOS.values())
+    verificacion = _texto(RAIZ / "docs" / "verificacion.md")
+    assert f"**{ejecutadas} de las {EN_LETRAS[total]}\nse han pedido de verdad**" in verificacion, (
+        f"se pidieron {len(DOCUMENTOS_EJECUTADAS)} rutas de {total} y la página dice otra cosa"
+    )
+    assert "_generado/documentos.md" in verificacion, (
+        "la tabla de rutas de documento dejó de generarse desde `DOCUMENTOS`"
+    )
     assert f"son {EN_LETRAS[civil]} en civil y **{EN_LETRAS[total]}**" in hoja, (
         f"`DOCUMENTOS` trae {civil} rutas en civil y {total} en total, y la hoja dice otra cosa"
     )
@@ -2149,7 +2157,12 @@ def test_toda_busqueda_del_cliente_esta_expuesta_o_excluida_a_proposito(expuesta
         nombre
         for cliente in (PjudClient, JurisClient)
         for nombre, _ in inspect.getmembers(cliente, inspect.isfunction)
-        if not nombre.startswith("_") and nombre not in NO_SON_HERRAMIENTAS
+        # `__mutmut`: bajo `mutmut run` cada método se reescribe en una familia
+        # `xǁClaseǁmétodo__mutmut_N` que no empieza con guion bajo, así que este guardia las
+        # leía como búsquedas sin exponer y la corrida entera se caía antes de mutar nada.
+        if not nombre.startswith("_")
+        and "__mutmut" not in nombre
+        and nombre not in NO_SON_HERRAMIENTAS
     }
     # Los nombres no calzan uno a uno: `buscar_por_rit` se expone como `buscar_causa_por_rit`.
     cubiertos = {

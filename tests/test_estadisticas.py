@@ -15,7 +15,9 @@ from pathlib import Path
 
 import pytest
 
-RAIZ = Path(__file__).parents[1]
+from .conftest import raiz_del_repo
+
+RAIZ = raiz_del_repo()
 
 
 @pytest.fixture

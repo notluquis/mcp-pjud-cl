@@ -32,6 +32,7 @@ Lo que se decidió hacer con esto, y en qué orden, está en la {doc}`hoja de ru
 | Las cuatro capacidades nuevas, de punta a punta | 20 de agosto de 2026, **10 peticiones y todas 200**: 17 cortes, 24 tribunales en Concepción, el detalle de C-1156-2026 con su exhorto, y el documento del folio 9 (975.006 bytes, 1 página, sin capa de texto: un escaneo) |
 | La arista del exhorto, **resuelta y no recorrida** | El detalle dice que C-1156-2026 despachó E-875-2026 al 1º Juzgado Civil de Chillán, y `listar_tribunales` sobre la corte 45 lo resuelve a código 145. Con eso la búsqueda es posible, pero **E-875-2026 no se consultó**: lo medido es que el dato que faltaba ya está, no que la causa de destino responda |
 | La georreferencia de una actuación | Ver la sección propia más abajo |
+| La 0.13.0 publicada, de punta a punta | 23 de agosto de 2026: el detalle de C-1156-2026 llegó con sus dos cuadernos, 23 actuaciones, 6 litigantes, un exhorto y dos folios con anexo pedible; la segunda página del buscador de suprema no repitió ninguna sentencia de la primera; y `civiles` entregó `ocultas` en **nulo**, que es lo que su bandera declara |
 | La paginación del buscador de fallos | 22 de agosto de 2026: desplazamientos 0, 10 y 250 sobre 59.819 visibles, tres páginas sin una sola sentencia repetida. Más allá del final: 200 con la lista vacía |
 | El detalle de las causas penales | Se abre por `unificado`, no por `penal`. Ver la sección propia más abajo |
 | El panel de anexos de un escrito, en laboral | Ver la sección propia más abajo |
@@ -411,7 +412,13 @@ el 23.
 Y no son sólo las de civil. `obtener_documento` acepta la ruta que la actuación entrega, así
 que la tabla que decide qué es una ruta válida cubre las cinco competencias con detalle
 mapeado. Todas salen del `action` de un formulario de la respuesta, y **siete de las veintisiete
-se han pedido de verdad**:
+se han pedido de verdad**. La tabla se genera desde `client.DOCUMENTOS`, que es lo que decide
+qué se puede pedir:
+
+```{include} _generado/documentos.md
+```
+
+Lo medido en cada una de las siete:
 
 | Ruta ejecutada | Competencia | Medido |
 |---|---|---|

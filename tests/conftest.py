@@ -6,9 +6,24 @@ estado compartido entre tests: sin limpiarlos, el primer test que reciba un 403 
 proceso detenido y todos los siguientes fallarían por un bloqueo que nunca ocurrió.
 """
 
+from pathlib import Path
+
 import pytest
 
 from mcp_pjud import client
+
+
+def raiz_del_repo() -> Path:
+    """La raíz del repositorio, también cuando los tests corren desde otro lado.
+
+    `mutmut` copia `src/` y `tests/` a `mutants/` y corre la suite desde ahí, sin la
+    documentación ni el repositorio git. Los guardias que comparan documentación contra código
+    tienen que leer la documentación de VERDAD: lo que se muta es el código, y que un mutante
+    ponga en rojo un guardia de documentación es justamente lo que se quiere ver.
+    """
+    raiz = Path(__file__).parents[1]
+    return raiz.parent if raiz.name == "mutants" else raiz
+
 
 #: Lo que mide la sentencia de trece páginas con la que se decidió separar el texto de la
 #: búsqueda: `obtener_texto_sentencia` existe porque devolver diez con cada búsqueda serían

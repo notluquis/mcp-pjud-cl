@@ -1,0 +1,67 @@
+{
+ "response": {
+  "numFound": 38757,
+  "docs": [
+   {
+    "rol_era_sup_s": "C-528-2025",
+    "caratulado_s": "EMPRESA FICTICIA UNO/EMPRESA FICTICIA DOS",
+    "fec_sentencia_sup_dt": "2026-08-17T00:00:00Z",
+    "gls_juz_s": "1º Juzgado de Letras de Osorno",
+    "gls_materia_s": "MEDIDA PREJUDICIAL PREPARATORIA",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/1",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   },
+   {
+    "rol_era_sup_s": "C-1455-2022",
+    "caratulado_s": "PERSONA FICTICIA 31/EMPRESA FICTICIA TRES",
+    "fec_sentencia_sup_dt": "2026-08-17T00:00:00Z",
+    "gls_juz_s": "1º Juzgado Civil de Chillán",
+    "gls_materia_s": "HACIENDA,PROCED.CUANTÍA SUPERIOR ART.. 749 C.P.C",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/2",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   },
+   {
+    "rol_era_sup_s": "C-6577-2025",
+    "caratulado_s": "EMPRESA FICTICIA CUATRO/PERSONA FICTICIA 32",
+    "fec_sentencia_sup_dt": "2026-08-17T00:00:00Z",
+    "gls_juz_s": "2º Juzgado Civil de Concepción",
+    "gls_materia_s": "HACIENDA,PROCED.CUANTÍA SUPERIOR ART.. 749 C.P.C",
+    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+    "sit_fallo_anonimizado_i": 0,
+    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/ficha/3",
+    "texto_sentencia_preview": "Vistos: el texto de vista previa de la sentencia."
+   }
+  ]
+ },
+ "condition_pub_sf": {
+  "numFound_sf": 954129,
+  "counts": [
+   "Publicable",
+   839884,
+   "Sin interes jurisprudencial, no anonimizable",
+   34430,
+   "Excluido anonimizable",
+   33551,
+   "Excluido",
+   22651,
+   "Anonimizadas",
+   11070,
+   "Sin interes jurisprudencial, anonimizable",
+   5550,
+   "Con interes jurisprudencial, no anonimizable",
+   4189,
+   "En proceso anonimizacion",
+   2429,
+   "Con interes jurisprudencial, anonimizada",
+   244,
+   "Con interes jurisprudencial, en proceso anonimización",
+   95,
+   "Reservadas por motivos distintos a protección datos personales",
+   36
+  ]
+ }
+}

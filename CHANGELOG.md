@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- El buscador de **Civiles** queda verificado y expuesto: son cuatro de los diez. Su rol lleva
+  la letra del tipo de causa y su origen es un juzgado, no una corte.
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
   inalcanzable, y el tope lo ponía este cliente y no la plataforma.
 - `obtener_documento` dice CUÁLES páginas traen texto, por tramos, y entrega los marcadores del

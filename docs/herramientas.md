@@ -620,8 +620,9 @@ que dicen las otras no se puede citar desde acá.
 
 Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
 texto no es lo mismo que saber que no tiene. `problema_al_leer` separa dos casos que no son el
-mismo problema: uno **cifrado** llegó completo y se abre con su contraseña, y uno truncado o
-mal formado no se abre nunca.
+mismo problema: a uno **cifrado** le falta una contraseña que este servidor no tiene, y uno
+truncado o mal formado no se abre con ninguna. Que esté cifrado es lo medido, y no que haya
+llegado entero: los dos defectos pueden venir juntos.
 
 ### El índice sale de la misma lectura
 

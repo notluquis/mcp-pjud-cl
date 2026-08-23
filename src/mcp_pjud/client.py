@@ -604,9 +604,9 @@ class Documento(BaseModel):
     problema_al_leer: str | None = Field(
         default=None,
         description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. "
-        "Distingue el archivo CIFRADO del que llegó cortado o mal formado: el primero está "
-        "completo y se abre con su contraseña, y el segundo no. El documento se entrega "
-        "igual: no poder describirlo no es no tenerlo.",
+        "Distingue el archivo CIFRADO, al que le falta una contraseña que este servidor no "
+        "tiene, del que llegó cortado o mal formado, que no se abre con ninguna. El documento "
+        "se entrega igual: no poder describirlo no es no tenerlo.",
     )
     #: Los bytes tal cual llegaron. Se excluyen de la serialización porque este modelo se
     #: publica como metadato dentro de la respuesta, y un PDF en base64 ahí adentro es

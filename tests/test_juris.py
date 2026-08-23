@@ -626,9 +626,17 @@ def test_el_texto_se_pide_por_el_rol_y_el_año_que_se_dieron(monkeypatch):
     monkeypatch.setattr(JurisClient, "buscar", espiando)
     c.texto(rol=34546, anio=2025)
 
-    assert pedidos[0]["rol"] == 34546
-    assert pedidos[0]["anio"] == 2025
-    assert pedidos[0]["filas"] == 1, "se pide UNA: el texto de las demás no se usa y viaja igual"
+    # El diccionario entero y no campo por campo: así también cae un argumento de más, y el
+    # buscador, que es el otro camino por el que la respuesta puede venir de otro corpus.
+    assert len(pedidos) == 1, "una sola búsqueda: el texto viene en la misma respuesta"
+    assert pedidos[0] == {"rol": 34546, "anio": 2025, "filas": 1, "buscador": "suprema"}
+
+    # Y con otro buscador, para que fijar el nombre en el código no pase por bueno: con la
+    # sesión en suprema, un `buscador` perdido acá devuelve el texto del corpus equivocado.
+    monkeypatch.setattr(JurisClient, "abrir_sesion", lambda self, buscador="suprema": None)
+    c._buscador_de_la_sesion = "civiles"
+    c.texto(rol=34546, anio=2025, buscador="civiles")
+    assert pedidos[-1]["buscador"] == "civiles"
 
 
 def test_el_texto_completo_dice_de_cual_de_los_dos_campos_salio(monkeypatch):

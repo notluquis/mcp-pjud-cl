@@ -454,12 +454,16 @@ del proyecto entero.
   entregado es la versión con los datos suprimidos por el tribunal y de cuál de los dos campos
   salió. Y si la sentencia existe pero está reservada, se levanta en vez de devolver un texto
   vacío que se leería como una sentencia sin contenido.
-- **Paginación: no existe.** Medido leyendo la petición: `offset_paginacion` va fijo en `0`,
-  así que la coincidencia número 251 es inalcanzable, no sólo la que quede fuera de `filas`.
-  Lo que sí se cerró es el falso negativo, que era lo urgente: el resultado declara
-  `no_entregadas`, y la referencia ya no afirma que `ocultas` en cero quiera decir lista
-  completa. Exponer el desplazamiento queda pendiente y requiere medirlo contra la
-  plataforma.
+- **Paginación: hecha, y el diagnóstico anterior era nuestro.** Acá decía que no existe, leído
+  de la petición: `offset_paginacion` iba fijo en `0`, así que la coincidencia 251 era
+  inalcanzable. Medido el 22 de agosto de 2026 contra el buscador de Corte Suprema, la
+  plataforma sí la soporta: con desplazamiento 0, 10 y 250 devuelve tres páginas sin una sola
+  sentencia repetida. El límite lo ponía este cliente, no el sitio.
+
+  Entra `desplazamiento` en `buscar_jurisprudencia`, y `no_entregadas` pasa a contar lo que
+  queda DESPUÉS de esta página: sin descontarlo, la segunda página declaraba como no entregado
+  justo lo que la primera ya había traído. Pedir más allá de `visibles` devuelve una lista vacía
+  con 200, no un error.
 - **Una cuenta.** Con credenciales del Poder Judicial se verían más sentencias. Queda fuera:
   este proyecto consulta lo que es público sin identificarse como funcionario.
 

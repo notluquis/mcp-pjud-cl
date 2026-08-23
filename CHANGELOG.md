@@ -63,6 +63,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   ya no de la prosa: lo que no se expone tiene que decir por qué, y eso se comprueba en CI.
 - Los ejemplos de respuesta en JSON de la documentación se comparan contra el modelo: un campo
   renombrado dejaba ejemplos enseñando a leer una respuesta que ya no llega.
+- Los dos documentos de trabajo se retiran, con lo medido que tenían movido a `verificacion` y
+  a `herramientas`: afirmaban cosas que la 0.13.0 ya había cambiado.
 
 ## [0.13.0] - 2026-08-23
 

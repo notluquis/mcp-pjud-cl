@@ -489,7 +489,9 @@ def test_los_paneles_que_nombra_la_hoja_de_ruta_son_los_que_el_codigo_pide():
     plataforma no perdona.
     """
     seccion = _texto(RAIZ / "docs" / "roadmap.md").split("### 0.8:")[1].split("\n### ")[0]
-    filas = re.findall(r"^\| `(\w+)` \| `(\w+)` \|", seccion, re.M)
+    # Con los espacios sueltos: una tabla realineada a mano es lo normal en Markdown, y ya
+    # pasó una vez que un guardia se cayera por un espacio de más sin decir nada del dato.
+    filas = re.findall(r"^\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|", seccion, re.M)
     assert filas, "la tabla de competencia y panel de la sección 0.8 desapareció"
     pedidos = {c.historia.panel for c in COMPETENCIAS.values() if c.historia is not None}
     for competencia, panel in filas:

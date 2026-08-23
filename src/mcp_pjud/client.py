@@ -1916,9 +1916,10 @@ class PjudClient(Transporte):
     ) -> list[_Fila]:
         """Busca la causa, abre su detalle y recorre TODOS sus cuadernos.
 
-        Lo comparten `actuaciones_receptor` y `historia_causa`, que sólo difieren en qué filas
-        se quedan: duplicar el recorrido para cambiar el filtro es la forma más segura de que
-        uno de los dos se olvide de los cuadernos.
+        Lo usa `actuaciones_receptor`. `detalle_causa` hace el mismo recorrido por su cuenta
+        porque no se queda con filas sino con paneles enteros, y arma una página por cuaderno
+        para leerlos todos; el docstring lo dice para que quien toque uno mire el otro, que es
+        la única defensa contra que un cambio deje uno de los dos leyendo un solo cuaderno.
         """
         # `paginas=None` a propósito: de todo el listado sólo se usa la primera causa, así que
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos

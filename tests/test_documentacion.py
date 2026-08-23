@@ -19,6 +19,7 @@ import ast
 import asyncio
 import base64
 import contextlib
+import json
 import re
 import subprocess
 import tomllib
@@ -508,6 +509,59 @@ def test_los_paneles_que_nombra_la_hoja_de_ruta_son_los_que_el_codigo_pide():
             f"la hoja de ruta dice que {competencia!r} se lee del panel {panel!r} y el código "
             f"pide {historia.panel!r}"
         )
+
+
+#: Bloques `json` que NO son ejemplos de respuesta y por eso no se comparan contra el modelo:
+#: la configuración del cliente MCP, y la respuesta de una API de terceros que `ecosistema`
+#: cita para explicar qué hace esa otra herramienta.
+CLAVES_QUE_NO_SON_DEL_MODELO = frozenset({"mcpServers", "servers", "data", "date", "status"})
+
+
+def test_los_ejemplos_json_no_ensenan_campos_que_el_modelo_no_tiene():
+    """Un ejemplo con un campo que ya no existe enseña a leer una respuesta imaginaria.
+
+    Los ejemplos están recortados a propósito ("recortada al folio que interesa"), así que
+    validarlos con `model_validate` mediría mal: fallaría por los campos ausentes. Lo que sí
+    muerde es el subconjunto, toda clave del ejemplo tiene que ser un campo de algún modelo, y
+    es la dirección que importa: sobra un campo inventado o viejo, no falta uno recortado.
+    """
+    from pydantic import BaseModel
+
+    from mcp_pjud import parser as modelos
+
+    # Por modelo y no como una bolsa con todos los campos juntos: la bolsa deja pasar el caso
+    # que importa. Renombrar `fecha_diligencia` en `Actuacion` la sigue encontrando en otro
+    # modelo que también la publica, y el ejemplo de una actuación queda enseñando un campo que
+    # esa actuación ya no trae.
+    familias = {
+        nombre: set(getattr(modelos, nombre).model_fields)
+        for nombre in dir(modelos)
+        if isinstance(getattr(modelos, nombre, None), type)
+        and issubclass(getattr(modelos, nombre), BaseModel)
+    }
+    assert "fecha_diligencia" in familias["Actuacion"], "no se recogieron los campos del modelo"
+
+    revisados, malas = 0, []
+    for f in [*PROSA, RAIZ / "README.md"]:
+        for bloque in re.findall(r"```json\n(.*?)\n```", _texto(f), re.S):
+            datos = json.loads(bloque)
+            filas = datos if isinstance(datos, list) else [datos]
+            for fila in filas:
+                if not isinstance(fila, dict) or set(fila) & CLAVES_QUE_NO_SON_DEL_MODELO:
+                    continue
+                revisados += 1
+                # El modelo que más claves comparte con el ejemplo: los ejemplos vienen
+                # recortados, así que se elige por parecido y no por coincidencia exacta.
+                cual = max(familias, key=lambda n: len(set(fila) & familias[n]))
+                malas += [
+                    f"{f.name}: `{c}` no es campo de {cual}"
+                    for c in sorted(set(fila) - familias[cual])
+                ]
+    assert revisados >= 3, f"se dejaron de revisar los ejemplos de respuesta: {revisados}"
+    assert not malas, (
+        f"estos ejemplos enseñan campos que ningún modelo trae: {malas}. Un ejemplo con un "
+        "campo viejo enseña a leer una respuesta que no llega."
+    )
 
 
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():

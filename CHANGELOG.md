@@ -65,6 +65,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   renombrado dejaba ejemplos enseñando a leer una respuesta que ya no llega.
 - Los dos documentos de trabajo se retiran, con lo medido que tenían movido a `verificacion` y
   a `herramientas`: afirmaban cosas que la 0.13.0 ya había cambiado.
+- `ecosistema` decía que este servidor cubre una competencia contra ocho, que los escritos
+  faltaban y que ninguno de los modales se pedía. Las tres dejaron de ser ciertas hace
+  versiones.
 
 ## [0.13.0] - 2026-08-23
 

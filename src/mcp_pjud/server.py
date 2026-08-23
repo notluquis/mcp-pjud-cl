@@ -916,7 +916,7 @@ def listar_audios_audiencia(
 )
 def buscar_jurisprudencia(
     rol: Annotated[
-        int | None, Field(description="Rol ante la Corte Suprema, sin el año.", ge=1)
+        int | None, Field(description="Rol de la causa en el buscador elegido, sin el año.", ge=1)
     ] = None,
     anio: Annotated[int | None, Field(description="Año del rol.", ge=1900, le=2100)] = None,
     todas: Annotated[

@@ -79,8 +79,8 @@ def test_una_cita_completa_no_declara_recorte():
 
 
 def test_el_recorte_se_declara_donde_ocultas_viene_en_nulo():
-    """`ocultas` es nulo en dos de los tres buscadores, así que ahí `no_entregadas` es la
-    única señal de que la lista es un subconjunto."""
+    """`ocultas` es nulo en todos los buscadores menos `suprema`, así que ahí `no_entregadas`
+    es la única señal de que la lista es un subconjunto."""
     r = parse_sentencias(PARCIAL, "laborales")
     assert r.ocultas is None
     assert r.no_entregadas == 397
@@ -216,6 +216,41 @@ def test_el_identificador_relleno_con_ceros_sigue_siendo_el_mismo(monkeypatch):
     c.abrir_sesion("suprema")
 
     assert c._id_buscador == "0528", "se guarda tal cual vino, que es lo que la petición usa"
+
+
+FAMILIA = (FIXTURES / "juris_familia.json").read_text(encoding="utf-8")
+
+
+def test_en_familia_la_plataforma_ya_entrega_el_caratulado_anonimizado():
+    """Las tres sentencias medidas llegan con el caratulado literalmente en `ANONIMIZADO`.
+
+    Es la razón por la que este buscador se expone y el de penales no: acá lo que la plataforma
+    publica no identifica a las partes, que en familia suelen ser niños.
+    """
+    r = parse_sentencias(FAMILIA, "familia")
+
+    assert r.visibles == 59880
+    assert {s.caratulado for s in r.sentencias} == {"ANONIMIZADO"}
+    assert all(s.anonimizada for s in r.sentencias)
+    assert all("anonimizada" in s.condicion_publicacion for s in r.sentencias)
+    # Su origen es un juzgado, como en civiles y laborales: leerlo con el campo de corte de
+    # suprema dejaría el único dato que ubica la causa en vacío, sin que nada lo diga.
+    assert r.sentencias[0].corte_origen == "Juzgado de Familia Copiapó"
+
+
+def test_el_buscador_de_penales_no_se_ofrece():
+    """Se midió el 23-08-2026 y queda fuera POR DECISIÓN, no por no saber leerlo.
+
+    Es la misma razón por la que el detalle de las causas penales no se expone: sus caratulados
+    llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. Que el
+    dato sea consultable en la plataforma no obliga a republicarlo desde acá.
+    """
+    assert "penales" not in BUSCADORES
+    assert "penal" not in BUSCADORES
+
+    c = JurisClient("test@example.cl")
+    with pytest.raises(ValueError, match="no verificado"):
+        c.buscar(todas="homicidio", buscador="penales")
 
 
 def test_una_respuesta_que_no_es_json_se_levanta():
@@ -607,9 +642,10 @@ def test_pedir_el_texto_donde_no_se_puede_saber_lo_dice(monkeypatch):
 def test_las_visibles_salen_de_response_y_las_coincidencias_del_desglose():
     """Son dos campos distintos y confundirlos lleva a la conclusión contraria.
 
-    `response.numFound` son las VISIBLES y siguen a la consulta en los tres buscadores, incluso
-    donde la bandera es falsa: medirlo en apelaciones da 18 para un rol que existe y 0 para uno
-    imposible, y de ahí se concluiría "es por consulta" justo donde no lo es. El campo que
+    `response.numFound` son las VISIBLES y siguen a la consulta en todos los buscadores
+    medidos, incluso donde la bandera es falsa: medirlo en apelaciones da 18 para un rol que
+    existe y 0 para uno imposible, y de ahí se concluiría "es por consulta" justo donde no lo
+    es. El campo que
     decide es `condition_pub_sf.numFound_sf`, que ahí vale 5.290.009 en los dos casos.
 
     Este guardia los ata a su origen: si alguien intercambia las dos lecturas, `ocultas` pasa a

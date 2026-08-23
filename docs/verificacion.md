@@ -239,7 +239,7 @@ leer penal, y decir que penal está "detrás de un captcha" sería afirmar de m�
 
 ### Los diez buscadores
 
-Seis de los diez están verificados, y la tabla de abajo dice cuáles. **Cada buscador declara
+Ocho de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada buscador declara
 sus propios campos**, y esa es la
 razón técnica de no exponer los otros todavía: Corte Suprema entrega `rol_era_sup_s`, mientras
 Apelaciones usaría `rol_era_ape_s`. Un cliente que asuma los campos de Suprema devolvería
@@ -267,8 +267,8 @@ fecha, el tamaño del conjunto y de dónde salió, para que quien lea sepa qué 
 | Corte de Apelaciones | **Verificado.** Rol 1504-2019, tres sentencias. `id_buscador` 168 |
 | Civiles | **Verificado** el 23 de agosto de 2026: 38.757 coincidencias visibles para una búsqueda de texto, con el juzgado como origen. `id_buscador` 328 |
 | Laborales | **Verificado** el 20 de agosto de 2026: 106.068 sentencias visibles, y responde en **1,6 s** contra los 47,8 a 177,0 s de Suprema. `id_buscador` 271 |
-| Penales | Mapeado, sin ejecutar |
-| Familia | Mapeado, sin ejecutar |
+| Penales | **Medido y no expuesto**, por decisión del 23 de agosto de 2026: sus caratulados llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. `id_buscador` 268, 1.884.905 documentos |
+| Familia | **Verificado** el 23 de agosto de 2026: 8.524 coincidencias, y las tres medidas llegan con el caratulado en `ANONIMIZADO`, puesto por la propia plataforma. `id_buscador` 270 |
 | Cobranza | **Verificado** el 23 de agosto de 2026: 1.865 coincidencias para una búsqueda de texto, con el juzgado de cobranza como origen. `id_buscador` 269 |
 | Compendio Extranjería | Sin ejecutar, y su ruta NO es `Compendio_Extranjeria`: ese nombre devolvió 200 con la página de Cobranza |
 | Líneas Jurisprudenciales | Sin mapear: su respuesta no trae `response.numFound` y no tiene la forma de las otras seis. `id_buscador` 628, 457 documentos |

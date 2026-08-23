@@ -678,7 +678,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `rol` | int, opcional | Rol ante la Corte Suprema, sin el año |
+| `rol` | int, opcional | Rol de la causa en el buscador elegido, sin el año |
 | `anio` | int, opcional | Año del rol |
 | `todas` | str, opcional | Texto libre: deben aparecer todas estas palabras |
 | `literal` | str, opcional | Frase exacta |
@@ -686,7 +686,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
 | `filas` | int | Cuántas traer, de 1 a 250 |
 | `desplazamiento` | int | Desde qué coincidencia empezar. Cero es la primera; para la siguiente página, `desplazamiento + filas` |
-| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza` o `salud` |
+| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
 búsqueda.
@@ -738,8 +738,8 @@ anónima, y `no_entregadas` son las visibles que esta llamada no trajo porque `f
 cuántas se piden. Una búsqueda con 400 visibles y `filas` en 10 devuelve diez sentencias,
 `ocultas` en cero y `no_entregadas` en 390.
 
-`no_entregadas` es además la única señal de recorte que funciona en los tres buscadores:
-`ocultas` viene en nulo en `apelaciones` y en `laborales`.
+`no_entregadas` es además la única señal de recorte que funciona en todos: `ocultas` sólo trae
+número en uno de los siete buscadores expuestos, `suprema`, y en los otros seis viene en nulo.
 
 :::{important} `no_entregadas` mayor que cero ahora se puede resolver
 Se vuelve a llamar con `desplazamiento` en `desplazamiento + filas`, hasta que llegue a cero.
@@ -767,8 +767,10 @@ No trae el texto completo del fallo. La respuesta del buscador lo incluye, pero 
 serían megabytes con nombres y cédulas de personas naturales: se entrega el enlace permanente y
 quien lo necesite entra.
 
-Están verificados seis de los diez buscadores: **suprema**, **apelaciones**, **laborales**,
-**civiles**, **cobranza** y **salud**.
+Están verificados ocho de los diez buscadores y se exponen siete: **suprema**, **apelaciones**,
+**laborales**, **civiles**, **cobranza**, **familia** y **salud**. El de **penales** se midió y
+queda fuera por decisión, por lo mismo que el detalle de las causas penales: sus caratulados
+llegan con el nombre del imputado cuando el fallo no está anonimizado.
 Se eligen con el parámetro `buscador`.
 
 Cada uno declara sus propios campos, y ésa es la razón de que esto sea una tabla y no un
@@ -800,7 +802,7 @@ El texto completo de una sentencia, de una en una.
 |---|---|---|
 | `rol` | int | Rol de la sentencia, sin el año |
 | `anio` | int | Año del rol |
-| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza` o `salud` |
+| `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
 
 Está separado de la búsqueda a propósito, y la razón es de tamaño: **una sentencia de trece
 páginas son unos 25.000 caracteres**, medido. Devolver diez con cada búsqueda serían 250.000.

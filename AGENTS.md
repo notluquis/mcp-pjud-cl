@@ -163,6 +163,8 @@ No lo aceptes en su nombre.
   semáforos, o sea el doble de peticiones contra la misma institución, y `ACCEPTABLE_USE.md`
   prohíbe correr instancias en paralelo. Por eso `juris.py` comparte el transporte.
 - Agregar buscadores de `juris.pjud.cl` sin verificarlos. Cada uno declara sus propios campos
-  Solr, y sólo tres de los diez están medidos: Corte Suprema, Cortes de Apelaciones y
-  Laborales. Los otros siete se rechazan a propósito.
+  Solr, y ocho de los diez están medidos. Se exponen siete: el de penales queda fuera por
+  decisión, porque sus caratulados traen el nombre del imputado, y los dos que faltan
+  (Compendio de Extranjería y Líneas Jurisprudenciales) se rechazan por no estar medidos. Son
+  dos razones distintas y conviene no confundirlas.
 - Presentar la salida como información oficial del Poder Judicial.

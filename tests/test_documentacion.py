@@ -92,6 +92,22 @@ PROSA = sorted(
 )
 
 
+#: Los números que la prosa escribe con letras. Se comparan contra `len(...)` del código, que
+#: es donde vive la cuenta de verdad.
+EN_LETRAS = {
+    1: "uno",
+    2: "dos",
+    3: "tres",
+    4: "cuatro",
+    5: "cinco",
+    6: "seis",
+    7: "siete",
+    8: "ocho",
+    9: "nueve",
+    10: "diez",
+}
+
+
 def _texto(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
@@ -3531,28 +3547,118 @@ def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
     """
     from mcp_pjud.juris import BUSCADORES
 
-    numeros = {
-        1: "uno",
-        2: "dos",
-        3: "tres",
-        4: "cuatro",
-        5: "cinco",
-        6: "seis",
-        7: "siete",
-        8: "ocho",
-        9: "nueve",
-        10: "diez",
-    }
-    esperado = numeros[len(BUSCADORES)]
+    # Dos cuentas distintas, y la confusión entre ellas ya se coló una vez: los MEDIDOS son los
+    # que tienen identificador anotado, incluido el que se decidió no ofrecer, y los EXPUESTOS
+    # son los que el cliente acepta. La prosa decía "siete verificados y seis expuestos" con
+    # siete en la tabla y ocho medidos, y el guardia sólo miraba la primera mitad de la frase.
     referencia = _texto(RAIZ / "docs" / "herramientas.md")
-    dicho = re.search(r"Están verificados (\w+) de los \w+ buscadores", referencia)
-    assert dicho, "la referencia ya no dice cuántos buscadores están verificados"
-    assert dicho.group(1) == esperado, (
-        f"la referencia dice {dicho.group(1)} buscadores verificados y el código registra "
+    dicho = re.search(
+        r"Están verificados (\w+) de los \w+ buscadores y se exponen (\w+):", referencia
+    )
+    assert dicho, "la referencia ya no dice cuántos buscadores están verificados y expuestos"
+    assert dicho.group(1) == EN_LETRAS[len(IDENTIFICADORES_MEDIDOS)], (
+        f"la referencia dice {dicho.group(1)} buscadores medidos y el código anota "
+        f"{len(IDENTIFICADORES_MEDIDOS)}"
+    )
+    assert dicho.group(2) == EN_LETRAS[len(BUSCADORES)], (
+        f"la referencia dice {dicho.group(2)} buscadores expuestos y el cliente acepta "
         f"{len(BUSCADORES)}"
     )
     for nombre in BUSCADORES:
         assert f"**{nombre}**" in referencia, f"la referencia no nombra el buscador {nombre!r}"
+
+
+#: Los archivos que SÍ tienen que contar los buscadores. Sin esta lista el barrido de abajo se
+#: pone verde borrando la frase, que es la forma más barata de "arreglar" un guardia.
+CUENTAN_BUSCADORES = (
+    "AGENTS.md",
+    "docs/herramientas.md",
+    "docs/roadmap.md",
+    "docs/verificacion.md",
+    "src/mcp_pjud/juris.py",
+)
+
+
+def _sin_lo_ya_publicado(f: Path) -> str:
+    """El registro de cambios es histórico: cada versión describe el estado de SU día.
+
+    Congelar esas cifras contra el código de hoy pondría en rojo una entrada correcta de hace
+    tres versiones. Lo único que tiene que cuadrar con el código es lo que está por publicarse.
+    """
+    texto = _texto(f)
+    if f.name != "CHANGELOG.md":
+        return texto
+    return texto.split("\n## [0.")[0]
+
+
+def test_ninguna_pagina_cuenta_los_buscadores_por_su_cuenta():
+    """Ocho medidos y siete expuestos son dos cuentas pegadas, y las dos son legales.
+
+    Por eso el guardia de `herramientas` no alcanza: mira UNA frase de UNA página, y las cifras
+    viejas quedaron regadas. `AGENTS.md` seguía diciendo "sólo tres de los diez están medidos",
+    que es lo que otro agente lee como instrucción, y la hoja de ruta contaba tres verificados
+    en un párrafo y siete en el de más arriba.
+
+    Lo que discrimina las dos cuentas no es el número sino el verbo que lo acompaña, así que se
+    busca el más cercano en las dos direcciones: "anda contra siete" va delante, "ocho están
+    medidos" va detrás.
+    """
+    medidos, expuestos = len(IDENTIFICADORES_MEDIDOS), len(BUSCADORES)
+    archivos = [*PROSA, *sorted((RAIZ / "src" / "mcp_pjud").glob("*.py"))]
+    con_cuenta, malas = set(), []
+    for f in archivos:
+        relativo = f.relative_to(RAIZ).as_posix()
+        texto = _legible(f) if f.suffix == ".py" else _sin_lo_ya_publicado(f)
+        for m in re.finditer(r"(\w+) de los diez", texto):
+            escrito = m.group(1).lower()
+            if escrito not in EN_LETRAS.values():
+                continue
+            con_cuenta.add(relativo)
+            antes = texto[max(0, m.start() - 90) : m.start()]
+            despues = texto[m.end() : m.end() + 90]
+            exponer = _distancia(r"expon|ofrec|anda contra|acepta|consulta", antes, despues)
+            medir = _distancia(r"midi|medid|verificad", antes, despues)
+            toca = expuestos if exponer < medir else medidos
+            if escrito != EN_LETRAS[toca]:
+                malas.append(f"{relativo}: dice {escrito!r} donde el código anota {toca}")
+    assert not malas, "cuentas de buscadores que el código contradice: " + "; ".join(malas)
+    faltan = sorted(set(CUENTAN_BUSCADORES) - con_cuenta)
+    assert not faltan, f"{faltan} dejó de contar los buscadores, así que este guardia no lo mira"
+
+
+def _distancia(verbos: str, antes: str, despues: str) -> int:
+    """Cuán lejos queda el verbo más cercano, mirando para los dos lados."""
+    atras = [m.end() for m in re.finditer(verbos, antes)]
+    adelante = re.search(verbos, despues)
+    return min(
+        len(antes) - atras[-1] if atras else 10_000,
+        adelante.start() if adelante else 10_000,
+    )
+
+
+def test_donde_ocultas_trae_numero_lo_dice_la_tabla_de_buscadores():
+    """`ocultas` en nulo es la diferencia entre "no hay nada reservado" y "acá no se puede
+    saber", y la página decía en cuáles buscadores pasa cada cosa.
+
+    Contaba dos de tres cuando ya eran seis de siete: la frase se escribió cuando los
+    buscadores eran tres, y cada uno de los cuatro que entraron después llegó con la bandera en
+    falso sin que nadie volviera a la página. Quien la leyera concluiría que en `civiles` un
+    cero significa "no hay nada reservado", que es justo lo contrario.
+    """
+    con_numero = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    dicho = re.search(
+        r"`ocultas` sólo trae\s+número en (\w+) de los (\w+) buscadores expuestos, `(\w+)`, y en "
+        r"los otros (\w+) viene en nulo",
+        referencia,
+    )
+    assert dicho, "la referencia ya no dice en cuáles buscadores `ocultas` trae número"
+    assert dicho.group(1) == EN_LETRAS[len(con_numero)]
+    assert dicho.group(2) == EN_LETRAS[len(BUSCADORES)]
+    assert [dicho.group(3)] == con_numero, (
+        f"la referencia nombra {dicho.group(3)!r} y la bandera está puesta en {con_numero}"
+    )
+    assert dicho.group(4) == EN_LETRAS[len(BUSCADORES) - len(con_numero)]
 
 
 def test_el_esquema_dice_donde_el_rol_lleva_libro(expuestas):

@@ -43,7 +43,11 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Seis de los diez buscadores están verificados contra el sistema real. No es prudencia de más:
+#: Ocho de los diez buscadores se midieron contra el sistema real y siete se exponen. El de
+#: Penales se midió
+#: y NO se expone: es una decisión del titular, del 23 de agosto de 2026, por lo mismo que el
+#: detalle de las causas penales queda fuera. Sus caratulados llegan con el nombre del imputado
+#: cuando el fallo está marcado como no anonimizable. No es prudencia de más:
 #: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
 #: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
@@ -134,9 +138,9 @@ BUSCADORES: Mapping[str, Buscador] = {
         # falso que ya estaba puesto por prudencia resultó ser el correcto.
         #
         # El campo que decide esto es `condition_pub_sf.numFound_sf` y NO `response.numFound`.
-        # El segundo son las visibles, y ésas siguen a la consulta en los tres buscadores,
-        # incluido `laborales`: medirlo daría 18 contra 0 y haría concluir "es por consulta"
-        # justo donde no lo es.
+        # El segundo son las visibles, y ésas siguen a la consulta en todos los buscadores
+        # medidos, `laborales` incluido: medirlo daría 18 contra 0 y haría concluir "es por
+        # consulta" justo donde no lo es.
         coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(
@@ -205,6 +209,28 @@ BUSCADORES: Mapping[str, Buscador] = {
         # mismo número para un rol imposible.
         coincidencias_por_consulta=False,
     ),
+    "familia": Buscador(
+        "Familia",
+        {
+            # La plataforma anonimiza esta materia por su cuenta: en las tres sentencias
+            # medidas el caratulado llega literalmente como `ANONIMIZADO` y la condición de
+            # publicación dice "anonimizada". O sea lo que se entrega acá no identifica a las
+            # partes, que en familia suelen ser niños.
+            "rol": "rol_era_sup_s",
+            "caratulado": "caratulado_s",
+            "fecha_sentencia": "fec_sentencia_sup_dt",
+            "corte_origen": "gls_juz_s",
+            "condicion_publicacion": "gls_condicion_publicacion_s",
+            "anonimizada": "sit_fallo_anonimizado_i",
+            "url": "url_acceso_sentencia",
+            "texto_preview": "texto_sentencia_preview",
+            "texto": "texto_sentencia",
+            "texto_anonimizado": "texto_sentencia_anon",
+        },
+        # Medido el 23 de agosto de 2026: 3.722.878 para una búsqueda con 8.524 coincidencias y
+        # el mismo número para un rol imposible.
+        coincidencias_por_consulta=False,
+    ),
     "salud": Buscador(
         "Salud_CS",
         {
@@ -244,7 +270,11 @@ IDENTIFICADORES_MEDIDOS = {
     "laborales": 271,
     "civiles": 328,
     "cobranza": 269,
+    "familia": 270,
     "salud": 127,
+    # Medido y NO expuesto, por decisión. Va acá igual: esta tabla es la constancia de lo que se
+    # midió, y dejarlo fuera obligaría a medirlo de nuevo el día que se decida distinto.
+    "penales": 268,
 }
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
@@ -282,7 +312,7 @@ class Sentencia(BaseModel):
     entrando por `url`.
     """
 
-    rol: str = Field(description="Rol y año ante la Corte Suprema. Ej: 34546-2025.")
+    rol: str = Field(description="Rol y año en el buscador consultado. Ej: 34546-2025.")
     caratulado: str
     fecha_sentencia: date | None = Field(description="Fecha de la sentencia, ISO 8601.")
     sala: str = Field(description="Sala que la dictó.")
@@ -507,9 +537,9 @@ def parse_sentencias(
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
         desplazamiento=desplazamiento,
-        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y en dos de
-        # los tres buscadores viene en nulo, así que ésta es la única señal de recorte que
-        # funciona en los tres.
+        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y sólo
+        # `suprema` la trae con número, así que ésta es la única señal de recorte que funciona
+        # en todos los buscadores.
         #
         # El desplazamiento entra en la resta desde que la paginación existe. Sin él, la
         # segunda página de una búsqueda de 59.819 declararía casi todas las visibles como no

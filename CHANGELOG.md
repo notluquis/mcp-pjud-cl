@@ -30,6 +30,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   calcula y no sobre la respuesta, así que entre las dos se podían perder las cuatro.
 - `obtener_actuaciones_receptor` podía perder el tribunal camino a la búsqueda: el mismo rol
   existe en varios juzgados, así que la respuesta habría sido la causa de otro.
+- Del formulario de búsqueda sólo se comprobaban los nombres de campo: el rol, el año y el
+  tribunal podían viajar en nulo, y la plataforma responde eso sin coincidencias.
 
 ### Agregado
 

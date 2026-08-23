@@ -157,8 +157,9 @@ No lo aceptes en su nombre.
 - Proponer Playwright, Selenium o impersonación TLS. Está medido: el filtro de la plataforma
   actúa sobre el string del User-Agent, no sobre la huella TLS. HTTP plano con user agent
   identificable pasa.
-- Agregar competencias sin verificarlas contra el sistema real. Sólo civil está verificada; las
-  demás se rechazan a propósito en vez de adivinar sus parámetros.
+- Agregar competencias sin verificarlas contra el sistema real. Hay seis verificadas y son las
+  que `MODULOS` nombra; lo que no está ahí se rechaza a propósito en vez de adivinar sus
+  parámetros. El detalle se lee en cinco: en penal se busca y no se abre, por decisión.
 - Levantar un segundo servidor MCP para jurisprudencia. Serían dos procesos con dos
   semáforos, o sea el doble de peticiones contra la misma institución, y `ACCEPTABLE_USE.md`
   prohíbe correr instancias en paralelo. Por eso `juris.py` comparte el transporte.

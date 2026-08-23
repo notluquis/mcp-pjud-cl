@@ -125,7 +125,10 @@ efecto lateral útil, sirve para personas jurídicas, que no tienen Clave Única
 **No ve causas reservadas.** Y ojo: un resultado vacío **no prueba** que la causa no exista.
 Puede estar reservada.
 
-**Sólo cubre causas civiles.** Laboral, cobranza, penal, familia y cortes todavía no.
+**No cubre familia.** La plataforma reserva esas causas a Clave Única, así que quedan fuera de
+lo público. Las otras seis se buscan (civil, laboral, cobranza, penal, apelaciones y suprema) y
+el detalle se lee en cinco: en penal se busca y no se abre el detalle, por decisión, porque su
+carátula trae el nombre del imputado.
 
 **No reemplaza tu criterio.** Acerca la fuente oficial. Antes de computar un plazo a partir de
 esto, verifica el expediente.

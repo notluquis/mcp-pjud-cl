@@ -16,10 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.13.0] - 2026-08-23
+
 ### Agregado
 
 - `buscar_jurisprudencia` acepta cuatro buscadores más: **Civiles**, **Cobranza**, **Familia**
-  y **Salud CS**. Con ellos son ocho de los diez medidos y siete expuestos.
+  y **Salud CS**. Con ellos ocho de los diez están medidos y siete se exponen.
 - El rol de Civiles lleva la letra del tipo de causa y su origen es un juzgado y no una corte;
   el de Salud CS es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
@@ -60,6 +62,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   en dos de tres, así que un cero en `civiles` se leía como "no hay nada reservado".
 - El parámetro `rol` de `buscar_jurisprudencia` se describía como el rol ante la Corte Suprema,
   y es el del buscador que se consulte.
+- La referencia decía que la columna `Anexo` **no se puede pedir**, y `obtener_anexos_escrito`
+  existe desde la 0.10.0. La tabla de campos de esa misma página ya explicaba cómo pedirla.
+- Cuatro cifras que el código contradecía: los paneles de anexo ofrecidos y medidos, las rutas
+  de documento de civil, y por qué quedan fuera los buscadores sin medir.
+- Cinco páginas decían que sólo civil está verificada, incluidas `AGENTS.md` y la de soporte.
+  Son seis buscables y cinco con detalle desde la 0.4.0, y ahora un guardia barre esa frase.
+- Las rutas de anexo que faltan por medir eran once y la documentación decía doce, en dos
+  frases de la misma página.
+- La directiva que viaja en el protocolo advertía sobre `ocultas` en cero y no sobre el nulo,
+  que es lo que llega en seis de los siete buscadores. Nulo no es cero: ahí no se puede saber.
 
 ## [0.12.0] - 2026-08-22
 
@@ -435,7 +447,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.12.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.0
 [0.12.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.12.0
 [0.11.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.11.0
 [0.10.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.10.0

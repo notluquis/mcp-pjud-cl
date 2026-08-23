@@ -127,7 +127,7 @@ El transporte es stdio: no abre puertos ni escucha en la red.
 
 `@stable` apunta siempre a la última versión publicada, así que se actualiza sola al instalar.
 Si prefieres quedarte en una versión concreta, cambia esa referencia por la etiqueta, por
-ejemplo `@v0.12.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
+ejemplo `@v0.13.0`. Sin ninguna referencia se sigue la rama principal, que trae cambios sin
 publicar: no es lo recomendado.
 
 ## Herramientas
@@ -145,7 +145,7 @@ publicar: no es lo recomendado.
 | `obtener_anexos_escrito` | Los documentos que un escrito acompañó, que son otro canal distinto del de la resolución |
 | `listar_audios_audiencia` | Qué audios de audiencia tiene la causa y con qué enlace se bajan. No los trae |
 | `obtener_documento` | El archivo de una actuación: resolución, escrito, certificado o el expediente entero |
-| `obtener_detalle_causa` | Historia, litigantes, notificaciones, liquidaciones y materias, de una sola cadena y recorriendo todos los cuadernos |
+| `obtener_detalle_causa` | Todos los paneles que la competencia publique, de una sola cadena y recorriendo todos los cuadernos. La referencia enumera cuáles |
 | `buscar_jurisprudencia` | Busca sentencias en el buscador de fallos |
 | `obtener_texto_sentencia` | El texto completo de una sentencia |
 

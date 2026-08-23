@@ -26,7 +26,8 @@ Decirlo ahorra tiempo a todos:
 - **No ingresa escritos.** Ni ahora ni nunca. Es solo lectura por diseño.
 - **No accede a "Mis Causas".** Eso requiere Clave Única; acá sólo se consulta lo público.
 - **No ve causas reservadas.**
-- **No cubre familia, penal, laboral, cobranza ni cortes.** Sólo civil está verificada.
+- **No cubre familia.** La plataforma la reserva a Clave Única. Las otras seis se buscan, y
+  el detalle se lee en cinco: penal se busca y no se abre, por decisión.
 - **No da asesoría legal.** Acerca la fuente oficial; el criterio profesional es tuyo.
 
 ## Si el Poder Judicial cambia su plataforma

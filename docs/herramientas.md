@@ -316,15 +316,15 @@ llegará vacío en vez de fallar.
 :::
 
 :::{warning}
-**La columna `Anexo` es un segundo canal de documentos y no se puede pedir.** Cada actuación
-declara `tiene_anexo`, pero ahí termina lo que este servidor puede hacer: la celda abre un modal
-de JavaScript, y las dieciocho rutas que ese JavaScript nombra son candidatas leídas del sitio,
-no rutas verificadas contra la plataforma. Se declaran como no medidas en vez de pedirse a
-ciegas.
+**La columna `Anexo` es un segundo canal de documentos, y sólo a veces se puede pedir.** La
+celda abre un modal de JavaScript que nombra dieciocho rutas, y se ofrecen cuatro paneles: los
+medidos cuya referencia cuelga de una fila que este servidor lee. Las demás se declaran no
+medidas en vez de pedirse a ciegas.
 
-Un folio con `tiene_anexo` en verdadero tiene algo que este servidor no entrega. Hay que ir al
-expediente. Vale igual para las piezas de exhorto: `PiezaExhorto` declara el mismo campo,
-porque el panel de piezas publica la misma columna.
+Cuando la actuación trae `anexo_ruta` y `anexo_referencia` con valor, `obtener_anexos_escrito`
+entrega ese panel. Un folio con `tiene_anexo` en verdadero y `anexo_ruta` en **nulo** tiene algo
+que este servidor no entrega: hay que ir al expediente. Vale igual para las piezas de exhorto:
+`PiezaExhorto` declara el mismo campo, porque el panel de piezas publica la misma columna.
 :::
 
 :::{important} Preferir ésta antes que preguntar por partes

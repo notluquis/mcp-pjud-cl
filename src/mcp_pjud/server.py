@@ -69,6 +69,12 @@ _EXIGEN_TRIBUNAL = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tr
 _EXIGEN_CORTE = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por == "corte")
 _SIN_ACOTAR = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por is None)
 
+#: En qué buscadores `ocultas` trae un número. En los demás la plataforma entrega el tamaño
+#: del índice y no las coincidencias de la consulta, así que el campo viene nulo. Se deriva
+#: porque cada buscador nuevo llega con la bandera en falso y la frase quedaría contando de
+#: menos justo donde nulo no es cero.
+_CON_OCULTAS = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
+
 #: La misma regla dicha una vez, para las tres herramientas que la comparten.
 ACOTACION = (
     "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
@@ -116,7 +122,10 @@ las coincidencias que la plataforma reserva a una consulta anónima. `no_entrega
 las visibles que esta llamada no trajo, porque `filas` acota cuántas se piden. Si
 cualquiera de los dos es mayor que cero, la lista es un subconjunto y hay que decirlo: NO
 se puede afirmar que algo no existe porque no aparezca. `ocultas` en cero no significa
-que la lista esté completa.
+que la lista esté completa, y `ocultas` en NULO tampoco: nulo no es cero, es que en ese
+buscador no se puede saber. Sólo {", ".join(_CON_OCULTAS)} la trae con número.
+`no_entregadas` mayor que cero se resuelve pidiendo la página siguiente con
+`desplazamiento`.
 Medido el {FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles
 de {miles(INDEXADAS_MEDIDAS)} indexadas.
 
@@ -942,7 +951,9 @@ def buscar_jurisprudencia(
     buscador: Annotated[
         str,
         Field(
-            description=f"Cuál de los buscadores de fallos consultar. Verificados: "
+            # "Verificados" era la palabra equivocada: el de penales también lo está y no
+            # aparece acá, porque se decidió no ofrecerlo.
+            description="Cuál de los buscadores de fallos consultar. Se aceptan: "
             f"{', '.join(sorted(BUSCADORES))}. En `laborales` el origen es un juzgado y no "
             "una corte."
         ),

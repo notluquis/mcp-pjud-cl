@@ -21,10 +21,11 @@ Las tres, no dos de tres:
 
 1. **Más de una competencia verificada** contra el sistema real, con fixtures propias.
 2. **Esquema de salida estable**, sin cambios de campos por al menos dos versiones menores.
-   El contador va en cero, y se reinició cuatro veces seguidas: la 0.10.0 agregó `anexo_ruta`,
+   El contador va en cero, y se reinició cinco veces seguidas: la 0.10.0 agregó `anexo_ruta`,
    `anexo_referencia` y `audio_referencia`; la 0.11.0, `diligencias`, `escritos_pendientes` y
-   `causa_de_origen`; la 0.12.0, `causas_agregadas`. Cada canal nuevo que se abre lo reinicia, y
-   eso es esperable mientras queden canales sin leer.
+   `causa_de_origen`; la 0.12.0, `causas_agregadas`; la 0.13.0, `desplazamiento` y los campos
+   nuevos del PDF. Cada canal nuevo que se abre lo reinicia, y eso es esperable mientras queden
+   canales sin leer.
 3. **Seis meses sin que un cambio de la plataforma rompa el parser**, o con al menos un cambio
    detectado y corregido dentro de la semana.
 
@@ -208,7 +209,7 @@ lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
 ### 0.7: documentos
 
-No es una ruta, son seis en civil y **veintisiete** contando las cinco competencias. Todas son
+No es una ruta, son siete en civil y **veintisiete** contando las cinco competencias. Todas son
 `GET` con un solo parámetro oculto que lleva una referencia opaca, igual que el resto del sitio,
 y todas salen del `action` de un formulario de la respuesta.
 
@@ -375,7 +376,7 @@ ya dictadas, con el caratulado anonimizado por la propia plataforma.
 
 La Historia publica más de un canal por folio y hasta la 0.9.0 se leía uno solo.
 
-**Anexos: tres paneles ofrecidos de siete medidos.** La columna `Anexo` es un segundo canal de
+**Anexos: cuatro paneles ofrecidos de ocho medidos.** La columna `Anexo` es un segundo canal de
 documentos, distinto de `Doc.`: ahí va la resolución o el escrito, y acá los papeles que se
 acompañaron, o sea donde suele estar la prueba documental. Lo que hacía invisible la falta es
 que el folio SÍ entregaba un documento por el otro canal, así que la respuesta parecía completa.
@@ -439,6 +440,40 @@ Quedan dos paneles sin mapear, los de apelaciones, y ahí no hay qué mapear: su
 columnas, la primera en blanco y la segunda con el rótulo, y en la mitad de los detalles el
 panel ni siquiera aparece.
 
+### 0.13: el buscador de fallos deja de ser una sola página — hecho
+
+**La paginación existía desde siempre y el tope lo poníamos nosotros.** El cuerpo de la
+búsqueda mandaba `offset_paginacion` en `"0"` literal, así que la coincidencia 251 no existía
+para este servidor. Medido el 22 de agosto de 2026 sobre una búsqueda de 59.819 visibles, con
+desplazamientos 0, 10 y 250: tres páginas distintas, cero solapamiento. Más allá del final la
+plataforma responde 200 con la lista **vacía**, no un error, y eso es lo que el esquema
+advierte.
+
+**Cuatro buscadores más**, con lo que ocho de los diez están medidos y siete se exponen: Civiles,
+Cobranza, Familia y Salud CS. El de penales queda medido y fuera, por lo mismo que el detalle
+de las causas penales: sus caratulados traen el nombre del imputado. Los dos que faltan no
+tienen medición y no es lo mismo: el Compendio de Extranjería no tiene ruta conocida y Líneas
+Jurisprudenciales responde con otra forma, sin `response.numFound`.
+
+**Una ruta de buscador que no existe devolvía la página de OTRO buscador**, con su
+identificador y sus campos, y las búsquedas contestaban ese corpus sin que nada fallara. Es la
+misma forma del falso negativo que ya apareció con los audios, con los anexos y con penal, y
+por eso ahora se compara el `id_buscador` de la página contra el que se midió.
+
+**El PDF ya se leía entero y se tiraba casi todo.** `obtener_documento` extraía el texto de
+cada página para quedarse con un conteo; ahora dice CUÁLES páginas lo traen, por tramos, más
+los marcadores del archivo y cuánto mide su página. No cuesta una consulta más. Un PDF cifrado
+dejó de informarse con el mismo mensaje que uno truncado.
+
+**Siete de las veintisiete rutas de documento se pidieron de verdad**, en las cinco
+competencias, y antes era una sola: las demás se habían leído del `action` de un formulario.
+Las veinte que faltan esperan una causa que las ofrezca.
+
+Y dos guardias que faltaban, los dos sobre lo mismo: que una afirmación no se quede vieja
+donde nadie la mira. Doce de los veintitrés paneles del detalle no pasaban por el arnés que
+comprueba el mapeo posicional, y las dos cuentas de buscadores estaban viejas en cinco lugares,
+entre ellos `AGENTS.md`, que es lo que otro agente lee como instrucción.
+
 ### Sin versión asignada
 
 **Detección de cambios entre consultas: descartada.** Avisar cuando aparece una actuación
@@ -454,7 +489,7 @@ proyecto rechaza, aunque el dato sea público. Si se implementa, será con un ca
 justificado y no "porque se puede".
 
 **Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los buscadores que
-ofrece `juris.pjud.cl` hay ocho de los diez medidos, y cada uno declara sus propios campos.
+ofrece `juris.pjud.cl` ocho de los diez están medidos, y cada uno declara sus propios campos.
 
 ## Jurisprudencia: qué hay mapeado y qué falta
 

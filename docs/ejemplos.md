@@ -211,7 +211,7 @@ dado por "sin respuesta".
 | `PjudBloqueado` mencionando el prefijo | No se pudo derivar la ruta desde el HTML | La plataforma cambió su estructura. Reporta con la plantilla correspondiente |
 | `EstructuraInesperada` | El HTML no tiene la forma esperada | Lo mismo. Es a propósito: preferimos un error visible a una lista vacía |
 | Lista vacía sin error | No hay actuaciones de receptor en esa causa | Puede ser correcto, o la causa puede estar en una competencia sin cubrir |
-| `ValueError` sobre competencia | Pediste una competencia no verificada | Sólo civil está implementada |
+| `ValueError` sobre competencia | Pediste una competencia que no está verificada | El propio error lista las verificadas. Familia no está: la plataforma la reserva a Clave Única |
 
 :::{note}
 Un error nunca significa "no hubo actuaciones". Esa distinción es deliberada: una lista vacía

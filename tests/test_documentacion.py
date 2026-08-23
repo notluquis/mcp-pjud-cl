@@ -55,6 +55,7 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import (
     _PANELES_ANEXO,
     COMPETENCIAS,
+    SIN_FILAS_OBSERVADAS,
     Competencia,
     DetalleCausa,
     Panel,
@@ -105,6 +106,24 @@ EN_LETRAS = {
     8: "ocho",
     9: "nueve",
     10: "diez",
+    11: "once",
+    12: "doce",
+    13: "trece",
+    14: "catorce",
+    15: "quince",
+    16: "dieciséis",
+    17: "diecisiete",
+    18: "dieciocho",
+    19: "diecinueve",
+    20: "veinte",
+    21: "veintiuno",
+    22: "veintidós",
+    23: "veintitrés",
+    24: "veinticuatro",
+    25: "veinticinco",
+    26: "veintiséis",
+    27: "veintisiete",
+    28: "veintiocho",
 }
 
 
@@ -265,10 +284,196 @@ def test_los_canales_mapeados_y_no_ejecutados_siguen_declarados():
     )
 
 
+def test_la_hoja_de_ruta_cuenta_los_paneles_de_anexo_como_el_codigo():
+    """El encabezado de la sección contaba tres ofrecidos de siete medidos, y son cuatro de ocho.
+
+    El párrafo de más abajo de esa misma sección ya decía "se ofrecen cuatro", así que la página
+    se contradecía consigo misma: la frase en negrita es la que alguien lee al pasar, y era la
+    equivocada. Pasó porque el cuarto panel entró con la 0.11.0 y sólo se tocó el párrafo.
+    """
+    ofrecidas = {r for paneles in ANEXOS.values() for r in paneles}
+    medidas = ofrecidas | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    dicho = re.search(r"\*\*Anexos: (\w+) paneles ofrecidos de (\w+) medidos\.\*\*", hoja)
+    assert dicho, "la hoja de ruta ya no dice cuántos paneles de anexo se ofrecen"
+    assert dicho.group(1) == EN_LETRAS[len(ofrecidas)], (
+        f"la hoja de ruta ofrece {dicho.group(1)} paneles y `ANEXOS` trae {len(ofrecidas)}"
+    )
+    assert dicho.group(2) == EN_LETRAS[len(medidas)], (
+        f"la hoja de ruta mide {dicho.group(2)} paneles y el código anota {len(medidas)}"
+    )
+
+
+def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
+    """Tres cuentas que estaban escritas a mano y ningún guardia miraba.
+
+    La peor no era un número: la referencia decía que la columna `Anexo` **no se puede pedir**,
+    y `obtener_anexos_escrito` existe desde la 0.10.0. La misma página, veinte líneas más
+    arriba, ya explicaba cómo pedirla en la tabla de campos. Una página que se contradice sola
+    se lee entera como poco confiable, y la mitad equivocada era la que va en un aviso.
+    """
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    nombradas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    ofrecidas = {r for paneles in ANEXOS.values() for r in paneles}
+    assert f"nombra {EN_LETRAS[len(nombradas)]} rutas" in referencia, (
+        f"el sitio nombra {len(nombradas)} rutas de anexo y la referencia dice otra cosa"
+    )
+    assert f"se ofrecen {EN_LETRAS[len(ofrecidas)]} paneles" in referencia, (
+        f"`ANEXOS` ofrece {len(ofrecidas)} paneles y la referencia dice otra cosa"
+    )
+    # El aviso decía lo contrario de lo que el servidor hace, y eso no lo atrapa contar. Se
+    # busca el bloque por su contenido y no por su posición: contar bloques deja el guardia
+    # mirando otro aviso en cuanto alguien agrega uno más arriba.
+    # Desde el segundo trozo: el primero es lo que va ANTES del primer aviso, y si esa parte
+    # nombrara la columna el guardia se pondría verde mirando texto que no es el aviso.
+    aviso = next(
+        b for b in referencia.split(":::{warning}")[1:] if "La columna `Anexo`" in b.split(":::")[0]
+    ).split(":::")[0]
+    assert "obtener_anexos_escrito" in aviso, (
+        "el aviso de la columna `Anexo` no nombra la herramienta que la pide"
+    )
+
+    sin_filas = EN_LETRAS[len(SIN_FILAS_OBSERVADAS)].capitalize()
+    assert f"{sin_filas} paneles se leen con las columnas" in referencia, (
+        f"`SIN_FILAS_OBSERVADAS` trae {len(SIN_FILAS_OBSERVADAS)} y la referencia dice otra cosa"
+    )
+
+    civil, total = len(DOCUMENTOS["civil"]), sum(len(r) for r in DOCUMENTOS.values())
+    assert f"son {EN_LETRAS[civil]} en civil y **{EN_LETRAS[total]}**" in hoja, (
+        f"`DOCUMENTOS` trae {civil} rutas en civil y {total} en total, y la hoja dice otra cosa"
+    )
+
+
+def test_la_pagina_de_uso_no_promete_menos_competencias_de_las_que_hay():
+    """Decía "sólo cubre causas civiles" con seis buscables y cinco con detalle.
+
+    Está en la sección "Qué NO hace", que es la que alguien lee para decidir si la herramienta
+    le sirve. Prometer de menos ahí no es prudente: manda a un abogado de cobranza a buscar por
+    otro lado algo que este servidor ya entrega.
+    """
+    uso = _texto(RAIZ / "docs" / "uso.md")
+    con_detalle = {n for n in MODULOS if COMPETENCIAS[n].historia is not None}
+    assert f"Las otras {EN_LETRAS[len(MODULOS)]} se buscan" in uso, (
+        f"el servidor busca en {len(MODULOS)} competencias y la página de uso dice otra cosa"
+    )
+    assert f"el detalle se lee en {EN_LETRAS[len(con_detalle)]}" in uso, (
+        f"el detalle se lee en {len(con_detalle)} competencias y la página de uso dice otra cosa"
+    )
+    # Dentro del paréntesis y no en la página entera: `cobranza` y `penal` aparecen sueltos más
+    # arriba, así que buscarlos en todo el archivo daba un guardia que no puede fallar.
+    listadas = re.search(r"se buscan \(([^)]+)\)", uso)
+    assert listadas, "la página de uso ya no enumera las competencias que busca"
+    for nombre in MODULOS:
+        assert nombre in listadas.group(1), (
+            f"la página de uso no nombra la competencia {nombre!r} entre las que busca"
+        )
+
+
+def test_ninguna_pagina_dice_que_sólo_civil_esta_implementada():
+    """Fue cierto hasta la 0.4.0 y quedó escrito en tres páginas distintas.
+
+    Es la afirmación que más caro sale de las que envejecieron: manda a quien lee a resolver por
+    otro lado algo que este servidor ya entrega. Se barre la prosa entera en vez de arreglar la
+    copia que se encontró, porque las tres se escribieron en momentos distintos.
+    """
+    coladas = []
+    for f in PROSA:
+        texto = " ".join(_texto(f).split()).lower()
+        for frase in ("sólo civil está", "solo civil está", "sólo cubre causas civiles"):
+            # El registro de cambios cuenta lo que pasó en su día y ahí la frase es correcta.
+            if frase in texto and f.name != "CHANGELOG.md":
+                coladas.append(f"{f.relative_to(RAIZ).as_posix()}: {frase!r}")
+    assert not coladas, (
+        f"{coladas} quedó de cuando civil era la única competencia, y hoy son {len(MODULOS)}"
+    )
+
+
+def test_las_rutas_de_anexo_que_faltan_se_cuentan_solas():
+    """Decía doce cuando eran once: cada ruta que se mide baja ese número y nadie volvía acá.
+
+    La resta sale del JavaScript del sitio menos lo medido, igual que en la lista de mapeado sin
+    ejecutar, porque escribirla a mano es lo que la dejó vieja. Y la frase importa: es la que
+    explica por qué no se piden a ciegas.
+    """
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    nombradas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    medidas = {r for paneles in ANEXOS.values() for r in paneles} | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    faltan = EN_LETRAS[len(nombradas - medidas)]
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    assert f"Las {faltan} que faltan se rechazan a propósito" in pagina, (
+        f"faltan {len(nombradas - medidas)} rutas de anexo por medir y la página dice otra cosa"
+    )
+    assert f"ninguno de los {faltan} que" in pagina, (
+        "la segunda mención de las rutas que faltan quedó con otro número"
+    )
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    assert f"Las {faltan} que faltan siguen sin ejecutarse" in hoja, (
+        "la hoja de ruta cuenta otras rutas de anexo pendientes que la página de verificación"
+    )
+
+
+def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
+    """Seis se buscan y cinco tienen detalle, y las dos cifras andan sueltas por la prosa.
+
+    Misma forma que el barrido de buscadores: dos cuentas pegadas, las dos legales, y lo que
+    discrimina es la frase alrededor. Acá hay una tercera cuenta que no es ninguna de las dos,
+    las cinco competencias con rutas de documento, así que la frase que no se puede clasificar
+    se salta en vez de contarse mal: un guardia que adivina es peor que uno que no mira.
+    """
+    buscables = EN_LETRAS[len(MODULOS)]
+    con_detalle = EN_LETRAS[len({n for n in MODULOS if COMPETENCIAS[n].historia is not None})]
+    malas = []
+    for f in [*PROSA, *sorted((RAIZ / "src" / "mcp_pjud").glob("*.py"))]:
+        crudo = _legible(f) if f.suffix == ".py" else _sin_lo_ya_publicado(f)
+        # Normalizado: "en las cinco competencias\n  con detalle mapeado" viene partido, y el
+        # discriminador cae justo del otro lado del salto de línea.
+        texto = " ".join(crudo.split())
+        for m in re.finditer(r"(?:en|de) las (\w+) competencias", texto):
+            escrito = m.group(1).lower()
+            if escrito not in EN_LETRAS.values():
+                continue
+            antes, despues = (
+                texto[max(0, m.start() - 80) : m.start()],
+                texto[m.end() : m.end() + 80],
+            )
+            detalle = _distancia(r"detalle|historia|panel|litigante", antes, despues)
+            busqueda = _distancia(r"busca|búsqueda|por rol|expone|verificad", antes, despues)
+            if min(detalle, busqueda) > 60:
+                continue
+            toca = con_detalle if detalle < busqueda else buscables
+            if escrito != toca:
+                malas.append(
+                    f"{f.relative_to(RAIZ).as_posix()}: dice {escrito!r} donde va {toca!r}"
+                )
+    assert not malas, "cuentas de competencias que el código contradice: " + "; ".join(malas)
+
+
+def test_la_directiva_avisa_donde_ocultas_viene_en_nulo():
+    """La directiva viaja en el protocolo y es lo que el modelo lee antes de responder.
+
+    Decía que `ocultas` en cero no prueba completitud, y no decía nada del **nulo**, que es lo
+    que llega en seis de los siete buscadores. Un modelo que lee nulo como cero afirma que una
+    búsqueda trajo todo lo que hay justo donde la plataforma no publica esa cuenta, y eso es la
+    afirmación de completitud sin fundamento que el proyecto entero existe para no hacer.
+    """
+    from mcp_pjud.server import DIRECTIVA
+
+    con_numero = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
+    assert "`ocultas` en NULO tampoco" in DIRECTIVA, (
+        "la directiva dejó de advertir que `ocultas` puede venir en nulo"
+    )
+    assert f"Sólo {', '.join(con_numero)} la trae con número." in DIRECTIVA, (
+        f"la directiva no nombra {con_numero} como los que traen `ocultas` con número"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 
-    Son siete paneles con cuatro formas distintas, y esa tabla es lo que alguien va a leer para
+    Son ocho paneles con formas distintas, y esa tabla es lo que alguien va a leer para
     repetir la medición cuando la plataforma cambie. Escribirla a mano la deja envejecer justo
     ahí, y de a un panel por vez, que es como no se nota.
     """

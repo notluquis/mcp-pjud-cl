@@ -2437,6 +2437,31 @@ def test_la_referencia_publica_nombra_todos_los_campos_de_una_actuacion():
     )
 
 
+def test_los_topes_del_indice_del_documento_son_los_que_aplica_el_codigo():
+    """La referencia dice cuántos tramos y cuántos marcadores se enumeran, y esas cifras se
+    escriben a mano: son un dato repetido, o sea uno que va a quedar viejo.
+
+    Y quedar viejo acá no es un detalle de redacción. Quien lea "se enumeran hasta 20 tramos"
+    y reciba diez concluye que el archivo tiene diez, no que la página está desactualizada.
+    """
+    from mcp_pjud.client import (
+        LARGO_MAXIMO_MARCADOR,
+        MAXIMO_MARCADORES,
+        MAXIMO_RANGOS,
+        PROFUNDIDAD_MARCADORES,
+    )
+
+    referencia = " ".join(_texto(RAIZ / "docs" / "herramientas.md").split())
+    afirmacion = (
+        f"Se enumeran hasta **{MAXIMO_RANGOS}** tramos y hasta **{MAXIMO_MARCADORES}** "
+        f"marcadores, bajando **{PROFUNDIDAD_MARCADORES}** niveles, con los títulos "
+        f"recortados a **{LARGO_MAXIMO_MARCADOR}** caracteres."
+    )
+    assert afirmacion in referencia, (
+        f"la referencia no dice los topes que el código aplica. Tendría que decir: {afirmacion}"
+    )
+
+
 def test_el_listado_de_tribunales_exige_la_corte(expuestas):
     """Con un valor por defecto, una consulta destinada a otra jurisdicción devolvía en
     silencio los tribunales de esa corte: una lista plausible y equivocada, y el modelo no

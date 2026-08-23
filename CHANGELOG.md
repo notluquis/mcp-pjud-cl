@@ -20,6 +20,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
   inalcanzable, y el tope lo ponía este cliente y no la plataforma.
+- `obtener_documento` dice CUÁLES páginas traen texto, por tramos, y entrega los marcadores del
+  archivo y cuánto mide su página. Todo sale de la lectura del PDF que ya se hacía, así que no
+  cuesta una consulta más.
+- Un PDF cifrado deja de informarse con el mismo mensaje que uno truncado: lo que le falta es
+  una contraseña que este servidor no tiene.
 
 ### Corregido
 

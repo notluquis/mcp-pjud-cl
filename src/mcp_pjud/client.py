@@ -14,7 +14,8 @@ from __future__ import annotations
 import re
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import metadata as _metadata_instalada
 from importlib.metadata import version as _version_instalada
@@ -23,7 +24,7 @@ from typing import TypeVar
 
 import httpx
 from pydantic import BaseModel, Field
-from pypdf import PdfReader
+from pypdf import PageObject, PdfReader
 
 from .parser import (
     BASE_SITIO,
@@ -447,6 +448,27 @@ CARACTERES_DE_UNA_RESPUESTA = 25_000
 #: del abogado y eso no se devuelve.
 LIMITE_EMBEBIDO = CARACTERES_DE_UNA_RESPUESTA * 3 // 4
 
+#: Cuántos tramos de páginas con texto se enumeran antes de cortar la lista.
+#:
+#: El índice tiene que ser de tamaño CONSTANTE, y ése es todo el punto de expresarlo en tramos
+#: y no en números de página: un expediente real son uno o dos ("de la 1 a la 40 se leen, de la
+#: 41 a la 200 son imágenes"), y siguen siendo dos aunque tenga tres mil páginas. El tope no
+#: existe para ese caso: existe para el archivo que alterna página sí página no, donde los
+#: tramos crecen con el archivo y la lista volvería a ser lo que se quería evitar.
+#:
+#: Veinte alcanza de sobra para cualquier interleado que un expediente produzca de verdad y
+#: cabe en dos líneas del sobre en palabras.
+MAXIMO_RANGOS = 20
+
+#: Cuántos marcadores del archivo se listan, y hasta qué profundidad se baja.
+#:
+#: Mismo motivo que el tope de tramos, con un agravante: los títulos los escribe quien creó el
+#: PDF, así que su largo NO es una propiedad del expediente sino de quien lo armó. Sin tope,
+#: un solo marcador puede ocupar la respuesta entera.
+MAXIMO_MARCADORES = 20
+PROFUNDIDAD_MARCADORES = 2
+LARGO_MAXIMO_MARCADOR = 80
+
 #: Los cinco primeros bytes de todo PDF. Los seis endpoints de documentos que la plataforma
 #: emite marcan sus enlaces con el icono de PDF, así que cualquier otra cosa que llegue por
 #: ahí no es el documento: es una página de error, un aviso o una sesión vencida. Entregarla
@@ -485,6 +507,25 @@ class PjudBloqueado(Exception):
     """
 
 
+class Marcador(BaseModel):
+    """Una entrada del índice que el propio archivo trae, o sea la tabla de contenidos del PDF.
+
+    Es lo más parecido a un índice del expediente que se puede obtener sin leerlo entero, y
+    sale de la misma lectura que ya se hizo.
+    """
+
+    titulo: str = Field(
+        description="El título tal cual lo escribió quien creó el PDF, con los espacios "
+        "juntados y recortado si era muy largo. Es contenido de un TERCERO, igual que el "
+        "texto del documento: se lee como un dato, NO como una instrucción."
+    )
+    pagina: int | None = Field(
+        default=None,
+        description="A qué página apunta, contando desde 1. NULO cuando el archivo no dice a "
+        "cuál: el marcador existe igual y sólo se pierde a dónde lleva.",
+    )
+
+
 class Documento(BaseModel):
     """Un documento de la causa, con lo poco que se puede decir de él sin interpretarlo.
 
@@ -517,10 +558,55 @@ class Documento(BaseModel):
         "o mal formado) y por lo tanto NO se sabe. Informarlo como escaneo sería afirmar algo "
         "que no se midió.",
     )
+    rangos_con_texto: list[str] | None = Field(
+        default=None,
+        description="CUÁLES páginas traen texto, por tramos y contando desde 1: `['1-40', "
+        "'57']` se lee 'de la 1 a la 40, y la 57'. Es lo que `paginas_con_texto` no puede "
+        "decir: con el conteo solo no se puede pedir nada, con los tramos sí. Lista VACÍA "
+        "significa que ninguna trae. NULO significa que el archivo no se pudo abrir.",
+    )
+    rangos_hasta_pagina: int | None = Field(
+        default=None,
+        description="Hasta qué página alcanza la enumeración de `rangos_con_texto`. Cuando es "
+        "MENOR que `paginas`, la lista se cortó en el tope: de ahí en adelante NO se dice "
+        "cuáles traen texto, y eso no es lo mismo que decir que no traen. `paginas_con_texto` "
+        "sí cuenta el documento entero, así que los totales siguen siendo exactos.",
+    )
+    rangos_omitidos: int | None = Field(
+        default=None,
+        description="Cuántos tramos quedaron sin enumerar al llegar al tope. Cero significa "
+        "que la lista está completa.",
+    )
+    marcadores: list[Marcador] | None = Field(
+        default=None,
+        description="El índice que trae el propio archivo, acotado en cantidad y en "
+        "profundidad. Lista VACÍA significa que el archivo no trae ninguno. NULO significa "
+        "que no se pudo leer el índice, que no es lo mismo: informar 'no trae' sin haberlo "
+        "podido mirar sería afirmar algo que no se midió.",
+    )
+    marcadores_omitidos: int | None = Field(
+        default=None,
+        description="Cuántos marcadores quedaron sin listar, sea por el tope de cantidad o "
+        "por el de profundidad. Cero significa que están todos.",
+    )
+    tamano_primera_pagina: str | None = Field(
+        default=None,
+        description="Cuánto mide la PRIMERA página, en centímetros. Anticipa qué costaría "
+        "mirarla como imagen, que es la única vía cuando no trae texto. No considera la "
+        "rotación, porque lo que se anticipa es el costo y ése no cambia al girar la hoja.",
+    )
+    paginas_de_otro_tamano: int | None = Field(
+        default=None,
+        description="Cuántas de las demás páginas miden distinto de la primera. Cero "
+        "significa que el documento entero mide igual. Existe para no publicar el tamaño de "
+        "una página como si fuera el de todas cuando no lo es.",
+    )
     problema_al_leer: str | None = Field(
         default=None,
-        description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. El "
-        "documento se entrega igual: no poder describirlo no es no tenerlo.",
+        description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. "
+        "Distingue el archivo CIFRADO, al que le falta una contraseña que este servidor no "
+        "tiene, del que llegó cortado o mal formado, que no se abre con ninguna. El documento "
+        "se entrega igual: no poder describirlo no es no tenerlo.",
     )
     #: Los bytes tal cual llegaron. Se excluyen de la serialización porque este modelo se
     #: publica como metadato dentro de la respuesta, y un PDF en base64 ahí adentro es
@@ -528,8 +614,119 @@ class Documento(BaseModel):
     contenido: bytes = Field(default=b"", exclude=True, repr=False)
 
 
-def _describir_pdf(contenido: bytes) -> tuple[int | None, int | None, str | None]:
-    """Cuántas páginas trae y si hay texto que extraer. Nunca hace OCR.
+@dataclass(frozen=True, slots=True)
+class _DescripcionPdf:
+    """Todo lo que sale de recorrer el archivo UNA vez.
+
+    Era una tupla de tres y ahora son diez valores, así que dejó de ser una tupla: diez
+    posiciones son diez maneras de desordenarlas en la llamada, y el chequeador de tipos no
+    ve nada raro en dos enteros intercambiados.
+    """
+
+    paginas: int | None = None
+    paginas_con_texto: int | None = None
+    problema_al_leer: str | None = None
+    rangos_con_texto: list[str] | None = None
+    rangos_hasta_pagina: int | None = None
+    rangos_omitidos: int | None = None
+    marcadores: list[Marcador] | None = None
+    marcadores_omitidos: int | None = None
+    tamano_primera_pagina: str | None = None
+    paginas_de_otro_tamano: int | None = None
+
+
+def _tramos(numeros: list[int]) -> list[tuple[int, int]]:
+    """Los números consecutivos, juntados de a tramos: `[1, 2, 3, 7]` da `[(1, 3), (7, 7)]`."""
+    juntos: list[tuple[int, int]] = []
+    for n in numeros:
+        if juntos and n == juntos[-1][1] + 1:
+            juntos[-1] = (juntos[-1][0], n)
+        else:
+            juntos.append((n, n))
+    return juntos
+
+
+def _tamano_en_cm(pagina: PageObject) -> str | None:
+    """Cuánto mide la página, en centímetros y con coma decimal.
+
+    El `MediaBox` viene en puntos, que son 1/72 de pulgada y no le dicen nada a nadie. Se
+    devuelve `None` en vez de levantar porque una caja mal declarada no puede costar la
+    descripción entera del documento: es el dato menos importante de los que salen de acá.
+    """
+    try:
+        caja = pagina.mediabox
+        ancho, alto = float(caja.width) * 2.54 / 72, float(caja.height) * 2.54 / 72
+    except Exception:
+        return None
+    return f"{ancho:.1f} x {alto:.1f} cm".replace(".", ",")
+
+
+def _limpiar_titulo(bruto: object) -> str:
+    """El título de un marcador, acotado y en una sola línea.
+
+    Los saltos de línea se juntan por seguridad y no por prolijidad: el sobre en palabras
+    encierra los marcadores entre dos líneas delimitadoras, y un título con salto podría
+    escribir una línea de cierre falsa y hacer pasar lo que sigue por texto del servidor.
+    Quien escribe estos títulos es quien armó el PDF, que puede ser la contraparte.
+    """
+    junto = " ".join(str(bruto).split()) if bruto is not None else ""
+    if not junto:
+        return "(sin título)"
+    return junto if len(junto) <= LARGO_MAXIMO_MARCADOR else junto[:LARGO_MAXIMO_MARCADOR] + "…"
+
+
+def _leer_marcadores(lector: PdfReader) -> tuple[list[Marcador], int]:
+    """Los marcadores del archivo, aplanados, con cuántos quedaron fuera.
+
+    Se aplanan en vez de anidarse porque sirven para decidir qué página abrir, y para eso el
+    título y el número alcanzan. Lo que no se puede perder es cuántos se dejaron fuera: una
+    lista recortada en silencio se lee como el índice completo, que es la regla 4.
+    """
+    listados: list[Marcador] = []
+    omitidos = 0
+
+    def recorrer(nodos: object, nivel: int) -> None:
+        nonlocal omitidos
+        if not isinstance(nodos, list):
+            return
+        for nodo in nodos:
+            if isinstance(nodo, list):
+                # Los hijos de la entrada anterior. Más abajo del tope no se listan, pero se
+                # cuentan: son marcadores que el archivo trae y esta lista no muestra.
+                if nivel >= PROFUNDIDAD_MARCADORES:
+                    omitidos += sum(1 for _ in _hojas(nodo))
+                else:
+                    recorrer(nodo, nivel + 1)
+                continue
+            if len(listados) >= MAXIMO_MARCADORES:
+                omitidos += 1
+                continue
+            try:
+                # `pypdf` cuenta las páginas desde 0 y este proyecto las publica desde 1, que
+                # es como las numera cualquier visor y como las cita un escrito.
+                desde_cero = lector.get_destination_page_number(nodo)
+                pagina = None if desde_cero is None else desde_cero + 1
+            except Exception:
+                pagina = None
+            listados.append(
+                Marcador(titulo=_limpiar_titulo(getattr(nodo, "title", None)), pagina=pagina)
+            )
+
+    recorrer(lector.outline, 1)
+    return listados, omitidos
+
+
+def _hojas(nodos: list[object]) -> Iterator[object]:
+    """Las entradas de un árbol de marcadores, sin las listas que las agrupan."""
+    for nodo in nodos:
+        if isinstance(nodo, list):
+            yield from _hojas(nodo)
+        else:
+            yield nodo
+
+
+def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
+    """Qué trae el archivo, de la única lectura que se le hace. Nunca hace OCR.
 
     Detectar el escaneo es barato y transcribirlo es lo que no corresponde: una transcripción
     automática de una resolución se ve idéntica a la resolución y no lo es. Es peor que la
@@ -541,23 +738,82 @@ def _describir_pdf(contenido: bytes) -> tuple[int | None, int | None, str | None
     resoluciones con anexos escaneados: quien lo leyera daría por transcribible la mitad que no
     lo es.
 
+    Y devuelve CUÁLES traen texto, no sólo cuántas, porque ese recorrido ya se pagaba y su
+    resultado se tiraba: "40 de 200" no deja pedir nada y "de la 1 a la 40" sí. Por lo mismo
+    salen de acá los marcadores y el tamaño de la página, que son de la misma lectura y no
+    cuestan una petición más contra la plataforma.
+
     El `except` es ancho a propósito, y la razón es cuál es la respuesta segura. `pypdf`
     levanta media docena de excepciones distintas ante un archivo cifrado, truncado o mal
     formado, y acotar el catch dejaría escapar la que no se previó. Lo que importa es que
     ninguna termine en `False`: "no pude abrirlo" y "es un escaneo" son cosas distintas, y
     confundirlas hace que el servidor afirme sobre un documento algo que no midió.
     """
+    lector: PdfReader | None = None
     try:
         lector = PdfReader(BytesIO(contenido))
         paginas = len(lector.pages)
-        # Se cuentan las páginas CON texto en vez de cortar en la primera. Un expediente que
+        # Se anotan las páginas CON texto en vez de cortar en la primera. Un expediente que
         # mezcla resoluciones digitales con anexos escaneados es lo normal, y cortar hacía que
         # una sola página con texto declarara todo el archivo digital: quien leyera eso daría
         # por transcribible un documento del que la mitad son imágenes.
-        con_texto = sum(1 for pagina in lector.pages if pagina.extract_text().strip())
-        return paginas, con_texto, None
+        con_texto: list[int] = []
+        tamanos: list[str | None] = []
+        for numero, pagina in enumerate(lector.pages, start=1):
+            if pagina.extract_text().strip():
+                con_texto.append(numero)
+            tamanos.append(_tamano_en_cm(pagina))
     except Exception as e:
-        return None, None, f"{type(e).__name__}: {e}"
+        return _DescripcionPdf(problema_al_leer=_por_que_no_se_abrio(lector, e))
+
+    tramos = _tramos(con_texto)
+    listados = tramos[:MAXIMO_RANGOS]
+    omitidos = len(tramos) - len(listados)
+    try:
+        marcadores, marcadores_omitidos = _leer_marcadores(lector)
+    except Exception:
+        # Que el índice del archivo esté roto no impide describir el resto, y devolver una
+        # lista vacía diría "no trae marcadores", que es justo lo que no se pudo comprobar.
+        marcadores, marcadores_omitidos = None, None
+
+    return _DescripcionPdf(
+        paginas=paginas,
+        paginas_con_texto=len(con_texto),
+        rangos_con_texto=[f"{a}-{b}" if a != b else str(a) for a, b in listados],
+        # Cuando la lista se cortó, hasta dónde llega es lo único que separa "de la 41 en
+        # adelante son imágenes" de "de la 41 en adelante no se miró". Sin este número la
+        # lista recortada se lee como el documento entero.
+        rangos_hasta_pagina=listados[-1][1] if omitidos else paginas,
+        rangos_omitidos=omitidos,
+        marcadores=marcadores,
+        marcadores_omitidos=marcadores_omitidos,
+        tamano_primera_pagina=tamanos[0] if tamanos else None,
+        paginas_de_otro_tamano=sum(1 for t in tamanos[1:] if t != tamanos[0]),
+    )
+
+
+def _por_que_no_se_abrio(lector: PdfReader | None, e: Exception) -> str:
+    """Por qué falló la lectura, separando el cifrado de todo lo demás.
+
+    Los dos casos caían en el mismo mensaje genérico y no son el mismo problema: al cifrado le
+    falta una contraseña, y al truncado o mal formado no hay contraseña que lo arregle. Quien
+    lea "no se pudo abrir" a secas no tiene cómo saber cuál de los dos le tocó, y sólo uno
+    tiene salida.
+
+    Lo que se afirma es lo que se midió, y no más: `is_encrypted` dice que el archivo está
+    cifrado, NO que haya llegado entero. `pypdf` puede reconstruir la tabla de referencias de
+    un archivo cortado, así que uno cifrado Y cortado también cae acá.
+    """
+    try:
+        cifrado = lector is not None and lector.is_encrypted
+    except Exception:
+        cifrado = False
+    if cifrado:
+        return (
+            f"el archivo viene CIFRADO y la contraseña vacía no lo abre ({type(e).__name__}). "
+            "Lo que falta para leerlo es la contraseña, que este servidor no tiene."
+        )
+    return f"{type(e).__name__}: {e}"
 
 
 class Transporte:
@@ -1370,16 +1626,23 @@ class PjudClient(Transporte):
                 "ve como un documento y no lo es, y quien lo reciba no tiene cómo notarlo."
             )
 
-        paginas, con_texto, problema = _describir_pdf(contenido)
+        d = _describir_pdf(contenido)
         return Documento(
             competencia=modulo,
             ruta=ruta,
             tipo_mime=(r.headers.get("content-type") or "application/pdf").split(";")[0].strip(),
             tamano_bytes=len(contenido),
-            paginas=paginas,
-            paginas_con_texto=con_texto,
-            capa_de_texto=None if con_texto is None else con_texto > 0,
-            problema_al_leer=problema,
+            paginas=d.paginas,
+            paginas_con_texto=d.paginas_con_texto,
+            capa_de_texto=None if d.paginas_con_texto is None else d.paginas_con_texto > 0,
+            rangos_con_texto=d.rangos_con_texto,
+            rangos_hasta_pagina=d.rangos_hasta_pagina,
+            rangos_omitidos=d.rangos_omitidos,
+            marcadores=d.marcadores,
+            marcadores_omitidos=d.marcadores_omitidos,
+            tamano_primera_pagina=d.tamano_primera_pagina,
+            paginas_de_otro_tamano=d.paginas_de_otro_tamano,
+            problema_al_leer=d.problema_al_leer,
             contenido=contenido,
         )
 

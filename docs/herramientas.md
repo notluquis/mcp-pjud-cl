@@ -619,7 +619,39 @@ transcribible un archivo del que una parte son imágenes: `paginas_con_texto` di
 que dicen las otras no se puede citar desde acá.
 
 Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
-texto no es lo mismo que saber que no tiene.
+texto no es lo mismo que saber que no tiene. `problema_al_leer` separa dos casos que no son el
+mismo problema: a uno **cifrado** le falta una contraseña que este servidor no tiene, y uno
+truncado o mal formado no se abre con ninguna. Que esté cifrado es lo medido, y no que haya
+llegado entero: los dos defectos pueden venir juntos.
+
+### El índice sale de la misma lectura
+
+Describir el PDF ya obligaba a recorrer sus páginas. De esa pasada salen, sin una petición más:
+
+| Campo | Qué es |
+|---|---|
+| `rangos_con_texto` | CUÁLES páginas traen texto, por tramos y contando desde 1: `["1-40", "57"]`. Lista vacía es "ninguna"; nulo es "no se pudo abrir" |
+| `rangos_hasta_pagina` | Hasta qué página alcanza esa lista. Menor que `paginas` significa que se cortó, y de ahí en adelante no se dice nada |
+| `rangos_omitidos` | Cuántos tramos quedaron sin enumerar |
+| `marcadores` | El índice que trae el archivo: `titulo` y `pagina`. Lista vacía es "no trae"; nulo es "no se pudo leer" |
+| `marcadores_omitidos` | Cuántos quedaron fuera, por cantidad o por profundidad |
+| `tamano_primera_pagina` | Cuánto mide, en centímetros |
+| `paginas_de_otro_tamano` | Cuántas de las demás miden distinto |
+
+Los tramos van por rangos y no por lista de números porque el índice tiene que ser de tamaño
+constante: "1 a 40 con texto" son dos entradas para doscientas páginas y siguen siendo dos para
+tres mil. Se enumeran hasta **20** tramos y hasta **20** marcadores, bajando **2** niveles, con
+los títulos recortados a **80** caracteres.
+
+Al llegar a cualquiera de esos topes se dice que se cortó y hasta dónde alcanzó. `paginas` y
+`paginas_con_texto` siguen cubriendo el documento entero, así que los totales no cambian: lo
+que se acota es la enumeración, no la cuenta.
+
+:::{warning} Los marcadores son contenido de un tercero
+Los títulos los escribe quien creó el PDF, que puede ser la contraparte: entran por un canal
+que parece metadato del archivo y no lo es. Viajan delimitados y con la advertencia de que se
+leen como datos y **no** como instrucciones, en una sola línea y recortados.
+:::
 
 ### El recurso `pjud://documento`
 

@@ -79,8 +79,8 @@ def test_una_cita_completa_no_declara_recorte():
 
 
 def test_el_recorte_se_declara_donde_ocultas_viene_en_nulo():
-    """`ocultas` es nulo en dos de los tres buscadores, así que ahí `no_entregadas` es la
-    única señal de que la lista es un subconjunto."""
+    """`ocultas` es nulo en todos los buscadores menos `suprema`, así que ahí `no_entregadas`
+    es la única señal de que la lista es un subconjunto."""
     r = parse_sentencias(PARCIAL, "laborales")
     assert r.ocultas is None
     assert r.no_entregadas == 397
@@ -642,9 +642,10 @@ def test_pedir_el_texto_donde_no_se_puede_saber_lo_dice(monkeypatch):
 def test_las_visibles_salen_de_response_y_las_coincidencias_del_desglose():
     """Son dos campos distintos y confundirlos lleva a la conclusión contraria.
 
-    `response.numFound` son las VISIBLES y siguen a la consulta en los tres buscadores, incluso
-    donde la bandera es falsa: medirlo en apelaciones da 18 para un rol que existe y 0 para uno
-    imposible, y de ahí se concluiría "es por consulta" justo donde no lo es. El campo que
+    `response.numFound` son las VISIBLES y siguen a la consulta en todos los buscadores
+    medidos, incluso donde la bandera es falsa: medirlo en apelaciones da 18 para un rol que
+    existe y 0 para uno imposible, y de ahí se concluiría "es por consulta" justo donde no lo
+    es. El campo que
     decide es `condition_pub_sf.numFound_sf`, que ahí vale 5.290.009 en los dos casos.
 
     Este guardia los ata a su origen: si alguien intercambia las dos lecturas, `ocultas` pasa a

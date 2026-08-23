@@ -45,9 +45,12 @@ total. La respuesta correcta es devolver el listado para que el usuario elija cu
 
 `buscar_jurisprudencia` anda contra siete de los diez buscadores: Corte Suprema, Cortes de
 Apelaciones, Laborales, Civiles, Cobranza, Familia y Salud CS. El de Penales está medido y no se
-expone, por decisión y por lo mismo que el detalle de las causas penales. Con la paginación medida, una búsqueda ya no se corta en la coincidencia
-250. Lo que falta son los siete buscadores restantes, y está en la sección de jurisprudencia más
-abajo.
+expone, por decisión y por lo mismo que el detalle de las causas penales. Con la paginación
+medida, una búsqueda ya no se corta en la coincidencia 250.
+
+Faltan dos, y por una razón distinta de la de penales: nadie los ha medido. El Compendio de
+Extranjería no tiene ruta conocida, y Líneas Jurisprudenciales responde con otra forma, sin
+`response.numFound`. La sección de jurisprudencia, más abajo, dice qué costaría.
 
 ### 0.4: las seis competencias buscables — hecho
 
@@ -364,6 +367,10 @@ La única competencia que no se expone, y no por falta de medición: la propia p
 responde que las causas de familia son reservadas y sólo se llega a ellas por Clave Única,
 desde "Mis Causas". Queda fuera de alcance mientras eso siga así.
 
+Esto es la competencia de la Oficina Judicial Virtual, o sea las causas en tramitación. El
+buscador de fallos de Familia es otra cosa y sí se expone desde la 0.13.0: publica sentencias
+ya dictadas, con el caratulado anonimizado por la propia plataforma.
+
 ### 0.10: los otros dos canales del folio — hecho parcialmente
 
 La Historia publica más de un canal por folio y hasta la 0.9.0 se leía uno solo.
@@ -446,9 +453,8 @@ permite reconstruir la cartera completa de un abogado. Técnicamente es directo.
 proyecto rechaza, aunque el dato sea público. Si se implementa, será con un caso de uso
 justificado y no "porque se puede".
 
-**Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los diez
-buscadores que ofrece `juris.pjud.cl` hay tres verificados, y cada uno declara
-sus propios campos.
+**Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los buscadores que
+ofrece `juris.pjud.cl` hay ocho de los diez medidos, y cada uno declara sus propios campos.
 
 ## Jurisprudencia: qué hay mapeado y qué falta
 

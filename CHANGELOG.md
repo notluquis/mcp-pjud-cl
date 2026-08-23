@@ -18,12 +18,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
-- El buscador de **Familia** queda verificado y expuesto: la propia plataforma entrega su
-  caratulado como `ANONIMIZADO`, así que lo publicado no identifica a las partes.
-- Los buscadores de **Cobranza** y **Salud CS** quedan verificados: son seis de los diez. El de
-  salud es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
-- El buscador de **Civiles** queda verificado y expuesto: son cuatro de los diez. Su rol lleva
-  la letra del tipo de causa y su origen es un juzgado, no una corte.
+- `buscar_jurisprudencia` acepta cuatro buscadores más: **Civiles**, **Cobranza**, **Familia**
+  y **Salud CS**. Con ellos son ocho de los diez medidos y siete expuestos.
+- El rol de Civiles lleva la letra del tipo de causa y su origen es un juzgado y no una corte;
+  el de Salud CS es el único de los nuevos con la forma de suprema, con corte, sala y recurso.
 - `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
   inalcanzable, y el tope lo ponía este cliente y no la plataforma.
 - `obtener_documento` dice CUÁLES páginas traen texto, por tramos, y entrega los marcadores del
@@ -41,10 +39,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - Una ruta de buscador que no existe devolvía 200 con la página de OTRO buscador, y sus
   búsquedas contestaban ese corpus. Ahora se compara el identificador contra lo medido.
-
 - Una página de PDF que no se dejaba leer hacía que el documento entero se informara como
   ilegible. Ahora se cuenta aparte y el resto se describe igual.
-
 - Nueve afirmaciones de la documentación que el código contradecía, entre ellas dos
   contradicciones de una página consigo misma: la ruta de documento que estaba a la vez medida y
   nunca ejecutada, y el rechazo de penal explicado por falta de medición después de haberla
@@ -57,6 +53,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   cinco competencias, y antes era una. Las veinte que faltan esperan una causa que las ofrezca.
 - La hoja de ruta no contaba las tres últimas versiones y describía el estado de hace tres
   publicaciones. Un guardia nuevo exige que toda versión publicada tenga su sección.
+- Cuántos buscadores están medidos y cuántos se exponen: cinco lugares decían cifras viejas,
+  entre ellos `AGENTS.md`, que es lo que otro agente lee como instrucción. Un guardia nuevo
+  barre las dos cuentas en toda la prosa y en el código.
+- `ocultas` viene en nulo en seis de los siete buscadores expuestos y la referencia decía que
+  en dos de tres, así que un cero en `civiles` se leía como "no hay nada reservado".
+- El parámetro `rol` de `buscar_jurisprudencia` se describía como el rol ante la Corte Suprema,
+  y es el del buscador que se consulte.
 
 ## [0.12.0] - 2026-08-22
 

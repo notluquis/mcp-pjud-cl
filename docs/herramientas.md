@@ -678,7 +678,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `rol` | int, opcional | Rol ante la Corte Suprema, sin el año |
+| `rol` | int, opcional | Rol de la causa en el buscador elegido, sin el año |
 | `anio` | int, opcional | Año del rol |
 | `todas` | str, opcional | Texto libre: deben aparecer todas estas palabras |
 | `literal` | str, opcional | Frase exacta |
@@ -738,8 +738,8 @@ anónima, y `no_entregadas` son las visibles que esta llamada no trajo porque `f
 cuántas se piden. Una búsqueda con 400 visibles y `filas` en 10 devuelve diez sentencias,
 `ocultas` en cero y `no_entregadas` en 390.
 
-`no_entregadas` es además la única señal de recorte que funciona en los tres buscadores:
-`ocultas` viene en nulo en `apelaciones` y en `laborales`.
+`no_entregadas` es además la única señal de recorte que funciona en todos: `ocultas` sólo trae
+número en uno de los siete buscadores expuestos, `suprema`, y en los otros seis viene en nulo.
 
 :::{important} `no_entregadas` mayor que cero ahora se puede resolver
 Se vuelve a llamar con `desplazamiento` en `desplazamiento + filas`, hasta que llegue a cero.

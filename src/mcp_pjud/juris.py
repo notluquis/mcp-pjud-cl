@@ -138,9 +138,9 @@ BUSCADORES: Mapping[str, Buscador] = {
         # falso que ya estaba puesto por prudencia resultó ser el correcto.
         #
         # El campo que decide esto es `condition_pub_sf.numFound_sf` y NO `response.numFound`.
-        # El segundo son las visibles, y ésas siguen a la consulta en los tres buscadores,
-        # incluido `laborales`: medirlo daría 18 contra 0 y haría concluir "es por consulta"
-        # justo donde no lo es.
+        # El segundo son las visibles, y ésas siguen a la consulta en todos los buscadores
+        # medidos, `laborales` incluido: medirlo daría 18 contra 0 y haría concluir "es por
+        # consulta" justo donde no lo es.
         coincidencias_por_consulta=False,
     ),
     "laborales": Buscador(
@@ -312,7 +312,7 @@ class Sentencia(BaseModel):
     entrando por `url`.
     """
 
-    rol: str = Field(description="Rol y año ante la Corte Suprema. Ej: 34546-2025.")
+    rol: str = Field(description="Rol y año en el buscador consultado. Ej: 34546-2025.")
     caratulado: str
     fecha_sentencia: date | None = Field(description="Fecha de la sentencia, ISO 8601.")
     sala: str = Field(description="Sala que la dictó.")
@@ -537,9 +537,9 @@ def parse_sentencias(
         coincidencias=coincidencias,
         ocultas=max(0, coincidencias - visibles) if coincidencias is not None else None,
         desplazamiento=desplazamiento,
-        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y en dos de
-        # los tres buscadores viene en nulo, así que ésta es la única señal de recorte que
-        # funciona en los tres.
+        # Se resta acá y no se deja al lector: `ocultas` ya sienta esa convención, y sólo
+        # `suprema` la trae con número, así que ésta es la única señal de recorte que funciona
+        # en todos los buscadores.
         #
         # El desplazamiento entra en la resta desde que la paginación existe. Sin él, la
         # segunda página de una búsqueda de 59.819 declararía casi todas las visibles como no

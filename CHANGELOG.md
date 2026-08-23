@@ -46,6 +46,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   texto de otro fallo, con su caratulado, a quien pidió verificar una cita.
 - Una causa de un solo cuaderno podía gastar una petición de más: el detalle ya trae su
   Historia, y volver a pedirlo es una consulta regalada contra la misma institución.
+- Las cabeceras con que se piden los tres modales (anexos, georreferencia y audios) no las
+  comprobaba nadie, y sin ellas la plataforma responde otra cosa en vez de un error.
 
 ### Agregado
 

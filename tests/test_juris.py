@@ -204,6 +204,127 @@ def test_solo_se_envian_los_filtros_con_valor(monkeypatch):
     assert enviados == {"rol": "34546", "era": "2025"}, "no deben viajar claves vacías"
 
 
+def _campos_multipart(cuerpo: str) -> dict[str, str]:
+    """Los campos de un cuerpo multipart, por nombre.
+
+    Se parte a mano y no con una biblioteca a propósito: lo que se quiere fijar es el cuerpo
+    EXACTO que sale a la red, y un parser tolerante taparía justo la diferencia que importa.
+    """
+    campos = {}
+    for parte in cuerpo.split("--")[1:]:
+        if 'name="' not in parte:
+            continue
+        nombre = parte.split('name="')[1].split('"')[0]
+        campos[nombre] = parte.split("\r\n\r\n", 1)[1].rsplit("\r\n", 1)[0]
+    return campos
+
+
+def test_la_busqueda_manda_los_siete_campos_que_el_sitio_espera(monkeypatch):
+    """El cuerpo entero, no sólo los filtros.
+
+    Hasta acá el único test del cuerpo miraba `filtros` y dejaba los otros seis campos y las dos
+    cabeceras sin fijar. Quien toque la paginación estaría cambiando el desplazamiento sin una
+    sola red de seguridad, y el modo de falla de este endpoint no es un error: es una página de
+    resultados que parece correcta y corresponde a otra consulta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    visto = {}
+
+    def transporte(req):
+        visto["campos"] = _campos_multipart(req.content.decode("utf-8", "replace"))
+        visto["cabeceras"] = dict(req.headers)
+        return httpx.Response(200, text=CITA)
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    c.buscar(rol=34546, anio=2025, filas=20)
+
+    assert set(visto["campos"]) == {
+        "_token",
+        "id_buscador",
+        "filtros",
+        "numero_filas_paginacion",
+        "offset_paginacion",
+        "orden",
+        "personalizacion",
+    }, "el sitio espera estos siete y ni uno más: con el juego completo de claves vacías da 500"
+    # Contra lo que la sesión derivó, no contra el literal: así el guardia también dice que el
+    # token que viaja es el de ESTA sesión y no uno de antes.
+    assert visto["campos"]["_token"] == c._token
+    assert visto["campos"]["id_buscador"] == c._id_buscador
+    assert visto["campos"]["numero_filas_paginacion"] == "20"
+    assert visto["campos"]["orden"] == "recientes"
+    assert visto["campos"]["personalizacion"] == "false"
+    assert visto["campos"]["offset_paginacion"] == "0", (
+        "el desplazamiento va en cero mientras no esté medido: cambiarlo sin medir devuelve otra "
+        "página de resultados sin que nada lo note"
+    )
+    assert visto["cabeceras"]["x-requested-with"] == "XMLHttpRequest"
+    assert visto["cabeceras"]["referer"].endswith(BUSCADORES["suprema"].ruta)
+
+
+def test_el_desplazamiento_viaja_y_la_pagina_siguiente_no_repite(monkeypatch):
+    """Medido el 22 de agosto de 2026 contra el buscador de Corte Suprema: con desplazamiento
+    0, 10 y 250, tres páginas SIN una sola sentencia repetida.
+
+    Eso cierra el hueco que la documentación declaraba: la coincidencia 251 era inalcanzable
+    porque el desplazamiento iba fijo en cero, no porque la plataforma no lo soportara.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    visto = {}
+
+    def transporte(req):
+        visto.update(_campos_multipart(req.content.decode("utf-8", "replace")))
+        return httpx.Response(200, text=PARCIAL)
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    r = c.buscar(todas="protección", filas=10, desplazamiento=250)
+
+    assert visto["offset_paginacion"] == "250"
+    assert r.desplazamiento == 250, "el resultado dice desde dónde empieza esta página"
+
+
+def test_lo_no_entregado_descuenta_lo_que_ya_se_pidio():
+    """`no_entregadas` es lo que queda DESPUÉS de esta página.
+
+    Sin descontar el desplazamiento, la segunda página de una búsqueda de cuatrocientas
+    coincidencias declararía como no entregadas casi todas, o sea diría que falta justo lo que
+    la página anterior ya trajo.
+    """
+    primera = parse_sentencias(PARCIAL, "suprema")
+    segunda = parse_sentencias(PARCIAL, "suprema", desplazamiento=100)
+
+    assert primera.visibles == 400
+    assert primera.no_entregadas == 397, "400 visibles menos las 3 de esta página"
+    assert segunda.no_entregadas == 297, "y menos las 100 que quedaron atrás"
+    assert segunda.desplazamiento == 100
+
+
+def test_un_desplazamiento_negativo_se_rechaza_antes_de_consultar(monkeypatch):
+    """No hay página menos uno, y pedirla gastaría una petición para recibir un error del
+    servidor que no dice nada."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    salieron = []
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda req: (salieron.append(str(req.url)), httpx.Response(200, text=CITA))[1]
+        )
+    )
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    with pytest.raises(ValueError, match="desplazamiento"):
+        c.buscar(todas="algo", desplazamiento=-1)
+    assert not salieron
+
+
 def test_sesion_sin_token_derivable_se_levanta(monkeypatch):
     """Mismo criterio que el prefijo de rutas de la Oficina Judicial Virtual: si el sitio
     cambió, hay que enterarse en vez de consultar rutas muertas."""

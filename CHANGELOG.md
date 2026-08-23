@@ -16,6 +16,22 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- `mutmut run` no corría: la suite lee la documentación y mutmut copia sólo `src/` y `tests/`,
+  así que la corrida moría al importar. La raíz se resuelve una vez y los guardias leen la
+  documentación de verdad.
+- Cinco campos de cada actuación no los miraba ninguna prueba, y `documento_ruta` con
+  `documento_referencia` se podían intercambiar sin que nada fallara: cruzarlos manda la
+  referencia opaca como ruta.
+- El panel de anexos cortaba la lectura en la primera fila corta si alguien cambiaba un
+  `continue` por un `break`, y las tres columnas propias de suprema se podían anular.
+
+### Agregado
+
+- La tabla de las veintisiete rutas de documento se genera desde `client.DOCUMENTOS`, con qué
+  parámetro lleva cada una y cuáles se pidieron de verdad.
+
 ## [0.13.0] - 2026-08-23
 
 ### Agregado

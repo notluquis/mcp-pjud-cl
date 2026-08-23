@@ -170,7 +170,7 @@ def _generar_tablas(app):
 
     sys.path.insert(0, str(pathlib.Path(__file__).parents[1] / "src"))
 
-    from mcp_pjud.client import MODULOS
+    from mcp_pjud.client import DOCUMENTOS, DOCUMENTOS_EJECUTADAS, MODULOS
     from mcp_pjud.parser import COMPETENCIAS
 
     destino = pathlib.Path(__file__).parent / "_generado"
@@ -222,6 +222,21 @@ def _generar_tablas(app):
 
     (destino / "paneles.md").write_text(
         "| Campo | Dónde existe |\n|---|---|\n" + "\n".join(filas) + "\n",
+        encoding="utf-8",
+    )
+
+    # Las rutas de documento se escribían a mano y ya se quedaron cortas dos veces: la página
+    # decía seis en civil cuando eran siete, y nombraba doce de veinticinco cuando el cliente
+    # aceptaba más. La tabla sale de `DOCUMENTOS`, que es lo que decide qué se puede pedir.
+    filas = []
+    for competencia in sorted(DOCUMENTOS):
+        for ruta, campo in sorted(DOCUMENTOS[competencia].items()):
+            pedida = "sí" if ruta in DOCUMENTOS_EJECUTADAS else "no"
+            filas.append(f"| `{competencia}` | `{ruta}` | `{campo}` | {pedida} |")
+    (destino / "documentos.md").write_text(
+        "| Competencia | Ruta | Parámetro | Pedida contra la plataforma |\n|---|---|---|---|\n"
+        + "\n".join(filas)
+        + "\n",
         encoding="utf-8",
     )
 

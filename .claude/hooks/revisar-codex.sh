@@ -87,7 +87,7 @@ consulta_pedidos='query($duenio: String!, $nombre: String!, $endCursor: String) 
 # por autor importa: una revisión humana en el mismo commit no es la respuesta que se pidió-, una reacción posterior al
 # pedido (una pasada limpia de Codex no deja más que eso), o un comentario posterior cuyo
 # cuerpo nombre el commit, que es como Codex publica su veredicto limpio.
-filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review" or .body == "/gemini review")) | last) // empty) as $p | ([.reactions.nodes[] | select((.user.login // "") | test("codex|gemini")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.reviews.nodes[] | select((.author.login // "") | test("codex|gemini")) | select((.commit.oid // "") | startswith($sha))] | length) as $ok_review | ([.comments.nodes[] | select((.author.login // "") | test("codex|gemini")) | select(.createdAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | ([.comments.nodes[] | select((.author.login // "") | test("codex|gemini")) | select(.createdAt > $p.createdAt) | .body] | map(select(test("usage limits|reached your Codex"))) | length) as $sin_cuota | if ($ok_reaccion + $ok_review + $ok_sha) == 0 then "\($n)\t\($p.createdAt)\t\(if $sin_cuota > 0 then "cuota" else "espera" end)" else empty end'
+filtro_pedidos='.[].data.repository.pullRequests.nodes[] | .number as $n | (.headRefOid[0:10]) as $sha | ((.comments.nodes | map(select(.body == "@codex review" or .body == "/gemini review")) | last) // empty) as $p | ([.reactions.nodes[] | select((.user.login // "") | test("codex|gemini")) | .createdAt] | map(select(. > $p.createdAt)) | length) as $ok_reaccion | ([.reviews.nodes[] | select((.author.login // "") | test("codex|gemini")) | select((.commit.oid // "") | startswith($sha))] | length) as $ok_review | ([.comments.nodes[] | select((.author.login // "") | test("codex|gemini")) | select(.createdAt > $p.createdAt) | .body] | map(select(contains($sha))) | length) as $ok_sha | ([.comments.nodes[] | select((.author.login // "") | test("codex")) | select((.body // "") | test("usage limits|reached your Codex")) | .createdAt] | max) as $cuota_en | (([.reviews.nodes[] | select((.author.login // "") | test("codex")) | .submittedAt] + [.reactions.nodes[] | select((.user.login // "") | test("codex")) | .createdAt]) | map(select($cuota_en != null and . > $cuota_en)) | length) as $codex_luego | (if $cuota_en != null and $codex_luego == 0 then 1 else 0 end) as $sin_cuota | if ($ok_reaccion + $ok_review + $ok_sha) == 0 then "\($n)\t\($p.createdAt)\t\(if $sin_cuota > 0 then "cuota" else "espera" end)" else empty end'
 
 hilos=$(gh api graphql --paginate --slurp -f query="$consulta" \
   -F duenio="${repo% *}" -F nombre="${repo#* }" 2>/dev/null | jq -r "$filtro" 2>/dev/null) || exit 0
@@ -125,13 +125,19 @@ if [[ -z "$nuevos" ]]; then
     # Sin cuota NO es lo mismo que en camino, y es el estado que cuela un pull request sin
     # revisar: en las demás superficies se ve idéntico a "pendiente", así que uno espera algo
     # que no va a llegar. Se separan porque piden cosas distintas.
+    #
+    # Y el aviso de cuota PEGA: antes se buscaba sólo después del último pedido, así que un
+    # pedido nuevo volvía a decir "llega en minutos" sobre un revisor que ya había dicho que
+    # no. Ahora deja de pegar cuando Codex vuelve a revisar o a reaccionar después de ese
+    # aviso, que es la señal de que la ventana se repuso.
     if [[ "$motivo" == "cuota" ]]; then
       cat >&2 <<MSG
-La revisión pedida en #$n NO va a llegar: Codex respondió que se agotó la cuota de
-revisiones ($cuando).
+Codex no va a revisar #$n: dijo que se agotó su cuota de revisiones y no ha vuelto a
+revisar desde entonces. El pedido en vuelo es de $cuando.
 
-Esperarla es perder el tiempo. Se puede volver a pedir más tarde, cuando la ventana se
-reponga, o mezclar sabiendo que va sin revisar y dejándolo dicho.
+Esperar a Codex es perder el tiempo; lo que queda por esperar es Gemini. Se puede volver a
+pedirle a Codex más tarde, cuando la ventana se reponga, o mezclar sabiendo que va sin su
+revisión y dejándolo dicho.
 MSG
     else
       cat >&2 <<MSG

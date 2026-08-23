@@ -611,6 +611,36 @@ def test_la_historia_de_laboral_pone_estado_donde_civil_pone_foja():
     assert actuaciones[0].etapa
 
 
+def test_las_columnas_propias_de_cada_competencia_llegan_al_modelo():
+    """Cinco campos que ninguna prueba miraba, encontrados con testing de mutación.
+
+    `foja`, `estado_firma` y `anio_tramite` se podían cambiar por `None` y la suite seguía
+    verde: el único test que los tocaba comprobaba que laboral NO publica foja, o sea la
+    ausencia, y nadie el valor. Un campo que llega nulo se lee como "la causa no lo trae".
+
+    `documento_ruta` y `documento_referencia` salen de la misma tupla y se podían intercambiar
+    sin que nada fallara. Cruzarlos no da error: manda la referencia opaca como ruta, y la
+    petición se arma contra un endpoint que no existe.
+    """
+    civil = parse_historia(DETALLE, "", "civil")
+    assert civil[0].foja == "0"
+    assert civil[0].documento_ruta == "docuN.php"
+    assert civil[0].documento_referencia == "referencia-ficticia-006"
+    assert civil[0].documento_ruta != civil[0].documento_referencia
+
+    cobranza = parse_historia(NOTIF_COBRANZA, "", "cobranza")
+    assert cobranza[0].estado_firma == "Firmado"
+    assert cobranza[0].foja is None, "cobranza publica estado de firma donde civil pone foja"
+
+    suprema = parse_historia(DETALLE_SUPREMA, "", "suprema")
+    assert suprema[0].anio_tramite == "2021"
+    assert suprema[0].correlativo == "80795-2021"
+    # Suprema no publica la columna, y ahí el falso significa "no hay dónde mirar". Que sea
+    # falso y no verdadero es lo que impide afirmar que una actuación está georreferenciada
+    # en la única competencia donde el dato no existe.
+    assert all(a.georreferenciado is False for a in suprema)
+
+
 def test_ninguna_de_las_tres_publica_actuaciones_de_receptor():
     """Es la razón por la que las tres declaran `receptor=False`, y conviene tenerlo medido.
 
@@ -1584,6 +1614,36 @@ PANELES_ANEXO = {
 ANEXOS_LAB = (FIXTURES / "anexo_escrito_laboral.html").read_text(encoding="utf-8")
 
 
+def test_una_fila_corta_no_corta_la_lectura_del_panel_de_anexos():
+    """Encontrado con testing de mutación: cambiar el `continue` por un `break` seguía verde.
+
+    Las filas cortas son los encabezados que el sitio repite dentro del cuerpo, y en las
+    fixtures medidas van al final, así que cortar ahí no cambiaba nada. Con una en medio, un
+    `break` devolvería sólo los anexos anteriores: una lista más corta, sin error, que es el
+    falso negativo de la regla 4 con otra ropa.
+    """
+    original = parse_anexos(ANEXOS_LAB, "anexoEscritoLaboral.php")
+    assert len(original) > 1, "hace falta más de una fila para que el corte se note"
+    con_fila_corta = ANEXOS_LAB.replace("<tbody>", "<tbody><tr><td>sobra</td></tr>", 1)
+    assert con_fila_corta != ANEXOS_LAB, "la fixture ya no trae `<tbody>`"
+    assert len(parse_anexos(con_fila_corta, "anexoEscritoLaboral.php")) == len(original)
+
+
+def test_el_panel_de_suprema_publica_tres_columnas_que_ninguna_otra_trae():
+    """`tipo`, `cantidad` y `documento_fisico` se podían anular sin que la suite lo notara.
+
+    Son las que dicen cuántos ejemplares hay y si el físico se exige, o sea lo único que
+    distingue este panel de los demás. Anularlas deja una respuesta que parece del panel de
+    civil y no dice que falta un ejemplar en papel.
+    """
+    escrito = (FIXTURES / "escrito_suprema.html").read_text(encoding="utf-8")
+    anexos = parse_anexos(escrito, "escritoSuprema.php")
+    assert len(anexos) == 1
+    assert anexos[0].tipo == "Anexo Escrito"
+    assert anexos[0].cantidad == "1"
+    assert anexos[0].documento_fisico == "No Requerido"
+
+
 def test_el_panel_de_anexos_entrega_con_que_pedir_cada_documento():
     """Medido el 22-08-2026 contra T-196-2026: dos anexos de un mismo escrito.
 
@@ -1986,6 +2046,24 @@ def test_una_fila_de_audio_sin_enlace_levanta():
 
     with pytest.raises(EstructuraInesperada, match="enlace de descarga"):
         parse_audios(sin_enlace)
+
+
+def test_una_fila_de_audio_a_la_que_le_falta_una_celda_se_descarta():
+    """El largo mínimo es una celda menos que la cabecera, y aflojarlo una más seguía verde.
+
+    Encontrado con testing de mutación. Con el umbral corrido, una fila de tres celdas se leería
+    igual: los campos se corren, y el nombre del archivo (lo único que dice de qué tramo del
+    audio se trata) saldría de la celda de al lado.
+    """
+    filas = list(re.finditer(r"<tr>.*?</tr>", AUDIOS, re.S))
+    primera = filas[1].group(0)
+    sin_una_celda = re.sub(
+        r"<td[^>]*>(?:(?!</td>).)*</td>\s*(?=</tr>)", "", primera, count=1, flags=re.S
+    )
+    assert primera.count("<td") - sin_una_celda.count("<td") == 1
+
+    audios = parse_audios(AUDIOS.replace(primera, sin_una_celda, 1))
+    assert len(audios) == len(parse_audios(AUDIOS)) - 1, "la fila corta tenía que descartarse"
 
 
 def test_el_correlativo_del_audio_va_en_un_th_dentro_de_la_fila():

@@ -641,7 +641,8 @@ def _indice_del_documento(doc: Documento) -> str:
             else ""
         )
         lineas = "\n".join(
-            f"- {m.titulo}" + (f" (página {m.pagina})" if m.pagina else "") for m in doc.marcadores
+            f"- {m.titulo}" + (f" (página {m.pagina})" if m.pagina is not None else "")
+            for m in doc.marcadores
         )
         partes.append(
             f"Trae {cuantos} marcador{'es' if cuantos != 1 else ''}{sin_listar}, que son el "

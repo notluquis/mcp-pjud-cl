@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from pypdf import PdfWriter
+from pypdf import PageObject, PdfWriter
 from pypdf.generic import IndirectObject
 
 from mcp_pjud import client
@@ -30,6 +30,8 @@ from mcp_pjud.client import (
     PjudBloqueado,
     PjudClient,
     _describir_pdf,
+    _hojas,
+    _tamano_en_cm,
 )
 from mcp_pjud.parser import (
     COMPETENCIAS,
@@ -2088,6 +2090,77 @@ def test_el_umbral_de_lo_embebido_no_gasta_mas_que_una_respuesta_de_texto():
         f"{LIMITE_EMBEBIDO} bytes son {en_base64} caracteres en base64, y el techo que este "
         f"servidor ya acepta gastar de una vez son {CARACTERES_DE_UNA_RESPUESTA}"
     )
+
+
+def test_una_pagina_que_no_se_deja_leer_no_cuesta_el_archivo_entero(monkeypatch):
+    """Una fuente rota en una página no puede hacer que el documento salga como ilegible.
+
+    El recorrido leía todas las páginas dentro de un solo `try`, así que la página cinco de
+    doscientas se llevaba puestas las otras ciento noventa y nueve: un expediente que SÍ se lee
+    se informaba como que no se pudo abrir. Es la regla 4 en la capa del archivo.
+    """
+    original = PageObject.extract_text
+    llamadas = {"n": 0}
+
+    def falla_en_la_segunda(self, *args, **kwargs):
+        llamadas["n"] += 1
+        if llamadas["n"] == 2:
+            raise ValueError("fuente corrupta")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(PageObject, "extract_text", falla_en_la_segunda)
+    d = _describir_pdf(PDF_MIXTO)
+
+    assert d.problema_al_leer is None, "el archivo se abrió: lo que falló fue una página"
+    assert d.paginas == 2
+    assert d.paginas_ilegibles == 1
+    assert d.paginas_con_texto == 1, "la página que falló NO se cuenta como página sin texto"
+
+
+def test_la_pagina_ilegible_no_se_cuenta_como_pagina_sin_texto(monkeypatch):
+    """Contarla como sin texto convertiría un error de lectura en la afirmación de que ahí hay
+    una imagen, que es lo que nadie midió.
+
+    Con las dos páginas del mixto fallando, `capa_de_texto` no puede salir en falso: eso diría
+    ESCANEO sobre un archivo del que no se leyó ni una página.
+    """
+    monkeypatch.setattr(
+        PageObject, "extract_text", lambda *a, **k: (_ for _ in ()).throw(ValueError("rota"))
+    )
+    d = _describir_pdf(PDF_MIXTO)
+
+    assert d.paginas_ilegibles == 2
+    assert d.paginas_con_texto == 0
+    assert d.rangos_con_texto == []
+
+
+def test_una_caja_con_las_coordenadas_invertidas_no_publica_una_hoja_negativa():
+    """Hay PDF con el sistema de coordenadas dado vuelta, y ahí el `MediaBox` mide en negativo.
+
+    Una hoja de menos veintiuno por menos veintinueve centímetros no la entiende nadie, y el
+    dato existe justamente para que alguien decida si mirar la página vale la pena.
+    """
+
+    class _CajaInvertida:
+        width, height = -595.0, -842.0
+
+    class _PaginaRara:
+        mediabox = _CajaInvertida()
+
+    assert _tamano_en_cm(_PaginaRara()) == "21,0 x 29,7 cm"
+
+
+def test_un_indice_circular_no_agota_la_pila():
+    """Un archivo con el árbol de marcadores circular haría que el recorrido se llame a sí
+    mismo hasta el desbordamiento.
+
+    El recorrido de arriba corta por profundidad; el que cuenta lo que queda debajo del tope,
+    no, porque su trabajo es justamente bajar hasta el fondo.
+    """
+    circular: list[object] = []
+    circular.append(circular)
+
+    assert list(_hojas(circular)) == [], "la lista que se contiene a sí misma no aporta hojas"
 
 
 def test_un_pdf_mixto_no_se_declara_entero_digital():

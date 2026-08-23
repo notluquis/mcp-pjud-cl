@@ -618,6 +618,10 @@ resoluciones digitales es lo normal, y decir "trae capa de texto" a secas haría
 transcribible un archivo del que una parte son imágenes: `paginas_con_texto` dice cuántas, y lo
 que dicen las otras no se puede citar desde acá.
 
+Y una página que no se deja leer **no cuesta el archivo entero**: se cuenta en
+`paginas_ilegibles` y el resto se describe igual. No se cuenta como página sin texto, porque
+eso convertiría un error de lectura en la afirmación de que ahí hay una imagen.
+
 Si el archivo no se puede abrir, la capa de texto queda **nula y no falsa**: no saber si tiene
 texto no es lo mismo que saber que no tiene. `problema_al_leer` separa dos casos que no son el
 mismo problema: a uno **cifrado** le falta una contraseña que este servidor no tiene, y uno

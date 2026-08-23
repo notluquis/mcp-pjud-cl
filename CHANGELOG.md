@@ -40,6 +40,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   la consulta siguiente, que responde un listado sin filas.
 - De las piezas de un exhorto sólo se comprobaba la que NO trae documento, así que la celda se
   podía leer con un selector que no calza nunca y las seis salían sin nada.
+- Cambiar de buscador podía no reabrir la sesión, y entonces la búsqueda contestaba con el
+  corpus del buscador anterior sin que nada lo dijera.
+- `obtener_texto_sentencia` podía perder el rol o el año camino a la búsqueda y entregar el
+  texto de otro fallo, con su caratulado, a quien pidió verificar una cita.
 
 ### Agregado
 

@@ -329,6 +329,35 @@ def _sin_red() -> JurisClient:
     return c
 
 
+def test_cambiar_de_buscador_reabre_la_sesion(monkeypatch):
+    """La sesión es de UN buscador, y consultarla con otro devuelve el corpus del primero.
+
+    Encontrado con testing de mutación: la condición que decide si hay que reabrir se podía
+    cambiar por una que sólo reabre cuando NO hay token, o sea nunca después de la primera
+    búsqueda. Con la sesión de suprema abierta, una búsqueda en `civiles` habría contestado con
+    sentencias de suprema, y nada en la respuesta lo diría.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    abiertos: list[str] = []
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=AMPLIA))
+    )
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    monkeypatch.setattr(
+        JurisClient, "abrir_sesion", lambda self, buscador="suprema": abiertos.append(buscador)
+    )
+
+    c.buscar(todas="notificación", buscador="suprema")
+    assert abiertos == [], "la sesión de suprema ya estaba abierta"
+
+    c.buscar(todas="notificación", buscador="civiles")
+    assert abiertos == ["civiles"], (
+        f"cambiar de buscador tiene que reabrir la sesión, y con el nombre pedido: {abiertos}"
+    )
+
+
 def test_buscar_sin_criterios_se_rechaza_antes_de_consultar():
     """Sin criterio el buscador devuelve el índice entero. Eso no es una búsqueda."""
     with pytest.raises(ValueError, match="al menos un criterio"):
@@ -574,6 +603,32 @@ def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
     # La extensión sí viaja: es lo que permite decidir si pedir el resto.
     assert s.palabras == 3881
     assert s.paginas == 13
+
+
+def test_el_texto_se_pide_por_el_rol_y_el_año_que_se_dieron(monkeypatch):
+    """`texto` resuelve con una búsqueda, y el rol o el año se podían perder en el camino.
+
+    Encontrado con testing de mutación. Sin rol, la búsqueda queda con el año solo y devuelve
+    la primera sentencia de ese año: la herramienta entregaría el texto de OTRO fallo, con su
+    caratulado y todo, a quien pidió verificar una cita. Es la peor forma del falso positivo
+    para lo único que esta herramienta existe.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pedidos: list[dict] = []
+    c = _con_respuesta(_con_texto("Santiago, a catorce de agosto."))
+
+    original = JurisClient.buscar
+
+    def espiando(self, **kwargs):
+        pedidos.append(kwargs)
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(JurisClient, "buscar", espiando)
+    c.texto(rol=34546, anio=2025)
+
+    assert pedidos[0]["rol"] == 34546
+    assert pedidos[0]["anio"] == 2025
+    assert pedidos[0]["filas"] == 1, "se pide UNA: el texto de las demás no se usa y viaja igual"
 
 
 def test_el_texto_completo_dice_de_cual_de_los_dos_campos_salio(monkeypatch):

@@ -68,6 +68,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   de documento de civil, y por qué quedan fuera los buscadores sin medir.
 - Cinco páginas decían que sólo civil está verificada, incluidas `AGENTS.md` y la de soporte.
   Son seis buscables y cinco con detalle desde la 0.4.0, y ahora un guardia barre esa frase.
+- Las rutas de anexo que faltan por medir eran once y la documentación decía doce, en dos
+  frases de la misma página.
 
 ## [0.12.0] - 2026-08-22
 

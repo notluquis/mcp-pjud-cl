@@ -389,6 +389,66 @@ def test_ninguna_pagina_dice_que_sólo_civil_esta_implementada():
     )
 
 
+def test_las_rutas_de_anexo_que_faltan_se_cuentan_solas():
+    """Decía doce cuando eran once: cada ruta que se mide baja ese número y nadie volvía acá.
+
+    La resta sale del JavaScript del sitio menos lo medido, igual que en la lista de mapeado sin
+    ejecutar, porque escribirla a mano es lo que la dejó vieja. Y la frase importa: es la que
+    explica por qué no se piden a ciegas.
+    """
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    nombradas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    medidas = {r for paneles in ANEXOS.values() for r in paneles} | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+    faltan = EN_LETRAS[len(nombradas - medidas)]
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    assert f"Las {faltan} que faltan se rechazan a propósito" in pagina, (
+        f"faltan {len(nombradas - medidas)} rutas de anexo por medir y la página dice otra cosa"
+    )
+    assert f"ninguno de los {faltan} que" in pagina, (
+        "la segunda mención de las rutas que faltan quedó con otro número"
+    )
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    assert f"Las {faltan} que faltan siguen sin ejecutarse" in hoja, (
+        "la hoja de ruta cuenta otras rutas de anexo pendientes que la página de verificación"
+    )
+
+
+def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
+    """Seis se buscan y cinco tienen detalle, y las dos cifras andan sueltas por la prosa.
+
+    Misma forma que el barrido de buscadores: dos cuentas pegadas, las dos legales, y lo que
+    discrimina es la frase alrededor. Acá hay una tercera cuenta que no es ninguna de las dos,
+    las cinco competencias con rutas de documento, así que la frase que no se puede clasificar
+    se salta en vez de contarse mal: un guardia que adivina es peor que uno que no mira.
+    """
+    buscables = EN_LETRAS[len(MODULOS)]
+    con_detalle = EN_LETRAS[len({n for n in MODULOS if COMPETENCIAS[n].historia is not None})]
+    malas = []
+    for f in [*PROSA, *sorted((RAIZ / "src" / "mcp_pjud").glob("*.py"))]:
+        crudo = _legible(f) if f.suffix == ".py" else _sin_lo_ya_publicado(f)
+        # Normalizado: "en las cinco competencias\n  con detalle mapeado" viene partido, y el
+        # discriminador cae justo del otro lado del salto de línea.
+        texto = " ".join(crudo.split())
+        for m in re.finditer(r"(?:en|de) las (\w+) competencias", texto):
+            escrito = m.group(1).lower()
+            if escrito not in EN_LETRAS.values():
+                continue
+            antes, despues = (
+                texto[max(0, m.start() - 80) : m.start()],
+                texto[m.end() : m.end() + 80],
+            )
+            detalle = _distancia(r"detalle|historia|panel|litigante", antes, despues)
+            busqueda = _distancia(r"busca|búsqueda|por rol|expone|verificad", antes, despues)
+            if min(detalle, busqueda) > 60:
+                continue
+            toca = con_detalle if detalle < busqueda else buscables
+            if escrito != toca:
+                malas.append(
+                    f"{f.relative_to(RAIZ).as_posix()}: dice {escrito!r} donde va {toca!r}"
+                )
+    assert not malas, "cuentas de competencias que el código contradice: " + "; ".join(malas)
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

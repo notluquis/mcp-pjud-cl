@@ -499,14 +499,14 @@ con anexo del cuaderno de apremio de C-1156-2026 son escritos que traen su `docu
 pidiera el documento del folio recibía un PDF real y quedaba creyendo que tenía el folio
 completo. Un documento entregado tapa mejor lo que falta que una fila en blanco.
 
-**Las doce que faltan se rechazan a propósito.** Cada una nombra su ruta y su parámetro
+**Las once que faltan se rechazan a propósito.** Cada una nombra su ruta y su parámetro
 distinto, y armarlas por analogía no da un error: da una página que no es la que se pidió. Está
 medido en este mismo canal, al buscar el listado de audios de audiencia por la ruta análoga a
 la de otro modal: respondió **200 con la tabla vacía**, o sea con la forma exacta de "este
 folio no tiene anexos". Por eso `parse_anexos` levanta cuando la tabla viene sin filas.
 
 No es que no se hayan intentado: se abrieron **dieciocho** causas buscándolas, nueve de
-cobranza y nueve penales, de 2024 y de 2026, y **ninguna ofrecía** ninguno de los doce que
+cobranza y nueve penales, de 2024 y de 2026, y **ninguna ofrecía** ninguno de los once que
 faltan. Lo que falta para medirlos no es tiempo de red sino una causa que los traiga.
 
 **La descarga en sí no se ejecutó.** Las rutas de la última columna se leyeron del formulario

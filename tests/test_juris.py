@@ -614,7 +614,7 @@ def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
     assert s.paginas == 13
 
 
-def test_el_texto_se_pide_por_el_rol_y_el_año_que_se_dieron(monkeypatch):
+def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):
     """`texto` resuelve con una búsqueda, y el rol o el año se podían perder en el camino.
 
     Encontrado con testing de mutación. Sin rol, la búsqueda queda con el año solo y devuelve

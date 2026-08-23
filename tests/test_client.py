@@ -405,7 +405,9 @@ def test_media_sesion_se_detiene_igual_que_ninguna(monkeypatch):
         c = _cliente(httpx.Response(200, text=pagina))
         with pytest.raises(PjudBloqueado, match="prefijo"):
             c.abrir_sesion()
-        assert c._adir is None or c._token is None, f"la sesión quedó a medias: {cual}"
+        assert (c._adir, c._token) == (None, None), (
+            f"la sesión quedó a medias en vez de no abrirse: {cual}"
+        )
 
 
 def test_competencia_que_no_existe_se_rechaza():

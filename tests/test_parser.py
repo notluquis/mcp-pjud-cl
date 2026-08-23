@@ -2161,11 +2161,12 @@ def test_media_coordenada_levanta_igual_que_ninguna():
     sólo levantaba cuando faltaban LAS DOS. Con latitud y sin longitud, la respuesta traía una
     georreferencia que se lee como medida y apunta a cualquier parte.
     """
-    sin_longitud = re.sub(r'<input[^>]*name="longitud"[^>]*>', "", GEO, count=1)
-    assert sin_longitud != GEO, "la fixture ya no trae el campo de longitud"
+    for campo in ("longitud", "latitud"):
+        a_medias = re.sub(rf'<input[^>]*name="{campo}"[^>]*>', "", GEO, count=1)
+        assert a_medias != GEO, f"la fixture ya no trae el campo de {campo}"
 
-    with pytest.raises(EstructuraInesperada, match="latitud y"):
-        parse_georreferencia(sin_longitud)
+        with pytest.raises(EstructuraInesperada, match="latitud y"):
+            parse_georreferencia(a_medias)
 
 
 def test_un_panel_con_coordenadas_y_sin_fecha_levanta():

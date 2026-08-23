@@ -808,6 +808,34 @@ def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
     assert len(listados) == 1, "el listado debe pedirse una sola vez"
 
 
+def test_las_actuaciones_acotan_la_busqueda_con_el_tribunal_que_se_les_dio(monkeypatch):
+    """Anular el tribunal camino a la búsqueda dejaba la suite verde, y es lo que la acota.
+
+    Encontrado con testing de mutación. Sin tribunal, civil rechaza la búsqueda con un aviso
+    de la plataforma, o peor: el mismo rol existe en varios tribunales y la respuesta sería la
+    causa de otro juzgado, con su historia y sus fechas. No es un error que se vea.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    cuerpos: list[str] = []
+
+    def transporte(req: httpx.Request) -> httpx.Response:
+        cuerpos.append(req.content.decode())
+        if "consultaRit" in str(req.url):
+            return httpx.Response(200, text=_pagina(range(1, 2), total=1, ultima=True))
+        return httpx.Response(200, text=principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    # El rol es el que la fila sintética declara, para que la elección no sea ambigua.
+    c.actuaciones_receptor("C", 9001, 2026, tribunal=162)
+
+    busqueda = next(b for b in cuerpos if "conRit" in b or "rol" in b.lower())
+    assert "162" in busqueda, f"el tribunal no viajó en la búsqueda: {busqueda[:200]}"
+
+
 def test_una_busqueda_sin_coincidencias_devuelve_vacio_y_no_levanta(monkeypatch):
     """La respuesta de "sin resultados" viene sin navegación y sin total declarado.
 
@@ -2300,6 +2328,36 @@ def test_un_pdf_cifrado_se_entrega_igual_y_no_se_declara_escaneo():
         "una lista vacía diría que ninguna página trae texto, y eso no se midió"
     )
     assert doc.contenido == cifrado, "el archivo se entrega igual: la contraseña la tiene otro"
+
+
+def test_el_camino_completo_entrega_las_cuatro_cuentas_de_la_descripcion():
+    """Cuatro campos se podían anular DENTRO de `documento` y la suite seguía verde.
+
+    Encontrado con testing de mutación: se comprobaban sobre `_describir_pdf`, o sea sobre la
+    función que los calcula, y nadie sobre la respuesta que llega. Entre las dos hay un paso, y
+    ahí se podían perder los cuatro sin que nada lo dijera.
+
+    Cero y nulo dicen cosas distintas en los cuatro: cero es "se contó y no hay", nulo es "no se
+    pudo contar". Un nulo colado se lee como archivo que no se dejó describir.
+    """
+    mezcla = _pdf_paginas([True, True], cajas=["0 0 200 200", "0 0 400 400"])
+    c, pedidas = _cliente_de_documentos(
+        httpx.Response(200, content=mezcla, headers={"content-type": "application/pdf"})
+    )
+
+    doc = c.documento("docuN.php", "ref-123")
+
+    # La petición también: el método y el `Referer` tampoco los miraba nadie. Los documentos se
+    # piden con GET y la referencia va en la consulta; con POST la plataforma recibe otra cosa,
+    # y sin `Referer` la respuesta deja de ser el archivo.
+    assert pedidas[-1].method == "GET"
+    assert pedidas[-1].url.params["dtaDoc"] == "ref-123"
+    assert pedidas[-1].headers["Referer"].endswith("/consultaUnificada.php")
+
+    assert doc.paginas_ilegibles == 0, "las dos se abrieron: cero contadas, no 'no se contaron'"
+    assert doc.rangos_omitidos == 0
+    assert doc.marcadores_omitidos == 0
+    assert doc.paginas_de_otro_tamano == 1, "la segunda mide el doble que la primera"
 
 
 def test_los_marcadores_traen_su_pagina_contando_desde_uno():

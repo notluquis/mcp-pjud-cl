@@ -26,6 +26,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   referencia opaca como ruta.
 - El panel de anexos cortaba la lectura en la primera fila corta si alguien cambiaba un
   `continue` por un `break`, y las tres columnas propias de suprema se podían anular.
+- Las cuatro cuentas de la descripción del PDF se comprobaban sobre la función que las
+  calcula y no sobre la respuesta, así que entre las dos se podían perder las cuatro.
+- `obtener_actuaciones_receptor` podía perder el tribunal camino a la búsqueda: el mismo rol
+  existe en varios juzgados, así que la respuesta habría sido la causa de otro.
 
 ### Agregado
 

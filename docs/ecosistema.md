@@ -163,8 +163,11 @@ consultas no significaban nada. Queda anotado para que nadie lo repita creyendo 
 
 ## Qué se toma de cada una
 
-Lo honesto primero: **en superficie estamos muy atrás.** Una competencia contra ocho, sin
-seguimiento, sin alertas, sin documentos, sin calendario. Eso no se disimula, se anota.
+Lo honesto primero, y con la fecha a la vista: cuando esta hoja se escribió, **en superficie
+estábamos muy atrás**, con una competencia contra ocho y sin documentos ni calendario. Parte de
+esa brecha se cerró (se busca en seis competencias, el detalle se lee en cinco, y los
+documentos se entregan) y parte sigue abierta a propósito: sin seguimiento y sin alertas, porque las dos
+exigen persistir datos de terceros. Eso no se disimula, se anota.
 
 Lo que sí se puede sostener, y hay que sostenerlo con evidencia y no con adjetivos:
 
@@ -180,12 +183,12 @@ Lo que sí se puede sostener, y hay que sostenerlo con evidencia y no con adjeti
 Y lo que hay que copiar sin orgullo, en este orden, porque marca el piso de lo que un abogado
 espera:
 
-1. **Litigantes, escritos y exhortos** del detalle de causa. `webscrapthings` los cubre desde
-   2025 y son una pestaña más de la misma respuesta que ya se pide.
+1. ~~**Litigantes, escritos y exhortos** del detalle de causa.~~ **Hecho**: los tres se leen de
+   la misma respuesta que ya se pedía, y con ellos el resto de los paneles del detalle.
 2. **Programación de Sala**, el "¿cuándo me ven?". Ojo: los campos que se listaban acá se
    midieron y no existen, así que esto no es copiar, es investigar de nuevo.
-3. **Más competencias.** Ocho contra una es la brecha más grande, y cobranza sigue siendo la
-   primera por tener actuaciones de ministro de fe.
+3. ~~**Más competencias.**~~ **Hecho**, hasta donde la plataforma deja: se busca en seis competencias,
+   el detalle se lee en cinco, y familia queda fuera porque se reserva a Clave Única.
 4. **Detección de cambios**, que ya está más abajo sin versión asignada. Es lo que vende
    CausAlerta y lo que exige resolver antes la pregunta de retención de datos.
 
@@ -198,7 +201,7 @@ re-descubrirlos.
 ### Los paneles del detalle que ya llegan y se tiran
 
 El detalle de causa devuelve **una sola respuesta** que trae todos estos paneles. Cubrirlos no
-cuesta ni una petición más, y por eso fueron lo primero. Quedan los escritos.
+cuesta ni una petición más, y por eso fueron lo primero. Están todos cubiertos.
 
 Conviene no confundirlos con los modales de la sección siguiente: aquéllos **sí** cuestan una
 petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
@@ -206,7 +209,7 @@ petición cada uno, con su intervalo. Lo gratis es sólo lo de esta tabla.
 | Panel | Columnas exactas |
 |---|---|
 | `litigantesCiv` | `Participante`, `Rut`, `Persona`, `Nombre o Razón Social`. **Cubierto** |
-| `escritosCiv` | `Doc.`, `Anexo`, `Fecha de Ingreso`, `Tipo Escrito`, `Solicitante` |
+| `escritosCiv` | `Doc.`, `Anexo`, `Fecha de Ingreso`, `Tipo Escrito`, `Solicitante`. **Cubierto** |
 | `notificacionesCiv` | `ROL`, `Est. Notif.`, `Tipo Notif.`, `Fecha Trámite`, `Tipo Part.`, `Nombre`, `Trámite`, `Obs. Fallida`. **Cubierto** |
 | `exhortosCiv` | `Rol Origen`, `Tipo Exhorto`, `Rol Destino`, `Fecha Ordena Exhorto`, `Fecha Ingreso Exhorto`, `Tribunal Destino`, `Estado Exhorto`. **Cubierto** |
 | `piezasExhortoCiv` | `Folio`, `Doc.`, `Cuaderno`, `Anexo`, `Etapa`, `Támite`, `Desc. Támite`, `Fec. Támite`, `Foja`. **Cubierto** |
@@ -227,21 +230,24 @@ Tres advertencias que sólo se ven mirando la respuesta:
 
 Estado de la evidencia: los dos del exhorto están verificados con datos reales. C-1156-2026
 despacha E-875-2026 al 1º Juzgado Civil de Chillán, estado `Generado`, y E-468-2026 trae las
-seis piezas que su tribunal de origen despachó. De `escritosCiv` se conoce la estructura, pero
-**las causas de la muestra lo traen vacío**: no hay fila real que sirva de fixture todavía.
+seis piezas que su tribunal de origen despachó. `escritosCiv` tardó en tener fixture porque las
+causas de la primera muestra lo traían vacío, y resultó ser otra cosa de la que esta hoja
+suponía: no son los escritos presentados sino la **cola de lo que espera proveído**, así que una
+causa vieja lo trae vacío con escritos de sobra en su Historia.
 
-### Modales de la Oficina Judicial Virtual sin usar
+### Modales de la Oficina Judicial Virtual: qué se usa y qué no
 
-Extraídos de `consultaUnificada.php`, ninguno ejecutado:
+Extraídos de `consultaUnificada.php`. La lista nació entera como pendiente y hoy la mitad se
+pide de verdad, así que lo que vale es la columna de la derecha:
 
-| Ruta | Qué daría |
+| Ruta | Estado |
 |---|---|
-| `modal/detalleExhortos.php` | El exhorto visto desde el tribunal exhortado |
-| `modal/causaOrigenCivil.php` | La causa de origen cuando ésta viene de otra |
-| `modal/geoReferenciaCivil.php` | Las coordenadas de la actuación, no sólo si existen |
-| `modal/anexoCausaCivil.php` | Documentos adjuntos de la causa |
-| `modal/anexoCausaSolicitudCivil.php` y `anexoCausaSolEscritoCivil.php` | Adjuntos de solicitudes y escritos |
-| `modal/anexoCausaSolicitudCivilSII.php` | Adjuntos de solicitudes del Servicio de Impuestos Internos |
+| `modal/geoReferenciaCivil.php` | **En uso** por `obtener_georreferencia`, con su ruta propia en cada competencia |
+| `modal/anexoCausaSolicitudCivil.php` y `anexoCausaSolEscritoCivil.php` | **En uso** por `obtener_anexos_escrito` |
+| `modal/anexoCausaCivil.php` | **Medido y no ofrecido**: su referencia cuelga de la cabecera y no de una fila, así que nadie podría conseguir el parámetro |
+| `modal/anexoCausaSolicitudCivilSII.php` | Sin medir. Ninguna de las causas abiertas lo ofrece |
+| `modal/detalleExhortos.php` | Sin ejecutar. El exhorto se lee del panel del detalle, que no cuesta una petición aparte; esto daría verlo desde el tribunal exhortado |
+| `modal/causaOrigenCivil.php` | Sin ejecutar, y en suprema el dato ya llega en el panel `causaOrigenSup` |
 
 ### Programación de Sala
 
@@ -406,9 +412,11 @@ tarde o temprano, y tener la respuesta escrita evita discutirla de nuevo cada ve
 
 ### Competencias
 
-Ocho contra una es la brecha más grande. Cobranza sigue primera por tener actuaciones de
-ministro de fe; de ella ya se sondeó que el panel es `historiaCob`, que agrega una columna
-`Estado Firma`, que no trae `Foja`, y que existe un panel `diligenciaCob`.
+Era la brecha más grande de esta hoja cuando este servidor cubría sólo civil, y se cerró: hoy
+busca en seis competencias y abre el detalle en cinco. Cobranza fue la primera por tener
+actuaciones de ministro de fe, y de ese sondeo salió lo que hoy está mapeado: el panel
+`historiaCob`, su columna `Estado Firma`, que no trae `Foja`, y el panel `diligenciaCob`, que
+resultó ser el que esconde las diligencias de embargo sin fecha.
 
 ## El diseño de su documentación, y qué se copió
 

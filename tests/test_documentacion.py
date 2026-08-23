@@ -442,7 +442,7 @@ def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
         # Normalizado: "en las cinco competencias\n  con detalle mapeado" viene partido, y el
         # discriminador cae justo del otro lado del salto de línea.
         texto = " ".join(crudo.split())
-        for m in re.finditer(r"(?:en|de) las (\w+) competencias", texto):
+        for m in re.finditer(r"(?:en|de)(?: las)? (\w+) competencias", texto):
             escrito = m.group(1).lower()
             if escrito not in EN_LETRAS.values():
                 continue
@@ -459,6 +459,17 @@ def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
                 malas.append(
                     f"{f.relative_to(RAIZ).as_posix()}: dice {escrito!r} donde va {toca!r}"
                 )
+    # Y la frase que se repite en tres páginas para decir la otra mitad. Va aparte porque no
+    # lleva la palabra "competencias" detrás del número, así que el barrido de arriba no la ve.
+    for f in PROSA:
+        texto = " ".join(_sin_lo_ya_publicado(f).split())
+        for m in re.finditer(r"el detalle se lee en (\w+)", texto):
+            if m.group(1).lower() in EN_LETRAS.values() and m.group(1).lower() != con_detalle:
+                malas.append(
+                    f"{f.relative_to(RAIZ).as_posix()}: el detalle se lee en {m.group(1)!r} y "
+                    f"son {con_detalle!r}"
+                )
+
     assert not malas, "cuentas de competencias que el código contradice: " + "; ".join(malas)
 
 

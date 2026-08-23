@@ -779,6 +779,26 @@ def _archivo_patologico(paginas: int, marcadores: int) -> bytes:
     return _con_marcadores(base, [("T" * 300 + f" {i}", 0, 0) for i in range(marcadores)])
 
 
+def test_el_sobre_distingue_digital_de_mixto_y_cuenta_bien_lo_que_falta():
+    """Tres frases del sobre que nadie comparaba, encontradas con testing de mutación.
+
+    El límite entre "digital" y "MIXTO" es una desigualdad estricta: con `<=`, un PDF cuyas
+    páginas traen todas texto se anunciaría como mixto, o sea se le diría a quien lo lea que
+    parte del documento son imágenes que no puede citar. Y la resta que dice cuántas faltan
+    puede sumar en vez de restar, y ahí el número sale mayor que el total de páginas.
+    """
+    digital = _sobre_de(_pdf_paginas([True, True, True]))
+    assert "es un PDF digital" in digital
+    assert "MIXTO" not in digital, "todas traen texto: llamarlo mixto inventa páginas escaneadas"
+
+    mixto = _sobre_de(_pdf_paginas([True, False, False]))
+    assert "Es MIXTO: 1 de 3 páginas traen texto y las otras 2 son imágenes" in mixto, (
+        f"la cuenta de las que faltan no es la resta: {mixto}"
+    )
+
+    assert "3 página(s)" in digital, f"el total de páginas no llegó al sobre: {digital}"
+
+
 def test_el_sobre_del_documento_no_crece_con_el_archivo():
     """Todo el punto de los tramos y de los topes es que el índice sea de tamaño CONSTANTE.
 

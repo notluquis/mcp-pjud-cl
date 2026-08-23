@@ -32,6 +32,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   existe en varios juzgados, así que la respuesta habría sido la causa de otro.
 - Del formulario de búsqueda sólo se comprobaban los nombres de campo: el rol, el año y el
   tribunal podían viajar en nulo, y la plataforma responde eso sin coincidencias.
+- El sobre del documento podía llamar MIXTO a un PDF cuyas páginas traen todas texto, y decir
+  que faltan más páginas que las que tiene.
 
 ### Agregado
 

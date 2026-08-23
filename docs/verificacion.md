@@ -400,15 +400,34 @@ si la causa ES un exhorto, no de cuál exhorto sea.
 | `civil/documentos/docCertificadoDemanda.php` | `dtaCert` | Certificado de envío de la demanda |
 | `civil/documentos/docCertificadoEscrito.php` | `dtaCert` | Certificado de envío de un escrito |
 
-Mapeadas leyendo la respuesta guardada de C-1156-2026. De las seis, **sólo `docuN.php` se
-ejecutó** (folio 9 de esa causa, 975.006 bytes, un escaneo de una página); las otras cinco
-siguen sin ejecutarse, así que vale la
-regla de siempre: se mide antes de exponerla.
+Mapeadas leyendo la respuesta guardada de C-1156-2026, y ejecutadas después: `docuN.php` el 20
+de agosto de 2026 (folio 9 de esa causa, 975.006 bytes, un escaneo de una página) y `docuS.php`
+el 23.
 
 Y no son sólo las de civil. `obtener_documento` acepta la ruta que la actuación entrega, así
 que la tabla que decide qué es una ruta válida cubre las cinco competencias con detalle
-mapeado. Todas salen del `action` de un formulario de la respuesta, y **ninguna de las
-veintisiete se ha ejecutado salvo `docuN.php`**:
+mapeado. Todas salen del `action` de un formulario de la respuesta, y **siete de las veintisiete
+se han pedido de verdad**:
+
+| Ruta ejecutada | Competencia | Medido |
+|---|---|---|
+| `docuN.php` | civil | 975.006 bytes, 1 página, escaneo (20-08-2026); y otro folio de 85.542 bytes con 3 páginas y capa de texto |
+| `docuS.php` | civil | 89.974 bytes, 1 página, con capa de texto |
+| `docuCobranza.php` | cobranza | 117.803 bytes, 2 páginas |
+| `docReformadoLaboral.php` | laboral | 111.725 bytes, 6 páginas |
+| `docReformadoEscritoLaboral.php` | laboral | 15.948 bytes, 1 página |
+| `docCausaApelaciones.php` | apelaciones | 94.084 bytes, 1 página |
+| `docCausaSuprema.php` | suprema | 377.949 bytes, 1 página |
+
+Las seis salvo el primer folio de civil traen capa de texto, o sea son documentos digitales y no
+escaneos.
+
+**Las veinte que faltan no son inalcanzables por la ruta sino por la fila.** Hacen falta causas
+que ofrezcan un certificado de envío, un oficio, una liquidación o un anexo: la ruta está
+declarada y ninguna actuación de las causas conocidas la entrega. El ebook completo se dejó
+fuera a propósito, porque es el expediente entero y no agrega nada que las demás no digan.
+
+La lista de las veintisiete:
 
 | Competencia | Rutas |
 |---|---|

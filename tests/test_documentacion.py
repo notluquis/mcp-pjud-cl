@@ -873,6 +873,16 @@ def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
         "no la acepta"
     )
 
+    # La tabla de lo medido tiene que decir exactamente lo mismo que la constante. Esto NO
+    # comprueba que la medición ocurrió, que no es comprobable desde acá: obliga a que declararla
+    # cueste editar las dos, en vez de que una diga siete y la otra ocho.
+    tabla = pagina.split("| Ruta ejecutada | Competencia | Medido |")[1].split("\n\n")[0]
+    publicadas = set(re.findall(r"^\| `([\w.]+)` \|", tabla, re.M))
+    assert publicadas == DOCUMENTOS_EJECUTADAS, (
+        f"la tabla de rutas ejecutadas publica {sorted(publicadas)} y el código declara "
+        f"{sorted(DOCUMENTOS_EJECUTADAS)}"
+    )
+
 
 def test_los_identificadores_de_buscador_medidos_son_los_que_la_pagina_publica():
     """Los tres números están escritos a mano en la tabla de los diez buscadores.

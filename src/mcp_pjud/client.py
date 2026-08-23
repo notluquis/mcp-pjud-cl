@@ -363,9 +363,23 @@ ANEXOS_MEDIDOS_SIN_EXPONER: dict[str, str] = {
 #: nunca ejecutado y en la de lo medido, con la suite entera verde porque ningún guardia miraba
 #: esa afirmación.
 #:
-#: Medida el 20 de agosto de 2026: folio 9 de C-1156-2026, 975.006 bytes, una página, sin capa
-#: de texto.
-DOCUMENTOS_EJECUTADAS: frozenset[str] = frozenset({"docuN.php"})
+#: Medidas el 20 y el 23 de agosto de 2026, una por competencia y por ruta alcanzable desde una
+#: causa conocida. Las siete respondieron un PDF con capa de texto, entre 15.948 y 377.949 bytes.
+#:
+#: Las veinte que faltan no son inalcanzables por la ruta sino por la fila: hacen falta causas
+#: que ofrezcan un certificado de envío, un oficio, una liquidación o un anexo. El ebook completo
+#: se dejó fuera a propósito: es el expediente entero y no agrega nada que las demás no digan.
+DOCUMENTOS_EJECUTADAS: frozenset[str] = frozenset(
+    {
+        "docuN.php",
+        "docuS.php",
+        "docuCobranza.php",
+        "docReformadoLaboral.php",
+        "docReformadoEscritoLaboral.php",
+        "docCausaApelaciones.php",
+        "docCausaSuprema.php",
+    }
+)
 
 DOCUMENTOS: dict[str, dict[str, str]] = {
     "civil": {

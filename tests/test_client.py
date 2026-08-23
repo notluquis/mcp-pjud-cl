@@ -390,6 +390,26 @@ def test_sesion_sin_prefijo_derivable_se_detiene(monkeypatch):
         c.abrir_sesion()
 
 
+def test_media_sesion_se_detiene_igual_que_ninguna(monkeypatch):
+    """Con el prefijo y sin el token, o al revés, la sesión no sirve y hay que decirlo ahí.
+
+    Encontrado con testing de mutación: la condición se podía cambiar por una que sólo levanta
+    cuando faltan LOS DOS. Media sesión no falla al abrirse: falla después, en la consulta, y
+    la plataforma responde un listado sin filas, que se lee como que la causa no existe.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    solo_adir = "<html>ADIR_1234 y nada más</html>"
+    solo_token = "<html>token: '" + "0" * 32 + "'</html>"
+
+    for pagina, cual in ((solo_adir, "sin token"), (solo_token, "sin prefijo")):
+        c = _cliente(httpx.Response(200, text=pagina))
+        with pytest.raises(PjudBloqueado, match="prefijo"):
+            c.abrir_sesion()
+        assert (c._adir, c._token) == (None, None), (
+            f"la sesión quedó a medias en vez de no abrirse: {cual}"
+        )
+
+
 def test_competencia_que_no_existe_se_rechaza():
     c = PjudClient("test@example.cl")
     with pytest.raises(ValueError, match="no existe"):

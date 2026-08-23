@@ -34,6 +34,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   tribunal podían viajar en nulo, y la plataforma responde eso sin coincidencias.
 - El sobre del documento podía llamar MIXTO a un PDF cuyas páginas traen todas texto, y decir
   que faltan más páginas que las que tiene.
+- Una georreferencia con latitud y sin longitud, o al revés, se entregaba como medida: es un
+  punto en un meridiano entero. Ahora levanta igual que si faltaran las dos.
+- Media sesión, con prefijo y sin token o al revés, se daba por abierta. No falla ahí: falla en
+  la consulta siguiente, que responde un listado sin filas.
+- De las piezas de un exhorto sólo se comprobaba la que NO trae documento, así que la celda se
+  podía leer con un selector que no calza nunca y las seis salían sin nada.
 
 ### Agregado
 

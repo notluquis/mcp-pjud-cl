@@ -1100,6 +1100,9 @@ def test_las_piezas_traen_la_tramitación_que_el_tribunal_de_origen_despachó():
     assert mandamiento.foja == "1"
     assert mandamiento.documento_ruta == "docuS.php"
     assert mandamiento.documento_referencia == "referencia-ficticia-031"
+    # Y el otro lado del mismo dato: sólo se comprobaba el FALSO de la pieza sin documento, así
+    # que la celda se podía leer con un selector que no calza nunca y las seis salían sin nada.
+    assert mandamiento.tiene_documento is True
 
     # Una de las seis no trae documento: la celda es un icono `fa-ban`, sin formulario ni
     # enlace. Decir que sí lo trae y no cuál es la mitad inútil del dato.
@@ -2149,6 +2152,21 @@ def test_una_actuacion_sin_georreferencia_se_distingue_de_no_haber_preguntado():
     assert g.existe is False
     assert g.latitud is None
     assert g.fecha_dispositivo is None
+
+
+def test_media_coordenada_levanta_igual_que_ninguna():
+    """Con una sola de las dos, la ubicación no existe: es un punto en un meridiano entero.
+
+    Encontrado con testing de mutación: la condición se podía cambiar de `o` a `y`, y entonces
+    sólo levantaba cuando faltaban LAS DOS. Con latitud y sin longitud, la respuesta traía una
+    georreferencia que se lee como medida y apunta a cualquier parte.
+    """
+    for campo in ("longitud", "latitud"):
+        a_medias = re.sub(rf'<input[^>]*name="{campo}"[^>]*>', "", GEO, count=1)
+        assert a_medias != GEO, f"la fixture ya no trae el campo de {campo}"
+
+        with pytest.raises(EstructuraInesperada, match="latitud y"):
+            parse_georreferencia(a_medias)
 
 
 def test_un_panel_con_coordenadas_y_sin_fecha_levanta():

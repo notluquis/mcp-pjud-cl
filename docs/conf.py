@@ -225,6 +225,31 @@ def _generar_tablas(app):
         encoding="utf-8",
     )
 
+    # El estado de verificación sale de un archivo de datos y no de la prosa. Lo que se gana
+    # no es la tabla: es que declarar algo como no cubierto OBLIGUE a escribir por qué, y que
+    # eso lo comprueben los guardias en vez de la buena voluntad de quien edita.
+    import yaml
+
+    estado = yaml.safe_load((destino.parent / "estado-de-verificacion.yml").read_text("utf-8"))
+    for familia, titulo in (("buscadores", "Buscador"), ("competencias", "Competencia")):
+        filas = []
+        for e in estado[familia]:
+            dicho = {
+                "expuesto": "**Expuesto**",
+                "medido-no-expuesto": "**Medido y no expuesto**",
+                "sin-medir": "**Sin medir**",
+                "fuera-de-alcance": "**Fuera de alcance**",
+            }[e["estado"]]
+            if e.get("fecha"):
+                dicho += f", {e['fecha']}"
+            detalle = " ".join(x for x in (e.get("evidencia"), e.get("razon")) if x)
+            ident = f" `id_buscador` {e['id']}." if e.get("id") else ""
+            filas.append(f"| `{e['nombre']}` | {dicho}.{ident} {detalle} |")
+        (destino / f"estado-{familia}.md").write_text(
+            f"| {titulo} | Estado |\n|---|---|\n" + "\n".join(filas) + "\n",
+            encoding="utf-8",
+        )
+
     # Las rutas de documento se escribían a mano y ya se quedaron cortas dos veces: la página
     # decía seis en civil cuando eran siete, y nombraba doce de veinticinco cuando el cliente
     # aceptaba más. La tabla sale de `DOCUMENTOS`, que es lo que decide qué se puede pedir.

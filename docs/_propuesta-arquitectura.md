@@ -668,6 +668,13 @@ por qué**, validado en CI. Es la regla 4 de `AGENTS.md` llevada a la documentac
 diferencia entre esta página y la wiki de juriscraper, congelada desde 2022. Se propone como
 segundo paso, después del corte, porque su valor depende de que la página exista primero.
 
+**Ejecutado el 23 de agosto de 2026**, en `docs/estado-de-verificacion.yml`: el estado de los
+diez buscadores, de las seis competencias buscables y de familia, que queda fuera, sale de ahí, `conf.py` genera las dos tablas y
+`verificacion.md` las incluye. Lo que la propuesta pedía y ahora se cumple es que un estado
+distinto de `expuesto` obligue a escribir `razon`, comprobado en CI, y que el archivo no pueda
+declarar expuesto lo que el cliente rechaza: los guardias lo comparan contra `MODULOS`,
+`COMPETENCIAS`, `BUSCADORES` e `IDENTIFICADORES_MEDIDOS`, en las dos direcciones.
+
 ### 5.4 Una verificación nueva que hoy no existe y cuesta poco
 
 Medido: hay 51 bloques de código cercados en toda la prosa. Uno solo es `python` y ninguno trae

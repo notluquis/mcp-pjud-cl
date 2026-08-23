@@ -1147,18 +1147,54 @@ def test_la_ruta_ejecutada_no_figura_entre_las_que_nunca_se_pidieron():
     )
 
 
-def test_los_identificadores_de_buscador_medidos_son_los_que_la_pagina_publica():
-    """Los tres números están escritos a mano en la tabla de los diez buscadores.
+def test_el_estado_declarado_es_el_que_el_codigo_hace():
+    """El archivo de estado no puede declarar expuesto lo que el cliente rechaza, ni al revés.
 
-    La constante existía desde la primera medición y no la consumía nadie: código muerto de un
-    lado y prosa sin fuente del otro, que es la forma más barata de que las dos se separen.
+    Es la mitad que hace útil tener los datos aparte de la prosa. La otra mitad es que un
+    estado distinto de `expuesto` obliga a escribir `razon`: escrito a mano, "no cubierto" no
+    cuesta nada y la razón se pierde, que es como una página de estado se vuelve una lista de
+    huecos sin explicación.
     """
-    tabla = _texto(RAIZ / "docs" / "verificacion.md").split("### Los diez buscadores")[1]
-    tabla = tabla.split("\n### ")[0]
-    for buscador, identificador in IDENTIFICADORES_MEDIDOS.items():
-        assert f"`id_buscador` {identificador}" in tabla, (
-            f"la tabla no publica el identificador {identificador} de {buscador!r}, que es el "
-            "que se midió"
+    estado = yaml.safe_load(_texto(RAIZ / "docs" / "estado-de-verificacion.yml"))
+
+    for familia in ("buscadores", "competencias"):
+        for e in estado[familia]:
+            if e["estado"] != "expuesto":
+                assert e.get("razon"), (
+                    f"{e['nombre']!r} figura como {e['estado']!r} y no dice por qué"
+                )
+
+    buscadores = {e["nombre"]: e for e in estado["buscadores"]}
+    assert {n for n, e in buscadores.items() if e["estado"] == "expuesto"} == set(BUSCADORES), (
+        "el archivo de estado y `BUSCADORES` no ofrecen los mismos buscadores"
+    )
+    for nombre, identificador in IDENTIFICADORES_MEDIDOS.items():
+        assert buscadores[nombre].get("id") == identificador, (
+            f"el identificador de {nombre!r} no es el que se midió: {identificador}"
+        )
+
+    competencias = {e["nombre"]: e for e in estado["competencias"]}
+    con_detalle = {n for n in MODULOS if COMPETENCIAS[n].historia is not None}
+    assert {n for n, e in competencias.items() if e["estado"] == "expuesto"} == con_detalle, (
+        "el archivo de estado y `COMPETENCIAS` no leen el detalle de las mismas competencias"
+    )
+    # Penal se busca y no se abre: es la distinción que la tabla existe para no perder.
+    assert set(MODULOS) - con_detalle == {
+        n for n, e in competencias.items() if e["estado"] == "medido-no-expuesto"
+    }
+
+
+def test_la_pagina_de_verificacion_publica_las_dos_tablas_de_estado():
+    """Los datos sirven si alguien los ve: la página tiene que incluir las tablas generadas.
+
+    Sin esto, el archivo de estado y sus guardias podrían quedar perfectos y la página
+    publicada seguir mostrando una tabla vieja escrita a mano, que es exactamente el problema
+    que este cambio vino a cerrar.
+    """
+    pagina = _texto(RAIZ / "docs" / "verificacion.md")
+    for familia in ("buscadores", "competencias"):
+        assert f"_generado/estado-{familia}.md" in pagina, (
+            f"la página dejó de incluir la tabla de estado de {familia}"
         )
 
 

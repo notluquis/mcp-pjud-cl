@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.13.0] - 2026-08-23
+
 ### Agregado
 
 - `buscar_jurisprudencia` acepta cuatro buscadores más: **Civiles**, **Cobranza**, **Familia**
@@ -435,7 +437,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.12.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.0
 [0.12.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.12.0
 [0.11.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.11.0
 [0.10.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.10.0

@@ -50,51 +50,50 @@ def _historia(html_detalle: str, competencia: str):
     return parse_historia(html_detalle, competencia=competencia)
 
 
-#: Con qué fixture y con qué función se lee cada panel, del `id` del panel a la terna.
+#: Con qué fixture y con qué función se lee cada panel, del `id` del panel al par.
 #:
-#: Esto NO declara qué paneles existen: `test_todo_panel_declarado_se_deforma` compara las
-#: claves contra los `Panel` de `parser.COMPETENCIAS` y se pone rojo si falta alguno.
+#: Esto NO declara qué paneles existen ni de qué competencia son: las dos cosas salen de
+#: `parser.COMPETENCIAS`, y `test_todo_panel_declarado_se_deforma` compara las claves contra
+#: ella. Escribir la competencia acá sería el mismo dato repetido una columna más allá, y con
+#: los cinco paneles de litigantes, que tienen las mismas cuatro columnas, una equivocada podía
+#: no notarse.
 #:
 #: La fixture elegida es una que trae FILAS, y no cualquiera que traiga el panel. Varios
 #: paneles vienen vacíos en el detalle completo y con filas en un fragmento que el sitio sirve
 #: aparte (`escritos_civil`, `diligencias_laboral`), y con el panel vacío las cuatro
 #: deformaciones que tocan celdas alcanzan sólo la fila de encabezado: la prueba se debilita
 #: sin que se note. El control de más abajo exige esa fila.
-LECTURAS: dict[str, tuple[str, str, Callable[[str, str], object]]] = {
-    "movimientosSup": ("detalle_suprema", "suprema", _historia),
-    "litigantesSup": ("detalle_suprema", "suprema", parse_litigantes),
-    "agregadosSup": ("detalle_suprema", "suprema", parse_causas_agregadas),
-    "movimientosApe": ("detalle_apelaciones", "apelaciones", _historia),
-    "litigantesApe": ("detalle_apelaciones", "apelaciones", parse_litigantes),
-    "historiaCiv": ("detalle_causa_civil", "civil", _historia),
-    "litigantesCiv": ("detalle_causa_civil", "civil", parse_litigantes),
-    "notificacionesCiv": ("detalle_civil_notificaciones", "civil", parse_notificaciones),
+LECTURAS: dict[str, tuple[str, Callable[[str, str], object]]] = {
+    "movimientosSup": ("detalle_suprema", _historia),
+    "litigantesSup": ("detalle_suprema", parse_litigantes),
+    "agregadosSup": ("detalle_suprema", parse_causas_agregadas),
+    "movimientosApe": ("detalle_apelaciones", _historia),
+    "litigantesApe": ("detalle_apelaciones", parse_litigantes),
+    "historiaCiv": ("detalle_causa_civil", _historia),
+    "litigantesCiv": ("detalle_causa_civil", parse_litigantes),
+    "notificacionesCiv": ("detalle_civil_notificaciones", parse_notificaciones),
     # El panel viene vacío en las dos respuestas civiles del detalle guardado y con una fila en
     # las dos de `C-1156`, así que la fixture sale de ahí.
-    "exhortosCiv": ("c1156_principal", "civil", parse_exhortos),
+    "exhortosCiv": ("c1156_principal", parse_exhortos),
     # Nueve columnas, con `Cuaderno` al medio: es el mapa posicional más ancho después de
     # la Historia, y el único con encabezados que traen una errata del sitio.
-    "piezasExhortoCiv": ("detalle_causa_civil", "civil", parse_piezas_exhorto),
-    "escritosCiv": ("escritos_civil", "civil", parse_escritos_pendientes),
-    "movimientoLab": ("detalle_laboral", "laboral", _historia),
-    "litigantesLab": ("detalle_laboral", "laboral", parse_litigantes),
-    "materiasLab": ("detalle_laboral", "laboral", parse_materias),
-    "liquidacionLab": ("detalle_laboral", "laboral", parse_liquidaciones),
-    "notificacionesLab": ("detalle_laboral", "laboral", parse_notificaciones),
-    "diligenciasLab": ("diligencias_laboral", "laboral", parse_diligencias),
-    "EscPendLab": ("detalle_laboral", "laboral", parse_escritos_pendientes),
-    "historiaCob": ("detalle_cobranza", "cobranza", _historia),
-    "litigantesCob": ("detalle_cobranza", "cobranza", parse_litigantes),
-    "liquidacionCob": ("detalle_cobranza", "cobranza", parse_liquidaciones),
-    "notificacionCob": ("detalle_cobranza", "cobranza", parse_notificaciones),
+    "piezasExhortoCiv": ("detalle_causa_civil", parse_piezas_exhorto),
+    "escritosCiv": ("escritos_civil", parse_escritos_pendientes),
+    "movimientoLab": ("detalle_laboral", _historia),
+    "litigantesLab": ("detalle_laboral", parse_litigantes),
+    "materiasLab": ("detalle_laboral", parse_materias),
+    "liquidacionLab": ("detalle_laboral", parse_liquidaciones),
+    "notificacionesLab": ("detalle_laboral", parse_notificaciones),
+    "diligenciasLab": ("diligencias_laboral", parse_diligencias),
+    "EscPendLab": ("detalle_laboral", parse_escritos_pendientes),
+    "historiaCob": ("detalle_cobranza", _historia),
+    "litigantesCob": ("detalle_cobranza", parse_litigantes),
+    "liquidacionCob": ("detalle_cobranza", parse_liquidaciones),
+    "notificacionCob": ("detalle_cobranza", parse_notificaciones),
     # Nueve columnas y una sola fila medida, o sea el panel donde una columna insertada tiene
     # más margen para pasar inadvertida: no hay una segunda fila que se vea distinta.
-    "diligenciaCob": ("detalle_cobranza", "cobranza", parse_diligencias),
+    "diligenciaCob": ("detalle_cobranza", parse_diligencias),
 }
-
-PANELES = [(panel, fixture, comp, leer) for panel, (fixture, comp, leer) in LECTURAS.items()]
-
-IDS = [f"{p}-{c}" for p, _, c, _ in PANELES]
 
 
 def _paneles_declarados() -> dict[str, str]:
@@ -116,6 +115,17 @@ def _paneles_declarados() -> dict[str, str]:
         for valor in spec
         if isinstance(valor, parser.Panel)
     }
+
+
+#: La competencia sale de acá y no de `LECTURAS`. El `""` de reserva es para que una entrada que
+#: sobrevivió a su panel no mate la recolección entera con un `KeyError`: así el guardia de
+#: cobertura alcanza a decir cuál sobra, que es la información que hace falta.
+PANELES = [
+    (panel, fixture, _paneles_declarados().get(panel, ""), leer)
+    for panel, (fixture, leer) in LECTURAS.items()
+]
+
+IDS = [f"{p}-{c}" for p, _, c, _ in PANELES]
 
 
 def _fixture(nombre: str) -> str:
@@ -147,9 +157,14 @@ def _reescribir(html_original: str, cambiar) -> str:
     aviso.
     """
     doc = L.fromstring(html_original)
+    # El punto de comparación es el original REESCRITO por lxml, no el archivo. `tostring`
+    # normaliza (orden de atributos, etiquetas que el sitio deja abiertas, espacios), así que
+    # comparar contra el texto de la fixture da distinto SIEMPRE, deforme o no: el guardia que
+    # sostiene todo lo demás sería justamente el que no puede fallar.
+    antes = L.tostring(L.fromstring(html_original), encoding="unicode")
     cambiar(doc)
     nuevo = L.tostring(doc, encoding="unicode")
-    assert nuevo != html_original, (
+    assert nuevo != antes, (
         "La deformación no cambió el HTML, así que este caso no prueba nada: lo que levante "
         "después no puede venir de ella."
     )
@@ -221,8 +236,9 @@ def test_la_fixture_sin_deformar_se_lee(panel, fixture, competencia, leer):
         assert filas, (
             f"El panel {panel!r} se lee de {fixture!r} y ahí viene sin filas. Las cuatro "
             "deformaciones de celdas alcanzarían sólo el encabezado, que prueba menos, y acá "
-            "no se notaría. Busca una fixture con filas o declara el panel en "
-            "`parser.SIN_FILAS_OBSERVADAS`."
+            "no se notaría. La salida es otra fixture que sí traiga filas, no anotar el panel "
+            "en `parser.SIN_FILAS_OBSERVADAS`: esa constante afirma que ninguna respuesta REAL "
+            "ha traído una fila, y eso se mide abriendo causas, no eligiendo fixture."
         )
 
 

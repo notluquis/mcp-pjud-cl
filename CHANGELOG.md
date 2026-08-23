@@ -31,6 +31,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   de columnas del sitio no corra el mapeo en silencio, entre ellos los cinco de litigantes. La
   lista de paneles ahora se deriva de `COMPETENCIAS` y un guardia se pone rojo si alguno queda
   sin cubrir.
+- Siete de las veintisiete rutas de documento se pidieron de verdad contra la plataforma, en las
+  cinco competencias, y antes era una. Las veinte que faltan esperan una causa que las ofrezca.
 
 ## [0.12.0] - 2026-08-22
 

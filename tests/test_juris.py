@@ -47,6 +47,59 @@ def test_desglosa_todas_las_coincidencias_por_condicion_de_publicacion():
     assert r.condiciones_de_publicacion["Anonimizadas"] == 20924
 
 
+def test_cada_campo_de_la_sentencia_sale_del_campo_solr_que_le_toca():
+    """Cinco campos se podían anular sin que la suite lo notara, encontrados con mutación.
+
+    `anonimizada` es el que más pesa: dice qué versión del fallo se entregó, y en falso permite
+    reproducir nombres de personas naturales que la versión anonimizada suprime. Los otros
+    cuatro son los que hacen útil una cita verificada: sin `url` no hay a dónde ir a mirarla, y
+    sin `resultado_recurso` la sentencia no dice si el recurso se acogió.
+    """
+    s = parse_sentencias(AMPLIA).sentencias[0]
+    assert s.rol == "34546-2025"
+    assert s.url == "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
+    assert s.resultado_recurso == "ACOGIDO RECURSO DE QUEJA (M)"
+    assert s.redactor == "Ministro no Identificado"
+    assert s.anonimizada is False, (
+        "el campo dice qué versión se entregó: en falso se pueden reproducir nombres que la "
+        "versión anonimizada suprime"
+    )
+
+
+def test_el_desglose_es_la_particion_entera_y_no_le_falta_el_ultimo_tramo():
+    """La suma es la prueba de que la partición está completa, y nadie la comprobaba.
+
+    Encontrado con testing de mutación: recortar el recorrido en un par dejaba fuera la última
+    condición y la suite seguía verde, porque los dos únicos valores comprobados estaban en el
+    medio. Con un tramo menos el desglose sigue pareciendo razonable y ya no suma.
+    """
+    r = parse_sentencias(AMPLIA)
+    assert sum(r.condiciones_de_publicacion.values()) == r.coincidencias
+    assert "Reservadas por motivos distintos a protección datos personales" in (
+        r.condiciones_de_publicacion
+    ), "el último tramo del desglose se cayó del recorrido"
+
+    # Una condición con UNA coincidencia es una condición, y la fixture de la cita trae
+    # exactamente eso: exigir más de una la borraría del desglose.
+    assert parse_sentencias(CITA).condiciones_de_publicacion == {
+        "Con interes jurisprudencial, no anonimizable": 1
+    }
+
+
+def test_una_condicion_en_cero_no_entra_al_desglose():
+    """Cero no es un tramo: es una categoría que el buscador declara y esta consulta no toca.
+
+    Publicarla haría leer un desglose con filas que no aportan, y en una respuesta que se usa
+    para decidir si falta algo, cada fila de más es ruido sobre el dato que importa.
+    """
+    datos = json.loads(AMPLIA)
+    datos["condition_pub_sf"]["counts"].extend(["Categoría que esta consulta no toca", 0])
+
+    condiciones = parse_sentencias(json.dumps(datos)).condiciones_de_publicacion
+    assert "Categoría que esta consulta no toca" not in condiciones
+    assert 0 not in condiciones.values()
+
+
 def test_una_cita_verificada_no_declara_ocultas():
     """El caso que importa: rol y año que existen, sin nada reservado detrás."""
     r = parse_sentencias(CITA)

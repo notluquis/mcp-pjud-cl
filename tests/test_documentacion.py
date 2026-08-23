@@ -2586,7 +2586,11 @@ def test_toda_version_publicada_tiene_su_seccion_en_la_hoja_de_ruta():
     assert len(menores) > 5, f"el barrido del registro encontró {menores}: dejó de ver versiones"
 
     hoja = _texto(RAIZ / "docs" / "roadmap.md")
-    titulos = re.findall(r"^#{2,4} (\d+\.\d+)[:a-z]", hoja, re.M)
+    # `\D` y no `[:a-z]`: lo que sigue al número puede ser dos puntos, una letra de hito
+    # (`0.7a`) o cualquier otra cosa, y exigir una forma de título convierte un cambio de
+    # redacción en un fallo que no dice nada. Lo que sí importa es que NO sea un dígito, o
+    # `0.10` se leería como `0.1`.
+    titulos = re.findall(r"^#{2,4} (\d+\.\d+)\D", hoja, re.M)
     faltan = sorted(menores - set(titulos) - VERSIONES_SIN_SECCION)
     assert not faltan, (
         f"estas versiones se publicaron y la hoja de ruta no las cuenta: {faltan}. O entra su "

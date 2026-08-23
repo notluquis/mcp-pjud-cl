@@ -449,6 +449,25 @@ def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
     assert not malas, "cuentas de competencias que el código contradice: " + "; ".join(malas)
 
 
+def test_la_directiva_avisa_donde_ocultas_viene_en_nulo():
+    """La directiva viaja en el protocolo y es lo que el modelo lee antes de responder.
+
+    Decía que `ocultas` en cero no prueba completitud, y no decía nada del **nulo**, que es lo
+    que llega en seis de los siete buscadores. Un modelo que lee nulo como cero afirma que una
+    búsqueda trajo todo lo que hay justo donde la plataforma no publica esa cuenta, y eso es la
+    afirmación de completitud sin fundamento que el proyecto entero existe para no hacer.
+    """
+    from mcp_pjud.server import DIRECTIVA
+
+    con_numero = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
+    assert "`ocultas` en NULO tampoco" in DIRECTIVA, (
+        "la directiva dejó de advertir que `ocultas` puede venir en nulo"
+    )
+    assert f"Sólo {', '.join(con_numero)} la trae con número." in DIRECTIVA, (
+        f"la directiva no nombra {con_numero} como los que traen `ocultas` con número"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

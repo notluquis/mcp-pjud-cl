@@ -70,6 +70,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   Son seis buscables y cinco con detalle desde la 0.4.0, y ahora un guardia barre esa frase.
 - Las rutas de anexo que faltan por medir eran once y la documentación decía doce, en dos
   frases de la misma página.
+- La directiva que viaja en el protocolo advertía sobre `ocultas` en cero y no sobre el nulo,
+  que es lo que llega en seis de los siete buscadores. Nulo no es cero: ahí no se puede saber.
 
 ## [0.12.0] - 2026-08-22
 

@@ -50,6 +50,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   comprobaba nadie, y sin ellas la plataforma responde otra cosa en vez de un error.
 - `obtener_detalle_causa` podía perder el tribunal camino a la búsqueda, igual que las
   actuaciones de receptor: la respuesta habría sido el detalle de la causa de otro juzgado.
+- El trámite de una notificación y el cuaderno de una liquidación se podían anular sin que
+  nada fallara: son lo que dice QUÉ se notificó y sobre qué cuaderno se liquidó.
+- El sobre del documento decía mal desde qué página no se enumeraron los tramos, y enumeraba
+  tramos también cuando todas las páginas traen texto.
 
 ### Agregado
 

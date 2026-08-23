@@ -716,6 +716,11 @@ def test_una_lista_de_tramos_cortada_dice_hasta_donde_llego_y_no_afirma_lo_demas
     assert f"la página {2 * MAXIMO_RANGOS - 1}" in texto, (
         f"no se dijo hasta qué página alcanzó la enumeración: {texto}"
     )
+    # Y el tramo que queda sin enumerar empieza en la SIGUIENTE y termina en la última. Un
+    # desfase acá manda a mirar una página que sí se enumeró, o deja una fuera del aviso.
+    assert f"de la {2 * MAXIMO_RANGOS} a la {paginas} NO se enumeró" in texto, (
+        f"el tramo no enumerado no empieza donde terminó la lista: {texto}"
+    )
     assert "NO significa que no traigan" in texto, (
         f"el sobre deja leer el corte como que el resto son imágenes: {texto}"
     )
@@ -790,6 +795,11 @@ def test_el_sobre_distingue_digital_de_mixto_y_cuenta_bien_lo_que_falta():
     digital = _sobre_de(_pdf_paginas([True, True, True]))
     assert "es un PDF digital" in digital
     assert "MIXTO" not in digital, "todas traen texto: llamarlo mixto inventa páginas escaneadas"
+    # Y no se enumeran los tramos: el veredicto ya dijo que son todas, así que repetir los
+    # números es ruido en el único bloque que se lee sin abrir el archivo.
+    assert "Traen texto las páginas" not in digital, (
+        f"el sobre enumera tramos cuando todas las páginas traen texto: {digital}"
+    )
 
     mixto = _sobre_de(_pdf_paginas([True, False, False]))
     assert "Es MIXTO: 1 de 3 páginas traen texto y las otras 2 son imágenes" in mixto, (

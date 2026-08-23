@@ -752,6 +752,9 @@ def test_las_notificaciones_de_civil_traen_el_rol_y_el_tipo_de_via():
     assert notificaciones[0].tipo == "mail"
     assert notificaciones[0].estado == "Realizada"
     assert notificaciones[0].tipo_parte.startswith("AB")
+    # El trámite es lo que se notificó, y no lo miraba nadie: se podía anular o leer de otra
+    # columna. Una notificación sin trámite dice cuándo se notificó y no qué.
+    assert notificaciones[0].tramite == "resolución"
 
 
 def test_laboral_no_publica_el_tipo_de_via():
@@ -771,6 +774,18 @@ def test_laboral_no_publica_el_tipo_de_via():
     assert any(" " in n.nombre for n in notificaciones), (
         "el nombre de la persona notificada lleva espacios; una sigla no"
     )
+
+
+def test_la_liquidacion_dice_de_que_cuaderno_es(monkeypatch):
+    """El cuaderno de una liquidación no lo miraba ninguna prueba.
+
+    Encontrado con testing de mutación: la clave con que se lee se podía anular y el campo
+    llegaba vacío. Es el mismo dato que en la Historia distingue el principal del apremio, y
+    acá dice sobre cuál de los dos se calculó lo que se debe.
+    """
+    liquidaciones = parse_liquidaciones(NOTIF_COBRANZA, "cobranza")
+    assert liquidaciones
+    assert {liq.cuaderno for liq in liquidaciones} == {"Principal"}
 
 
 def test_leer_las_notificaciones_con_el_mapa_de_otra_competencia_no_pasa_en_silencio():

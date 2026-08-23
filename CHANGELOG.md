@@ -30,6 +30,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Una página de PDF que no se dejaba leer hacía que el documento entero se informara como
+  ilegible. Ahora se cuenta aparte y el resto se describe igual.
+
 - Nueve afirmaciones de la documentación que el código contradecía, entre ellas dos
   contradicciones de una página consigo misma: la ruta de documento que estaba a la vez medida y
   nunca ejecutada, y el rechazo de penal explicado por falta de medición después de haberla

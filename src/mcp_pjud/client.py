@@ -24,7 +24,7 @@ from typing import TypeVar
 
 import httpx
 from pydantic import BaseModel, Field
-from pypdf import PageObject, PdfReader
+from pypdf import PdfReader
 
 from .parser import (
     BASE_SITIO,
@@ -547,6 +547,14 @@ class Documento(BaseModel):
         "menor y mayor que cero, el documento es MIXTO, y las páginas que faltan son imágenes "
         "cuyo contenido no se puede citar. NULO si el archivo no se pudo abrir.",
     )
+    paginas_ilegibles: int | None = Field(
+        default=None,
+        description="Cuántas páginas no se dejaron leer, uno por uno. NO se cuentan como sin "
+        "texto: que una página falle es un error de lectura, y decir que ahí hay una imagen "
+        "sería afirmar algo que nadie midió.\n\n"
+        "Mayor que cero significa que el resto del archivo SÍ se describió: una fuente rota en "
+        "la página cinco de doscientas no invalida las otras ciento noventa y nueve.",
+    )
     capa_de_texto: bool | None = Field(
         default=None,
         description="Si de ALGUNA página se pudo extraer texto. FALSO significa que ninguna "
@@ -625,6 +633,7 @@ class _DescripcionPdf:
 
     paginas: int | None = None
     paginas_con_texto: int | None = None
+    paginas_ilegibles: int | None = None
     problema_al_leer: str | None = None
     rangos_con_texto: list[str] | None = None
     rangos_hasta_pagina: int | None = None
@@ -646,7 +655,7 @@ def _tramos(numeros: list[int]) -> list[tuple[int, int]]:
     return juntos
 
 
-def _tamano_en_cm(pagina: PageObject) -> str | None:
+def _tamano_en_cm(pagina: object) -> str | None:
     """Cuánto mide la página, en centímetros y con coma decimal.
 
     El `MediaBox` viene en puntos, que son 1/72 de pulgada y no le dicen nada a nadie. Se
@@ -654,8 +663,16 @@ def _tamano_en_cm(pagina: PageObject) -> str | None:
     descripción entera del documento: es el dato menos importante de los que salen de acá.
     """
     try:
-        caja = pagina.mediabox
-        ancho, alto = float(caja.width) * 2.54 / 72, float(caja.height) * 2.54 / 72
+        # Sin anotar el parámetro como `PageObject`: lo único que se le pide es un `mediabox`
+        # con ancho y alto, y exigir el tipo entero obligaba a fabricar una página real para
+        # probar una caja mal declarada, que es el caso que importa.
+        caja = getattr(pagina, "mediabox", None)
+        if caja is None:
+            return None
+        # En valor absoluto: hay PDF con el sistema de coordenadas invertido, y una hoja que
+        # mide menos veintiuno por menos veintinueve centímetros no la entiende nadie.
+        ancho = abs(float(caja.width)) * 2.54 / 72
+        alto = abs(float(caja.height)) * 2.54 / 72
     except Exception:
         return None
     return f"{ancho:.1f} x {alto:.1f} cm".replace(".", ",")
@@ -716,11 +733,20 @@ def _leer_marcadores(lector: PdfReader) -> tuple[list[Marcador], int]:
     return listados, omitidos
 
 
-def _hojas(nodos: list[object]) -> Iterator[object]:
-    """Las entradas de un árbol de marcadores, sin las listas que las agrupan."""
+def _hojas(nodos: list[object], vistos: set[int] | None = None) -> Iterator[object]:
+    """Las entradas de un árbol de marcadores, sin las listas que las agrupan.
+
+    Lleva cuenta de las listas ya recorridas: un archivo con el índice circular haría que esto
+    se llame a sí mismo hasta agotar la pila. El recorrido de arriba corta por profundidad, y
+    éste no, porque su trabajo es contar lo que queda debajo del tope.
+    """
+    vistos = set() if vistos is None else vistos
+    if id(nodos) in vistos:
+        return
+    vistos.add(id(nodos))
     for nodo in nodos:
         if isinstance(nodo, list):
-            yield from _hojas(nodo)
+            yield from _hojas(nodo, vistos)
         else:
             yield nodo
 
@@ -758,10 +784,22 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # una sola página con texto declarara todo el archivo digital: quien leyera eso daría
         # por transcribible un documento del que la mitad son imágenes.
         con_texto: list[int] = []
+        ilegibles: list[int] = []
         tamanos: list[str | None] = []
         for numero, pagina in enumerate(lector.pages, start=1):
-            if pagina.extract_text().strip():
-                con_texto.append(numero)
+            # Por página y no por archivo: una fuente rota o un flujo mal formado en la página
+            # cinco de doscientas hacía que el documento entero se informara como ilegible, o
+            # sea un expediente que SÍ se lee salía como que no se pudo abrir.
+            #
+            # Y la página que falla NO se cuenta como sin texto: eso convertiría un error en la
+            # afirmación de que ahí hay una imagen, que es lo que nadie midió. Se cuenta aparte.
+            try:
+                tiene_texto = bool(pagina.extract_text().strip())
+            except Exception:
+                ilegibles.append(numero)
+            else:
+                if tiene_texto:
+                    con_texto.append(numero)
             tamanos.append(_tamano_en_cm(pagina))
     except Exception as e:
         return _DescripcionPdf(problema_al_leer=_por_que_no_se_abrio(lector, e))
@@ -787,9 +825,29 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         rangos_omitidos=omitidos,
         marcadores=marcadores,
         marcadores_omitidos=marcadores_omitidos,
+        paginas_ilegibles=len(ilegibles),
         tamano_primera_pagina=tamanos[0] if tamanos else None,
-        paginas_de_otro_tamano=sum(1 for t in tamanos[1:] if t != tamanos[0]),
+        # El `if tamanos` sobra para el intérprete, que nunca evalúa `tamanos[0]` con la lista
+        # vacía, y no sobra para quien lo lee: se ve como un `IndexError` esperando.
+        paginas_de_otro_tamano=(sum(1 for t in tamanos[1:] if t != tamanos[0]) if tamanos else 0),
     )
+
+
+def _hay_capa_de_texto(d: _DescripcionPdf) -> bool | None:
+    """Si el archivo trae texto que se pueda citar, con el nulo bien puesto.
+
+    Falso significa ESCANEO, o sea una afirmación sobre TODAS las páginas. No se puede hacer si
+    alguna no se dejó leer: ninguna de las leídas trajo texto, y de las otras no se sabe. Ahí el
+    nulo es la respuesta honesta, la misma que cuando el archivo no se abre.
+
+    Verdadero, en cambio, se sostiene con una sola página: se vio texto, y que otra haya fallado
+    no lo desmiente.
+    """
+    if d.paginas_con_texto is None:
+        return None
+    if d.paginas_con_texto == 0 and d.paginas_ilegibles:
+        return None
+    return d.paginas_con_texto > 0
 
 
 def _por_que_no_se_abrio(lector: PdfReader | None, e: Exception) -> str:
@@ -1634,7 +1692,8 @@ class PjudClient(Transporte):
             tamano_bytes=len(contenido),
             paginas=d.paginas,
             paginas_con_texto=d.paginas_con_texto,
-            capa_de_texto=None if d.paginas_con_texto is None else d.paginas_con_texto > 0,
+            paginas_ilegibles=d.paginas_ilegibles,
+            capa_de_texto=_hay_capa_de_texto(d),
             rangos_con_texto=d.rangos_con_texto,
             rangos_hasta_pagina=d.rangos_hasta_pagina,
             rangos_omitidos=d.rangos_omitidos,

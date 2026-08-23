@@ -690,6 +690,14 @@ Verificado en los dos sentidos: pasa hoy sobre los tres bloques, y renombrando
 `fecha_diligencia` en el modelo se pone en rojo en `docs/ejemplos.md:21` y `:120`. Cero
 dependencias nuevas.
 
+**Ejecutado el 23 de agosto de 2026**, en
+`test_los_ejemplos_json_no_ensenan_campos_que_el_modelo_no_tiene`. Con un cambio sobre lo que
+proponía este párrafo, y vale anotarlo porque es la diferencia entre un guardia y uno que no
+puede fallar: comparar contra la UNIÓN de los campos de todos los modelos no sirve. Renombrar
+`fecha_diligencia` en `Actuacion` la deja encontrada en otro modelo que también la publica, y el
+guardia sigue verde con el ejemplo enseñando un campo que esa actuación ya no trae. Se compara
+contra el modelo que más claves comparte con el ejemplo, y así el renombre sí se ve.
+
 ## 6. Qué se rompe al hacerlo
 
 Estado de partida, medido hoy: `uv run pytest tests/test_documentacion.py -q` recolecta **65

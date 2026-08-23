@@ -22,7 +22,9 @@ def raiz_del_repo() -> Path:
     ponga en rojo un guardia de documentación es justamente lo que se quiere ver.
     """
     raiz = Path(__file__).parents[1]
-    return raiz.parent if raiz.name == "mutants" else raiz
+    # Por lo que hay dentro y no por el nombre: un clon en un directorio llamado `mutants`
+    # haría subir un nivel de más y ahí no habría `docs/` tampoco.
+    return raiz if (raiz / "docs").is_dir() else raiz.parent
 
 
 #: Lo que mide la sentencia de trece páginas con la que se decidió separar el texto de la

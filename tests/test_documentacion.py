@@ -343,8 +343,10 @@ def test_las_cifras_sueltas_de_la_referencia_salen_del_codigo():
 
     ejecutadas = EN_LETRAS[len(DOCUMENTOS_EJECUTADAS)]
     civil, total = len(DOCUMENTOS["civil"]), sum(len(r) for r in DOCUMENTOS.values())
-    verificacion = _texto(RAIZ / "docs" / "verificacion.md")
-    assert f"**{ejecutadas} de las {EN_LETRAS[total]}\nse han pedido de verdad**" in verificacion, (
+    # Normalizado: la frase va envuelta y el salto cae justo en medio, así que atarse al texto
+    # crudo pone en rojo un reajuste de línea que no cambia nada.
+    verificacion = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    assert f"**{ejecutadas} de las {EN_LETRAS[total]} se han pedido de verdad**" in verificacion, (
         f"se pidieron {len(DOCUMENTOS_EJECUTADAS)} rutas de {total} y la página dice otra cosa"
     )
     assert "_generado/documentos.md" in verificacion, (

@@ -44,6 +44,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   corpus del buscador anterior sin que nada lo dijera.
 - `obtener_texto_sentencia` podía perder el rol o el año camino a la búsqueda y entregar el
   texto de otro fallo, con su caratulado, a quien pidió verificar una cita.
+- Una causa de un solo cuaderno podía gastar una petición de más: el detalle ya trae su
+  Historia, y volver a pedirlo es una consulta regalada contra la misma institución.
 
 ### Agregado
 

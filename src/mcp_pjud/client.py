@@ -1916,7 +1916,7 @@ class PjudClient(Transporte):
     ) -> list[_Fila]:
         """Busca la causa, abre su detalle y recorre TODOS sus cuadernos.
 
-        Lo comparten `actuaciones_receptor` y `historia_causa`, que sólo difieren en qué filas
+        Lo comparten `actuaciones_receptor` y `detalle_causa`, que sólo difieren en qué filas
         se quedan: duplicar el recorrido para cambiar el filtro es la forma más segura de que
         uno de los dos se olvide de los cuadernos.
         """

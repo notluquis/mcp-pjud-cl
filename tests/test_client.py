@@ -499,6 +499,38 @@ def test_recorre_todos_los_cuadernos(monkeypatch):
     assert any("EMBARGO" in a.desc_tramite for a in acts)
 
 
+def test_una_causa_de_un_solo_cuaderno_no_gasta_una_peticion_de_mas(monkeypatch):
+    """El detalle ya trae la Historia del único cuaderno: volver a pedirlo es una consulta
+    regalada contra la misma institución, y el ritmo no es un parámetro de rendimiento.
+
+    Encontrado con testing de mutación: el corte `<= 1` se podía cambiar por `< 1` y entonces
+    la causa de un cuaderno entraba al recorrido igual. Del mismo lado, el nombre del cuaderno
+    se leía de un índice fijo y ninguna prueba lo miraba con la lista de un solo elemento.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    detalle = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    detalles = 0
+
+    def transporte(req: httpx.Request) -> httpx.Response:
+        nonlocal detalles
+        if "consultaRit" in str(req.url):
+            return httpx.Response(200, text=listado)
+        detalles += 1
+        return httpx.Response(200, text=detalle)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    actuaciones = c.actuaciones_receptor("E", 468, 2026, tribunal=162)
+
+    assert detalles == 1, f"el detalle se pidió {detalles} veces para un solo cuaderno"
+    assert {a.cuaderno for a in actuaciones} == {"0 - Principal"}, (
+        "el nombre del único cuaderno tiene que llegar a cada actuación"
+    )
+
+
 def test_sin_resultados_devuelve_lista_vacia_sin_reventar():
     sin_coincidencias = (
         "<tr><td colspan='8'>No se han encontrado resultados con los datos ingresados.</td></tr>"

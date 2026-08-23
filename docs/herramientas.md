@@ -644,6 +644,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `excluir` | str, opcional | Palabras que no deben aparecer |
 | `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
 | `filas` | int | Cuántas traer, de 1 a 250 |
+| `desplazamiento` | int | Desde qué coincidencia empezar. Cero es la primera; para la siguiente página, `desplazamiento + filas` |
 | `buscador` | str | `suprema`, `apelaciones` o `laborales` |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
@@ -687,8 +688,8 @@ JavaScript, comentados.
 
 ### Campos de la respuesta
 
-`sentencias`, más cinco campos de completitud: `visibles`, `coincidencias`, `ocultas`,
-`no_entregadas` y `condiciones_de_publicacion`.
+`sentencias`, más seis campos de completitud: `visibles`, `coincidencias`, `ocultas`,
+`desplazamiento`, `no_entregadas` y `condiciones_de_publicacion`.
 
 **`ocultas` en cero no significa que la lista esté completa.** Son dos recortes distintos y
 hay que mirar los dos: `ocultas` son las coincidencias que la plataforma reserva a una consulta
@@ -698,6 +699,20 @@ cuántas se piden. Una búsqueda con 400 visibles y `filas` en 10 devuelve diez 
 
 `no_entregadas` es además la única señal de recorte que funciona en los tres buscadores:
 `ocultas` viene en nulo en `apelaciones` y en `laborales`.
+
+:::{important} `no_entregadas` mayor que cero ahora se puede resolver
+Se vuelve a llamar con `desplazamiento` en `desplazamiento + filas`, hasta que llegue a cero.
+`no_entregadas` cuenta lo que queda **después** de esta página, así que baja sola a medida que se
+avanza.
+
+Medido el 22 de agosto de 2026 contra el buscador de Corte Suprema: con desplazamiento 0, 10 y
+250, tres páginas sin una sola sentencia repetida. Hasta esa medición el desplazamiento iba fijo
+en cero y la coincidencia 251 era inalcanzable.
+
+Pedir más allá de `visibles` devuelve una lista **vacía** con HTTP 200, no un error: una página
+vacía significa que se pasó del final, no que no haya coincidencias. Y cada página cuesta una
+petición con su intervalo, así que se recorre lo que hace falta y no el índice entero.
+:::
 
 `coincidencias` es lo que el buscador declara **antes** de aplicar su filtro de condición de
 publicación. No es el tamaño del índice: el Poder Judicial habla públicamente de más de un

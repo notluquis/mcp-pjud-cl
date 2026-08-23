@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- `buscar_jurisprudencia` acepta `desplazamiento`: la coincidencia 251 dejó de ser
+  inalcanzable, y el tope lo ponía este cliente y no la plataforma.
+
 ### Corregido
 
 - Nueve afirmaciones de la documentación que el código contradecía, entre ellas dos

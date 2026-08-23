@@ -27,6 +27,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   contradicciones de una página consigo misma: la ruta de documento que estaba a la vez medida y
   nunca ejecutada, y el rechazo de penal explicado por falta de medición después de haberla
   medido.
+- Doce de los veintitrés paneles del detalle no pasaban por el arnés que comprueba que un cambio
+  de columnas del sitio no corra el mapeo en silencio, entre ellos los cinco de litigantes. La
+  lista de paneles ahora se deriva de `COMPETENCIAS` y un guardia se pone rojo si alguno queda
+  sin cubrir.
 
 ## [0.12.0] - 2026-08-22
 

@@ -158,6 +158,48 @@ def test_en_civiles_el_desglose_cuenta_el_corpus_y_no_la_consulta():
     assert r.no_entregadas == 38754, "las visibles que esta página no trajo siguen contándose"
 
 
+COBRANZA = (FIXTURES / "juris_cobranza.json").read_text(encoding="utf-8")
+SALUD = (FIXTURES / "juris_salud.json").read_text(encoding="utf-8")
+
+
+def test_salud_es_el_unico_de_los_juzgados_con_la_forma_de_suprema():
+    """Cinco de los seis verificados traen el juzgado y nada más. Salud CS trae corte, sala,
+    tipo de recurso, resultado y el rol de la causa de apelaciones: es un compendio de la Corte
+    Suprema, no de un juzgado.
+
+    Leerlo con el mapa de cobranza dejaría esos cinco campos vacíos sin que nada lo diga.
+    """
+    salud = parse_sentencias(SALUD, "salud").sentencias[0]
+
+    assert salud.sala == "TERCERA, CONSTITUCIONAL"
+    assert salud.tipo_recurso == "(CIVIL) APELACIÓN PROTECCIÓN"
+    assert salud.corte_origen == "C.A. de San Miguel"
+    assert salud.rol_corte_apelaciones == "767-2025"
+
+    cobranza = parse_sentencias(COBRANZA, "cobranza").sentencias[0]
+    assert cobranza.corte_origen == "Jdo. Cob. Laboral y Previsional de Santiago"
+    assert not cobranza.sala, "cobranza no publica sala: el campo va vacío y no inventado"
+
+
+def test_una_ruta_que_sirve_la_pagina_de_otro_buscador_se_levanta(monkeypatch):
+    """Medido el 23-08-2026: pedir `Compendio_Extranjeria`, que no existe, devolvió 200 con la
+    página de Cobranza, con su identificador y sus campos.
+
+    Sin comprobar el identificador eso es indistinguible de haber consultado el buscador que se
+    pidió: la respuesta tiene la forma correcta y los resultados son de otro corpus.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pagina_de_otro = '<input name="_token" value="tok"><script>id_buscador_activo = 269</script>'
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=pagina_de_otro))
+    )
+
+    with pytest.raises(EstructuraInesperada, match="sirviendo la página de otro buscador"):
+        c.abrir_sesion("suprema")
+
+
 def test_una_respuesta_que_no_es_json_se_levanta():
     with pytest.raises(EstructuraInesperada, match="no devolvió JSON"):
         parse_sentencias("<html>mantención</html>")

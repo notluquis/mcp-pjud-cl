@@ -1278,6 +1278,7 @@ def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) 
     # acepta ese caso y pide todos los cuadernos, y exigir una marca que ese sitio no emite
     # dejaría sin leer causas que hoy se leen. Nunca se ha observado una página así; la única
     # que existe es un doble de test que borra el atributo a propósito.
+    #
     # Por `_con_un_solo_mostrado` y no leyendo el desplegable a mano: esa guardia corre sobre
     # la PRIMERA página y las que se piden después se la saltaban. Con dos marcados, quedarse
     # con el primero acepta la respuesta cuando ese primero casualmente calza con el pedido, y

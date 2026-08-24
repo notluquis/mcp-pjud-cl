@@ -606,10 +606,17 @@ def test_el_servidor_se_registra_con_el_mismo_nombre_en_todas_las_guias():
     sin que nadie lo note, porque un botón con otro alias instala igual y deja al usuario con
     dos servidores que hacen lo mismo.
     """
-    import sys
+    # Se carga por ruta y no con un `import`: `docs/` no es un paquete, así que el chequeador
+    # de tipos no puede resolverlo y la corrida de CI se cae por algo que en ejecución anda.
+    # Es el mismo mecanismo con que este archivo carga `docs/conf.py`.
+    import importlib.util
 
-    sys.path.insert(0, str(RAIZ / "docs"))
-    from _bloques import ALIAS
+    spec = importlib.util.spec_from_file_location("_bloques", RAIZ / "docs" / "_bloques.py")
+    assert spec is not None
+    assert spec.loader is not None
+    bloques = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bloques)
+    ALIAS = bloques.ALIAS
 
     readme = _texto(RAIZ / "README.md")
     guia = _texto(RAIZ / "docs" / "instalacion.md")

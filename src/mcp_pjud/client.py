@@ -248,6 +248,18 @@ MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelac
 #: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.
 CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")
 
+#: Por qué un rol solo no identifica una causa, dicho UNA vez. Lo cita el error de ambigüedad
+#: y la descripción del parámetro `tribunal` de la búsqueda por rol, que estaban a un paso de
+#: divergir: el modelo lee la descripción antes de llamar y el error después, y si dicen cosas
+#: distintas la segunda lectura no corrige la primera.
+#:
+#: La cifra es medida: el 24 de agosto de 2026 una sesión omitió el tribunal en una búsqueda
+#: por rol de civil y recibió 43 causas de 43 personas distintas por preguntar por una.
+EL_ROL_NO_BASTA = (
+    "un rol sin tribunal no identifica una causa: la búsqueda lo devuelve de cada juzgado que "
+    "lo tenga, y en civil eso midió 43 causas de 43 personas distintas para un solo rol"
+)
+
 #: Cuántas Cortes de Apelaciones devolvió `combosJSON/leeCorte.php` el 20 de agosto de 2026.
 #: Vive acá y no en la prosa porque la referencia lo cita y un número escrito a mano en dos
 #: lugares queda viejo en uno de los dos.
@@ -1782,16 +1794,30 @@ class PjudClient(Transporte):
         if len(exactas) == 1:
             return exactas[0]
 
-        encontrados = ", ".join(sorted((c.rol or "?") for c in causas))
+        # Dos ambigüedades distintas, y el remedio de cada una es otro. Decirlas con el mismo
+        # mensaje mandaba al modelo a corregir el parámetro equivocado.
+        no_se_elige = (
+            "No se elige una: entregar la historia de otra causa se vería perfectamente bien y "
+            "llevaría a computar un plazo ajeno."
+        )
         # Ojo al mapear penal: su búsqueda toma el tipo como CÓDIGO numérico (`1` es Ordinaria)
         # y el listado publica el nombre del libro, así que `esperado` no va a calzar nunca.
         # Hoy no llega acá porque penal no tiene historia mapeada ni receptor.
+        if not exactas:
+            libros = ", ".join(sorted({(c.rol or "?") for c in causas}))
+            raise ValueError(
+                f"La búsqueda devolvió {len(causas)} causas y ninguna corresponde sin "
+                f"ambigüedad a {esperado!r}: {libros}. En Cortes de Apelaciones el número de "
+                "rol se repite entre libros, así que hay que indicar el libro en `tipo` (por "
+                f"ejemplo 'Protección'). {no_se_elige}"
+            )
+
+        # Acá el rol calza exacto en varias, así que el libro ya está bien y repetirlo no
+        # ayuda: lo que falta es el tribunal. Se listan los de las EXACTAS, no los de todas.
+        tribunales = ", ".join(sorted({(c.tribunal or "?") for c in exactas}))
         raise ValueError(
-            f"La búsqueda devolvió {len(causas)} causas y ninguna corresponde sin ambigüedad a "
-            f"{esperado!r}: {encontrados}. En Cortes de Apelaciones el número de rol se repite "
-            "entre libros, así que hay que indicar el libro en `tipo` (por ejemplo "
-            "'Protección'). No se elige una: entregar la historia de otra causa se vería "
-            "perfectamente bien y llevaría a computar un plazo ajeno."
+            f"{esperado!r} existe en {len(exactas)} tribunales y hay que indicar cuál en "
+            f"`tribunal`: {tribunales}. {EL_ROL_NO_BASTA}. {no_se_elige}"
         )
 
     def detalle_causa(

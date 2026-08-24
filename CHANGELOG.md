@@ -21,9 +21,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Tres encabezados de la hoja de ruta declaraban un estado que dejó de ser el real: la sección
   de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
   estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.
+- La búsqueda por rol decía que omitir `tribunal` "AMPLÍA los resultados". El rol se numera por
+  juzgado: una sesión lo omitió por eso y recibió 43 causas de 43 personas por preguntar por una.
+- El error de causa ambigua decía "ninguna corresponde" cuando correspondían todas y repetía el
+  mismo rol una vez por causa. Ahora nombra los tribunales entre los que hay que elegir.
 
 ### Cambiado
 
+- `tribunal` y `corte` traen una descripción por papel: acotar una búsqueda, buscar por rol, o
+  identificar la única causa que la herramienta devuelve. Antes las seis herramientas
+  compartían la de las búsquedas de nombre.
+- Las cuatro búsquedas dicen qué campos publica una sola competencia y que la historia y las
+  partes están en `obtener_detalle_causa`. Eso vivía en la prosa del esquema de salida, que
+  dejó de viajar.
 - El catálogo que viaja pasó de 104.475 a 46.496 caracteres: los esquemas de salida van sin la
   descripción de cada campo, y `obtener_detalle_causa` ya no anuncia esquema. Sobre el 10% de
   la ventana del cliente las definiciones se difieren en silencio, y una sesión cargó 10 de las

@@ -21,6 +21,7 @@ from mcp_pjud.client import (
     BASE,
     DOCUMENTOS,
     EL_ROL_NO_BASTA,
+    ESPERA_MAXIMA,
     INTERVALO_MINIMO,
     LARGO_MAXIMO_MARCADOR,
     MAXIMO_MARCADORES,
@@ -28,8 +29,12 @@ from mcp_pjud.client import (
     MODULOS,
     PROFUNDIDAD_MARCADORES,
     RAFAGA_MAXIMA,
+    SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
+    SEGUNDOS_CONECTAR,
     PjudBloqueado,
     PjudClient,
+    PjudNoRespondio,
+    PlataformaNoDisponible,
     _describir_pdf,
     _hay_capa_de_texto,
     _hojas,
@@ -256,6 +261,40 @@ def test_un_corte_de_conexion_detiene_igual_que_un_403(error, monkeypatch):
     assert len(salieron) == 1, "tras el corte no debe salir ninguna petición más"
 
 
+def test_el_techo_de_espera_cumple_la_regla_que_su_propio_comentario_declara():
+    """El comentario dice "el doble del peor medido" y el número nunca lo fue.
+
+    `ESPERA_MAXIMA` se puso en 240 cuando el peor medido eran 115,6 segundos. Después se midió
+    uno de 177,0 y se subió esa constante sin volver a mirar el techo, así que la regla escrita
+    y el número dejaron de coincidir: el doble de 177 son 354. Nadie lo vio porque ningún test
+    codificaba la regla, sólo el comentario.
+
+    Y no es cosmético. Con el techo por debajo de su propia regla, una consulta que tarda lo que
+    ya se midió que tardan muere por timeout, y eso se lee como que no hay resultados: es el
+    error que costó tres citas de Corte Suprema cuando el techo eran 90 segundos.
+    """
+    assert ESPERA_MAXIMA >= 2 * SEGUNDOS_BUSQUEDA_PEOR_MEDIDO, (
+        f"el techo son {ESPERA_MAXIMA:.0f} s y el peor caso medido "
+        f"{SEGUNDOS_BUSQUEDA_PEOR_MEDIDO:.0f} s. "
+        "El comentario de la constante dice que el techo es el doble del peor medido: o se "
+        "cumple, o se cambia la regla a una que sí se cumpla"
+    )
+
+
+def test_conectar_falla_antes_que_leer():
+    """Un host muerto no puede costar lo mismo que un Solr lento.
+
+    `_req` sostiene el turno durante toda la petición, así que el techo de lectura congela el
+    proceso entero. Ese precio se paga por una consulta que está trabajando, no por un destino
+    que no contesta el saludo: separar el tiempo de conexión recupera los minutos sin tocar la
+    paciencia que las búsquedas necesitan.
+    """
+    assert SEGUNDOS_CONECTAR < ESPERA_MAXIMA, (
+        "conectar no puede tener la misma paciencia que leer: lo que justifica el techo es una "
+        "consulta Solr con facetas, no un TCP que no abre"
+    )
+
+
 @pytest.mark.parametrize(
     "error",
     [
@@ -283,9 +322,77 @@ def test_un_timeout_no_detiene_el_proceso(error, monkeypatch):
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
 
-    with pytest.raises(httpx.TimeoutException):
+    with pytest.raises(PjudNoRespondio, match="significa que la causa no exista") as fallo:
         c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
     assert client._BLOQUEADO is None, "un timeout no es un rechazo y no puede detener el proceso"
+    assert isinstance(fallo.value.__cause__, httpx.TimeoutException), (
+        "se pierde de qué timeout se trataba: sin la causa encadenada no se puede distinguir "
+        "un `ConnectTimeout` de un `ReadTimeout` al depurar"
+    )
+
+
+@pytest.mark.parametrize("codigo", [500, 502, 503, 504])
+def test_un_error_de_la_plataforma_se_distingue_de_una_ausencia(codigo, monkeypatch):
+    """Un 5xx es "vuelve más tarde", y salía como el repr de httpx.
+
+    Es el modo de falla más frecuente de un portal público, y llegaba al modelo peor contado
+    que el más raro: los 403 traen cinco líneas de instrucciones y un 503 traía
+    `Server error '503 Service Unavailable'`. Un lector apurado lo resume como que no hay
+    resultados.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(codigo)))
+
+    with pytest.raises(PlataformaNoDisponible, match="significa que la causa no exista"):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+    assert client._BLOQUEADO is None, (
+        "un error de la plataforma no es un rechazo: detener el proceso por lentitud ajena es "
+        "negarse el servicio a uno mismo"
+    )
+
+
+def test_una_ruta_que_ya_no_existe_se_reporta_como_cambio_del_sitio(monkeypatch):
+    """404 y 5xx piden cosas distintas y salían iguales.
+
+    El 5xx se espera; el 404 se mira, porque la ruta la construye este cliente y que deje de
+    existir significa que el sitio cambió. Confundirlos hace esperar por algo que no va a
+    llegar solo.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404)))
+
+    with pytest.raises(EstructuraInesperada, match="significa que la causa no exista"):
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+    assert client._BLOQUEADO is None
+
+
+def test_un_combo_que_no_trae_json_lo_dice_sin_volcar_el_cuerpo(monkeypatch):
+    """`listar_cortes` y `listar_tribunales` son las dos primeras que un modelo llama.
+
+    Prometen JSON, y una sesión vencida contesta 200 con una página. Salía como
+    `JSONDecodeError: Expecting value: line 1 column 1`, que no dice ni qué ruta era ni que sin
+    ella no se puede acotar ninguna búsqueda.
+
+    Y el cuerpo NO se vuelca: acá llega HTML del sitio, que puede traer datos de terceros.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    pagina = "<html>PERSONA DEMANDANTE UNO se le venció la sesión</html>"
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(200, text=pagina, headers={"content-type": "text/html"})
+        )
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="significa que la causa no exista") as fallo:
+        c.listar_cortes()
+
+    mensaje = str(fallo.value)
+    assert "text/html" in mensaje, "no dice qué contestó en vez de JSON"
+    assert "PERSONA" not in mensaje, "volcó el cuerpo, que puede traer datos de terceros"
 
 
 def test_un_desafio_de_f5_con_200_detiene_en_la_peticion_que_lo_trae(monkeypatch):
@@ -1077,7 +1184,7 @@ def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
 
-    with pytest.raises(httpx.ReadTimeout):
+    with pytest.raises(PjudNoRespondio):
         c._req("GET", "https://juris.pjud.cl/busqueda/buscar_sentencias")
 
     assert len(c.bitacora) == 1, "la petición que murió por timeout tiene que quedar anotada"

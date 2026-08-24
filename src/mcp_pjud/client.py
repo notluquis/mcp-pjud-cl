@@ -152,13 +152,40 @@ SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 177.0
 #: segundos. La de 102 era la única que el tope mataba, y con ella se dieron por perdidas las
 #: tres. El valor de ahora es el doble del peor medido, `SEGUNDOS_BUSQUEDA_PEOR_MEDIDO`.
 #:
+#: El valor es la regla escrita, y hasta el 24 de agosto de 2026 no lo era: se puso en 240
+#: cuando el peor medido eran 115,6 s, después se midió uno de 177,0 y nadie volvió a mirar el
+#: techo. El doble de 177 son 354, o sea la regla y el número llevaban versiones separados, y
+#: ningún test la codificaba. Ahora sí, y por eso el número subió.
+#:
 #: Lo que cuesta: `_req` sostiene el turno durante toda la petición, así que una colgada frena
-#: al resto del proceso hasta cuatro minutos. Se acepta por dos razones. La primera es no
+#: al resto del proceso hasta seis minutos, y por eso `SEGUNDOS_CONECTAR` va aparte. Se
+#: acepta por dos razones. La primera es no
 #: soltar el turno antes de clasificar la respuesta, que es lo que permitía a una segunda
 #: llamada consultar después de que la primera ya recibió un bloqueo. La segunda es que en
 #: este proyecto esperar de más es barato y cortar de menos es caro: una espera larga molesta,
 #: y un falso "no se encontró" se lee como que la causa no existe.
-ESPERA_MAXIMA = 240.0
+ESPERA_MAXIMA = 360.0
+
+#: Cuánto se espera a que el destino ABRA la conexión, que es otra cosa que esperar la
+#: respuesta. Lo que justifica el techo de arriba es una consulta Solr con facetas sobre más de
+#: un millón de documentos; un TCP que no abre no está trabajando, y con un solo número los dos
+#: casos congelaban el proceso lo mismo, porque `_req` sostiene el turno toda la petición.
+#:
+#: `ConnectTimeout` es `TimeoutException`, o sea NO entra en la detención total: queda fuera de
+#: `_RECHAZO_DE_CONEXION` a propósito y se traduce a `PjudNoRespondio`. Un host que no abre y un
+#: cortafuegos que rechaza el SYN siguen siendo cosas distintas.
+SEGUNDOS_CONECTAR = 15.0
+
+#: Dos llamadas a `listar_cortes` murieron por el techo de 240 s el 24 de agosto de 2026, la
+#: primera vez que el servidor se usó de verdad contra la plataforma. De ellas se conoce una
+#: COTA INFERIOR y no una duración: el timeout las mató, así que cuánto habrían tardado no se
+#: midió. Se anota igual porque es la evidencia de que 240 no era techo, y para que la próxima
+#: no vuelva a leerse como que la consulta no funciona.
+#:
+#: Ojo con qué endpoint es: `SEGUNDOS_BUSQUEDA_*` describen el buscador de fallos de
+#: `juris.pjud.cl`, y `listar_cortes` es `combosJSON/leeCorte.php` de la Oficina Judicial
+#: Virtual. Subir aquellas para acomodar éstas sería escribir una medición que no se hizo.
+CUELGUES_DE_COMBOS_SIN_MEDIR = 2
 
 #: El balde es del proceso, no del cliente. `server.py` abre un `PjudClient` nuevo en cada
 #: llamada de herramienta, así que un contador por instancia se reinicia solo y deja pasar la
@@ -502,6 +529,41 @@ class ResultadosTruncados(Exception):
     Se levanta en vez de devolver la lista parcial, porque una lista recortada en silencio
     se lee como "no hay más resultados", y en este proyecto un falso negativo es el error
     que se busca evitar.
+    """
+
+
+#: La frase que las tres traducciones de abajo comparten, y la razón por la que existen.
+#:
+#: Una sesión real reportó el modo de falla entero: "Los tres cuelgues devolvieron 'no result
+#: received'. Nada distingue 'no respondió' de 'no existe'. Un lector apurado reporta que la
+#: causa no existe." Es la regla 4 —fallo ruidoso, nunca lista vacía— una capa más abajo, en el
+#: transporte, después de haber reaparecido en el protocolo.
+NO_ES_UNA_AUSENCIA = (
+    "Esto NO significa que la causa no exista: significa que no se pudo saber. Informarlo como "
+    "una falla de la consulta, nunca como que no hay resultados."
+)
+
+
+class PjudNoRespondio(Exception):
+    """La petición salió y no volvió dentro del tiempo que se espera.
+
+    No es un bloqueo y no activa la detención total: la regla 3 es para 403, 429 y captcha, o
+    sea para cuando la plataforma nos rechaza a propósito. Un portal lento no rechaza a nadie,
+    y detenerse por lentitud sería negarse el servicio a uno mismo.
+
+    Salía cruda como `httpx.ReadTimeout`, que el SDK convierte en "Error executing tool
+    listar_cortes: timed out": ni cuánto se esperó, ni qué hacer, ni que esperar no prueba una
+    ausencia.
+    """
+
+
+class PlataformaNoDisponible(Exception):
+    """La plataforma contestó con un error suyo: 500, 502, 503, 504.
+
+    Aparte de `EstructuraInesperada` porque la acción es distinta. Un 5xx dice "vuelve más
+    tarde" y el dato sigue estando; una ruta que ya no existe dice "esto se rediseñó" y hay que
+    ir a mirar. Confundirlos hace esperar por algo que no va a llegar solo, o reportar un
+    cambio de estructura que no ocurrió.
     """
 
 
@@ -909,7 +971,7 @@ class Transporte:
                 "Accept-Language": "es-CL,es;q=0.9",
             },
             follow_redirects=True,
-            timeout=ESPERA_MAXIMA,
+            timeout=httpx.Timeout(ESPERA_MAXIMA, connect=SEGUNDOS_CONECTAR),
         )
         self.bitacora: list[tuple[float, str, int]] = []
 
@@ -971,6 +1033,18 @@ class Transporte:
                         "reiniciar el servidor sólo después de eso."
                     )
                     raise PjudBloqueado(_BLOQUEADO) from e
+                # `TimeoutException` es HERMANA de `NetworkError`, no subclase, así que el
+                # `isinstance` de arriba no la toma y hasta acá salía cruda. Va pegada a la
+                # rama de al lado a propósito: las dos clasificaciones juntas son lo que
+                # impide que alguien las "simplifique" a `TransportError`, que metería una
+                # consulta lenta y normal en la detención total.
+                if isinstance(e, httpx.TimeoutException):
+                    raise PjudNoRespondio(
+                        f"{url} no respondió en {ESPERA_MAXIMA:.0f} segundos. La petición SÍ "
+                        f"salió y quedó anotada. La plataforma puede estar lenta: se puede "
+                        f"volver a intentar más tarde, respetando el intervalo. "
+                        f"{NO_ES_UNA_AUSENCIA}"
+                    ) from e
                 raise
             finally:
                 # El reloj de recarga arranca cuando la petición termina, no cuando empieza.
@@ -1018,7 +1092,22 @@ class Transporte:
                 )
                 raise PjudBloqueado(_BLOQUEADO)
 
-        r.raise_for_status()
+        # Fuera del candado a propósito, igual que antes: el `with` cubre la clasificación
+        # porque una segunda llamada no puede consultar después de que la primera recibió un
+        # bloqueo, y un 5xx no es un bloqueo. Armar el mensaje adentro sólo frena al que sigue.
+        # Los 403 y 429 nunca llegan acá: se atienden arriba.
+        if r.status_code >= 500:
+            raise PlataformaNoDisponible(
+                f"El Poder Judicial respondió {r.status_code} a {url}. Es un error suyo, no de "
+                f"la consulta: se puede volver a intentar más tarde respetando el intervalo. "
+                f"{NO_ES_UNA_AUSENCIA}"
+            )
+        if not r.is_success:
+            raise EstructuraInesperada(
+                f"El Poder Judicial respondió {r.status_code} a {url}, que es una ruta que este "
+                f"cliente construye. Lo más probable es que el sitio cambió y la ruta ya no "
+                f"existe; conviene reportarlo. {NO_ES_UNA_AUSENCIA}"
+            )
         return r
 
 
@@ -1194,7 +1283,19 @@ class PjudClient(Transporte):
                 "Referer": f"{BASE}/consultaUnificada.php",
             },
         )
-        cuerpo = r.json()
+        # `ValueError` y no `json.JSONDecodeError`: la segunda es subclase de la primera, y así
+        # no depende de qué backend de JSON traiga httpx. Se cita el tipo y el largo, nunca el
+        # cuerpo, igual que en `documento()`: acá llega una página de error o una sesión
+        # vencida, y volcarla al modelo no ayuda y sí puede traer datos de terceros.
+        try:
+            cuerpo = r.json()
+        except ValueError as e:
+            raise EstructuraInesperada(
+                f"{BASE}/{ruta} tenía que contestar JSON y contestó "
+                f"{r.headers.get('content-type', 'sin content-type')!r} con "
+                f"{len(r.content)} bytes. Es la ruta con que se resuelven los códigos, así que "
+                f"sin ella no se puede acotar ninguna búsqueda. {NO_ES_UNA_AUSENCIA}"
+            ) from e
         if not isinstance(cuerpo, list):
             raise EstructuraInesperada(
                 f"{ruta} devolvió {type(cuerpo).__name__} en vez de una lista. La estructura "

@@ -862,8 +862,14 @@ vacío. Distinguir "existe y no se publica" de "no existe" es el punto.
 | `ValueError` sobre campos | Faltan campos que la plataforma exige | Se detecta antes de consultar, sin gastar una petición |
 | `EstructuraInesperada` | El HTML no tiene la forma esperada | La plataforma cambió. Reportar con la plantilla correspondiente |
 | `ValueError` | Competencia o buscador no verificado, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
-| `httpx.HTTPStatusError` | La plataforma respondió 5xx | Error suyo, no de la consulta. No está envuelto en una excepción propia porque no hay nada que interpretar: se reintenta más tarde, respetando el intervalo |
+| `PjudNoRespondio` | La petición salió y no volvió en el tiempo de espera | La plataforma puede estar lenta. Se puede reintentar más tarde, respetando el intervalo. **No** es que la causa no exista |
+| `PlataformaNoDisponible` | La plataforma respondió 5xx | Error suyo, no de la consulta. Se reintenta más tarde, respetando el intervalo |
 
 El SDK de MCP convierte una excepción en un resultado con `is_error: true` y el mensaje como
 contenido, así que el cliente ve el error en vez de recibir una lista vacía que parecería
 decir "no hubo actuaciones".
+
+Las tres que describen un fallo de la consulta y no un rechazo —`PjudNoRespondio`,
+`PlataformaNoDisponible` y el `EstructuraInesperada` de un código HTTP inesperado— dicen
+textualmente que **no significa que la causa no exista**. Sin esa frase, un timeout llegaba
+como `Error executing tool listar_cortes: timed out` y se resumía como que no hay resultados.

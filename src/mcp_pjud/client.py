@@ -1770,9 +1770,7 @@ class PjudClient(Transporte):
         )
 
     @staticmethod
-    def _causa_pedida(
-        causas: list[CausaEncontrada], tipo: str, rol: int, anio: int, competencia: str
-    ):
+    def _causa_pedida(causas: list[CausaEncontrada], tipo: str, rol: int, anio: int, modulo: str):
         """Elige de la lista la causa que se pidió, o se detiene.
 
         Tomar la primera parecía inofensivo mientras el número de rol identificara una causa.
@@ -1812,8 +1810,8 @@ class PjudClient(Transporte):
             # repite la misma consulta.
             remedio = (
                 "hay que indicar el libro en `tipo` (por ejemplo 'Protección'), porque en "
-                f"{competencia} el mismo número de rol se repite entre libros"
-                if COMPETENCIAS[competencia].rol_con_libro
+                f"{modulo} el mismo número de rol se repite entre libros"
+                if COMPETENCIAS[modulo].rol_con_libro
                 else "hay que revisar `tipo`, que es la letra del rol, y el año"
             )
             raise ValueError(
@@ -1825,11 +1823,14 @@ class PjudClient(Transporte):
         # ayuda: lo que falta es DÓNDE. Cuál es el parámetro depende de la competencia, y
         # nombrar el equivocado manda a repetir la misma consulta ambigua: en apelaciones el
         # rol se acota por corte, y la columna que el listado publica ES la corte.
-        acota_por = COMPETENCIAS[competencia].acota_por
+        # `modulo` y no `competencia`: `_modulo` acepta cualquier capitalización, así que
+        # indexar con el valor crudo levanta `KeyError` justo en la rama que existe para dar un
+        # error que se entienda.
+        acota_por = COMPETENCIAS[modulo].acota_por
         donde = ", ".join(sorted({(c.tribunal or "?") for c in exactas}))
         if acota_por is None:
             raise ValueError(
-                f"{esperado!r} calza en {len(exactas)} causas de {competencia}, que no se "
+                f"{esperado!r} calza en {len(exactas)} causas de {modulo}, que no se "
                 f"acota ni por tribunal ni por corte: {donde}. {no_se_elige}"
             )
         # La razón sólo aplica donde el rol se numera por juzgado; en apelaciones el mismo rol
@@ -1881,7 +1882,8 @@ class PjudClient(Transporte):
             return DetalleCausa(causa_encontrada=False)
 
         primera = self.detalle(
-            self._causa_pedida(causas, tipo, rol, anio, competencia).referencia, competencia
+            self._causa_pedida(causas, tipo, rol, anio, self._modulo(competencia)).referencia,
+            competencia,
         )
         cuadernos = parse_cuadernos(primera)
 
@@ -1978,7 +1980,8 @@ class PjudClient(Transporte):
             return []
 
         html_ = self.detalle(
-            self._causa_pedida(causas, tipo, rol, anio, competencia).referencia, competencia
+            self._causa_pedida(causas, tipo, rol, anio, self._modulo(competencia)).referencia,
+            competencia,
         )
         cuadernos = parse_cuadernos(html_)
 

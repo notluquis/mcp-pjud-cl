@@ -709,6 +709,23 @@ def test_la_directiva_entera_llega_al_modelo():
             f"la directiva dejó de decir {regla!r}, que es de las que el corte se llevaba"
         )
 
+    # Y el tope escrito a mano en la prosa, contra la constante. Sin esto, cambiar el número
+    # deja el test verde y las páginas documentando un corte que ya no es el que ocurre.
+    escrito = f"{TOPE_DEL_CLIENTE:,}".replace(",", ".")
+    obligadas = [RAIZ / "docs" / "herramientas.md", RAIZ / "docs" / "uso.md"]
+    for pagina in obligadas:
+        assert f"{escrito} bytes" in _texto(pagina), (
+            f"{pagina.relative_to(RAIZ)} explica el corte del cliente y no cita los {escrito} "
+            "bytes en que ocurre"
+        )
+    donde_corta = re.compile(r"(?:corta en|cabe en) \*{0,2}([\d.]+) bytes")
+    for fuente in PROSA:
+        for cita in donde_corta.finditer(_texto(fuente)):
+            assert cita.group(1) == escrito, (
+                f"{fuente.relative_to(RAIZ)} dice que el corte es a los {cita.group(1)} bytes "
+                f"y la constante son {escrito}"
+            )
+
 
 def test_el_catalogo_cabe_en_el_presupuesto_del_cliente():
     """Un catálogo que pasa del 10% de la ventana se difiere entero, y eso no falla: calla.
@@ -2039,6 +2056,13 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
         sin_detalle = sorted(set(MODULOS) - set(_CON_DETALLE))
         aviso = next((f for f in descripcion.split(".") if "no hay detalle" in f), "")
         assert aviso, f"{nombre_h}: no dice qué competencias no tienen detalle"
+        # El listado publica el NOMBRE del tribunal y el detalle exige el CÓDIGO. Sin decir de
+        # dónde sale, "repite el tribunal de la fila" manda a inventar un número.
+        for resolutor in ("listar_tribunales", "listar_cortes"):
+            assert resolutor in descripcion, (
+                f"{nombre_h}: manda a repetir el tribunal o la corte y no dice que el listado "
+                f"publica el nombre y el código sale de `{resolutor}`"
+            )
         for competencia in sin_detalle:
             assert competencia in aviso, (
                 f"{nombre_h}: {competencia!r} no tiene detalle y el aviso no lo nombra"
@@ -2062,6 +2086,21 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
 
     citan = [p for p in fuentes if f"{minutos} minutos" in _texto(p)]
     assert citan, f"ninguna fuente cita los {minutos} minutos que el token declara"
+
+    # No basta con que ALGUNA diga la cifra buena: así, una página que cambie a 20 minutos
+    # deja el guardia verde porque las otras dos siguen bien. Se mira cada mención de una
+    # duración que hable de una referencia, y todas tienen que dar la misma.
+    duracion = re.compile(r"(\d+)\s+minutos")
+    for fuente in fuentes:
+        texto = _texto(fuente)
+        for mencion in duracion.finditer(texto):
+            contexto = texto[max(0, mencion.start() - 200) : mencion.end() + 200].lower()
+            if "referencia" not in contexto:
+                continue
+            assert int(mencion.group(1)) == minutos, (
+                f"{fuente.relative_to(RAIZ)} dice que una referencia dura "
+                f"{mencion.group(1)} minutos y el token declara {minutos}"
+            )
 
     afirman_de_mas = [
         str(p.relative_to(RAIZ)) for p in citan if f"caduca a los {minutos}" in _texto(p).lower()
@@ -3342,6 +3381,14 @@ def test_la_directiva_no_afirma_de_la_georreferencia_mas_que_el_modelo():
             f"{nombre!r} publica la columna de georreferencia y la directiva no lo nombra, así "
             "que el modelo no puede saber dónde su `false` significa ausencia"
         )
+
+    # El `true` es la otra mitad, y vale en las mismas competencias. Vivía sólo en
+    # `obtener_actuaciones_receptor`, que acepta civil: quien leyera la historia de cobranza,
+    # laboral o apelaciones por el detalle no tenía cómo saber que `true` no prueba nada.
+    assert "`true` significa que el sitio lo ofrece" in DIRECTIVA, (
+        "la directiva dice cuándo el falso prueba ausencia y no dice que el verdadero no "
+        "prueba existencia, que es el mismo error al revés"
+    )
 
 
 def _numero(n: int) -> str:

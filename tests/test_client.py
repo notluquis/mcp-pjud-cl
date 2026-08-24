@@ -1621,6 +1621,19 @@ def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monke
     )
 
 
+def test_la_ambiguedad_tolera_la_competencia_con_mayuscula(monkeypatch):
+    """`_modulo` acepta cualquier capitalización, y la rama nueva indexaba con el valor crudo.
+
+    Con `competencia="Apelaciones"` la búsqueda funciona, así que se llega hasta la elección de
+    la causa; ahí `COMPETENCIAS[competencia]` levantaba `KeyError`. Un `KeyError` no dice qué
+    hacer y no se parece a un error de esta biblioteca: quien lo reciba lo lee como una falla
+    del servidor y no como "falta la corte".
+    """
+    c, _ = _cliente_apelaciones(monkeypatch)
+    with pytest.raises(ValueError, match="ninguna corresponde"):
+        c.detalle_causa("", 9999, 2019, competencia="Apelaciones", corte=46)
+
+
 def test_en_civil_el_error_no_manda_a_corregir_el_libro(monkeypatch):
     """El consejo de indicar el libro es de apelaciones, y viajaba en las cinco competencias.
 

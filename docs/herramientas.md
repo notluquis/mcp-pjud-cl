@@ -14,11 +14,9 @@ de que este servidor no escribe es que **el código de escritura no existe**, y 
 CI que lo comprueba en cada cambio.
 :::
 
-Todo lo de esta página se compara contra una instantánea en cada corrida: `tests/contrato.json`
-guarda el catálogo entero como viaja, con su orden, más la directiva. Un cambio de lo que el
-servidor promete falla hasta que alguien lo mire y lo apruebe regenerándola. Las reglas de más
-abajo dicen POR QUÉ algo tiene que ser así; la instantánea dice QUÉ es, y atrapa el cambio que
-no viola ninguna regla: un campo renombrado, una anotación perdida, media descripción borrada.
+Todo lo de esta página se compara contra `tests/contrato.json`, que guarda el catálogo entero
+como viaja, con su orden, más la directiva. Un cambio de lo que el servidor promete falla hasta
+que alguien lo apruebe con `APROBAR_CONTRATO=1 uv run pytest tests/test_contrato.py`.
 
 ## Directiva operativa
 
@@ -32,21 +30,20 @@ entre las dos fechas llega antes que cualquier resultado:
 >   plazos procesales.**
 > - `fecha_registro`: cuándo se registró en el sistema. **No** corre plazos.
 >
-> Suelen diferir en varios días. [...] Nada de lo que este servidor devuelve prueba una
-> ausencia. Las causas reservadas no aparecen en la consulta pública.
+> Suelen diferir en varios días. [...] Una búsqueda que no encuentra no prueba que algo no
+> exista. Las causas reservadas no aparecen en la consulta pública.
 
-La directiva cabe en **2.048 bytes**, que es donde el cliente la corta sin avisar. Pesaba 3.770
-y el corte se llevaba tres reglas: el nulo de `ocultas`, la cita no verificada y el régimen de
-consultas. Lo que salió no se borró, se mudó a la herramienta que lo necesita, y hay guardias de
-las dos caras: presente donde manda y **ausente de la directiva**, porque reponerlo ahí la llena
-otra vez en silencio.
+La directiva cabe en **2.048 bytes**, que es donde el cliente la corta sin avisar. Las reglas
+que no caben viven en la herramienta que las necesita:
 
-| lo que salió | ahora vive en |
+| regla | dónde está |
 |---|---|
 | qué buscadores traen `ocultas` con número, y la medición del índice | `buscar_jurisprudencia` |
 | con qué acotar cada competencia | las tres búsquedas de nombre, RUT y fecha |
 | qué significa `georreferenciado` en falso, entero | `obtener_actuaciones_receptor` |
 | cuándo caduca una referencia de documento y qué hacer con un escaneo | `obtener_documento` |
+
+Por qué se repartieron así se explica en [Cómo se usa e interpreta](uso.md).
 
 :::{note} Qué revisión del protocolo habla este servidor
 **Depende del transporte, y conviene decir las dos.** El SDK instalado conoce hasta

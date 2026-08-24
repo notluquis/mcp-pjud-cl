@@ -110,6 +110,26 @@ Las observadas en causas civiles:
 - `EMBARGO (Exitosa)`
 - `Inscripción / Alzamiento registro (Certificación)`
 
+## Por qué la directiva es corta
+
+El servidor entrega una directiva por el protocolo, y el cliente la **corta en 2.048 bytes sin
+avisar**. Pesaba 3.770, así que un tercio no llegaba, y lo que caía del otro lado eran tres
+reglas de las que evitan afirmar de más: que `ocultas` en nulo no es cero, que una cita no está
+verificada si la búsqueda no la devolvió, y el régimen de consultas.
+
+Un corte silencioso se ve igual que un texto que termina. Por eso no se descubrió leyendo: se
+descubrió midiendo lo que viaja por el cable, con el servidor en otro proceso.
+
+Ahora cabe entera, y lo que salió no se borró: se mudó a la herramienta que lo necesita, donde
+el modelo lo lee justo antes de usarla. Cada frase mudada tiene guardia de dos caras, presente
+donde manda y **ausente de la directiva**, porque reponerla ahí la llena otra vez en silencio y
+el corte se lleva otra regla.
+
+Es el mismo problema que el catálogo de herramientas, una capa más arriba: pesaba 104.475
+caracteres y el cliente difiere las definiciones sobre el 10% de su ventana, así que una sesión
+cargó diez de las catorce sin señal de que le faltaban cuatro. La herramienta que el modelo no
+ve no la puede pedir, y eso no falla: calla.
+
 ## Qué NO hace
 
 Decirlo con todas sus letras evita malentendidos caros:

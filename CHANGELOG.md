@@ -26,6 +26,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El error de causa no encontrada mandaba a indicar el libro en `tipo` en las cinco
   competencias. En civil `tipo` es la letra del rol, así que el consejo hacía repetir la misma
   consulta.
+- Elegir la causa levantaba `KeyError` con una competencia escrita en mayúscula, en vez del
+  error de ambigüedad que dice qué falta.
+- La directiva decía que nada prueba una ausencia, dos líneas después de decir que
+  `georreferenciado: false` sí la prueba donde la columna existe. Ahora habla de las búsquedas.
+- Que `georreferenciado: true` no prueba que el registro exista se decía sólo en la herramienta
+  de civil. Leer la historia de cobranza, laboral o apelaciones no traía el aviso.
+- Las búsquedas mandaban a repetir el tribunal "de la fila elegida": la fila publica el nombre
+  y el detalle exige el código.
+- La duración de las referencias son tres tokens y la documentación contaba dos: falta medir
+  también la del cuaderno.
 - Tres encabezados de la hoja de ruta declaraban un estado que dejó de ser el real: la sección
   de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
   estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.
@@ -46,7 +56,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
-- La directiva del servidor bajó de 3.770 a 1.843 bytes y ahora cabe entera en los 2.048 que el
+- La directiva del servidor bajó de 3.770 a 1.959 bytes y ahora cabe entera en los 2.048 que el
   cliente deja: el corte se llevaba el nulo de `ocultas`, la cita no verificada y el régimen de
   consultas. Lo que salió se mudó a la herramienta que lo necesita.
 - `tribunal` y `corte` traen una descripción por papel: acotar una búsqueda, buscar por rol, o
@@ -55,7 +65,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Las cuatro búsquedas dicen qué campos publica una sola competencia y que la historia y las
   partes están en `obtener_detalle_causa`. Eso vivía en la prosa del esquema de salida, que
   dejó de viajar.
-- El catálogo que viaja pasó de 104.475 a 46.496 caracteres: los esquemas de salida van sin la
+- El catálogo que viaja pasó de 104.475 a 51.667 caracteres: los esquemas de salida van sin la
   descripción de cada campo, y `obtener_detalle_causa` ya no anuncia esquema. Sobre el 10% de
   la ventana del cliente las definiciones se difieren en silencio, y una sesión cargó 10 de las
   14 herramientas sin saber que le faltaban.

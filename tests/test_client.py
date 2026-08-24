@@ -1195,6 +1195,70 @@ def test_lo_que_identifica_la_causa_viaja_con_su_valor(monkeypatch):
     assert enviados[0]["conCorte"] == "0"
 
 
+#: Los nombres EXACTOS de cada formulario, medidos contra el sitio. Van escritos porque no
+#: salen de ninguna constante: son el contrato de la plataforma, no una decisión de este
+#: cliente. Cambiar uno no da error, da un campo que el PHP ignora.
+CAMPOS_DE_CADA_BUSQUEDA = {
+    "rit": {
+        "conTipoCausa",
+        "conRolCausa",
+        "conEraCausa",
+        "conCompetencia",
+        "conCorte",
+        "conTribunal",
+        "conCaratulado",
+        "radio-group",
+    },
+    "nombre": {
+        "nomNombre",
+        "nomApePaterno",
+        "nomApeMaterno",
+        "nomEra",
+        "nomNombreJur",
+        "nomEraJur",
+        "nomCompetencia",
+        "corteNom",
+        "nomTribunal",
+        "radio-group",
+    },
+    "juridica": {"rutJur", "dvJur", "eraJur", "jurCompetencia", "corteJur", "jurTribunal"},
+    "fecha": {"fecDesde", "fecHasta", "fecCompetencia", "corteFec", "fecTribunal"},
+}
+
+
+def test_cada_busqueda_manda_los_campos_con_el_nombre_que_el_sitio_espera(monkeypatch):
+    """Los nombres de campo no los comprobaba nadie, y son la mitad del contrato.
+
+    Encontrado con testing de mutación: `conCompetencia` se podía escribir `concompetencia` y
+    la suite seguía verde. En el servidor eso no es un error, es un campo que el PHP no lee:
+    la búsqueda sale sin acotar o sin criterio, y responde un listado que se interpreta como
+    que la causa no existe.
+
+    Se compara el conjunto COMPLETO en las dos direcciones, así que también cae un campo de más:
+    mandar uno que el formulario no declara es la otra forma de que la plataforma conteste otra
+    cosa.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = _pagina(range(1, 2), total=1, ultima=True, celdas=8)
+    for cual, consultar in (
+        ("rit", lambda c: c.buscar_por_rit("C", 1, 2026, tribunal=162)),
+        (
+            "nombre",
+            lambda c: c.buscar_por_nombre(
+                apellido_paterno="GONZALEZ", apellido_materno="PEREZ", tribunal=162
+            ),
+        ),
+        ("juridica", lambda c: c.buscar_por_rut_juridica(97004000, "5", tribunal=162)),
+        ("fecha", lambda c: c.buscar_por_fecha("01/01/2026", "02/01/2026", tribunal=162)),
+    ):
+        c, enviados = _capturando(listado)
+        consultar(c)
+        assert set(enviados[0]) == CAMPOS_DE_CADA_BUSQUEDA[cual], (
+            f"la búsqueda por {cual} manda {sorted(enviados[0])} y el formulario del sitio "
+            f"declara {sorted(CAMPOS_DE_CADA_BUSQUEDA[cual])}"
+        )
+
+
 def test_suprema_no_exige_ni_tribunal_ni_corte(monkeypatch):
     """Medido: las tres búsquedas de suprema andan sin corte ni tribunal.
 

@@ -68,6 +68,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `ecosistema` decía que este servidor cubre una competencia contra ocho, que los escritos
   faltaban y que ninguno de los modales se pedía. Las tres dejaron de ser ciertas hace
   versiones.
+- Los nombres de campo de las cuatro búsquedas no los comprobaba nadie: escribir uno con otra
+  caja no da error, da un campo que la plataforma ignora y una búsqueda sin acotar.
 
 ## [0.13.0] - 2026-08-23
 

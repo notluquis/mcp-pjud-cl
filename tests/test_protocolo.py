@@ -259,6 +259,44 @@ def test_la_bitacora_sale_por_el_error_estandar_y_no_por_el_canal(monkeypatch) -
         registro.propagate = True
 
 
+@pytest.mark.parametrize(
+    ("pedido", "esperado"),
+    [
+        pytest.param(None, "INFO", id="por-defecto"),
+        pytest.param("DEBUG", "DEBUG", id="pedido"),
+        pytest.param("debug", "DEBUG", id="minuscula"),
+        # Los dos que impedían arrancar: `setLevel` levanta `ValueError: Unknown level` y el
+        # proceso muere antes de saludar, o sea una errata en una variable de entorno deja al
+        # abogado sin la herramienta.
+        pytest.param("", "INFO", id="vacio"),
+        pytest.param("DEBUGG", "INFO", id="con-errata"),
+    ],
+)
+def test_el_nivel_de_la_bitacora_nunca_impide_arrancar(pedido, esperado, monkeypatch) -> None:
+    """Y el valor por defecto es el que la documentación promete.
+
+    La guía dice que `MCP_PJUD_BITACORA` controla el nivel y que por defecto va en `INFO`. Sin
+    esto, el código y esa promesa podían separarse, y encima un valor mal escrito tumbaba el
+    servidor entero en vez de degradarse.
+    """
+    import importlib
+
+    if pedido is None:
+        monkeypatch.delenv("MCP_PJUD_BITACORA", raising=False)
+    else:
+        monkeypatch.setenv("MCP_PJUD_BITACORA", pedido)
+    recargado = importlib.reload(servidor)
+    try:
+        quedo = recargado.NIVEL_BITACORA
+        assert esperado == quedo, (
+            f"con MCP_PJUD_BITACORA={pedido!r} el nivel quedó en {quedo!r} y tiene que ser "
+            f"{esperado!r}"
+        )
+    finally:
+        monkeypatch.delenv("MCP_PJUD_BITACORA", raising=False)
+        importlib.reload(servidor)
+
+
 def test_el_mensaje_del_parser_sobrevive_el_viaje(monkeypatch: pytest.MonkeyPatch) -> None:
     """Un cambio de estructura tiene que llegar al modelo DICIENDO qué pasó.
 
@@ -658,6 +696,14 @@ def test_las_plantillas_no_mandan_el_codigo_que_la_competencia_no_usa() -> None:
     assert "tribunal=162" in civil, f"civil se acota por tribunal y no lo lleva: {civil}"
     assert "corte=" not in civil, (
         f"civil llevaba la corte igual, y fijarla fuera de apelaciones excluye causas: {civil}"
+    )
+
+    # Y lo que se emite va normalizado: `PjudClient._modulo` sólo baja a minúscula, así que una
+    # competencia con espacios se reconoce para avisar y después la instrucción la copiaba tal
+    # cual, dejando una llamada que el cliente rechaza.
+    con_espacios = _identificacion("E", 468, 2026, " Civil ", tribunal=162, corte=None)
+    assert "competencia='civil'" in con_espacios, (
+        f"la instrucción emite la competencia como llegó y así no se puede llamar: {con_espacios}"
     )
 
     apelaciones = _identificacion("Protección", 9999, 2019, "apelaciones", tribunal=162, corte=46)

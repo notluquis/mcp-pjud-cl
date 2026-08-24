@@ -285,7 +285,7 @@ horas de reloj, y correr instancias en paralelo para acelerarlo va contra la cl�
 `cliente.bitacora` guarda una tupla por petición: momento, URL y estado. Es lo que permite
 acreditar cuánto se consultó, que es la contracara del compromiso de no sobrecargar.
 
-**Y ahora se puede leer.** Hasta la 0.15.0 esa lista era de instancia y el servidor abre un
+**Y ahora se puede leer.** Hasta la 0.14.0 esa lista era de instancia y el servidor abre un
 cliente por llamada de herramienta, así que nacía y moría sin que nadie la mirara: un servidor
 que corrió mil peticiones y uno que corrió tres eran indistinguibles desde fuera del proceso.
 Cada petición sale ahora por el **error estándar**, que es donde el cliente MCP recoge la salida
@@ -295,13 +295,11 @@ del servidor:
 2026-08-24 11:03:41,207 mcp_pjud.bitacora 3 POST https://oficinajudicialvirtual.pjud.cl/ADIR_1/civil/modal/causaCivil.php -> 200 (1.4s, esperó 3.6s)
 ```
 
-Los dos tiempos van separados a propósito: el primero es lo que tardó la plataforma y el segundo
-lo que esperamos nosotros por el ritmo. Juntos no distinguen "el portal va lento" de "nos
-estamos frenando solos", que es justo lo que hay que saber cuando una consulta se cuelga.
+Los dos tiempos son distintos: el primero es lo que tardó la plataforma y el segundo lo que se
+esperó por el ritmo. Por qué van separados se explica en [Cómo se usa e interpreta](uso.md).
 
-Qué **no** sale, y es deliberado: la consulta de la URL (ahí viaja `documento_referencia`), los
-cuerpos (van el rol, los nombres y los RUT) y las cabeceras. Es un registro de tráfico, no de
-datos.
+Qué **no** sale: la consulta de la URL (ahí viaja `documento_referencia`), los cuerpos (van el
+rol, los nombres y los RUT) y las cabeceras. Es un registro de tráfico, no de datos.
 
 Con `MCP_PJUD_BITACORA` se sube, se baja o se apaga (`DEBUG`, `WARNING`, `CRITICAL`). Por
 defecto va en `INFO`: un registro apagado no acredita nada.

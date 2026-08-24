@@ -1262,7 +1262,7 @@ def test_el_registro_no_publica_la_referencia_de_un_documento(monkeypatch):
     )
     assert "docuN.php" in emitido, "sin la ruta el registro no acredita qué se consultó"
     # Lo de arriba cubre UNA de las dos protecciones: emitir el argumento y no `r.request.url`.
-    # La otra —cortar antes del `?`— no se puede probar por acá, porque `documento()` manda la
+    # La otra, cortar antes del `?`, no se puede probar por acá porque `documento()` manda la
     # referencia en `params=` y el argumento nunca la lleva. Se prueba aparte, con una URL que
     # sí traiga consulta, para que quitar cualquiera de las dos se vea.
     c.bitacora.clear()
@@ -2529,6 +2529,10 @@ def test_una_causa_que_no_aparece_no_se_confunde_con_una_competencia_sin_paneles
     assert detalle.historia is None
 
 
+# Tres respuestas y no cuatro: desde que el recorrido reusa el cuaderno que la respuesta ya trae
+# desplegado, la cadena es búsqueda, detalle y el otro cuaderno. Con la cuarta el apremio NUNCA
+# se servía, así que los tres tests de abajo miraban un solo cuaderno y ninguno probaba lo que
+# dice probar. Los tres quedaron verdes igual, que es por qué esto se anota acá.
 def test_el_detalle_trae_el_exhorto_una_vez_aunque_los_dos_cuadernos_lo_repitan(monkeypatch):
     """El panel de exhortos NO lleva el cuaderno en la fila, y C-1156 lo publica idéntico en
     los dos: sin deduplicar, el mismo exhorto llegaría dos veces y se leería como dos causas
@@ -2540,7 +2544,7 @@ def test_el_detalle_trae_el_exhorto_una_vez_aunque_los_dos_cuadernos_lo_repitan(
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
     apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
-    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, apremio]
     pedidos: list[str] = []
 
     def transporte(peticion: httpx.Request) -> httpx.Response:
@@ -2595,7 +2599,7 @@ def test_una_referencia_que_cambia_entre_cuadernos_no_duplica_el_exhorto(monkeyp
     )
 
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, apremio]
     pedidos: list[str] = []
 
     def transporte(peticion: httpx.Request) -> httpx.Response:
@@ -2747,7 +2751,7 @@ def test_una_causa_que_no_es_exhorto_se_distingue_de_una_competencia_sin_el_pane
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
     apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
-    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, principal, apremio]
+    paginas = [_pagina(range(1, 2), total=1, ultima=True), principal, apremio]
     pedidos: list[str] = []
 
     def transporte(peticion: httpx.Request) -> httpx.Response:

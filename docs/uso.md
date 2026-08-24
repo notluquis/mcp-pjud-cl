@@ -172,6 +172,16 @@ Qué esperar de eso:
 - **Un aviso no es un resultado.** Que la barra avance dice que la plataforma sigue
   contestando, no que la causa exista ni que se haya podido leer.
 
+## Por qué la bitácora separa los dos tiempos
+
+Cada petición que sale queda anotada con lo que tardó la plataforma y, aparte, con lo que se
+esperó por el ritmo. Juntos no distinguen "el portal va lento" de "nos estamos frenando solos",
+y ésa es justo la pregunta cuando una consulta parece colgada.
+
+No es teórico: las dos consultas que obligaron a subir el techo de espera no se pudieron
+diagnosticar porque nada registraba duraciones por petición. De ellas se conoce una cota
+inferior, no una duración, porque el timeout las mató.
+
 ## Qué NO hace
 
 Decirlo con todas sus letras evita malentendidos caros:

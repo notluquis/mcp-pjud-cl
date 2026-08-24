@@ -939,7 +939,7 @@ El SDK de MCP convierte una excepción en un resultado con `is_error: true` y el
 contenido, así que el cliente ve el error en vez de recibir una lista vacía que parecería
 decir "no hubo actuaciones".
 
-Las tres que describen un fallo de la consulta y no un rechazo —`PjudNoRespondio`,
-`PlataformaNoDisponible` y el `EstructuraInesperada` de un código HTTP inesperado— dicen
+Las tres que describen un fallo de la consulta y no un rechazo (`PjudNoRespondio`,
+`PlataformaNoDisponible` y el `EstructuraInesperada` de un código HTTP inesperado) dicen
 textualmente que **no significa que la causa no exista**. Sin esa frase, un timeout llegaba
 como `Error executing tool listar_cortes: timed out` y se resumía como que no hay resultados.

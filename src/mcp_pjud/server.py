@@ -14,11 +14,18 @@ from typing import Annotated
 from urllib.parse import quote, urlencode
 
 from mcp.server import MCPServer
+from mcp.server.caching import CacheHint
 from mcp.types import (
     BlobResourceContents,
+    Completion,
+    CompletionArgument,
+    CompletionContext,
     ContentBlock,
     EmbeddedResource,
+    Icon,
+    PromptReference,
     ResourceLink,
+    ResourceTemplateReference,
     TextContent,
     ToolAnnotations,
 )
@@ -217,6 +224,41 @@ class _ServidorQueCabe(MCPServer):
         ]
 
 
+#: Cuánto tiempo puede el cliente dar por fresco el catálogo, y con quién compartirlo.
+#:
+#: Sin esto viaja con `ttlMs: 0`, que significa "inmediatamente rancio": el catálogo entero se
+#: vuelve a traer en cada arranque aunque no haya cambiado nada. Cambia UNA vez por versión, así
+#: que la hora no es una apuesta sobre los datos: acota cuánto puede quedarse un cliente con el
+#: catálogo viejo después de una actualización en caliente, que es el único momento en que
+#: cambia sin que el proceso se reinicie.
+#:
+#: `public` porque este servidor no autoriza a nadie: el catálogo es idéntico para quien sea y
+#: no lleva nada de quien lo pidió.
+#:
+#: Y sólo `tools/list`. `resources/read` también es cacheable y queda fuera A PROPÓSITO: leerlo
+#: vuelve a pedirle el documento al Poder Judicial, `documento_referencia` caduca, y una copia
+#: guardada de un documento de un tercero es lo que prohíbe la regla 5. Peor todavía, sería un
+#: PDF viejo presentado como el de ahora, que es la forma de la regla 4 aplicada a un archivo.
+CACHE_DEL_CATALOGO = CacheHint(ttl_ms=3_600_000, scope="public")
+
+#: El dibujo del icono del servidor, en el fuente y no como un chorro de base64: acá se ve qué
+#: es y se puede corregir. Una balanza, que es lo que el servidor consulta.
+#:
+#: El trazo va en un gris medio a propósito. En el carril moderno la identidad del servidor
+#: viaja en el `_meta` de CADA respuesta, así que lo que pese el icono se paga una vez por
+#: resultado: mandar el par claro/oscuro que permite el campo `theme` costaría el doble en cada
+#: una, y este gris se lee sobre fondo claro y sobre fondo oscuro con casi el mismo contraste.
+_ICONO_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+    'stroke="#6e7781" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M12 3v18M7 21h10M4 7h16M4 7l-2.5 5.5a2.8 2.8 0 0 0 5 0zM20 7l-2.5 '
+    '5.5a2.8 2.8 0 0 0 5 0z"/></svg>'
+)
+
+#: El icono ya empaquetado. `data:` y no una URL: una URL lo haría depender de que un host
+#: ajeno responda, y las únicas peticiones que este servidor hace son al Poder Judicial.
+ICONO = "data:image/svg+xml;base64," + base64.b64encode(_ICONO_SVG.encode()).decode("ascii")
+
 #: La identidad que el servidor publica en `server/discover`, que la especificación de MCP
 #: exige implementar desde la revisión 2026-07-28. Ahí viaja `serverInfo` con nombre y versión.
 #:
@@ -234,6 +276,8 @@ mcp = _ServidorQueCabe(
     version=VERSION,
     website_url="https://mcp-pjud-cl.readthedocs.io",
     instructions=DIRECTIVA,
+    icons=[Icon(src=ICONO, mime_type="image/svg+xml", sizes=["any"])],
+    cache_hints={"tools/list": CACHE_DEL_CATALOGO},
 )
 
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")
@@ -871,8 +915,15 @@ def _resumen(doc: Documento, embebido: bool) -> str:
     )
 
 
+#: La plantilla del recurso, en una constante porque la nombran dos: el decorador que la
+#: registra y el completador que ofrece valores para uno de sus parámetros. `completion/complete`
+#: identifica la plantilla por su dirección exacta, así que si las dos se separan el completador
+#: deja de responder en silencio, que es la falla que ningún comentario evita.
+PLANTILLA_DOCUMENTO = "pjud://documento{?competencia,ruta,referencia}"
+
+
 @mcp.resource(
-    "pjud://documento{?competencia,ruta,referencia}",
+    PLANTILLA_DOCUMENTO,
     name="documento-de-causa",
     title="Documento de una causa",
     description="Vuelve a pedirle el documento al Poder Judicial y lo entrega. No hay copia "
@@ -890,6 +941,41 @@ def documento_de_causa(competencia: str = "civil", ruta: str = "", referencia: s
     """
     with _cliente() as c:
         return c.documento(ruta, referencia, competencia).contenido
+
+
+@mcp.completion()
+async def completar_argumento(
+    ref: ResourceTemplateReference | PromptReference,
+    argumento: CompletionArgument,
+    contexto: CompletionContext | None,
+) -> Completion | None:
+    """Qué valores acepta `competencia` en la plantilla del documento.
+
+    `completion/complete` habla de prompts y de plantillas de recurso, y de nada más: para los
+    argumentos de una herramienta no existe, así que ésta es la única puerta por la que este
+    servidor puede decir qué valores hay antes de que alguien pida uno que no existe.
+
+    Se ofrecen las competencias que el cliente ACEPTA para un documento, derivadas de la misma
+    tabla que describe el parámetro. `penal` queda fuera porque no publica documentos: ofrecerla
+    haría que quien la elija reciba un error y se lo atribuya a la plataforma.
+
+    Devolver nulo es "de esto no sé", que no es lo mismo que una lista vacía. El SDK lo convierte
+    en el completado vacío que la especificación pide para lo que no se completa.
+
+    Y es el ÚNICO manejador de `completion/complete` que puede haber: el SDK guarda uno por
+    método y el segundo reemplaza al primero SIN avisar. Lo que haya que completar de un prompt o
+    de otra plantilla entra acá adentro, no en un decorador nuevo.
+    """
+    if not isinstance(ref, ResourceTemplateReference) or ref.uri != PLANTILLA_DOCUMENTO:
+        return None
+    if argumento.name != "competencia":
+        return None
+    # Por prefijo y sin distinguir mayúsculas, que es como llega lo escrito a medias. Lo que se
+    # devuelve va igual en minúscula: es la forma que el cliente acepta, y ofrecer la escrita
+    # como vino terminaría en el `KeyError` que ya costó una vez.
+    empezado = argumento.value.strip().lower()
+    valores = [n for n in _CON_DOCUMENTOS if n.startswith(empezado)]
+    return Completion(values=valores, total=len(valores), has_more=False)
 
 
 @mcp.tool(

@@ -58,7 +58,16 @@ Code y Codex. Medido pidiendo `2026-07-28` en el saludo y viendo qué contesta. 
 Los dos números salen del SDK y no de la memoria: `tests/test_documentacion.py` los compara
 contra `LATEST_PROTOCOL_VERSION` y `LATEST_HANDSHAKE_VERSION`, así que actualizar la dependencia
 y no esta página deja la suite en rojo.
+
+Por el carril de 2026-07-28 el catálogo viaja con una pista de frescura: `tools/list` sale con
+`ttlMs: 3600000` y `cacheScope: public`. Es la única que este servidor declara; `resources/read`
+también admite pista y no la lleva, así que leer un documento siempre vuelve a consultar. Por el
+saludo de 2025-11-25 ese campo no existe y el SDK lo criba: ahí el catálogo llega sin pista.
 :::
+
+El servidor se presenta con un icono propio, una balanza dibujada en SVG que viaja como `data:`
+URI dentro del saludo. No hay una dirección que el cliente tenga que ir a buscar, ni un host
+ajeno que se entere de quién lo abrió.
 
 ## `listar_cortes`
 
@@ -693,6 +702,11 @@ leen como datos y **no** como instrucciones, en una sola línea y recortados.
 
 Es el otro extremo del enlace. Leerlo **vuelve a consultar** al Poder Judicial, con su
 intervalo: no hay copia guardada de nada, que es la regla 5 del proyecto.
+
+Su argumento `competencia` tiene completado. `completion/complete` sobre la plantilla
+`pjud://documento{?competencia,ruta,referencia}` devuelve las competencias cuyo detalle publica
+documentos, acotadas por lo que se lleve escrito; `penal` no aparece, porque no publica ninguno.
+Los otros dos argumentos no se completan: salen de la actuación que se leyó.
 
 ```{include} _generado/obtener_documento.md
 ```

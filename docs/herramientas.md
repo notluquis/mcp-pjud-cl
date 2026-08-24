@@ -877,6 +877,13 @@ Judicial la hace después la herramienta que cada plantilla nombra, con su ritmo
 Los argumentos viajan como texto. Los que no son obligatorios se pueden omitir: cuando falta el
 código que identifica la causa, la plantilla dice con qué resolverlo antes de abrirla.
 
+Los que aceptan un conjunto cerrado tienen completado por `completion/complete`, acotado por lo
+que se lleve escrito: `competencia` en `computar-plazo` y en `revisar-causa`, y `buscador` en
+`verificar-cita`. Cada plantilla ofrece las suyas y no la unión, porque las competencias que
+publican al ministro de fe no son las mismas que tienen panel del detalle. `tipo` no se completa:
+sus valores dependen de la competencia elegida, así que la única lista honesta es la que ya la
+tiene.
+
 ### `computar-plazo`
 
 Manda a pedir `obtener_actuaciones_receptor` y a presentar cada actuación con

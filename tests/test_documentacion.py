@@ -37,6 +37,7 @@ from mcp_pjud.client import (
     AUDIO_CAMPO,
     AUDIO_RUTA,
     CORTES_MEDIDAS,
+    CUELGUES_DE_COMBOS_SIN_MEDIR,
     DOCUMENTOS,
     DOCUMENTOS_EJECUTADAS,
     EL_ROL_NO_BASTA,
@@ -905,6 +906,24 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     )
 
 
+def test_los_cuelgues_que_subieron_el_techo_salen_de_su_constante():
+    """La medición que justifica el techo de espera se cita en prosa, y era libre.
+
+    `CUELGUES_DE_COMBOS_SIN_MEDIR` guarda cuántas consultas murieron en el techo viejo, y de
+    ellas se conoce una COTA INFERIOR y no una duración: el timeout las mató. Las páginas que
+    lo cuentan repetían el número a mano, así que corregir la medición dejaba la explicación
+    con otra cifra sin que nada fallara.
+    """
+    en_letras = EN_LETRAS[CUELGUES_DE_COMBOS_SIN_MEDIR]
+    obligadas = [RAIZ / "docs" / "uso.md", RAIZ / "docs" / "roadmap.md"]
+    for pagina in obligadas:
+        texto = _texto(pagina)
+        assert f"{en_letras} cuelgues" in texto or f"{en_letras} consultas" in texto, (
+            f"{pagina.relative_to(RAIZ)} cuenta los cuelgues que subieron el techo y no dice "
+            f"{en_letras}, que es lo que guarda la constante"
+        )
+
+
 def test_la_referencia_tabula_todas_las_excepciones_del_paquete():
     """La tabla de errores se escribe a mano y el código gana excepciones.
 
@@ -932,8 +951,12 @@ def test_la_referencia_tabula_todas_las_excepciones_del_paquete():
     }
     assert clases, "no se encontró ninguna excepción del paquete: el barrido dejó de mirar"
 
+    # De las FILAS de la tabla y no de la sección entera: los nombres aparecen también en el
+    # párrafo de abajo, así que borrar una fila dejaba el guardia verde. Medido con
+    # `PjudNoRespondio`, que se nombra en los dos lados.
     seccion = HERRAMIENTAS.split("## Errores")[1].split("\n## ")[0]
-    faltan = sorted(c for c in clases if c not in seccion)
+    tabulados = set(re.findall(r"^\s*\|\s*`(\w+)`\s*\|", seccion, re.M))
+    faltan = sorted(c for c in clases if c not in tabulados)
     assert not faltan, (
         f"estas excepciones pueden llegarle a quien consulta y la referencia no las tabula: "
         f"{faltan}"

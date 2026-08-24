@@ -558,7 +558,7 @@ class ResultadosTruncados(Exception):
 #:
 #: Una sesión real reportó el modo de falla entero: "Los tres cuelgues devolvieron 'no result
 #: received'. Nada distingue 'no respondió' de 'no existe'. Un lector apurado reporta que la
-#: causa no existe." Es la regla 4 —fallo ruidoso, nunca lista vacía— una capa más abajo, en el
+#: causa no existe." Es la regla 4 (fallo ruidoso, nunca lista vacía) una capa más abajo, en el
 #: transporte, después de haber reaparecido en el protocolo.
 NO_ES_UNA_AUSENCIA = (
     "Esto NO significa que la causa no exista: significa que no se pudo saber. Informarlo como "
@@ -1040,8 +1040,8 @@ class Transporte:
     def _anotar(self, metodo: str, url: str, estado: int, tardo: float, dormido: float) -> None:
         """Anota la petición en la bitácora y la emite por el registro, en un solo lugar.
 
-        Los dos sitios que anotaban estaban separados —uno en el camino feliz y otro en el que
-        muere sin respuesta—, y con dos lugares es cuestión de tiempo que un camino nuevo
+        Los dos sitios que anotaban estaban separados, uno en el camino feliz y otro en el que
+        muere sin respuesta, y con dos lugares es cuestión de tiempo que un camino nuevo
         registre una cosa y no la otra. Acá no se puede.
 
         Qué NO sale, y es la parte que importa: la regla 5 prohíbe persistir datos de terceros,
@@ -1129,8 +1129,15 @@ class Transporte:
                 # impide que alguien las "simplifique" a `TransportError`, que metería una
                 # consulta lenta y normal en la detención total.
                 if isinstance(e, httpx.TimeoutException):
+                    # Cuál de los dos techos se cumplió, porque son distintos y el mensaje es
+                    # justamente el diagnóstico temporal: decir seis minutos cuando el host no
+                    # abrió el TCP en quince manda a buscar una plataforma colgada que no lo
+                    # estuvo.
+                    espero = (
+                        SEGUNDOS_CONECTAR if isinstance(e, httpx.ConnectTimeout) else ESPERA_MAXIMA
+                    )
                     raise PjudNoRespondio(
-                        f"{url} no respondió en {ESPERA_MAXIMA:.0f} segundos. La petición SÍ "
+                        f"{url} no respondió en {espero:.0f} segundos. La petición SÍ "
                         f"salió y quedó anotada. La plataforma puede estar lenta: se puede "
                         f"volver a intentar más tarde, respetando el intervalo. "
                         f"{NO_ES_UNA_AUSENCIA}"

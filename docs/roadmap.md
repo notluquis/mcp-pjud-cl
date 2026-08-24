@@ -528,7 +528,7 @@ cuatro minutos en `listar_cortes` y lo dijo mejor de lo que lo tenía escrito el
 > Los tres cuelgues devolvieron "no result received". Nada distingue "no respondió" de "no
 > existe". Un lector apurado reporta que la causa no existe.
 
-Es la regla 4 —fallo ruidoso, nunca lista vacía— reapareciendo en el transporte, después de
+Es la regla 4 (fallo ruidoso, nunca lista vacía) reapareciendo en el transporte, después de
 haber reaparecido en el protocolo. Cuatro excepciones salían crudas, y las cuatro eran del
 mismo eje: la plataforma lenta o rota, que es el modo de falla más frecuente de un portal
 público, llegaba peor contado que el más raro.
@@ -539,9 +539,10 @@ el mismo valor que una causa encontrada sin actuaciones de receptor: un rol mal 
 como una causa revisada sin diligencias, y sobre eso se computa un plazo que no existe.
 
 **Una petición de cada causa sobraba.** El recorrido volvía a pedir el cuaderno que la respuesta
-del detalle ya traía desplegado: seis peticiones donde `RAFAGA_MAXIMA` está dimensionada para
-cinco. La cláusula CUARTA es la obligación central del proyecto y el código llevaba versiones
-sin respetarla, con tres lugares de la documentación afirmando lo contrario.
+del detalle ya traía desplegado: seis peticiones donde la ráfaga está dimensionada para una
+cadena de cinco. El régimen sostenido nunca se rompió, porque esa petición pasaba por el mismo
+balde que todas; lo que agregaba era carga evitable contra la plataforma, y la cláusula CUARTA
+prohíbe sobrecargar. Tres lugares de la documentación afirmaban que la cadena eran cinco.
 
 **La bitácora existía y no la veía nadie.** Era una lista de instancia, y el servidor abre un
 cliente por llamada de herramienta: nacía y moría sin que nadie la mirara. Sale por el error

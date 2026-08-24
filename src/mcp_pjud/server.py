@@ -7,6 +7,7 @@ Corporación Administrativa del Poder Judicial.
 from __future__ import annotations
 
 import base64
+import concurrent.futures as _futuros
 import logging
 import os
 import sys
@@ -338,13 +339,21 @@ def _avisos(ctx: Context | None) -> Callable[[int, int | None, str], None] | Non
         return None
 
     def avisar(numero: int, total: int | None, mensaje: str) -> None:
-        # `Exception` a secas, y eso ES la política: `CancelledError`, `KeyboardInterrupt` y
-        # `SystemExit` heredan de `BaseException`, así que suben solas. No hace falta nombrar
-        # la clase de cancelación, y nombrarla costaría un bucle corriendo que acá no hay:
-        # `anyio.get_cancelled_exc_class()` desde el hilo trabajador levanta "Not currently
-        # running on any asynchronous event loop".
+        # `CancelledError`, `KeyboardInterrupt` y `SystemExit` heredan de `BaseException`, así
+        # que suben solas: medido, lo que el puente entrega al hilo es
+        # `asyncio.exceptions.CancelledError`, que no es `Exception`.
+        #
+        # La de `concurrent.futures` va nombrada aparte porque en Python 3.14 NO es la misma
+        # clase y sí hereda de `Exception`, así que un `except Exception` a secas la tragaría.
+        # Hoy no llega por acá; se nombra igual porque el día que llegue el síntoma sería la
+        # cadena entera saliendo al Poder Judicial para nadie, sin nada que lo delate.
+        #
+        # `anyio.get_cancelled_exc_class()` no sirve para esto: desde el hilo trabajador
+        # levanta "Not currently running on any asynchronous event loop".
         try:
             _de_vuelta_al_bucle(ctx.report_progress, numero, total, mensaje)
+        except _futuros.CancelledError:
+            raise
         except Exception as e:
             _PROGRESO.debug("no se pudo avisar el paso %d (%s): %r", numero, mensaje, e)
 
@@ -1401,10 +1410,12 @@ def _identificacion(
     código de más convierte una causa que existe en un falso negativo. Lo dice la descripción
     de `CorteQueDesambigua`, y la plantilla no puede contradecirla.
     """
-    acota = (
-        COMPETENCIAS[_modulo(competencia)].acota_por if _modulo(competencia) in MODULOS else None
-    )
-    partes = [f"tipo={tipo!r}", f"rol={rol}", f"anio={anio}", f"competencia={competencia!r}"]
+    modulo = _modulo(competencia)
+    acota = COMPETENCIAS[modulo].acota_por if modulo in MODULOS else None
+    # Se emite el nombre NORMALIZADO y no el que llegó: `PjudClient._modulo` sólo baja a
+    # minúscula, así que `" civil "` con espacios lo rechaza. Reconocerlo para avisar y después
+    # copiarlo tal cual en la instrucción deja una llamada que no se puede hacer.
+    partes = [f"tipo={tipo!r}", f"rol={rol}", f"anio={anio}", f"competencia={modulo!r}"]
     if tribunal is not None and acota == "tribunal":
         partes.append(f"tribunal={tribunal}")
     if corte is not None and acota == "corte":
@@ -1611,7 +1622,13 @@ Nunca presentar una cita como verificada si la búsqueda no la devolvió.
 #: Con qué nivel sale la bitácora. Encendida por defecto: `docs/instalacion.md` dice que sirve
 #: "para acreditar cuánto se consultó", y un registro apagado no acredita nada. Se puede subir,
 #: bajar o apagar con `MCP_PJUD_BITACORA=WARNING`, `DEBUG`, `CRITICAL`.
-NIVEL_BITACORA = os.environ.get("MCP_PJUD_BITACORA", "INFO").upper()
+_NIVEL_PEDIDO = (os.environ.get("MCP_PJUD_BITACORA") or "INFO").upper()
+
+#: Un nivel vacío (`MCP_PJUD_BITACORA=`) o mal escrito (`DEBUGG`) no puede impedir que el
+#: servidor arranque: `setLevel` levanta `ValueError: Unknown level` y el proceso muere antes de
+#: saludar, o sea una errata en una variable de entorno deja al abogado sin la herramienta. Se
+#: cae a `INFO` y se avisa, que es lo que un registro puede hacer por sí mismo.
+NIVEL_BITACORA = _NIVEL_PEDIDO if _NIVEL_PEDIDO in logging.getLevelNamesMapping() else "INFO"
 
 
 def main() -> None:
@@ -1633,6 +1650,12 @@ def main() -> None:
     registro = logging.getLogger("mcp_pjud")
     registro.addHandler(manejador)
     registro.setLevel(NIVEL_BITACORA)
+    if NIVEL_BITACORA != _NIVEL_PEDIDO:
+        registro.warning(
+            "MCP_PJUD_BITACORA=%r no es un nivel conocido; la bitácora queda en %s",
+            _NIVEL_PEDIDO,
+            NIVEL_BITACORA,
+        )
     registro.propagate = False
 
     mcp.run()

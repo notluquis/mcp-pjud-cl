@@ -16,6 +16,17 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Un `ConnectTimeout` decía haber esperado 360 segundos cuando el techo de conexión son 15, o
+  sea daba justo el diagnóstico temporal que el mensaje existe para dar bien.
+- `MCP_PJUD_BITACORA` vacía o mal escrita impedía que el servidor arrancara. Ahora cae a `INFO`
+  y lo avisa.
+- Las plantillas emitían la competencia tal como llegó, así que con espacios armaban una llamada
+  que el cliente rechaza.
+- La guía decía que la bitácora fue inalcanzable "hasta la 0.15.0", y fue hasta la 0.14.0: el
+  cambio de versión reemplazó un dato histórico.
+
 ## [0.15.0] - 2026-08-24
 
 ### Agregado
@@ -25,7 +36,7 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   vacío, y `verificar-cita` informa `ocultas` y `no_entregadas` sin dar por inexistente lo que
   la búsqueda no devolvió.
 - La bitácora sale por el error estándar, con lo que tardó cada petición y lo que se esperó por
-  el ritmo, y se ajusta con `MCP_PJUD_BITACORA`. Existía desde siempre y no la veía nadie.
+  el ritmo. Se ajusta con `MCP_PJUD_BITACORA`, que por defecto va en `INFO`.
 - El catálogo viaja con una pista de frescura de una hora en vez de declararse rancio al
   instante, así que un cliente que la respete deja de traerlo entero en cada arranque.
 - El servidor se presenta con un icono propio, que viaja como `data:` URI en el saludo y no como

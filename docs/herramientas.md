@@ -143,7 +143,7 @@ Civil de Santiago que sí existía.
 :::
 
 Devuelve una lista de causas con `rol`, `fecha_ingreso`, `caratulado`, `tribunal` y una
-`referencia` opaca que caduca a los 30 minutos.
+`referencia` opaca que declara durar 30 minutos.
 
 ```{include} _generado/buscar_causa_por_rit.md
 ```

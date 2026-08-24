@@ -60,6 +60,7 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import (
     _PANELES_ANEXO,
     COMPETENCIAS,
+    SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA,
     SIN_FILAS_OBSERVADAS,
     CausaEncontrada,
     Competencia,
@@ -2042,6 +2043,40 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
             assert competencia in aviso, (
                 f"{nombre_h}: {competencia!r} no tiene detalle y el aviso no lo nombra"
             )
+
+
+def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
+    """Son DOS tokens y sólo uno está medido; aplanarlos haría la documentación más falsa.
+
+    El JWT del listado declara `exp - iat` y ahí sale la cifra. De `documento_referencia` no
+    se midió nada, así que su prosa NO se deriva de la constante y tiene que seguir diciendo
+    que no se midió: borrar esa frase para que las dos digan lo mismo se siente limpieza y es
+    una afirmación inventada.
+
+    También se cuida el verbo. "Caduca a los N minutos" afirma lo que hace la plataforma;
+    medido está lo que el token DICE, y las dos cosas se separan por una petición que nadie
+    hizo.
+    """
+    minutos = SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA // 60
+    fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
+
+    citan = [p for p in fuentes if f"{minutos} minutos" in _texto(p)]
+    assert citan, f"ninguna fuente cita los {minutos} minutos que el token declara"
+
+    afirman_de_mas = [
+        str(p.relative_to(RAIZ)) for p in citan if f"caduca a los {minutos}" in _texto(p).lower()
+    ]
+    assert not afirman_de_mas, (
+        f"Estas dicen que la referencia CADUCA a los {minutos} minutos: {afirman_de_mas}. "
+        "Medido está lo que el token declara; que la plataforma lo rechace ahí no se probó"
+    )
+
+    # El otro token, el de los documentos, con la salvedad que lo distingue.
+    sin_medir = RAIZ / "src" / "mcp_pjud" / "server.py"
+    assert "Cuánto dura no se midió" in _texto(sin_medir), (
+        "`documento_referencia` dejó de decir que su duración no se midió, y es el único aviso "
+        "que impide leerle la del listado"
+    )
 
 
 def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):

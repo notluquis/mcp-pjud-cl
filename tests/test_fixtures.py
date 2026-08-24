@@ -230,10 +230,11 @@ def test_las_celdas_que_llevan_nombres_traen_los_ficticios():
 def test_sin_jwt_de_la_plataforma():
     """Las respuestas traen JWT como referencia opaca de causa, cuaderno o documento.
 
-    Caducan a los 30 minutos, así que no sirven de credencial, pero su carga va cifrada y
-    probablemente codifica identificadores de la misma causa cuyos nombres y RUT ya se
-    anonimizaron. Además los detectores de secretos los marcan en cada revisión, lo que
-    entrena a ignorar alertas.
+    El del listado declara durar media hora, así que no sirve de credencial, pero su carga va
+    FIRMADA y no cifrada: se lee sin más, y probablemente codifica identificadores de la misma
+    causa cuyos nombres y RUT ya se anonimizaron. De hecho la duración se supo leyéndola.
+    Además los detectores de secretos los marcan en cada revisión, lo que entrena a ignorar
+    alertas.
     """
     encontrados = {}
     for archivo in _archivos():

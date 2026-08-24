@@ -2912,12 +2912,17 @@ def test_un_endpoint_que_ignora_la_referencia_del_cuaderno_se_levanta(monkeypatc
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(EstructuraInesperada, match="no atendió la referencia"):
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia") as caida:
         c.detalle_causa("E", 468, 2026, tribunal=162)
 
     assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
         "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
         "este test dice medir"
+    )
+    # El mensaje nombra el que LLEGÓ y no una etiqueta fija: es lo único que dice si
+    # el endpoint contestó otro cuaderno, y de eso depende qué se revisa después.
+    assert "1 - Principal" in str(caida.value), (
+        f"el mensaje no dice qué cuaderno llegó: {caida.value}"
     )
 
 
@@ -2951,12 +2956,17 @@ def test_una_respuesta_sin_marca_no_acredita_nada_si_el_sitio_marca(monkeypatch)
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    with pytest.raises(EstructuraInesperada, match="no atendió la referencia"):
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia") as caida:
         c.detalle_causa("E", 468, 2026, tribunal=162)
 
     assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
         "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
         "este test dice medir"
+    )
+    # Y cuando no llegó ninguno lo dice con esa palabra, que es lo que distingue
+    # "contestó otro cuaderno" de "contestó una página que no acredita ninguno".
+    assert "ninguno" in str(caida.value), (
+        f"el mensaje no distingue la falta de marca: {caida.value}"
     )
 
 

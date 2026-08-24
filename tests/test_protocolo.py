@@ -1460,6 +1460,29 @@ def test_ninguna_plantilla_afirma_una_ausencia() -> None:
             )
 
 
+def test_revisar_causa_mira_si_la_causa_existe_antes_que_los_nulos() -> None:
+    """Con `causa_encontrada` en falso TODOS los campos vienen en nulo, y por otra razón.
+
+    La plantilla enseña a leer un nulo como "esta competencia no publica ese panel". Si la
+    búsqueda no dio con la causa, esa lectura convierte una causa que no se encontró en una
+    causa revisada cuyos paneles la competencia no publica, y el resumen no deja rastro de que
+    se buscó mal.
+
+    Va con el campo nombrado y no con una frase: lo que hay que hacer es MIRARLO.
+    """
+    texto = _rendidas()["revisar-causa"]
+    assert "causa_encontrada" in texto, (
+        "la plantilla no manda a mirar `causa_encontrada`, así que sus nulos se leen como "
+        "paneles ausentes aunque la causa no se haya encontrado"
+    )
+    antes = texto.index("causa_encontrada")
+    despues = texto.index("NULO")
+    assert antes < despues, (
+        "manda a mirar `causa_encontrada` DESPUÉS de clasificar los nulos, que es cuando ya se "
+        "atribuyeron a la competencia"
+    )
+
+
 def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:
     """Las competencias y los buscadores que nombran salen del código, no de la prosa.
 

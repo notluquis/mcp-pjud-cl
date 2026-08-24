@@ -905,6 +905,41 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     )
 
 
+def test_la_referencia_tabula_todas_las_excepciones_del_paquete():
+    """La tabla de errores se escribe a mano y el código gana excepciones.
+
+    Quien conecta esto lee esa tabla para saber qué hacer con cada fallo. Dos ya se habían
+    quedado fuera sin que nada avisara: `ResultadosTruncados`, que la directiva misma explica
+    ("si una búsqueda excede el tope de páginas, la herramienta falla"), y `CausaNoEncontrada`,
+    que es la que distingue una causa que no se encontró de una sin actuaciones.
+
+    Se deriva de los módulos y no de una lista escrita acá: una excepción nueva entra sola al
+    guardia, que es justo lo que no pasó con estas dos.
+    """
+    import inspect
+
+    from mcp_pjud import client as _cliente_mod
+    from mcp_pjud import juris as _juris_mod
+    from mcp_pjud import parser as _parser_mod
+
+    clases = {
+        nombre
+        for modulo in (_cliente_mod, _parser_mod, _juris_mod)
+        for nombre, objeto in vars(modulo).items()
+        if inspect.isclass(objeto)
+        and issubclass(objeto, Exception)
+        and objeto.__module__.startswith("mcp_pjud")
+    }
+    assert clases, "no se encontró ninguna excepción del paquete: el barrido dejó de mirar"
+
+    seccion = HERRAMIENTAS.split("## Errores")[1].split("\n## ")[0]
+    faltan = sorted(c for c in clases if c not in seccion)
+    assert not faltan, (
+        f"estas excepciones pueden llegarle a quien consulta y la referencia no las tabula: "
+        f"{faltan}"
+    )
+
+
 def test_ninguna_plantilla_pasa_del_tope_en_lo_que_el_cliente_lista():
     """El mismo corte que a las herramientas, sobre el campo que de verdad viaja en la lista.
 

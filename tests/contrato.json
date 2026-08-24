@@ -867,7 +867,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Actuaciones del ministro de fe con su fecha real de diligencia.\n\nEs el dato que el ebook oficial de la Oficina Judicial Virtual omite y del que dependen los plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.\n\n`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado (art. 9 inc. 3 Ley 20.886) SÓLO en apelaciones, civil, cobranza, laboral, que son las que publican esa columna. En el resto, el falso significa que no hay dónde mirar. Y `true` significa que el sitio lo ofrece, no que exista: está medido que una de seis abre un panel vacío.",
+      "description": "Actuaciones del ministro de fe con su fecha real de diligencia.\n\nEs el dato que el ebook oficial de la Oficina Judicial Virtual omite y del que dependen los plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.\n\nUna lista vacía significa que la causa NO tiene actuaciones de receptor, y eso es una respuesta. Si la búsqueda no encuentra la causa, esto falla en vez de devolver la lista vacía: los dos casos daban el mismo valor y un rol mal escrito se leía como una causa sin diligencias.\n\n`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado (art. 9 inc. 3 Ley 20.886) SÓLO en apelaciones, civil, cobranza, laboral, que son las que publican esa columna. En el resto, el falso significa que no hay dónde mirar. Y `true` significa que el sitio lo ofrece, no que exista: está medido que una de seis abre un panel vacío.",
       "inputSchema": {
         "properties": {
           "anio": {

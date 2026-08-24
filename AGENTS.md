@@ -74,6 +74,7 @@ src/mcp_pjud/
   parser.py    Extracción de tablas. Sin red: se prueba offline
 tests/
   fixtures/    Respuestas reales anonimizadas. Ningún test consulta al Poder Judicial
+  contrato.json  Lo que el servidor promete por el protocolo. Un cambio acá se aprueba a mano
 docs/          Documentación publicada en Read the Docs
 ```
 
@@ -88,6 +89,8 @@ uv run cog --check README.md docs/instalacion.md      # bloques generados, sin e
 uv run sphinx-build -W -b html docs docs/_build/html   # -W: un aviso es un error
 uv run zizmor .github/workflows/ .github/dependabot.yml
 uv run mutmut run          # testing de mutación, lento
+
+APROBAR_CONTRATO=1 uv run pytest tests/test_contrato.py   # aprobar un cambio de contrato
 ```
 
 ## Cómo se escriben los cambios acá

@@ -1621,6 +1621,28 @@ def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monke
     )
 
 
+def test_en_civil_el_error_no_manda_a_corregir_el_libro(monkeypatch):
+    """El consejo de indicar el libro es de apelaciones, y viajaba en las cinco competencias.
+
+    En civil `tipo` es la letra del rol, no un libro: quien siga el consejo busca un libro que
+    no existe y repite la misma consulta contra la plataforma. Sólo las competencias cuyo rol
+    lleva el libro adelante reciben ese remedio.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    c, _ = _capturando(listado)
+
+    # La fixture trae E-468-2026; se pide con otra letra, así que ninguna calza exacto.
+    with pytest.raises(ValueError, match="ninguna corresponde") as fallo:
+        c.detalle_causa("C", 468, 2026, tribunal=162)
+
+    mensaje = str(fallo.value)
+    assert "libro" not in mensaje, (
+        "en civil no hay libros: el consejo manda a corregir un campo que es la letra del rol"
+    )
+    assert "Protección" not in mensaje, "el ejemplo es de apelaciones"
+
+
 def test_en_apelaciones_la_ambiguedad_de_varias_cortes_pide_corte_y_no_tribunal(monkeypatch):
     """El mismo rol y el mismo libro existen en varias Cortes de Apelaciones.
 

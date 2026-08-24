@@ -19,6 +19,7 @@ import ast
 import asyncio
 import base64
 import contextlib
+import functools
 import json
 import re
 import subprocess
@@ -29,6 +30,7 @@ from pathlib import Path
 import pytest
 import yaml
 from lxml import html
+from mcp.client import Client
 
 from mcp_pjud.client import (
     ANEXOS,
@@ -631,6 +633,92 @@ def test_el_servidor_se_registra_con_el_mismo_nombre_en_todas_las_guias():
     # Y el alias dentro del `config` del botón de VS Code, que va aparte del `name=`.
     assert f"%22name%22%3A%22{ALIAS}%22" in readme, (
         "el botón de VS Code lleva el nombre dos veces y una quedó con el alias viejo"
+    )
+
+
+#: Lo que `tools/list` pesa hoy en el cable, medido el 24 de agosto de 2026 con el ejecutable
+#: publicado: 104.475 caracteres antes de este tope, y 46.865 después. El tope no es estético.
+#: El cliente DIFIERE las definiciones cuando pasan del 10% de su ventana de contexto, y ahí
+#: una sesión carga diez de catorce herramientas sin enterarse de que le faltan cuatro: pasó,
+#: y por eso existe este guardia. El número deja holgura para dos herramientas más.
+PRESUPUESTO_DEL_CATALOGO = 60_000
+
+#: Claude Code trunca en 2 KB cada descripción de herramienta y las instrucciones del servidor,
+#: en silencio. Lo que cae del otro lado del corte no llega y nadie lo nota.
+TOPE_DE_UNA_DESCRIPCION = 2048
+
+
+@functools.cache
+def _catalogo() -> tuple[dict, ...]:
+    """El catálogo tal como viaja, no como está en memoria.
+
+    Va por una sesión MCP de verdad y no por `mcp.list_tools()` porque lo que hay que medir es
+    lo que el cliente recibe: el SDK cuelga un `_meta` del resultado, y si algún día colgara
+    algo de cada herramienta, medir el objeto en memoria daría un presupuesto que nadie gasta.
+    Hoy las dos cuentas coinciden, que es justo lo que esto deja fijado.
+
+    `by_alias` porque el cable usa `outputSchema` y el objeto `output_schema`.
+    """
+
+    async def anunciar() -> tuple[dict, ...]:
+        async with Client(mcp) as cliente:
+            listado = await cliente.list_tools()
+            return tuple(h.model_dump(by_alias=True, exclude_none=True) for h in listado.tools)
+
+    return asyncio.run(anunciar())
+
+
+def test_el_catalogo_cabe_en_el_presupuesto_del_cliente():
+    """Un catálogo que pasa del 10% de la ventana se difiere entero, y eso no falla: calla.
+
+    La herramienta que el modelo no ve no la puede pedir, y no hay señal de que falte. Es un
+    falso negativo del mismo tipo que los del parser, servido por el protocolo.
+    """
+    pesa = len(json.dumps(_catalogo()))
+    assert pesa <= PRESUPUESTO_DEL_CATALOGO, (
+        f"el catálogo pesa {pesa:,} caracteres y el tope es {PRESUPUESTO_DEL_CATALOGO:,}. "
+        "Sobre el 10% de la ventana del cliente las definiciones se difieren en silencio"
+    )
+
+
+def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
+    """Se trunca en 2 KB, sin aviso, y lo que se pierde es el final: los avisos van al final."""
+    largas = {
+        h["name"]: len(h["description"].encode())
+        for h in _catalogo()
+        if len(h.get("description", "").encode()) > TOPE_DE_UNA_DESCRIPCION
+    }
+    assert not largas, (
+        f"estas descripciones pasan de {TOPE_DE_UNA_DESCRIPCION} bytes y el cliente las corta "
+        f"por la mitad sin avisar: {largas}"
+    )
+
+
+def test_ningun_esquema_de_salida_anunciado_lleva_prosa():
+    """La prosa de los campos vive en el modelo y se publica en la referencia; en el cable
+    ocupa el 38% del catálogo y el modelo ya la tiene en la descripción de la herramienta.
+
+    Es recursivo a propósito: la prosa se esconde en `$defs`, que es donde estaba el 89% del
+    peso de `obtener_detalle_causa`.
+    """
+
+    def prosa(nodo, camino=""):
+        if isinstance(nodo, dict):
+            hallada = [camino] if "description" in nodo else []
+            return hallada + [
+                x for k, v in nodo.items() for x in prosa(v, f"{camino}.{k}" if camino else k)
+            ]
+        if isinstance(nodo, list):
+            return [x for i, v in enumerate(nodo) for x in prosa(v, f"{camino}[{i}]")]
+        return []
+
+    con_prosa = {
+        h["name"]: len(prosa(h["outputSchema"])) for h in _catalogo() if "outputSchema" in h
+    }
+    con_prosa = {k: v for k, v in con_prosa.items() if v}
+    assert not con_prosa, (
+        f"estos esquemas de salida anuncian prosa por campo: {con_prosa}. El protocolo anuncia "
+        "la FORMA; lo que el modelo tiene que saber va en la descripción de la herramienta"
     )
 
 

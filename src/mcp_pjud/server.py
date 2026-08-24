@@ -20,6 +20,9 @@ from mcp.types import (
     TextContent,
     ToolAnnotations,
 )
+from mcp.types import (
+    Tool as MCPTool,
+)
 from pydantic import Field
 
 from .client import (
@@ -157,6 +160,7 @@ SOLO_LECTURA = ToolAnnotations(
     open_world_hint=True,
 )
 
+
 #: La identidad que el servidor publica en `server/discover`, que la especificación de MCP
 #: exige implementar desde la revisión 2026-07-28. Ahí viaja `serverInfo` con nombre y versión.
 #:
@@ -167,7 +171,43 @@ SOLO_LECTURA = ToolAnnotations(
 #: La propia especificación advierte que estos datos son para mostrar, registrar y depurar, y
 #: que un cliente no debe usarlos para decidir nada de seguridad. Acá sirven para que quien
 #: reporte un problema pueda decir contra qué versión lo vio.
-mcp = MCPServer(
+def _sin_prosa(nodo: object) -> object:
+    """El mismo esquema sin las descripciones de campo, recursivo.
+
+    Recursivo porque la prosa se esconde en `$defs`: ahí estaba el 89% del peso del esquema de
+    `obtener_detalle_causa`. Se copia en vez de mutar para no tocar `fn_metadata.output_schema`,
+    que es lo que el SDK usa para validar y `model_json_schema()` para publicar la referencia.
+    """
+    if isinstance(nodo, dict):
+        return {k: _sin_prosa(v) for k, v in nodo.items() if k != "description"}
+    if isinstance(nodo, list):
+        return [_sin_prosa(v) for v in nodo]
+    return nodo
+
+
+class _ServidorQueCabe(MCPServer):
+    """El catálogo que viaja anuncia la FORMA de la salida, no su prosa.
+
+    Medido el 24 de agosto de 2026 contra el ejecutable publicado: `tools/list` pesaba 104.475
+    caracteres, unos 26.000 tokens que se gastan en toda conversación con el servidor conectado
+    aunque no se use. El cliente DIFIERE las definiciones cuando pasan del 10% de su ventana, y
+    ahí una sesión cargó diez de catorce herramientas sin señal de que faltaran cuatro.
+
+    La prosa por campo no se pierde: sigue en el modelo, la publica la referencia, y lo que el
+    modelo necesita saber (que un nulo no es un cero, qué competencia publica qué) vive en la
+    descripción de la herramienta, que es lo que de verdad lee antes de llamar.
+    """
+
+    async def list_tools(self) -> list[MCPTool]:
+        return [
+            h.model_copy(update={"output_schema": _sin_prosa(h.output_schema)})
+            if h.output_schema
+            else h
+            for h in await super().list_tools()
+        ]
+
+
+mcp = _ServidorQueCabe(
     "mcp-pjud",
     title="Consulta de causas del Poder Judicial de Chile",
     description=DESCRIPCION,
@@ -492,6 +532,16 @@ def obtener_actuaciones_receptor(
 @mcp.tool(
     title="Detalle de la causa: historia, partes y notificaciones",
     annotations=SOLO_LECTURA,
+    # La única que no anuncia esquema de salida, y la excepción lleva sus dos cifras: aun
+    # despojado de prosa su esquema pesa 12.286 caracteres, el 27% del catálogo entero por una
+    # sola herramienta, con once modelos anidados en `$defs`.
+    #
+    # Lo que se pierde es acotado: el bloque de texto con el JSON que el modelo lee es idéntico
+    # con y sin esquema (`_convert_to_content` corre antes de la rama que valida), y hay un
+    # test que lo comprueba en vez de confiar en esa lectura. Lo que se va es
+    # `structuredContent` y la validación del SDK contra el esquema anunciado, en la
+    # herramienta cuyo modelo ya está publicado entero en la referencia.
+    structured_output=False,
 )
 def obtener_detalle_causa(
     tipo: Tipo,
@@ -503,45 +553,40 @@ def obtener_detalle_causa(
 ) -> DetalleCausa:
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
-    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y lo hace
-    con una sola cadena de peticiones. Preferir esta herramienta antes que preguntar por
-    partes: los paneles vienen juntos en la misma respuesta, así que pedirlos por separado
-    multiplica las consultas contra la plataforma sin traer nada nuevo.
+    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y con una
+    sola cadena de peticiones. Preferirla antes que pedir paneles por separado: vienen todos
+    juntos y separarlos multiplica las consultas sin traer nada nuevo.
 
-    NO es el expediente completo. El detalle publica más paneles de los que este servidor sabe
-    leer: los escritos todavía no están medidos, así que su ausencia acá NO significa que la
-    causa no los tenga.
+    NO es el expediente completo: publica más paneles de los que este servidor sabe leer. Los
+    escritos no están medidos, así que su ausencia acá NO significa que la causa no los tenga.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
     - NULO: esta competencia no publica ese panel. La pregunta no tiene respuesta acá.
     - Lista vacía: el panel existe y no trae filas. Es una respuesta. `litigantes` y `materias`
       nunca vienen así: una causa sin partes, o laboral sin materia, no existe, y ahí se
-      levanta un error en vez de publicar una lista vacía.
+      levanta un error.
     - Con elementos: lo que hay.
 
-    `piezas_exhorto` es el único que no se rige por eso: su panel sólo existe en las causas que
-    SON un exhorto, así que cuando viene en nulo hay que mirar `causa_es_exhorto` para saber si
-    es porque la causa no lo es o porque la competencia no tiene medida la pregunta.
+    `piezas_exhorto` no se rige por eso: su panel sólo existe en las causas que SON un exhorto,
+    así que en nulo hay que mirar `causa_es_exhorto` para saber si es porque la causa no lo es
+    o porque la competencia no tiene medida la pregunta.
 
-    Cuidado con dos cosas al computar plazos. `fecha_diligencia` de la historia viene en nulo
-    salvo en civil y cobranza, y las notificaciones incluyen las NO practicadas, que se
-    distinguen por su `estado`.
+    Al computar plazos: `fecha_diligencia` de la historia viene en nulo salvo en civil y
+    cobranza, y las notificaciones incluyen las NO practicadas, distinguibles por su `estado`.
 
-    Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
+    Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el
     historial. Sumarlas informa una deuda inflada varias veces.
 
-    Los litigantes traen RUT de personas naturales, las diligencias de cobranza el nombre de
-    quien figura a cargo, y la liquidación de laboral el RUT y el nombre de a quién se le
-    paga: son datos personales de terceros.
+    Trae datos personales de terceros: RUT de los litigantes, el nombre de quien figura a cargo
+    de las diligencias de cobranza, y el RUT y el nombre de a quién se le paga en la
+    liquidación laboral.
 
-    Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente: el exhorto
-    abre una causa nueva en el tribunal destino, y las actuaciones de esa parte NO están acá.
-
-    `causa_de_origen` cierra la misma clase de arista hacia abajo: es la causa de la Corte de
-    Apelaciones desde la que subió el recurso, y sólo suprema la publica. Trae la corte por su
-    NOMBRE, así que para consultarla hay que resolver el código con `listar_cortes`, igual que
-    con el tribunal de destino de un exhorto.
+    Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente y sus
+    actuaciones NO están acá. `causa_de_origen` es la misma arista hacia abajo: la causa de la
+    Corte desde la que subió el recurso, y sólo suprema la publica. Las dos nombran el tribunal
+    o la corte en palabras, así que hay que resolver el código con `listar_tribunales` o
+    `listar_cortes`.
     """
     with _cliente() as c:
         return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)

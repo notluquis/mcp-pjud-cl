@@ -41,6 +41,7 @@ import httpx
 import jsonschema
 import pytest
 from mcp.client import Client
+from mcp.server import MCPServer
 from mcp.types import (
     BlobResourceContents,
     CallToolResult,
@@ -129,6 +130,7 @@ def _llamar(
     argumentos: dict | None = None,
     detalle: str | None = None,
     estado_busqueda: int = 200,
+    servidor_mcp=None,
 ) -> CallToolResult:
     """Llama la herramienta a través de una sesión MCP real y devuelve lo que viaja por el cable.
 
@@ -154,7 +156,7 @@ def _llamar(
     monkeypatch.setattr(servidor, "PjudClient", fabricar)
 
     async def ida_y_vuelta() -> CallToolResult:
-        async with Client(servidor.mcp) as cliente:
+        async with Client(servidor_mcp or servidor.mcp) as cliente:
             return await cliente.call_tool(herramienta, argumentos or ARGUMENTOS)
 
     return asyncio.run(ida_y_vuelta())
@@ -294,6 +296,60 @@ def test_el_contenido_estructurado_valida_contra_el_esquema_anunciado(
         "la herramienta anuncia esquema de salida y no devolvió contenido estructurado"
     )
     jsonschema.validate(resultado.structured_content, esquema)
+
+
+#: El detalle real de la misma causa del listado, con su único cuaderno.
+DETALLE = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+
+#: Los argumentos con que se pide ese detalle. El tribunal va porque en civil el rol se numera
+#: por juzgado y sin él la causa es ambigua.
+ARGUMENTOS_DEL_DETALLE = {"tipo": "E", "rol": 468, "anio": 2026, "tribunal": 162}
+
+
+def test_el_detalle_dice_lo_mismo_aunque_ya_no_anuncie_esquema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Soltar el esquema de salida del detalle no le quita una letra al texto que el modelo lee.
+
+    Se soltó porque su esquema pesaba el 36% del catálogo, y el catálogo entero se difiere si
+    pasa del 10% de la ventana del cliente: la herramienta que el modelo no ve no la puede
+    pedir. La apuesta fue que el SDK arma el bloque de texto ANTES de la rama que valida contra
+    el esquema, así que lo único que se pierde es `structuredContent`.
+
+    Eso era una lectura de `func_metadata.py`, y una lectura no se cae cuando el SDK cambia.
+    El gemelo declara el esquema sobre la MISMA función y se compara lo que viaja.
+    """
+    gemelo = MCPServer("gemelo")
+    gemelo.tool(structured_output=True)(servidor.obtener_detalle_causa)
+
+    sin_esquema = _llamar(
+        monkeypatch,
+        LISTADO,
+        herramienta="obtener_detalle_causa",
+        argumentos=ARGUMENTOS_DEL_DETALLE,
+        detalle=DETALLE,
+    )
+    con_esquema = _llamar(
+        monkeypatch,
+        LISTADO,
+        herramienta="obtener_detalle_causa",
+        argumentos=ARGUMENTOS_DEL_DETALLE,
+        detalle=DETALLE,
+        servidor_mcp=gemelo,
+    )
+
+    assert not sin_esquema.is_error, _texto(sin_esquema)
+    assert not con_esquema.is_error, _texto(con_esquema)
+    # El control: si el gemelo tampoco trajera contenido estructurado, la comparación de abajo
+    # sería entre dos respuestas iguales por la razón equivocada y pasaría siempre.
+    assert con_esquema.structured_content is not None
+    assert sin_esquema.structured_content is None, (
+        "el detalle volvió a anunciar esquema; el catálogo crece 12.286 caracteres"
+    )
+    assert _texto(sin_esquema) == _texto(con_esquema), (
+        "sin el esquema el SDK ya no arma el mismo texto: lo que se perdió no es sólo el "
+        "contenido estructurado, y el detalle tiene que volver a declararlo"
+    )
 
 
 #: Un listado que declara más resultados de los que caben en una página, con el bloque de

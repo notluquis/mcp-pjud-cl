@@ -441,8 +441,9 @@ Lo que se adoptó, traducido a lo que este proyecto es:
   funciona.
 - **El esquema de cada herramienta, generado.** Es el equivalente de su
   `APIResponseSchemaPicker`, con una ventaja: no se escribe a mano. Se genera desde el servidor
-  al construir la página, así que lo publicado es literalmente lo que un cliente MCP recibe por
-  el protocolo, y no puede quedar viejo.
+  al construir la página, así que no puede quedar viejo. La entrada es la que viaja tal cual;
+  la salida acá va con la descripción de cada campo, que por el cable se despoja para que el
+  catálogo no se difiera, y por eso la referencia es el único lugar donde se puede leer.
 - **Botón de copiar** en cada bloque de código.
 
 Lo que **no** se copia, y conviene decir por qué:

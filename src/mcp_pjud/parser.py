@@ -2636,7 +2636,11 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
             # al orden de la lista.
             mostrado=op.get("selected") is not None,
         )
-        for op in doc.xpath('//select[@id="selCuaderno"]/option')
+        # Los dos identificadores, porque el sitio le pone otro en cobranza: `selCuadernoCob`.
+        # Leer sólo el primero devolvía lista vacía en TODA causa de cobranza, y una lista vacía
+        # acá dice "esta causa tiene un solo cuaderno". Una de cobranza con cuaderno de apremio
+        # se leía a medias y salía con cara de completa, que es la regla 4 exacta.
+        for op in doc.xpath('//select[@id="selCuaderno" or @id="selCuadernoCob"]/option')
         if op.get("value")
     ]
 

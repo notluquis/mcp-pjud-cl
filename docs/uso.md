@@ -63,6 +63,13 @@ ejecutivo.
 Ya está corregido: **se recorren todos los cuadernos**, y cada actuación te dice a cuál
 pertenece. Se menciona acá porque es el tipo de omisión que se ve completa y no lo está.
 
+Y volvió a pasar en otra parte, que es la razón por la que esta sección sigue acá. En cobranza
+el sitio le pone otro nombre al desplegable, así que el lector no lo encontraba y toda causa de
+cobranza salía como si tuviera un solo cuaderno: la de dos se leía a medias, con la misma cara
+de completa, y ahí es donde vive el requerimiento de pago. La lectura además comprueba que la
+página que llegó sea la del cuaderno que se pidió, y si no lo es se detiene en vez de entregar
+el mismo cuaderno dos veces con dos nombres.
+
 ## Qué te devuelve
 
 Por cada actuación del ministro de fe:

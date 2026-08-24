@@ -517,6 +517,49 @@ por rol, o identificar la única causa que la herramienta devuelve.
 dicen por qué algo tiene que ser así; la instantánea dice qué es, y atrapa el cambio que no
 viola ninguna regla.
 
+### 0.15: lo que el servidor deja ver mientras trabaja — hecho
+
+La 0.14 arregló lo que el servidor DICE de sí mismo. Ésta cierra lo otro: lo que deja ver
+mientras trabaja, y las piezas de la revisión vigente que no se usaban.
+
+**Lo disparó una sesión real**, la primera que consultó de verdad. Reportó dos cuelgues de
+cuatro minutos en `listar_cortes` y lo dijo mejor de lo que lo tenía escrito el proyecto:
+
+> Los tres cuelgues devolvieron "no result received". Nada distingue "no respondió" de "no
+> existe". Un lector apurado reporta que la causa no existe.
+
+Es la regla 4 —fallo ruidoso, nunca lista vacía— reapareciendo en el transporte, después de
+haber reaparecido en el protocolo. Cuatro excepciones salían crudas, y las cuatro eran del
+mismo eje: la plataforma lenta o rota, que es el modo de falla más frecuente de un portal
+público, llegaba peor contado que el más raro.
+
+**Y la misma regla estaba rota en la herramienta que da sentido al proyecto.**
+`obtener_actuaciones_receptor` devolvía `[]` cuando la búsqueda no encontraba la causa, que es
+el mismo valor que una causa encontrada sin actuaciones de receptor: un rol mal escrito se leía
+como una causa revisada sin diligencias, y sobre eso se computa un plazo que no existe.
+
+**Una petición de cada causa sobraba.** El recorrido volvía a pedir el cuaderno que la respuesta
+del detalle ya traía desplegado: seis peticiones donde `RAFAGA_MAXIMA` está dimensionada para
+cinco. La cláusula CUARTA es la obligación central del proyecto y el código llevaba versiones
+sin respetarla, con tres lugares de la documentación afirmando lo contrario.
+
+**La bitácora existía y no la veía nadie.** Era una lista de instancia, y el servidor abre un
+cliente por llamada de herramienta: nacía y moría sin que nadie la mirara. Sale por el error
+estándar, con lo que tardó la plataforma y lo que esperamos nosotros por separado, que es lo que
+distingue un portal lento de un freno propio.
+
+| | antes | ahora |
+|---|---|---|
+| un timeout | `Error executing tool listar_cortes: timed out` | dice los segundos, que la petición salió, y que esperar no prueba una ausencia |
+| el techo de espera | 240 s, contra su propio comentario que pedía el doble de 177 | 360 s, con un test que fija la regla |
+| una cadena de minutos | silencio | un aviso de progreso por petición, que deja al cliente sostener su reloj |
+| la bitácora | inalcanzable | por el error estándar, sin la referencia de ningún documento |
+
+**Y de la revisión vigente**, que ya se hablaba por stdio sin saberlo: el catálogo viaja con
+pista de frescura en vez de declararse rancio al instante, el servidor se presenta con icono, y
+el argumento `competencia` de la plantilla de documento se completa. Más tres plantillas que la
+persona invoca, que repiten por construcción las distinciones que un resumen borra.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

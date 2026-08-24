@@ -1253,7 +1253,7 @@ def _con_un_solo_mostrado(cuadernos: list[Cuaderno]) -> list[Cuaderno]:
     return cuadernos
 
 
-def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno) -> None:
+def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) -> None:
     """Comprueba que la página que llegó sea la del cuaderno que se pidió.
 
     Pedir un cuaderno reusa el MISMO endpoint del detalle, cambiándole la referencia. Que ese
@@ -1268,19 +1268,26 @@ def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno) -> None:
     El nombre es lo que el sitio imprime y lo que la respuesta usa para etiquetar cada
     actuación.
     """
-    # Sólo se levanta con evidencia POSITIVA de que llegó otro. Una página que no marca
-    # ninguno no prueba nada: `_con_un_solo_mostrado` ya acepta el caso de cero marcados,
-    # porque la marca es un atributo del sitio y su ausencia sólo cuesta una petición. Tratar
-    # esa ausencia como error dejaría sin leer causas que hoy se leen.
+    # Que no venga marcado ninguno NO es una comprobación aprobada: si el endpoint ignorara la
+    # referencia y devolviera siempre la misma página sin marca, aceptarla dejaría pasar justo
+    # el caso que esta función existe para atrapar. Por eso `el_sitio_marca` decide: si la
+    # primera página marcó su cuaderno, este sitio marca, y una respuesta sin marca es una
+    # respuesta que no se puede acreditar.
+    #
+    # Y si ese detalle NO marcó ninguno, no hay con qué comprobar: `_con_un_solo_mostrado`
+    # acepta ese caso y pide todos los cuadernos, y exigir una marca que ese sitio no emite
+    # dejaría sin leer causas que hoy se leen. Nunca se ha observado una página así; la única
+    # que existe es un doble de test que borra el atributo a propósito.
     marcado = next((c.nombre for c in parse_cuadernos(pagina) if c.mostrado), "")
-    if marcado and marcado != pedido.nombre:
-        raise EstructuraInesperada(
-            f"Se pidió el cuaderno {pedido.nombre!r} y la respuesta trae desplegado "
-            f"{marcado!r}: el endpoint del detalle no atendió la referencia del "
-            "cuaderno. Se levanta en vez de seguir, porque etiquetar esta página con el nombre "
-            "del cuaderno pedido devolvería las actuaciones de otro y la lectura se vería "
-            "completa."
-        )
+    if marcado == pedido.nombre or (not marcado and not el_sitio_marca):
+        return
+    raise EstructuraInesperada(
+        f"Se pidió el cuaderno {pedido.nombre!r} y la respuesta trae desplegado "
+        f"{marcado or 'ninguno'}: el endpoint del detalle no atendió la referencia del "
+        "cuaderno. Se levanta en vez de seguir, porque etiquetar esta página con el nombre "
+        "del cuaderno pedido devolvería las actuaciones de otro y la lectura se vería "
+        "completa."
+    )
 
 
 class PjudClient(Transporte):
@@ -1938,7 +1945,8 @@ class PjudClient(Transporte):
         defensa puesta en un camino deja el otro leyendo el cuaderno equivocado.
         """
         pagina = self.detalle(cuaderno.referencia, competencia, _paso_cuaderno(numero, cuadernos))
-        _es_el_cuaderno_pedido(pagina, cuaderno)
+        # Que ESTE sitio marque se sabe por la primera página, que es la lista que llegó acá.
+        _es_el_cuaderno_pedido(pagina, cuaderno, any(c.mostrado for c in cuadernos))
         return pagina
 
     def documento(self, ruta: str, referencia: str, competencia: str = "civil") -> Documento:

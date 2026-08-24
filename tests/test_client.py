@@ -2921,6 +2921,45 @@ def test_un_endpoint_que_ignora_la_referencia_del_cuaderno_se_levanta(monkeypatc
     )
 
 
+def test_una_respuesta_sin_marca_no_acredita_nada_si_el_sitio_marca(monkeypatch):
+    """La ausencia de marca NO es una comprobación aprobada.
+
+    Si el endpoint ignorara la referencia y devolviera siempre la misma página sin marca,
+    aceptarla dejaría pasar justo lo que la comprobación existe para atrapar: dos cuadernos
+    etiquetados sobre la misma página, con las actuaciones del apremio ausentes.
+
+    Lo que decide es si ESE sitio marca, y eso lo dice la primera página: acá la marcó, así
+    que una respuesta sin marca es una respuesta que no se puede acreditar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    # El orden importa: al revés, el primer `replace` deja ` ="selected"`, que lxml lee como
+    # un atributo con ese nombre.
+    sin_marca = principal.replace(' selected="selected"', "").replace(" selected>", ">")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        cuerpo = peticion.content.decode()
+        pedidos.append(cuerpo)
+        # El detalle marca; el cuaderno que se pide vuelve sin marca.
+        return httpx.Response(200, text=sin_marca if REFERENCIA_APREMIO in cuerpo else principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia"):
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
+        "este test dice medir"
+    )
+
+
 def test_el_endpoint_que_ignora_la_referencia_se_levanta_tambien_en_las_actuaciones(monkeypatch):
     """El otro recorrido. `detalle_causa` y `actuaciones_receptor` piden los cuadernos por
     caminos distintos, y una defensa puesta en uno deja el otro leyendo el equivocado.

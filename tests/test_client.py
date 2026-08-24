@@ -485,8 +485,9 @@ def test_recorre_todos_los_cuadernos(monkeypatch):
         if "consultaRit" in str(req.url):
             return httpx.Response(200, text=listado)
         pedidos.append(cuerpo)
-        # El segundo cuaderno se pide con la referencia que trae el select del primero.
-        return httpx.Response(200, text=apremio if len(pedidos) > 2 else principal)
+        # El segundo cuaderno se pide con la referencia que trae el select del primero. El
+        # primero NO se pide: la respuesta del detalle ya lo trae puesto y `mostrado` lo marca.
+        return httpx.Response(200, text=apremio if len(pedidos) > 1 else principal)
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -1478,7 +1479,8 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
 
     def cliente() -> tuple[PjudClient, list[str]]:
         pedidos: list[str] = []
-        paginas = [listado, principal, principal, apremio]
+        # El principal viene una sola vez: es el que el detalle ya trae desplegado.
+        paginas = [listado, principal, apremio]
 
         def transporte(peticion: httpx.Request) -> httpx.Response:
             pedidos.append(str(peticion.url))
@@ -1512,9 +1514,9 @@ def test_las_dos_lecturas_de_la_causa_recorren_los_mismos_cuadernos(monkeypatch)
         "El de apremio es donde viven el requerimiento de pago y el embargo"
     )
     assert cuadernos == {a.cuaderno for a in del_receptor}
-    assert len(pedidos_historia) == 4, (
-        f"se esperaban cuatro peticiones (búsqueda, detalle y un cuaderno cada uno) y "
-        f"salieron {len(pedidos_historia)}"
+    assert len(pedidos_historia) == 3, (
+        "se esperaban tres peticiones (búsqueda, detalle con el primer cuaderno ya puesto, y "
+        f"el segundo cuaderno) y salieron {len(pedidos_historia)}"
     )
 
 
@@ -1819,6 +1821,85 @@ def test_una_competencia_sin_el_panel_deja_la_causa_de_origen_en_nulo(monkeypatc
     assert detalle.causa_de_origen is None
 
 
+def test_la_cadena_mas_larga_cabe_en_la_rafaga(monkeypatch):
+    """La ráfaga está dimensionada para la cadena más larga, y eso hay que MEDIRLO.
+
+    `test_la_rafaga_esta_acotada` compara `RAFAGA_MAXIMA` contra un cinco escrito a mano, y
+    `docs/instalacion.md` repite "4 o 5 peticiones". Ninguno de los dos mira el código: cuando
+    el recorrido de cuadernos pasó a pedir de nuevo el que ya tenía, la cadena se volvió de
+    seis y las dos afirmaciones quedaron falsas sin que nada se pusiera en rojo.
+
+    Acá se cuenta de verdad, desde un cliente FRÍO, que es como el servidor abre uno en cada
+    llamada de herramienta: la sesión son dos peticiones y se pagan siempre.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    portada = "<html><script>var adir = 'ADIR_1'; token: '" + "0" * 32 + "';</script></html>"
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        url = str(peticion.url)
+        pedidos.append(url)
+        if url.endswith("consultaUnificada.php"):
+            return httpx.Response(200, text=portada)
+        if "consultaRit" in url:
+            return httpx.Response(200, text=listado)
+        if "modal" in url:
+            return httpx.Response(
+                200, text=apremio if "causaCivil" in url and len(pedidos) > 4 else principal
+            )
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    detalle = c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert len({a.cuaderno for a in detalle.historia or []}) == 2, (
+        "no se recorrieron los dos cuadernos: la cuenta de abajo no significaría nada"
+    )
+    assert len(pedidos) == RAFAGA_MAXIMA + 1, (
+        f"la cadena más larga son {len(pedidos)} peticiones y la ráfaga es de "
+        f"{RAFAGA_MAXIMA}, o sea alcanza para {RAFAGA_MAXIMA + 1} antes de empezar a esperar. "
+        f"Salieron: {pedidos}. O sobra una petición, o la ráfaga quedó chica para la cadena "
+        "que el cliente hace de verdad"
+    )
+
+
+def test_un_detalle_sin_cuaderno_marcado_se_pide_entero(monkeypatch):
+    """La marca `selected` es del sitio, y si un día no viene hay que pedirlos todos.
+
+    El ahorro se apoya en que la respuesta diga cuál trae puesto. Sin marca no se puede saber,
+    y quedarse con el primero de la lista entregaría la Historia de un cuaderno como si fuera
+    la del otro: es el falso negativo del apremio, otra vez.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    sin_marca = principal.replace(" selected", "").replace(' selected="selected"', "")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        pedidos.append(str(peticion.url))
+        return httpx.Response(200, text=sin_marca if len(pedidos) == 1 else apremio)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert len(pedidos) == 3, (
+        f"sin marca hay que pedir los dos cuadernos, o sea el detalle más dos: salieron "
+        f"{len(pedidos)}. Reusar el primero sin que la respuesta diga cuál es lo adivina"
+    )
+
+
 def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
     """Es la razón de existir de la lectura combinada, y va como número.
 
@@ -1840,7 +1921,7 @@ def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
         pedidos.append(str(peticion.url))
         if "consultaRit" in str(peticion.url):
             return httpx.Response(200, text=listado)
-        return httpx.Response(200, text=apremio if len(pedidos) > 3 else principal)
+        return httpx.Response(200, text=apremio if len(pedidos) > 2 else principal)
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -1848,11 +1929,12 @@ def test_leer_todo_el_detalle_cuesta_una_sola_cadena(monkeypatch):
 
     detalle = c.detalle_causa("E", 468, 2026, tribunal=162)
 
-    assert len(pedidos) == 4, (
+    assert len(pedidos) == 3, (
         f"leer el detalle completo de una causa de dos cuadernos costó {len(pedidos)} "
-        f"peticiones: la búsqueda, el detalle y un cuaderno cada uno son cuatro. Acá la "
-        f"sesión ya está abierta; desde un cliente frío son seis, y así se midió contra la "
-        f"plataforma real"
+        "peticiones: la búsqueda, el detalle (que ya trae el primer cuaderno desplegado) y el "
+        "segundo cuaderno son tres. Acá la sesión ya está abierta; desde un cliente frío son "
+        "CINCO, que es la cadena para la que `RAFAGA_MAXIMA` está dimensionada. Eran seis "
+        "hasta que se dejó de pedir de nuevo el cuaderno que la respuesta ya traía"
     )
     assert detalle.historia, "la historia no puede venir vacía"
     assert detalle.litigantes, "los litigantes tampoco"

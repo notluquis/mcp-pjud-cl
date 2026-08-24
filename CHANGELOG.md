@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Leer una causa de dos cuadernos costaba una petición de más: el recorrido volvía a pedir el
+  cuaderno que la respuesta del detalle ya traía desplegado. Eran seis contra la plataforma
+  donde `RAFAGA_MAXIMA` está dimensionada para cinco, que es lo que la documentación decía.
+
 ## [0.14.0] - 2026-08-24
 
 ### Agregado

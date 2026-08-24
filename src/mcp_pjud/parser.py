@@ -2636,7 +2636,18 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
             # al orden de la lista.
             mostrado=op.get("selected") is not None,
         )
-        for op in doc.xpath('//select[@id="selCuaderno"]/option')
+        # Por prefijo, porque el sitio le pone otro identificador en cobranza: `selCuadernoCob`.
+        # Leer sólo `selCuaderno` devolvía lista vacía en TODA causa de cobranza, y una lista
+        # vacía acá dice "esta causa tiene un solo cuaderno": la de dos se leía a medias y salía
+        # con cara de completa, que es la regla 4 exacta.
+        #
+        # Por prefijo y no por una lista de los dos medidos, que sería lo natural en este
+        # proyecto: acá los dos errores no cuestan lo mismo. Un sufijo nuevo que la lista no
+        # nombre vuelve a producir el fallo silencioso de arriba; uno que el prefijo tome de más
+        # termina pidiendo una página que `_es_el_cuaderno_pedido` no reconoce, y eso se levanta.
+        # Medido sobre las fixtures: los ÚNICOS `<select>` con identificador que emiten estas
+        # páginas son estos dos.
+        for op in doc.xpath('//select[starts-with(@id, "selCuaderno")]/option')
         if op.get("value")
     ]
 

@@ -1020,6 +1020,7 @@ def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
     peticiones = []
 
     def transporte(req: httpx.Request) -> httpx.Response:
@@ -1027,7 +1028,9 @@ def test_las_actuaciones_no_recorren_todo_el_listado(monkeypatch):
         if "consultaRit" in str(req.url):
             # Un listado con más páginas: si paginara, pediría varias.
             return httpx.Response(200, text=_pagina(range(1, 4), total=99, ultima=False))
-        return httpx.Response(200, text=principal)
+        return httpx.Response(
+            200, text=apremio if REFERENCIA_APREMIO in req.content.decode() else principal
+        )
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -1049,13 +1052,16 @@ def test_las_actuaciones_acotan_la_busqueda_con_el_tribunal_que_se_les_dio(monke
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
     cuerpos: list[str] = []
 
     def transporte(req: httpx.Request) -> httpx.Response:
         cuerpos.append(req.content.decode())
         if "consultaRit" in str(req.url):
             return httpx.Response(200, text=_pagina(range(1, 2), total=1, ultima=True))
-        return httpx.Response(200, text=principal)
+        return httpx.Response(
+            200, text=apremio if REFERENCIA_APREMIO in req.content.decode() else principal
+        )
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -1303,6 +1309,12 @@ def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
 # -- el progreso se avisa ---------------------------------------------------------
 
 
+#: La referencia con que el select de `c1156_principal` nombra el cuaderno de apremio. Los
+#: dobles contestan por ella, que es como contesta la plataforma: por lo que se le pide y no
+#: por cuántas veces se le pidió.
+REFERENCIA_APREMIO = "referencia-ficticia-006"
+
+
 def _cliente_frio_de_dos_cuadernos(con_marca: bool = True) -> PjudClient:
     """Un cliente sin sesión abierta contra la causa de dos cuadernos.
 
@@ -1332,9 +1344,11 @@ def _cliente_frio_de_dos_cuadernos(con_marca: bool = True) -> PjudClient:
         if "consultaRit" in url:
             return httpx.Response(200, text=listado)
         if "modal" in url:
-            return httpx.Response(
-                200, text=apremio if "causaCivil" in url and len(pedidos) > 4 else principal
-            )
+            # Por la referencia que trae el cuerpo y NO por el número de petición: un doble que
+            # cuenta contesta lo mismo pase lo que pase, o sea se comporta como un endpoint que
+            # ignora lo que se le pide, y eso es lo que `_es_el_cuaderno_pedido` detecta.
+            cuaderno = REFERENCIA_APREMIO in peticion.content.decode()
+            return httpx.Response(200, text=apremio if cuaderno else principal)
         return httpx.Response(200, text="")
 
     c = PjudClient("test@example.cl")
@@ -2309,9 +2323,11 @@ def test_la_cadena_mas_larga_cabe_en_la_rafaga(monkeypatch):
         if "consultaRit" in url:
             return httpx.Response(200, text=listado)
         if "modal" in url:
-            return httpx.Response(
-                200, text=apremio if "causaCivil" in url and len(pedidos) > 4 else principal
-            )
+            # Por la referencia que trae el cuerpo y NO por el número de petición: un doble que
+            # cuenta contesta lo mismo pase lo que pase, o sea se comporta como un endpoint que
+            # ignora lo que se le pide, y eso es lo que `_es_el_cuaderno_pedido` detecta.
+            cuaderno = REFERENCIA_APREMIO in peticion.content.decode()
+            return httpx.Response(200, text=apremio if cuaderno else principal)
         return httpx.Response(200, text="")
 
     c = PjudClient("test@example.cl")
@@ -2414,7 +2430,8 @@ def test_un_detalle_sin_cuaderno_marcado_se_pide_entero(monkeypatch):
         if "consultaRit" in str(peticion.url):
             return httpx.Response(200, text=listado)
         pedidos.append(str(peticion.url))
-        return httpx.Response(200, text=sin_marca if len(pedidos) == 1 else apremio)
+        cuaderno = REFERENCIA_APREMIO in peticion.content.decode()
+        return httpx.Response(200, text=apremio if cuaderno else sin_marca)
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -2480,12 +2497,15 @@ def test_un_panel_que_la_competencia_no_publica_viaja_en_nulo_y_no_vacio(monkeyp
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
     listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
 
     def transporte(peticion: httpx.Request) -> httpx.Response:
         if "consultaRit" in str(peticion.url):
             return httpx.Response(200, text=listado)
-        return httpx.Response(200, text=principal)
+        return httpx.Response(
+            200, text=apremio if REFERENCIA_APREMIO in peticion.content.decode() else principal
+        )
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
@@ -2798,6 +2818,222 @@ def test_la_pregunta_del_exhorto_no_se_responde_en_una_competencia_sin_medir(mon
     assert detalle.causa_es_exhorto is None
     assert detalle.piezas_exhorto is None
     assert detalle.liquidaciones, "y el resto de la lectura sigue funcionando"
+
+
+def _cobranza_de_dos_cuadernos() -> tuple[str, str]:
+    """El detalle de cobranza con un cuaderno de apremio agregado, y el del apremio.
+
+    Sintético y dicho en voz alta: ninguna de las causas de cobranza medidas trajo dos
+    cuadernos, así que no hay respuesta real que guardar. Lo que se sintetiza es SÓLO la
+    segunda opción del desplegable, con la forma exacta que el sitio emite en el fixture de
+    cobranza; el resto de la página es la respuesta real anonimizada.
+
+    Sin esto, la única causa de cobranza con la que se puede probar tiene un cuaderno, y la
+    rama que este arreglo repara no se ejercita nunca.
+    """
+    base = (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8")
+    principal = base.replace(
+        '<option value="referencia-ficticia-003" selected="selected">Principal</option>',
+        '<option value="referencia-ficticia-003" selected="selected">Principal</option>'
+        '<option value="referencia-ficticia-007">Apremio</option>',
+    )
+    assert principal != base, "cambió el fixture de cobranza y este doble dejó de armar nada"
+    apremio = principal.replace(
+        '<option value="referencia-ficticia-003" selected="selected">Principal</option>',
+        '<option value="referencia-ficticia-003">Principal</option>',
+    ).replace(
+        '<option value="referencia-ficticia-007">Apremio</option>',
+        '<option value="referencia-ficticia-007" selected="selected">Apremio</option>',
+    )
+    return principal, apremio
+
+
+def test_una_causa_de_cobranza_con_apremio_se_lee_entera(monkeypatch):
+    """El desplegable de cobranza se llama `selCuadernoCob`, y el parser leía sólo `selCuaderno`.
+
+    Con eso, TODA causa de cobranza devolvía cero cuadernos, que es como se ve una causa de un
+    solo cuaderno: la de dos se leía a medias y salía con cara de completa. Es la regla 4 en la
+    competencia donde vive el requerimiento de pago.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal, apremio = _cobranza_de_dos_cuadernos()
+    listado = (FIXTURES / "busqueda_rit_cobranza.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        cuerpo = peticion.content.decode()
+        pedidos.append(cuerpo)
+        return httpx.Response(
+            200, text=apremio if "referencia-ficticia-007" in cuerpo else principal
+        )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("C", 9999, 2019, competencia="cobranza", tribunal=1200)
+
+    assert len(pedidos) == 2, (
+        f"el cuaderno de apremio no se pidió: salieron {len(pedidos)} peticiones de detalle"
+    )
+    assert any("referencia-ficticia-007" in cuerpo for cuerpo in pedidos), (
+        "se pidió dos veces el mismo cuaderno en vez del segundo"
+    )
+    assert detalle.historia, "la causa quedó sin historia"
+    assert {a.cuaderno for a in detalle.historia} == {"Principal", "Apremio"}, (
+        "las actuaciones no quedaron etiquetadas con los dos cuadernos: "
+        f"{sorted({a.cuaderno for a in detalle.historia})}"
+    )
+
+
+def test_un_endpoint_que_ignora_la_referencia_del_cuaderno_se_levanta(monkeypatch):
+    """Pedir un cuaderno reusa el endpoint del detalle cambiándole la referencia, y que ese
+    endpoint la atienda está medido en civil y no en cobranza.
+
+    Si no la atendiera, devolvería el cuaderno por defecto, la lectura lo etiquetaría con el
+    nombre del otro, y saldrían las actuaciones del principal repetidas dos veces con el
+    apremio ausente. Se levanta en vez de entregar eso.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        pedidos.append(peticion.content.decode())
+        # Contesta siempre el principal: es un endpoint que ignora lo que se le pide.
+        return httpx.Response(200, text=principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia") as caida:
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
+        "este test dice medir"
+    )
+    # El mensaje nombra el que LLEGÓ y no una etiqueta fija: es lo único que dice si
+    # el endpoint contestó otro cuaderno, y de eso depende qué se revisa después.
+    assert "1 - Principal" in str(caida.value), (
+        f"el mensaje no dice qué cuaderno llegó: {caida.value}"
+    )
+
+
+def test_una_respuesta_sin_marca_no_acredita_nada_si_el_sitio_marca(monkeypatch):
+    """La ausencia de marca NO es una comprobación aprobada.
+
+    Si el endpoint ignorara la referencia y devolviera siempre la misma página sin marca,
+    aceptarla dejaría pasar justo lo que la comprobación existe para atrapar: dos cuadernos
+    etiquetados sobre la misma página, con las actuaciones del apremio ausentes.
+
+    Lo que decide es si ESE sitio marca, y eso lo dice la primera página: acá la marcó, así
+    que una respuesta sin marca es una respuesta que no se puede acreditar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    # El orden importa: al revés, el primer `replace` deja ` ="selected"`, que lxml lee como
+    # un atributo con ese nombre.
+    sin_marca = principal.replace(' selected="selected"', "").replace(" selected>", ">")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        cuerpo = peticion.content.decode()
+        pedidos.append(cuerpo)
+        # El detalle marca; el cuaderno que se pide vuelve sin marca.
+        return httpx.Response(200, text=sin_marca if REFERENCIA_APREMIO in cuerpo else principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia") as caida:
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
+        "este test dice medir"
+    )
+    # Y cuando no llegó ninguno lo dice con esa palabra, que es lo que distingue
+    # "contestó otro cuaderno" de "contestó una página que no acredita ninguno".
+    assert "ninguno" in str(caida.value), (
+        f"el mensaje no distingue la falta de marca: {caida.value}"
+    )
+
+
+def test_una_respuesta_con_dos_cuadernos_marcados_tampoco_acredita(monkeypatch):
+    """`_con_un_solo_mostrado` corre sobre la PRIMERA página, y las que se piden después se la
+    saltaban.
+
+    Con dos marcados no se puede acreditar de qué cuaderno es la historia que se está leyendo,
+    y quedarse con el primero acepta la respuesta cuando ése calza con el pedido por
+    casualidad: la lectura la etiqueta como el cuaderno pedido y las actuaciones del otro
+    quedan afuera.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    # El apremio marcado ADEMÁS del principal, que es la ambigüedad que se prueba.
+    dos_marcas = principal.replace(
+        f'value="{REFERENCIA_APREMIO}"', f'value="{REFERENCIA_APREMIO}" selected="selected"'
+    )
+    assert dos_marcas != principal, "cambió la fixture y este doble dejó de armar la ambigüedad"
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        cuerpo = peticion.content.decode()
+        pedidos.append(cuerpo)
+        return httpx.Response(200, text=dos_marcas if REFERENCIA_APREMIO in cuerpo else principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="desplegados a la vez"):
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
+        "este test dice medir"
+    )
+
+
+def test_el_endpoint_que_ignora_la_referencia_se_levanta_tambien_en_las_actuaciones(monkeypatch):
+    """El otro recorrido. `detalle_causa` y `actuaciones_receptor` piden los cuadernos por
+    caminos distintos, y una defensa puesta en uno deja el otro leyendo el equivocado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        pedidos.append(peticion.content.decode())
+        return httpx.Response(200, text=principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no atendió la referencia"):
+        c.actuaciones_receptor("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir por este camino"
+    )
 
 
 def test_el_detalle_de_cobranza_trae_las_diligencias_del_ministro_de_fe(monkeypatch):

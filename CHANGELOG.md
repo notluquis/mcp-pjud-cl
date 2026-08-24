@@ -29,6 +29,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - La pista de frescura iba sólo en `tools/list`, así que las plantillas, los recursos y sus
   direcciones seguían saliendo con `ttlMs: 0`, o sea "vuelve a traerlo siempre". Ahora la llevan
   todos los catálogos cacheables menos `resources/read`, que queda fuera a propósito.
+- En cobranza el desplegable de cuadernos se llama distinto, así que toda causa de esa
+  competencia se leía como si tuviera uno solo: una con cuaderno de apremio venía a medias y
+  con cara de completa.
+- Pedir un cuaderno ahora comprueba que la página que llegó sea la que se pidió, y se detiene
+  si no lo es en vez de entregar el mismo cuaderno dos veces con dos nombres.
 
 ## [0.15.1] - 2026-08-24
 

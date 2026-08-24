@@ -1253,6 +1253,50 @@ def _con_un_solo_mostrado(cuadernos: list[Cuaderno]) -> list[Cuaderno]:
     return cuadernos
 
 
+def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) -> None:
+    """Comprueba que la página que llegó sea la del cuaderno que se pidió.
+
+    Pedir un cuaderno reusa el MISMO endpoint del detalle, cambiándole la referencia. Que ese
+    endpoint atienda la referencia de un cuaderno está medido en civil y NO en cobranza, donde
+    el sitio llama a otra función de JavaScript para lo mismo. Sin esta comprobación, un
+    endpoint que ignorara la referencia devolvería el cuaderno por defecto, la lectura lo
+    etiquetaría con el nombre del otro, y saldría una respuesta completa en apariencia con las
+    actuaciones del principal repetidas y las del apremio ausentes.
+
+    Se compara por NOMBRE y no por referencia a propósito: la misma pieza llega con una
+    referencia distinta en cada cuaderno, y cuánto dura `Cuaderno.referencia` no está medido.
+    El nombre es lo que el sitio imprime y lo que la respuesta usa para etiquetar cada
+    actuación.
+    """
+    # Que no venga marcado ninguno NO es una comprobación aprobada: si el endpoint ignorara la
+    # referencia y devolviera siempre la misma página sin marca, aceptarla dejaría pasar justo
+    # el caso que esta función existe para atrapar. Por eso `el_sitio_marca` decide: si la
+    # primera página marcó su cuaderno, este sitio marca, y una respuesta sin marca es una
+    # respuesta que no se puede acreditar.
+    #
+    # Y si ese detalle NO marcó ninguno, no hay con qué comprobar: `_con_un_solo_mostrado`
+    # acepta ese caso y pide todos los cuadernos, y exigir una marca que ese sitio no emite
+    # dejaría sin leer causas que hoy se leen. Nunca se ha observado una página así; la única
+    # que existe es un doble de test que borra el atributo a propósito.
+    #
+    # Por `_con_un_solo_mostrado` y no leyendo el desplegable a mano: esa guardia corre sobre
+    # la PRIMERA página y las que se piden después se la saltaban. Con dos marcados, quedarse
+    # con el primero acepta la respuesta cuando ese primero casualmente calza con el pedido, y
+    # ahí ya no se puede acreditar de qué cuaderno es la historia que se está leyendo.
+    marcado = next(
+        (c.nombre for c in _con_un_solo_mostrado(parse_cuadernos(pagina)) if c.mostrado), ""
+    )
+    if marcado == pedido.nombre or (not marcado and not el_sitio_marca):
+        return
+    raise EstructuraInesperada(
+        f"Se pidió el cuaderno {pedido.nombre!r} y la respuesta trae desplegado "
+        f"{marcado or 'ninguno'}: el endpoint del detalle no atendió la referencia del "
+        "cuaderno. Se levanta en vez de seguir, porque etiquetar esta página con el nombre "
+        "del cuaderno pedido devolvería las actuaciones de otro y la lectura se vería "
+        "completa."
+    )
+
+
 class PjudClient(Transporte):
     """Consulta pública de causas de la Oficina Judicial Virtual."""
 
@@ -1898,6 +1942,20 @@ class PjudClient(Transporte):
             paso or PASO_DETALLE,
         )
 
+    def _cuaderno(
+        self, cuaderno: Cuaderno, numero: int, cuadernos: list[Cuaderno], competencia: str
+    ) -> str:
+        """La página de UN cuaderno, comprobando que sea la que se pidió.
+
+        Lo llaman los dos recorridos, `detalle_causa` y `_recorrer_cuadernos`, para que la
+        comprobación no viva en uno solo: los dos piden lo mismo por caminos distintos, y una
+        defensa puesta en un camino deja el otro leyendo el cuaderno equivocado.
+        """
+        pagina = self.detalle(cuaderno.referencia, competencia, _paso_cuaderno(numero, cuadernos))
+        # Que ESTE sitio marque se sabe por la primera página, que es la lista que llegó acá.
+        _es_el_cuaderno_pedido(pagina, cuaderno, any(c.mostrado for c in cuadernos))
+        return pagina
+
     def documento(self, ruta: str, referencia: str, competencia: str = "civil") -> Documento:
         """Pide UN documento de la causa y lo devuelve tal cual llegó.
 
@@ -2183,10 +2241,7 @@ class PjudClient(Transporte):
             paginas = [
                 (primera, c.nombre)
                 if c.mostrado
-                else (
-                    self.detalle(c.referencia, competencia, _paso_cuaderno(i, cuadernos)),
-                    c.nombre,
-                )
+                else (self._cuaderno(c, i, cuadernos, competencia), c.nombre)
                 for i, c in enumerate(_con_un_solo_mostrado(cuadernos), 1)
             ]
 
@@ -2304,9 +2359,7 @@ class PjudClient(Transporte):
         actuaciones = []
         for i, cuaderno in enumerate(_con_un_solo_mostrado(cuadernos), 1):
             pagina = (
-                html_
-                if cuaderno.mostrado
-                else self.detalle(cuaderno.referencia, competencia, _paso_cuaderno(i, cuadernos))
+                html_ if cuaderno.mostrado else self._cuaderno(cuaderno, i, cuadernos, competencia)
             )
             actuaciones.extend(leer(pagina, cuaderno.nombre, competencia))
         return actuaciones

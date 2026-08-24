@@ -95,6 +95,21 @@ uv run mutmut run          # testing de mutación, lento
 **Todo cambio de lógica deja un test que puede fallar, y hay que verlo en rojo.** Rompe a
 propósito la línea que arreglaste, corre la suite, confirma que se cae, restaura.
 
+**El testing de mutación tiene dos trampas medidas, y las dos hacen que un mutante vivo sea
+mentira.** La línea base del 23 de agosto de 2026 son 3.826 mutantes con 2.811 muertos: una
+corrida que dé mucho menos es sospechosa del corredor antes que del código.
+
+- `mutmut run` con nombres de mutantes explícitos **no vuelve a copiar** `src/` ni `tests/` a
+  `mutants/`, así que mide el código de ahora contra los tests de la última corrida completa.
+  Para volver a medir hay que borrar `mutants/`. Sin eso aparecieron 570 falsos `💥`.
+- Al verificar una mutación a mano, escribir el archivo y correr `pytest` dentro del mismo
+  segundo puede leer el `.pyc` anterior. **El rojo es confiable; el verde no**: si un mutante
+  sobrevive, vuelve a medirlo con un segundo de separación antes de concluir nada.
+
+De los mutantes vivos, la mayoría son literales de mensaje que mutmut pasa a mayúsculas o
+envuelve en marcadores: no cambian comportamiento y no vale la pena perseguirlos. Lo que sí
+vale son los que cambian qué se pide o qué se lee.
+
 No es ritual. Durante el desarrollo esto detectó dos veces guardias que no podían fallar: un
 test central que seguía verde con el bug puesto porque otro camino del código tapaba la
 regresión, y un chequeo en `grep` cuyo comando erraba y cuya salida vacía se leía como "sin

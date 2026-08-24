@@ -492,14 +492,18 @@ recibió **43 causas de 43 personas distintas** por preguntar por una.
 **Y dos pérdidas que ninguna sesión pudo ver, porque no dejan rastro.** El catálogo pesaba
 104.475 caracteres y el cliente difiere las definiciones sobre el 10% de su ventana: una sesión
 cargó **diez de las catorce** sin señal de que le faltaban cuatro. Las instrucciones del
-servidor pesaban 3.770 bytes contra un corte de 2.048, así que un tercio no llegaba, y lo que
+servidor pesaban 3.770 bytes contra un corte de 2.048, así que 1.722 no llegaban, y lo que
 caía del otro lado eran tres reglas de las que evitan afirmar de más.
 
-| | antes | ahora |
+| | medido antes | tope del cliente |
 |---|---|---|
-| `tools/list` | 104.475 caracteres | 51.667 |
-| `instructions` | 3.770 bytes | 1.959 |
-| descripción mayor | 2.390 bytes | 2.042 |
+| `tools/list` | 104.475 caracteres | 60.000, y hoy cabe |
+| `instructions` | 3.770 bytes | 2.048 bytes, y hoy cabe |
+| descripción mayor | 2.390 bytes | 2.048 bytes, y hoy cabe |
+
+La columna de la derecha son los topes y no lo que pesa hoy, a propósito: lo de hoy cambia con
+cada descripción que se toca, y una cifra escrita así queda vieja al cambio siguiente. Los topes
+salen del código y hay guardias que los comparan contra esta página.
 
 Los esquemas de salida viajan sin la descripción de cada campo, que se publica en la referencia,
 y `obtener_detalle_causa` dejó de anunciar esquema: medido, el bloque de texto que el modelo lee

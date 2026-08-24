@@ -146,25 +146,35 @@ SOLO_LECTURA = ToolAnnotations(
 )
 
 
-#: La identidad que el servidor publica en `server/discover`, que la especificación de MCP
-#: exige implementar desde la revisión 2026-07-28. Ahí viaja `serverInfo` con nombre y versión.
+#: Claves de JSON Schema cuyo contenido es un mapa NOMBRE -> esquema. Ahí dentro `description`
+#: sería el nombre de un campo y no una anotación, así que borrarlo lo sacaría del esquema
+#: anunciado y dejaría su `required` apuntando a un campo que no está.
 #:
-#: La versión estaba en su valor por defecto, o sea vacía: el servidor se presentaba ante los
-#: clientes MCP sin decir qué versión era. Es el mismo descuido que el User-Agent tenía con el
-#: Poder Judicial, y sale de la misma fuente única para que no vuelva a separarse.
-#:
-#: La propia especificación advierte que estos datos son para mostrar, registrar y depurar, y
-#: que un cliente no debe usarlos para decidir nada de seguridad. Acá sirven para que quien
-#: reporte un problema pueda decir contra qué versión lo vio.
-def _sin_prosa(nodo: object) -> object:
+#: Hoy ningún modelo tiene un campo así, porque los nombres van en español (`Anexo.descripcion`
+#: es el que más cerca queda). Se cubre igual: el que lo agregue no va a estar pensando en esto,
+#: y el modo de falla es que el modelo deje de ver un campo sin que nada avise.
+_MAPAS_DE_NOMBRES = frozenset(
+    {"properties", "$defs", "definitions", "patternProperties", "dependentSchemas"}
+)
+
+
+def _sin_prosa(nodo: object, dentro_de_un_mapa: bool = False) -> object:
     """El mismo esquema sin las descripciones de campo, recursivo.
 
     Recursivo porque la prosa se esconde en `$defs`: ahí estaba el 89% del peso del esquema de
     `obtener_detalle_causa`. Se copia en vez de mutar para no tocar `fn_metadata.output_schema`,
     que es lo que el SDK usa para validar y `model_json_schema()` para publicar la referencia.
+
+    `dentro_de_un_mapa` dice si las claves de este nivel son nombres de campo en vez de
+    palabras de JSON Schema. Sale de la clave del PADRE y no de las de acá: un campo que se
+    llamara `properties` no convierte a sus hermanos en nombres.
     """
     if isinstance(nodo, dict):
-        return {k: _sin_prosa(v) for k, v in nodo.items() if k != "description"}
+        if dentro_de_un_mapa:
+            return {k: _sin_prosa(v) for k, v in nodo.items()}
+        return {
+            k: _sin_prosa(v, k in _MAPAS_DE_NOMBRES) for k, v in nodo.items() if k != "description"
+        }
     if isinstance(nodo, list):
         return [_sin_prosa(v) for v in nodo]
     return nodo
@@ -192,6 +202,16 @@ class _ServidorQueCabe(MCPServer):
         ]
 
 
+#: La identidad que el servidor publica en `server/discover`, que la especificación de MCP
+#: exige implementar desde la revisión 2026-07-28. Ahí viaja `serverInfo` con nombre y versión.
+#:
+#: La versión estaba en su valor por defecto, o sea vacía: el servidor se presentaba ante los
+#: clientes MCP sin decir qué versión era. Es el mismo descuido que el User-Agent tenía con el
+#: Poder Judicial, y sale de la misma fuente única para que no vuelva a separarse.
+#:
+#: La propia especificación advierte que estos datos son para mostrar, registrar y depurar, y
+#: que un cliente no debe usarlos para decidir nada de seguridad. Acá sirven para que quien
+#: reporte un problema pueda decir contra qué versión lo vio.
 mcp = _ServidorQueCabe(
     "mcp-pjud",
     title="Consulta de causas del Poder Judicial de Chile",
@@ -467,8 +487,9 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     "la `corte`. Sin repetirlos abre el mismo rol de otra competencia o de otro juzgado, que "
     "existe y se ve bien. Si la búsqueda ya iba acotada se reusa ese mismo código; si no, la "
     "fila publica el NOMBRE del tribunal o de la corte y el código se resuelve con "
-    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_DETALLE)} no hay detalle: se "
-    "rechaza por decisión, no por no estar medido."
+    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_ACOTAR)} no hay ninguno que "
+    f"resolver ni que repetir: bastan tipo, rol y año. En {', '.join(_SIN_DETALLE)} no hay "
+    "detalle: se rechaza por decisión, no por no estar medido."
 )
 
 
@@ -508,8 +529,7 @@ def buscar_causa_por_rit(
     title="Buscar causa por nombre",
     annotations=SOLO_LECTURA,
     description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
-    "campos de nombre. El año no cuenta para ese mínimo.\n\nHay que acotar la búsqueda: con "
-    "qué depende de la competencia, y lo dicen las descripciones de `tribunal` y de `corte`."
+    "campos de nombre. El año no cuenta para ese mínimo."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
     f"\n\n{ACOTACION}",
 )

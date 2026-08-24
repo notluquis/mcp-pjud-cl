@@ -1634,6 +1634,24 @@ def test_la_ambiguedad_tolera_la_competencia_con_mayuscula(monkeypatch):
         c.detalle_causa("", 9999, 2019, competencia="Apelaciones", corte=46)
 
 
+def test_las_actuaciones_tambien_toleran_la_competencia_con_mayuscula(monkeypatch):
+    """El mismo arreglo se hizo en dos sitios y el test cubría uno.
+
+    `detalle_causa` y `actuaciones_receptor` eligen la causa por caminos distintos, y los dos
+    indexaban `COMPETENCIAS` con el valor crudo. Con sólo el primero probado, revertir el
+    segundo dejaba la suite entera verde y `actuaciones_receptor(..., competencia="Civil")`
+    volvía a levantar `KeyError` en vez del error que dice qué falta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, _ = _capturando(
+        _mismo_rol_en_varios_juzgados(
+            "3º Juzgado Civil de Concepción", "1º Juzgado Civil de Santiago"
+        )
+    )
+    with pytest.raises(ValueError, match="indicar en `tribunal`"):
+        c.actuaciones_receptor("E", 468, 2026, competencia="Civil")
+
+
 def test_en_civil_el_error_no_manda_a_corregir_el_libro(monkeypatch):
     """El consejo de indicar el libro es de apelaciones, y viajaba en las cinco competencias.
 
@@ -1654,6 +1672,36 @@ def test_en_civil_el_error_no_manda_a_corregir_el_libro(monkeypatch):
         "en civil no hay libros: el consejo manda a corregir un campo que es la letra del rol"
     )
     assert "Protección" not in mensaje, "el ejemplo es de apelaciones"
+
+
+def test_en_suprema_la_ambiguedad_no_nombra_un_parametro_que_no_existe(monkeypatch):
+    """Suprema no se acota ni por tribunal ni por corte, así que no hay con qué elegir.
+
+    Nombrar uno de los dos manda a repetir la misma consulta con un parámetro que la plataforma
+    ignora. El mensaje tiene que decir que ahí no hay salida por parámetro y dónde mirar para
+    distinguirlas, que es el listado con su `tipo_recurso`.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    completo = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
+    inicio = completo.index("<tr")
+    fila = completo[inicio : completo.index("</tr>") + len("</tr>")]
+    listado = (
+        completo[:inicio]
+        + fila
+        + fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
+        + completo[completo.index("</tr>") + 5 :]
+    )
+
+    c, _ = _capturando(listado)
+    with pytest.raises(ValueError, match="no hay parámetro con que elegir") as fallo:
+        c.detalle_causa("", 999999, 2020, competencia="suprema")
+
+    mensaje = str(fallo.value)
+    for inservible in ("`tribunal`", "`corte`"):
+        assert inservible not in mensaje, (
+            f"suprema no se acota por {inservible}: quien siga el consejo repite la consulta"
+        )
+    assert "tipo_recurso" in mensaje, "no dice dónde mirar para distinguirlas"
 
 
 def test_en_apelaciones_la_ambiguedad_de_varias_cortes_pide_corte_y_no_tribunal(monkeypatch):

@@ -1829,9 +1829,14 @@ class PjudClient(Transporte):
         acota_por = COMPETENCIAS[modulo].acota_por
         donde = ", ".join(sorted({(c.tribunal or "?") for c in exactas}))
         if acota_por is None:
+            # Sin salida por parámetro: no hay `tribunal` ni `corte` que pasarle. Se dice así
+            # en vez de nombrar uno que la plataforma ignora, que es lo que hacía antes y
+            # mandaba a repetir la misma consulta.
             raise ValueError(
-                f"{esperado!r} calza en {len(exactas)} causas de {modulo}, que no se "
-                f"acota ni por tribunal ni por corte: {donde}. {no_se_elige}"
+                f"{esperado!r} calza en {len(exactas)} causas de {modulo}, que no se acota ni "
+                f"por tribunal ni por corte, así que no hay parámetro con que elegir: {donde}. "
+                "`buscar_causa_por_rit` las lista con su `tipo_recurso` y su caratulado para "
+                f"ver cuál es cuál. {no_se_elige}"
             )
         # La razón sólo aplica donde el rol se numera por juzgado; en apelaciones el mismo rol
         # y libro existen en varias cortes, que es otra cosa y ya la dice el propio mensaje.

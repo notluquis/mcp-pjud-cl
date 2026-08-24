@@ -4478,6 +4478,24 @@ def test_la_revision_del_protocolo_que_se_nombra_es_la_del_sdk():
     )
 
 
+def test_la_referencia_cita_la_pista_de_frescura_que_de_verdad_viaja():
+    """Los dos valores de la pista viven en el código y la página los copia.
+
+    Es la afirmación que un cliente puede comprobar contra el cable en un segundo, así que una
+    página que anuncie otra frescura se nota enseguida y no es lo que se quiere que se note.
+    """
+    from mcp_pjud.server import CACHE_DEL_CATALOGO
+
+    referencia = " ".join(HERRAMIENTAS.split())
+    for escrito in (
+        f"`ttlMs: {CACHE_DEL_CATALOGO.ttl_ms}`",
+        f"`cacheScope: {CACHE_DEL_CATALOGO.scope}`",
+    ):
+        assert escrito in referencia, (
+            f"la referencia no cita {escrito}, que es lo que sale hoy en `tools/list`"
+        )
+
+
 def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
     """Registrar un buscador nuevo y no tocar la prosa deja la página contando de menos.
 

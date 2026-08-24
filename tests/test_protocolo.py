@@ -43,18 +43,26 @@ import pytest
 from mcp.client import Client
 from mcp.server import MCPServer
 from mcp.types import (
+    LATEST_PROTOCOL_VERSION,
+    SERVER_INFO_META_KEY,
     BlobResourceContents,
     CallToolResult,
+    Completion,
     EmbeddedResource,
+    Icon,
+    ListToolsResult,
     ResourceLink,
+    ResourceTemplateReference,
     Tool,
 )
 
 from mcp_pjud import server as servidor
 from mcp_pjud.client import (
     CARACTERES_DE_UNA_RESPUESTA,
+    DOCUMENTOS,
     LIMITE_EMBEBIDO,
     MAXIMO_RANGOS,
+    MODULOS,
     PjudClient,
 )
 from mcp_pjud.parser import SIN_RESULTADOS, EstructuraInesperada, parse_resultados
@@ -927,4 +935,164 @@ def test_el_sobre_del_documento_no_crece_con_el_archivo():
         f"el sobre en palabras son {len(grande)} caracteres y el presupuesto de una respuesta "
         f"entera son {CARACTERES_DE_UNA_RESPUESTA}: lo que sobra tiene que quedar para el "
         "documento"
+    )
+
+
+def _listado(modo: str) -> ListToolsResult:
+    """`tools/list` tal como sale por el carril que se le pida.
+
+    UNA llamada por sesión: `Client.list_tools` pasa por su propia caché, y con la pista de
+    frescura puesta una segunda llamada podría estar mirando la copia en vez de lo que el
+    servidor volvió a decir.
+    """
+
+    async def pedir() -> ListToolsResult:
+        async with Client(servidor.mcp, mode=modo) as cliente:
+            return await cliente.list_tools()
+
+    return asyncio.run(pedir())
+
+
+def test_el_catalogo_viaja_con_pista_de_frescura_por_el_carril_moderno():
+    """Sin pista, el catálogo entero se vuelve a traer en cada arranque.
+
+    `ttlMs: 0` es lo que trae el protocolo por defecto y significa "inmediatamente rancio". El
+    catálogo de este servidor cambia una vez por versión, así que ese cero es puro gasto: el
+    cliente arrastra decenas de miles de caracteres que ya tenía iguales.
+
+    Se mira el carril MODERNO porque es el único donde el campo existe. La revisión se fija a
+    mano en vez de dejar que el modo automático elija, para que el test siga midiendo el carril
+    que dice medir. Es el mismo `_serialize` del SDK que rellena la pista cuando el servidor se
+    levanta por stdio: lo que agrega el cable es el enmarcado JSON-RPC, no de dónde sale este
+    número.
+    """
+    moderno = _listado(LATEST_PROTOCOL_VERSION).model_dump(by_alias=True)
+
+    assert moderno["ttlMs"] > 0, (
+        "el catálogo viaja como inmediatamente rancio, así que el cliente lo vuelve a pedir "
+        "entero en cada arranque"
+    )
+    assert moderno["ttlMs"] == servidor.CACHE_DEL_CATALOGO.ttl_ms, (
+        f"lo que viaja ({moderno['ttlMs']}) no es lo que declara la constante "
+        f"({servidor.CACHE_DEL_CATALOGO.ttl_ms})"
+    )
+    assert moderno["cacheScope"] == servidor.CACHE_DEL_CATALOGO.scope, (
+        f"el alcance que viaja ({moderno['cacheScope']}) no es el declarado "
+        f"({servidor.CACHE_DEL_CATALOGO.scope})"
+    )
+
+
+def test_la_pista_de_frescura_no_estorba_en_el_carril_viejo():
+    """Que es el que negocian los clientes por stdio, y donde ese campo no existe.
+
+    El SDK lo criba por revisión, así que la pista no llega y el catálogo llega igual. Sin este
+    guardia, una pista puesta para el carril moderno podría estar rompiendo el único que hoy
+    hablan Claude Desktop, Claude Code, Cursor, VS Code y Codex.
+    """
+    viejo = _listado("legacy").model_dump(by_alias=True)
+
+    assert viejo["ttlMs"] == 0, (
+        f"la pista se coló en una revisión donde ese campo no existe: {viejo['ttlMs']}"
+    )
+    assert len(viejo["tools"]) == len(_listado(LATEST_PROTOCOL_VERSION).tools), (
+        "el carril viejo dejó de anunciar las mismas herramientas que el moderno"
+    )
+
+
+def test_el_servidor_se_presenta_con_un_icono_que_no_sale_a_la_red():
+    """El icono viaja ENTERO, no como una dirección que haya que ir a buscar.
+
+    Una URL con host lo haría depender de que un tercero responda, y de paso le contaría a ese
+    tercero quién abrió el cliente y cuándo. Las únicas peticiones que este proyecto hace son al
+    Poder Judicial.
+
+    Se lee de lo que el cliente RECIBE y por los dos carriles, que son dos caminos distintos del
+    SDK: en el viejo llega en el saludo, y en el moderno estampado en el `_meta` de cada
+    resultado.
+    """
+
+    async def saludar() -> list[Icon] | None:
+        async with Client(servidor.mcp, mode="legacy") as cliente:
+            return cliente.server_info.icons if cliente.server_info else None
+
+    iconos = asyncio.run(saludar())
+    assert iconos, "el servidor se presenta sin icono"
+    fuente = iconos[0].src
+    assert fuente.startswith("data:"), (
+        f"el icono se pide a un host ajeno en vez de viajar en el saludo: {fuente[:60]}"
+    )
+    dibujo = base64.b64decode(fuente.split(",", 1)[1]).decode("utf-8")
+    assert dibujo.startswith("<svg"), f"lo que viaja como icono no es un SVG: {dibujo[:60]}"
+
+    estampado = _listado(LATEST_PROTOCOL_VERSION).model_dump(by_alias=True)["_meta"]
+    assert estampado[SERVER_INFO_META_KEY]["icons"][0]["src"] == fuente, (
+        "el icono que llega por el carril moderno no es el mismo que el del saludo"
+    )
+
+
+def _completar(
+    valor: str, *, argumento: str = "competencia", plantilla: str | None = None
+) -> Completion:
+    """Lo que el servidor ofrece para un argumento de una plantilla de recurso."""
+
+    async def pedir() -> Completion:
+        async with Client(servidor.mcp) as cliente:
+            resultado = await cliente.complete(
+                ref=ResourceTemplateReference(uri=plantilla or servidor.PLANTILLA_DOCUMENTO),
+                argument={"name": argumento, "value": valor},
+            )
+            return resultado.completion
+
+    return asyncio.run(pedir())
+
+
+def test_las_completions_ofrecen_las_competencias_que_el_cliente_acepta():
+    """Ni una de más: una que el cliente rechaza se intenta, falla, y el fallo se le atribuye a
+    la plataforma.
+
+    La lista esperada sale de la tabla del cliente, que es la que de verdad acepta o rechaza, y
+    no de la derivada del servidor: si las dos se separan, este guardia lo ve.
+    """
+    sin_documentos = sorted(set(MODULOS) - set(DOCUMENTOS))
+    assert sin_documentos, (
+        "todas las competencias publican documentos, así que la mitad de abajo de este test no "
+        "puede fallar y no está cuidando nada"
+    )
+
+    todas = _completar("")
+
+    assert todas.values == sorted(DOCUMENTOS), (
+        f"las competencias ofrecidas no son las que el cliente acepta: {todas.values} contra "
+        f"{sorted(DOCUMENTOS)}"
+    )
+    assert not set(todas.values) & set(sin_documentos), (
+        f"se ofrece una competencia sin documentos ({sin_documentos}), y elegirla termina en un "
+        f"error que parece de la plataforma: {todas.values}"
+    )
+    assert todas.total == len(todas.values), (
+        f"el total dice {todas.total} y viajan {len(todas.values)} valores"
+    )
+    assert todas.has_more is False, "la lista viaja como incompleta y son todas"
+
+
+def test_las_completions_no_contestan_por_argumentos_ajenos():
+    """Un completador que ignora QUÉ se le pregunta ofrece competencias donde va otra cosa.
+
+    Vale para el otro argumento de la misma plantilla y para otra plantilla entera. Lo primero
+    contestaría con competencias donde el cliente espera una ruta; lo segundo, en cuanto exista
+    otra plantilla o un prompt con un argumento que se llame igual.
+    """
+    empezada = _completar("co")
+    assert empezada.values == ["cobranza"], (
+        f"el valor a medias no acota lo que se ofrece: {empezada.values}"
+    )
+    assert empezada.total == len(empezada.values), (
+        f"el total quedó atado a la lista entera y no a la que viaja: {empezada.total}"
+    )
+
+    assert _completar("", argumento="ruta").values == [], (
+        "se ofrecen competencias para `ruta`, que no es una competencia"
+    )
+    assert _completar("", plantilla="pjud://otra{?competencia}").values == [], (
+        "se ofrecen competencias para una plantilla que no es la del documento"
     )

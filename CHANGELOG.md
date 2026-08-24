@@ -20,6 +20,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - La bitácora sale por el error estándar, con lo que tardó cada petición y lo que se esperó por
   el ritmo, y se ajusta con `MCP_PJUD_BITACORA`. Existía desde siempre y no la veía nadie.
+- El catálogo viaja con una pista de frescura de una hora en vez de declararse rancio al
+  instante, así que un cliente que la respete deja de traerlo entero en cada arranque.
+- El servidor se presenta con un icono propio, que viaja como `data:` URI en el saludo y no como
+  una dirección que haya que ir a buscar a otro host.
+- El argumento `competencia` de la plantilla `pjud://documento` se completa por
+  `completion/complete` con las competencias que publican documentos.
 
 ### Corregido
 

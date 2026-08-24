@@ -3895,6 +3895,162 @@ def test_la_portada_declara_las_dos_lecturas():
         )
 
 
+def _filas_de_lo_que_no_se_adopta() -> dict[str, str]:
+    """La tabla de la hoja de ruta, como {pieza: por qué no}.
+
+    Se lee la tabla y no la página entera porque lo que el guardia cuida son SUS filas: una
+    afirmación repetida en otra sección no la sustituye.
+    """
+    hoja = _texto(RAIZ / "docs" / "roadmap.md")
+    seccion = hoja.split("### De la revisión 2026-07-28, lo que no se adopta", 1)
+    assert len(seccion) == 2, (
+        "desapareció la sección que este guardia cuida, así que estaría cuidando nada"
+    )
+    filas = {}
+    for linea in seccion[1].split("\n## ")[0].splitlines():
+        celdas = [c.strip() for c in linea.strip().strip("|").split("|")]
+        if len(celdas) == 2 and not set(celdas[0]) <= {"-", ":"} and celdas[0] != "Pieza":
+            filas[celdas[0]] = celdas[1]
+    assert filas, "la sección dejó de traer una tabla"
+    return filas
+
+
+def _tools_call_puede_pedir_dato(revision: str) -> bool:
+    """Si `tools/call` puede contestar `InputRequiredResult` en esa revisión del protocolo.
+
+    Por `SERVER_RESULTS`, que sí lleva versión. Cada revisión trae su propia clase, así que se
+    compara por nombre: `issubclass` contra la de `mcp_types` da falso incluso para el brazo
+    que se llama igual, porque son clases distintas por módulo.
+    """
+    from types import UnionType
+    from typing import get_args
+
+    from mcp_types.methods import SERVER_RESULTS
+
+    fila = SERVER_RESULTS[("tools/call", revision)]
+    brazos = get_args(fila) if isinstance(fila, UnionType) else (fila,)
+    return any(b.__name__ == "InputRequiredResult" for b in brazos)
+
+
+def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto():
+    """La tabla de "lo que no se adopta" existe para no volver a medir, y por eso puede mentir.
+
+    Sus filas son afirmaciones sobre el SDK, y `pyproject.toml` no le pone techo a `mcp`: una
+    actualización puede volverlas falsas con la suite entera en verde. Peor que una página
+    vieja, porque se presenta como una medición que ya no hace falta repetir, así que la
+    próxima revisión leería la tabla en vez de medir.
+
+    Cada fila se compara contra su fuente. Las que no dependen del SDK (los iconos por
+    herramienta, el esquema de salida apagado) tienen su propio guardia y no se repiten acá.
+    """
+    from mcp_types.methods import CLIENT_REQUESTS, SERVER_REQUESTS
+    from mcp_types.version import LATEST_HANDSHAKE_VERSION, LATEST_PROTOCOL_VERSION
+
+    # Las filas de verdad, no sólo el encabezado: borrar la fila de `tasks/*`, o cambiarla para
+    # decir lo contrario, dejaba el test entero verde. Las comprobaciones de abajo son sobre el
+    # SDK y no sobre la página, así que sin esto el guardia no ataba la página a nada.
+    filas = _filas_de_lo_que_no_se_adopta()
+    esperadas = {
+        "`tasks/*`": "ausente",
+        "Sampling, roots, elicitación": "no define peticiones del servidor al cliente",
+        "`subscribe` y `listChanged`": "los deriva el SDK de servir `subscriptions/listen`",
+        "`InputRequiredResult`": "sólo existe en el carril moderno",
+        "`extensions` (SEP-2133)": "no define ninguna",
+    }
+    for pieza, dice in esperadas.items():
+        assert pieza in filas, (
+            f"la tabla ya no trae la fila de {pieza}, y las comprobaciones de abajo la siguen "
+            f"dando por escrita: {sorted(filas)}"
+        )
+        assert dice in filas[pieza], (
+            f"la fila de {pieza} dejó de decir {dice!r}, que es lo que este guardia comprueba "
+            f"contra el SDK. Dice: {filas[pieza]!r}"
+        )
+
+    v = LATEST_PROTOCOL_VERSION
+    tareas = [m for m, _ in CLIENT_REQUESTS] + [m for m, _ in SERVER_REQUESTS]
+    # La lista se arma para NOMBRARLA en el mensaje. Un `any()` corta antes, y lo que ahorra es
+    # nada contra lo que cuesta: el guardia diría que apareció algo sin decir qué, y lo primero
+    # que hace falta para decidir si se adopta es el nombre.
+    con_tareas = sorted({m for m in tareas if m.startswith("tasks/")})
+    assert not con_tareas, (
+        f"el SDK ya trae métodos `tasks/*` ({', '.join(con_tareas)}) y la hoja de ruta los da "
+        "por ausentes: hay que decidir si se adoptan en vez de que la tabla lo niegue"
+    )
+    del_servidor = sorted(m for m, r in SERVER_REQUESTS if r == v)
+    assert not del_servidor, (
+        f"la revisión {v} ya define peticiones del servidor al cliente "
+        f"({', '.join(del_servidor)}), y la tabla dice que no hay ninguna que adoptar "
+        "(sampling, roots, elicitación)"
+    )
+    assert ("subscriptions/listen", v) in CLIENT_REQUESTS, (
+        "desapareció `subscriptions/listen`, de la que el SDK deriva `subscribe` y "
+        "`listChanged` en el carril moderno: la explicación de la tabla deja de aplicar"
+    )
+    # Por revisión y no por `INPUT_REQUIRED_METHODS`, que sale del mapa monolítico y no lleva
+    # versión: pertenecer a ese conjunto sólo prueba que existe en ALGUNA, y la fila afirma que
+    # existe en la moderna y no en la que negocian los clientes de hoy.
+    assert _tools_call_puede_pedir_dato(v), (
+        f"`tools/call` dejó de poder devolver `InputRequiredResult` en {v}, así que la fila que "
+        "explica por qué no se adopta ya no habla de lo que hay"
+    )
+    assert not _tools_call_puede_pedir_dato(LATEST_HANDSHAKE_VERSION), (
+        f"`InputRequiredResult` llegó al carril de {LATEST_HANDSHAKE_VERSION}, que es el que "
+        "negocian los clientes por stdio: la fila dice que sólo existe en el moderno, y si ya "
+        "no es así hay que decidir si se adopta"
+    )
+
+
+def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
+    """La tabla dice que `subscribe` y `listChanged` los deriva el SDK, no nosotros.
+
+    Se mide por el cable en los dos carriles: en el viejo salen en falso, que es lo que este
+    servidor pide, y en el moderno en verdadero sin que nadie los haya pedido. Si algún día
+    salen iguales en los dos, la fila deja de ser cierta y hay que decidir qué se declara.
+    """
+    import asyncio
+
+    from mcp.client import Client
+    from mcp_types.version import LATEST_PROTOCOL_VERSION
+
+    from mcp_pjud import server as servidor
+
+    async def capacidades(modo: str) -> dict:
+        async with Client(servidor.mcp, mode=modo) as cliente:
+            if modo == "legacy":
+                saludo = cliente.session.initialize_result
+                # Con `assert` y no devolviendo un diccionario vacío: sin saludo no hay nada
+                # que acreditar, y un vacío haría PASAR las comprobaciones de abajo, que es
+                # justo el guardia que no puede fallar.
+                assert saludo is not None, "el saludo del carril viejo no trajo capacidades"
+                return saludo.capabilities.model_dump(by_alias=True, exclude_none=True)
+            crudo = await cliente.session.send_discover(LATEST_PROTOCOL_VERSION)
+            return crudo["capabilities"]
+
+    viejo = asyncio.run(capacidades("legacy"))
+    moderno = asyncio.run(capacidades(LATEST_PROTOCOL_VERSION))
+
+    # `listChanged` además de `subscribe`, porque la fila nombra las dos: una actualización que
+    # dejara `subscribe` en verdadero y quitara `listChanged` volvía falsa la hoja de ruta con
+    # este guardia en verde. Y las tres capacidades que lo llevan, no una.
+    for donde, esperado in (("viejo", False), ("moderno", True)):
+        caps = viejo if donde == "viejo" else moderno
+        assert caps["resources"]["subscribe"] is esperado, (
+            f"el carril {donde} declara `subscribe` en {caps['resources']['subscribe']} y la "
+            f"hoja de ruta explica que ahí sale en {esperado}"
+        )
+        for familia in ("prompts", "resources", "tools"):
+            assert caps[familia]["listChanged"] is esperado, (
+                f"el carril {donde} declara `listChanged` de `{familia}` en "
+                f"{caps[familia]['listChanged']} y la hoja de ruta explica que ahí sale en "
+                f"{esperado}"
+            )
+    assert "extensions" not in moderno, (
+        "el servidor empezó a anunciar extensiones (SEP-2133) y la hoja de ruta dice que no "
+        "define ninguna"
+    )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

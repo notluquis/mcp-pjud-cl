@@ -32,6 +32,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - En cobranza el desplegable de cuadernos se llama distinto, así que toda causa de esa
   competencia se leía como si tuviera uno solo: una con cuaderno de apremio venía a medias y
   con cara de completa.
+- Las afirmaciones de la hoja de ruta sobre lo que el SDK no trae quedaron atadas a sus
+  fuentes: `mcp` no tiene techo de versión y una actualización podía volverlas falsas con la
+  suite entera en verde.
 - Pedir un cuaderno ahora comprueba que la página que llegó sea la que se pidió, y se detiene
   si no lo es en vez de entregar el mismo cuaderno dos veces con dos nombres.
 

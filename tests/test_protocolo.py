@@ -344,7 +344,7 @@ def test_el_detalle_dice_lo_mismo_aunque_ya_no_anuncie_esquema(
     # sería entre dos respuestas iguales por la razón equivocada y pasaría siempre.
     assert con_esquema.structured_content is not None
     assert sin_esquema.structured_content is None, (
-        "el detalle volvió a anunciar esquema; el catálogo crece 37.845 caracteres"
+        "el detalle volvió a anunciar esquema; el catálogo crece 12.286 caracteres"
     )
     assert _texto(sin_esquema) == _texto(con_esquema), (
         "sin el esquema el SDK ya no arma el mismo texto: lo que se perdió no es sólo el "

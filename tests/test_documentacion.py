@@ -19,6 +19,7 @@ import ast
 import asyncio
 import base64
 import contextlib
+import functools
 import json
 import re
 import subprocess
@@ -29,6 +30,7 @@ from pathlib import Path
 import pytest
 import yaml
 from lxml import html
+from mcp.client import Client
 
 from mcp_pjud.client import (
     ANEXOS,
@@ -646,13 +648,24 @@ PRESUPUESTO_DEL_CATALOGO = 60_000
 TOPE_DE_UNA_DESCRIPCION = 2048
 
 
-def _catalogo() -> list[dict]:
+@functools.cache
+def _catalogo() -> tuple[dict, ...]:
     """El catálogo tal como viaja, no como está en memoria.
 
-    `by_alias` porque el cable usa `outputSchema` y el objeto `output_schema`, y lo que se mide
-    acá es lo que el cliente recibe.
+    Va por una sesión MCP de verdad y no por `mcp.list_tools()` porque lo que hay que medir es
+    lo que el cliente recibe: el SDK cuelga un `_meta` del resultado, y si algún día colgara
+    algo de cada herramienta, medir el objeto en memoria daría un presupuesto que nadie gasta.
+    Hoy las dos cuentas coinciden, que es justo lo que esto deja fijado.
+
+    `by_alias` porque el cable usa `outputSchema` y el objeto `output_schema`.
     """
-    return [h.model_dump(by_alias=True, exclude_none=True) for h in asyncio.run(mcp.list_tools())]
+
+    async def anunciar() -> tuple[dict, ...]:
+        async with Client(mcp) as cliente:
+            listado = await cliente.list_tools()
+            return tuple(h.model_dump(by_alias=True, exclude_none=True) for h in listado.tools)
+
+    return asyncio.run(anunciar())
 
 
 def test_el_catalogo_cabe_en_el_presupuesto_del_cliente():

@@ -3855,9 +3855,22 @@ def test_la_revision_del_protocolo_que_se_nombra_es_la_del_sdk():
     assert LATEST_PROTOCOL_VERSION in servidor, (
         f"el servidor nombra otra revisión del protocolo; el SDK trae {LATEST_PROTOCOL_VERSION}"
     )
-    referencia = _texto(RAIZ / "docs" / "herramientas.md")
-    assert LATEST_PROTOCOL_VERSION in referencia, (
+    # Normalizado y con la frase, no sólo el número: la página lo cita dos veces (la revisión
+    # que el SDK conoce, y la que se pidió al medir), así que buscarlo suelto deja pasar que
+    # una de las dos quede vieja mientras la otra la rescata.
+    referencia = " ".join(_texto(RAIZ / "docs" / "herramientas.md").split())
+    assert f"conoce hasta **{LATEST_PROTOCOL_VERSION}**" in referencia, (
         f"la referencia nombra otra revisión; el SDK trae {LATEST_PROTOCOL_VERSION}"
+    )
+
+    # Y la del SALUDO, que es la que de verdad negocia un cliente. Nombrar sólo la más nueva
+    # decía que este servidor habla una revisión que por stdio no habla: todos los clientes
+    # que la guía documenta lo levantan como proceso aparte, y ahí el saludo llega una menos.
+    from mcp_types.version import LATEST_HANDSHAKE_VERSION
+
+    assert LATEST_HANDSHAKE_VERSION in referencia, (
+        f"la referencia no nombra la revisión que se negocia por stdio, que es "
+        f"{LATEST_HANDSHAKE_VERSION}: es la que obtiene cualquier cliente de los documentados"
     )
 
 

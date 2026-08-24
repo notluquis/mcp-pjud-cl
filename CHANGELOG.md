@@ -27,6 +27,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El servidor se registra como `mcp-pjud-cl` y ya no como `pjud`: es el nombre del repositorio,
   que es lo que alguien busca para saber qué es esto. Quien lo tenga instalado con el alias
   viejo sigue funcionando; para cambiarlo hay que reinstalarlo con el nombre nuevo.
+- La referencia decía que este servidor habla la revisión `2026-07-28` del protocolo, y por
+  stdio, que es como lo levantan todos los clientes documentados, negocia `2025-11-25`.
 
 ## [0.13.1] - 2026-08-23
 

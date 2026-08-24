@@ -198,7 +198,7 @@ POST {prefijo}/civil/modal/causaCivil.php    →  detalle + lista de cuadernos
 ```
 
 La plataforma **no direcciona el detalle por rol**: cada fila del listado trae una referencia
-opaca que caduca a los 30 minutos. Por eso `obtener_actuaciones_receptor` encadena
+opaca que declara durar 30 minutos. Por eso `obtener_actuaciones_receptor` encadena
 internamente en vez de ser una llamada suelta.
 
 El prefijo de rutas y el token de los modales **se derivan en caliente** del HTML de

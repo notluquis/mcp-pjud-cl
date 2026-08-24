@@ -2628,6 +2628,16 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
     ]
 
 
+#: Cuántos segundos declara durar la referencia del LISTADO. Medido el 24 de agosto de 2026
+#: sobre `CausaEncontrada.referencia`: es un JWT y su `exp - iat` da 1.800 exactos.
+#:
+#: Lo medido es lo que el token DECLARA, no lo que la plataforma hace: que rechace justo ahí no
+#: se probó. Y es de este token y no de los otros. Sobre `documento_referencia` sigue siendo
+#: verdad que cuánto dura no se midió, así que su prosa no se deriva de acá: aplanar las dos
+#: haría la documentación más falsa mientras se siente limpieza.
+SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA = 1800
+
+
 class CausaEncontrada(BaseModel):
     """Una fila del listado de resultados de búsqueda.
 
@@ -2644,8 +2654,9 @@ class CausaEncontrada(BaseModel):
         description="Tribunal o corte donde está radicada. En apelaciones y suprema es la corte."
     )
     referencia: str = Field(
-        description="Identificador opaco para pedir el detalle. Caduca a los 30 minutos; "
-        "no se construye ni se guarda, se usa en el acto."
+        description=f"Identificador opaco para pedir el detalle. Declara durar "
+        f"{SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA // 60} minutos; no se construye ni se guarda, "
+        "se usa en el acto."
     )
     competencia: str = Field(description="Competencia en la que se encontró.")
     ruc: str | None = Field(default=None, description="Sólo en penal y cobranza.")

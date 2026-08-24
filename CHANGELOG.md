@@ -31,6 +31,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   tiene detalle, que tampoco decían.
 - El esquema afirmaba que sin `tribunal` la llamada falla por ambigüedad también en apelaciones
   y suprema, donde ese código no acota nada.
+- La referencia del listado decía caducar a la media hora: medido está que su JWT declara
+  1.800 segundos, no que la plataforma lo rechace ahí. La del documento sigue sin medir.
+- Un test decía que la carga de esos JWT "va cifrada". Va firmada: se lee, y de ahí salió la
+  duración.
 
 ### Cambiado
 

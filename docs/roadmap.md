@@ -561,6 +561,49 @@ pista de frescura en vez de declararse rancio al instante, el servidor se presen
 el argumento `competencia` de la plantilla de documento se completa. Más tres plantillas que la
 persona invoca, que repiten por construcción las distinciones que un resumen borra.
 
+### 0.16: lo que decía estar puesto y estaba puesto a medias — hecho
+
+Ninguno de los tres cambios agrega superficie nueva de lectura: los tres son cosas que el
+proyecto **daba por hechas** y estaban a medias, y ninguna se veía desde afuera.
+
+**El desplegable de cuadernos se llama distinto en cobranza.** El lector buscaba
+`selCuaderno` y ahí el sitio emite `selCuadernoCob`, así que devolvía lista vacía, que es
+exactamente lo que devuelve una causa de un solo cuaderno. Toda causa de cobranza se leía como
+si tuviera uno, y la de dos venía a medias con cara de completa. Es la regla 4 en la competencia
+donde viven el requerimiento de pago y el embargo.
+
+Ningún test lo veía, y no por descuido: la única causa de cobranza medida tiene un cuaderno, así
+que el doble con el que se prueba no puede distinguir "uno" de "no encontré ninguno".
+
+Pedir un cuaderno reusa el endpoint del detalle cambiándole la referencia, y que ese endpoint la
+atienda está medido en civil y **no** en cobranza. En vez de suponerlo, la lectura comprueba que
+la página que llegó traiga desplegado el cuaderno que se pidió:
+
+| la primera página | la respuesta del cuaderno | qué pasa |
+|---|---|---|
+| marca | marca el pedido | sigue |
+| marca | marca otro, ninguno, o dos | se levanta |
+| no marca ninguno | no marca ninguno | sigue: no hay con qué comprobar |
+
+**La pista de frescura iba en un catálogo de cinco.** `tools/list` salía con una hora y los
+otros cuatro con `ttlMs: 0`, o sea "vuelve a traerlo siempre", aunque cambian por lo mismo y con
+la misma frecuencia. El conjunto ahora se deriva del `Literal` del protocolo menos lo que se
+excluye a mano, así que un método cacheable nuevo entra solo y hay que decidirlo.
+`resources/read` es el único excluido: guardar una copia de un documento de un tercero es la
+regla 5, y servirla vieja como si fuera la de ahora es la regla 4 aplicada a un archivo.
+
+**Y el completado atendía un argumento de cuatro.** `competencia` y `buscador` de las tres
+plantillas quedaron completables, cada una con SU conjunto y no con la unión: las competencias
+que publican al ministro de fe no son las mismas que tienen panel del detalle. `tipo` queda
+fuera a propósito, porque sus valores dependen de la competencia y la única lista honesta se
+arma con ella ya elegida.
+
+Esto último es lo único que se ve desde afuera hoy, y por eso la versión es menor y no de
+parche: `completion/complete` existe desde 2024-11-05, así que llega por el saludo que negocian
+los clientes de verdad. Todo lo demás de la revisión vigente que quedaba sin adoptar es
+invisible para cualquier cliente que hoy se conecte, y qué es y por qué no se adopta está más
+abajo, con guardias que lo atan a sus fuentes.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

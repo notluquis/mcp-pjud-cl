@@ -3905,6 +3905,11 @@ def test_el_codigo_no_importa_nada_que_no_este_declarado():
 
     Mira los imports de verdad y no una lista escrita al lado, que sería otra copia que se
     queda vieja.
+
+    Compara el nombre del paquete con el del módulo, que en las cinco dependencias de hoy es
+    el mismo. Si algún día entra una donde no lo sea (`python-dateutil` se importa `dateutil`),
+    esto se pone rojo con una dependencia legítima y lo que falta es la equivalencia, no la
+    declaración.
     """
     import ast
     import sys
@@ -3915,7 +3920,9 @@ def test_el_codigo_no_importa_nada_que_no_este_declarado():
     }
     propias = {"mcp_pjud", "__future__"}
 
-    for modulo in sorted((RAIZ / "src" / "mcp_pjud").glob("*.py")):
+    # `rglob` y no `glob`: hoy el paquete es plano y el día que deje de serlo este guardia
+    # no se entera, que es como se le escapó `mcp_types`.
+    for modulo in sorted((RAIZ / "src" / "mcp_pjud").rglob("*.py")):
         arbol = ast.parse(modulo.read_text(encoding="utf-8"))
         for nodo in ast.walk(arbol):
             if isinstance(nodo, ast.Import):

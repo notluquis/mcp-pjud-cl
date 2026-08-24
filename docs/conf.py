@@ -116,8 +116,13 @@ rst_prolog = """
 # -- esquema de las herramientas, generado desde el servidor ---------------------
 #
 # La tabla de parámetros escrita a mano puede quedar vieja; el esquema que el servidor
-# entrega por el protocolo, no. Se genera al construir la documentación, así que la
-# referencia publicada es literalmente lo que un cliente MCP recibe.
+# entrega por el protocolo, no. Se genera al construir la documentación, así que no puede
+# desviarse del código.
+#
+# La entrada es literalmente la que viaja. La SALIDA acá viene con la prosa por campo, y por
+# el cable va sin ella: el catálogo se difiere entero si pasa del 10% de la ventana del
+# cliente, así que esa prosa se despoja en `_ServidorQueCabe`. La referencia es el lugar donde
+# sí cabe, y `obtener_detalle_causa`, que ya no anuncia esquema, acá publica el de su modelo.
 
 
 def _generar_esquemas(app):
@@ -129,6 +134,7 @@ def _generar_esquemas(app):
     import os
     import pathlib
     import sys
+    import typing
 
     sys.path.insert(0, str(pathlib.Path(__file__).parents[1] / "src"))
     # El servidor exige un contacto para operar. Acá no consulta nada: sólo se le pide que
@@ -140,11 +146,24 @@ def _generar_esquemas(app):
     destino = pathlib.Path(__file__).parent / "_generado"
     destino.mkdir(exist_ok=True)
 
+    # Las herramientas de adentro conservan la prosa que el catálogo despoja, y la que no
+    # anuncia esquema deja el suyo en el tipo de retorno.
+    con_prosa = {t.name: t for t in mcp._tool_manager.list_tools()}
+
+    def _salida(nombre):
+        interna = con_prosa[nombre]
+        if interna.output_schema is not None:
+            return interna.output_schema
+        # `obtener_documento` devuelve bloques de contenido y nunca tuvo esquema; el detalle sí
+        # tiene modelo y sólo dejó de anunciarlo, así que acá se publica el suyo.
+        modelo = typing.get_type_hints(interna.fn)["return"]
+        return getattr(modelo, "model_json_schema", lambda: None)()
+
     for h in asyncio.run(mcp.list_tools()):
         esquema = {
             "name": h.name,
             "inputSchema": h.input_schema,
-            "outputSchema": h.output_schema,
+            "outputSchema": _salida(h.name),
             "annotations": h.annotations.model_dump(exclude_none=True) if h.annotations else {},
         }
         (destino / f"{h.name}.md").write_text(

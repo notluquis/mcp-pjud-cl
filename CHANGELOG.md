@@ -24,6 +24,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Cambiado
 
+- El catálogo que viaja pasó de 104.475 a 46.496 caracteres: los esquemas de salida van sin la
+  descripción de cada campo, y `obtener_detalle_causa` ya no anuncia esquema. Sobre el 10% de
+  la ventana del cliente las definiciones se difieren en silencio, y una sesión cargó 10 de las
+  14 herramientas sin saber que le faltaban.
+- La descripción de `obtener_detalle_causa` bajó de 2.390 a 2.042 bytes, porque el cliente
+  corta en 2.048 sin avisar y lo que se pierde es el final.
+- La referencia publicada sigue trayendo la descripción de cada campo de salida, incluida la de
+  `obtener_detalle_causa`: es el lugar donde ahora se puede leer.
 - El servidor se registra como `mcp-pjud-cl` y ya no como `pjud`: es el nombre del repositorio,
   que es lo que alguien busca para saber qué es esto. Quien lo tenga instalado con el alias
   viejo sigue funcionando; para cambiarlo hay que reinstalarlo con el nombre nuevo.

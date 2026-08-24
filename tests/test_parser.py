@@ -673,6 +673,46 @@ def test_leer_suprema_con_el_mapa_de_apelaciones_no_pasa_en_silencio():
         parse_historia(DETALLE_APELACIONES, "", "suprema")
 
 
+def test_el_cuaderno_marcado_es_el_que_la_respuesta_trae_puesto():
+    """`mostrado` decide si se vuelve a pedir un cuaderno, así que tiene que leer la marca.
+
+    Las dos fixtures son la MISMA causa servida por cuadernos distintos, y ahí se ve que la
+    marca sigue a la respuesta y no al orden de la lista: quedarse con el primero entregaría la
+    Historia de un cuaderno etiquetada con el nombre del otro, y el que falta no se pediría.
+
+    `is not None` y no la verdad del valor por claridad, no por necesidad: está medido que lxml
+    normaliza `<option selected>` a `selected="selected"`, así que hoy las dos lecturas dan lo
+    mismo. Lo que sí se fija abajo es esa normalización, porque de ella depende ver la marca.
+    """
+    principal = parse_cuadernos((FIXTURES / "c1156_principal.html").read_text(encoding="utf-8"))
+    apremio = parse_cuadernos((FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8"))
+
+    assert [c.nombre for c in principal] == [c.nombre for c in apremio], (
+        "las dos respuestas son de la misma causa: la lista de cuadernos tiene que ser igual"
+    )
+    assert [c.mostrado for c in principal] == [True, False]
+    assert [c.mostrado for c in apremio] == [False, True], (
+        "la marca no siguió a la respuesta: con el apremio servido, el marcado es el segundo"
+    )
+    for cuadernos in (principal, apremio):
+        assert sum(c.mostrado for c in cuadernos) == 1, "el detalle muestra uno a la vez"
+
+    # Y el atributo booleano escrito a secas, que es HTML válido y las fixtures no traen. No
+    # es un caso límite de nuestra lectura sino de lxml, que lo normaliza a `selected="selected"`
+    # (medido). Se fija acá porque de esa normalización depende que la marca se vea: si lxml
+    # dejara de hacerla, el valor llegaría vacío y el ahorro se apagaría sin que nada fallara.
+    a_secas = parse_cuadernos(
+        '<select id="selCuaderno">'
+        '<option value="a" selected>1 - Principal</option>'
+        '<option value="b">2 - Apremio</option>'
+        "</select>"
+    )
+    assert [c.mostrado for c in a_secas] == [True, False], (
+        "`<option selected>` a secas dejó de verse como marcado: si lxml ya no lo normaliza, "
+        "el cuaderno que la respuesta trae puesto se vuelve a pedir"
+    )
+
+
 def test_la_marca_de_rol_con_libro_calza_con_lo_que_publican_las_fixtures():
     """La bandera dice si el rol lleva el libro adelante, y eso es medible.
 

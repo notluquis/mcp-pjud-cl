@@ -1868,6 +1868,68 @@ def test_la_cadena_mas_larga_cabe_en_la_rafaga(monkeypatch):
     )
 
 
+def test_una_causa_de_un_cuaderno_sin_marca_no_gasta_una_peticion_de_mas(monkeypatch):
+    """Con UN cuaderno, que la página en la mano sea ése no es una suposición: es aritmética.
+
+    El ahorro se escribió como "reusa el marcado", y con la marca ausente eso pedía el único
+    cuaderno de nuevo: dos peticiones de detalle donde antes había una, en el caso más común de
+    todos. `_recorrer_cuadernos` conservaba el corte y `detalle_causa` lo había perdido, o sea
+    los dos caminos que el docstring de `_recorrer_cuadernos` manda mantener alineados habían
+    dejado de estarlo.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    uno = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+    sin_marca = uno.replace(' selected="selected"', "").replace(" selected>", ">")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    detalles = 0
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        nonlocal detalles
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        detalles += 1
+        return httpx.Response(200, text=sin_marca)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    detalle = c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert detalle.historia, "la historia no puede venir vacía"
+    assert detalles == 1, (
+        f"con un solo cuaderno el detalle se pidió {detalles} veces. La página que ya está en "
+        "la mano ES ese cuaderno, con marca o sin ella"
+    )
+
+
+def test_dos_cuadernos_marcados_a_la_vez_se_rechazan(monkeypatch):
+    """Dos marcas dejarían un cuaderno sin pedir y la respuesta se vería completa.
+
+    La misma página se etiquetaría con dos nombres distintos y el otro cuaderno no se
+    consultaría nunca. Es una respuesta a la que le faltan actuaciones sin nada que lo delate,
+    o sea la regla 4 exactamente. Se levanta en vez de entregarla.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    dos_marcas = principal.replace(
+        'value="referencia-ficticia-006"', 'value="referencia-ficticia-006" selected="selected"'
+    )
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        return httpx.Response(200, text=dos_marcas)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="desplegados a la vez"):
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+
 def test_un_detalle_sin_cuaderno_marcado_se_pide_entero(monkeypatch):
     """La marca `selected` es del sitio, y si un día no viene hay que pedirlos todos.
 
@@ -1877,7 +1939,11 @@ def test_un_detalle_sin_cuaderno_marcado_se_pide_entero(monkeypatch):
     """
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
     principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
-    sin_marca = principal.replace(" selected", "").replace(' selected="selected"', "")
+    # El orden importa y hubo que verlo con lxml: al revés, el primer `replace` convierte
+    # ` selected="selected"` en `="selected"`, que lxml lee como un atributo llamado
+    # `="selected"`. El doble producía HTML que la plataforma no puede emitir y el test medía
+    # lo que dice medir por casualidad.
+    sin_marca = principal.replace(' selected="selected"', "").replace(" selected>", ">")
     apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
     listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
     pedidos: list[str] = []

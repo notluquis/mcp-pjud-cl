@@ -20,6 +20,7 @@ que no controlamos.
 Las tres, no dos de tres:
 
 1. **Más de una competencia verificada** contra el sistema real, con fixtures propias.
+   **Cumplida** desde la 0.4.0: son seis, y el detalle se lee en cinco.
 2. **Esquema de salida estable**, sin cambios de campos por al menos dos versiones menores.
    El contador va en cero, y se reinició cinco veces seguidas: la 0.10.0 agregó `anexo_ruta`,
    `anexo_referencia` y `audio_referencia`; la 0.11.0, `diligencias`, `escritos_pendientes` y
@@ -42,7 +43,8 @@ un listado**. Doce causas son unas sesenta peticiones, y bajo el régimen sosten
 5 segundos eso son unos cinco minutos: la ráfaga alcanza para la primera causa y no cambia el
 total. La respuesta correcta es devolver el listado para que el usuario elija cuál abrir.
 
-### 0.3: jurisprudencia — hecho parcialmente
+(03-jurisprudencia-hecho-parcialmente)=
+### 0.3: jurisprudencia — hecho
 
 `buscar_jurisprudencia` anda contra siete de los diez buscadores: Corte Suprema, Cortes de
 Apelaciones, Laborales, Civiles, Cobranza, Familia y Salud CS. El de Penales está medido y no se
@@ -207,7 +209,8 @@ usa la Oficina Judicial Virtual**. Son dos sistemas con dos vocabularios.
 Queda como pregunta abierta y no como tarea: si lo que se quería era "¿cuándo me ven?", esto no
 lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
-### 0.7: documentos
+(07-documentos)=
+### 0.7: documentos — hecho parcialmente
 
 No es una ruta, son siete en civil y **veintisiete** contando las cinco competencias. Todas son
 `GET` con un solo parámetro oculto que lleva una referencia opaca, igual que el resto del sitio,
@@ -325,7 +328,7 @@ por `obtener_detalle_causa`; penal no, y la razón es la de siempre.
 | `apelaciones` | `movimientosApe` | Llama `Descripción` y `Fecha` a lo que civil llama `Desc. Trámite` y `Fec. Trámite`, y su georreferencia se escribe `Georeferencia` |
 | `penal` | `historiaPen` | **Cero filas**, y la razón no era la que decía acá |
 
-**Penal sigue sin mapear, y ya no por falta de datos.** Lo que esta página afirmaba, que la
+**El detalle de penal está medido y no se expone.** Lo que esta página afirmaba, que la
 causa medida no traía filas, era cierto y el diagnóstico era falso: se estaba pidiendo la ruta
 equivocada. Las causas penales **no se abren por `penal/`**. Cada fila del listado llama a
 `detalleCausaPenalUnificado`, que va a `unificado/modal/causaUnificado.php`, y ésa responde con

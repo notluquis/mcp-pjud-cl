@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Tres encabezados de la hoja de ruta declaraban un estado que dejó de ser el real: la sección
+  de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
+  estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.
+
 ## [0.13.1] - 2026-08-23
 
 ### Corregido

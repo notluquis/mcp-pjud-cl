@@ -3895,6 +3895,43 @@ def test_la_portada_declara_las_dos_lecturas():
         )
 
 
+def test_el_codigo_no_importa_nada_que_no_este_declarado():
+    """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
+    importar, antes de la primera línea de trabajo.
+
+    Ya pasó dos veces: `anyio` entraba de prestado por `mcp` y se declaró por eso, y
+    `mcp_types` se importó directo aunque quien lo trae es `mcp`, que lo fija en una versión
+    exacta. La segunda no la vio ningún guardia, por eso existe éste.
+
+    Mira los imports de verdad y no una lista escrita al lado, que sería otra copia que se
+    queda vieja.
+    """
+    import ast
+    import sys
+
+    declaradas = {
+        re.split(r"[<>=!\[;\s]", d)[0].replace("-", "_").lower()
+        for d in tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["dependencies"]
+    }
+    propias = {"mcp_pjud", "__future__"}
+
+    for modulo in sorted((RAIZ / "src" / "mcp_pjud").glob("*.py")):
+        arbol = ast.parse(modulo.read_text(encoding="utf-8"))
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Import):
+                raices = {a.name.split(".")[0] for a in nodo.names}
+            elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+                raices = {nodo.module.split(".")[0]}
+            else:
+                continue
+            for raiz in raices - propias - set(sys.stdlib_module_names):
+                assert raiz.replace("-", "_").lower() in declaradas, (
+                    f"`{modulo.name}` importa `{raiz}`, que no está en las dependencias del "
+                    f"paquete: hoy entra de prestado y el día que deje de entrar el servidor "
+                    f"muere al importar"
+                )
+
+
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
     """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
     alguien mira para decidir si esto le entra al entorno.

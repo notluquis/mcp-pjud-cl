@@ -17,7 +17,12 @@ from urllib.parse import quote, urlencode
 
 from anyio.from_thread import run as _de_vuelta_al_bucle
 from mcp.server import MCPServer
-from mcp.server.caching import CacheHint
+
+# `CacheableMethod` sale de acá y no de `mcp_types`, que es donde vive: `mcp` lo reexporta en
+# el `__all__` de este módulo, y ese paquete sí está declarado. Importarlo del otro haría que
+# el servidor muera al importar el día que `mcp` deje de arrastrarlo, que es lo mismo que ya
+# pasó con `anyio` y por lo que `anyio` está en las dependencias.
+from mcp.server.caching import CacheableMethod, CacheHint
 
 # Importado normal y NUNCA bajo `TYPE_CHECKING`, aunque este módulo tenga
 # `from __future__ import annotations`: el SDK resuelve las anotaciones con
@@ -43,7 +48,6 @@ from mcp.types import (
 from mcp.types import (
     Tool as MCPTool,
 )
-from mcp_types.methods import CacheableMethod
 from pydantic import Field
 
 from .client import (

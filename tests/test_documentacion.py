@@ -4621,7 +4621,16 @@ def test_la_referencia_cita_la_pista_de_frescura_que_de_verdad_viaja():
         f"`cacheScope: {CACHE_DEL_CATALOGO.scope}`",
     ):
         assert escrito in referencia, (
-            f"la referencia no cita {escrito}, que es lo que sale hoy en `tools/list`"
+            f"la referencia no cita {escrito}, que es lo que sale hoy en los catálogos"
+        )
+
+    # Y CUÁLES la llevan, que es la mitad que se quedó vieja: la página decía "`tools/list`,
+    # y es la única" cuando ya la llevaban los cinco.
+    from mcp_pjud.server import CATALOGOS_CON_PISTA
+
+    for metodo in sorted(CATALOGOS_CON_PISTA):
+        assert f"`{metodo}`" in referencia, (
+            f"la referencia no nombra `{metodo}` entre los catálogos que llevan pista"
         )
 
 

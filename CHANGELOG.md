@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- La pista de frescura iba sólo en `tools/list`, así que las plantillas, los recursos y sus
+  direcciones seguían saliendo con `ttlMs: 0`, o sea "vuelve a traerlo siempre". Ahora la llevan
+  todos los catálogos cacheables menos `resources/read`, que queda fuera a propósito.
+
 ## [0.15.1] - 2026-08-24
 
 ### Corregido

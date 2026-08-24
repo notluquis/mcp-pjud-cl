@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.14.0] - 2026-08-24
+
 ### Agregado
 
 - Una instantánea de todo lo que el servidor promete por el protocolo, comparada en cada
@@ -529,7 +531,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.13.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.14.0
 [0.13.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.1
 [0.13.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.0
 [0.12.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.12.0

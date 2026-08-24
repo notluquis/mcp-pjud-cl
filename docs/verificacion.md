@@ -327,9 +327,12 @@ dato que se re-descubre a costa de peticiones si no queda escrito.
 
 Dos cosas contraintuitivas:
 
-- **Omitir el tribunal amplía los resultados.** La misma consulta por rol devolvió dos causas
-  sin tribunal y una con él. Acotar de más esconde causas, que es el falso negativo que este
-  proyecto existe para evitar.
+- **Omitir el tribunal no acota de menos: barre.** La misma consulta por rol devolvió dos
+  causas sin tribunal y una con él, y esa lectura ("amplía los resultados") viajaba en el
+  esquema. El 24 de agosto de 2026 se midió qué significa a escala real: una sesión omitió el
+  tribunal en una búsqueda por rol de civil y recibió **43 causas de 43 personas distintas**
+  por preguntar por una. El rol se numera por juzgado, así que sin tribunal la consulta
+  devuelve una causa por cada uno que lo tenga, con las partes de cada una.
 - **El año no cuenta** para el mínimo de dos campos en la búsqueda por nombre.
 
 Y una limitación de fondo: la búsqueda por nombre **exige tribunal**, así que no sirve para el

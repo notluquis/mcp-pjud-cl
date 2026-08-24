@@ -40,6 +40,7 @@ from mcp_pjud.client import (
     CORTES_MEDIDAS,
     DOCUMENTOS,
     DOCUMENTOS_EJECUTADAS,
+    EL_ROL_NO_BASTA,
     INTERVALO_MINIMO,
     MODULOS,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
@@ -59,6 +60,7 @@ from mcp_pjud.parser import (
     _PANELES_ANEXO,
     COMPETENCIAS,
     SIN_FILAS_OBSERVADAS,
+    CausaEncontrada,
     Competencia,
     DetalleCausa,
     Panel,
@@ -1912,6 +1914,81 @@ def test_ninguna_herramienta_exige_un_campo_que_su_competencia_no_usa(expuestas)
     )
 
 
+#: Qué papel hace `tribunal`/`corte` en cada herramienta que los declara. Son tres, y decirlos
+#: con una sola descripción costó datos: la de las búsquedas de nombre viajaba en las seis, y
+#: una sesión leyó ahí que omitir el tribunal "AMPLÍA los resultados", lo omitió en una
+#: búsqueda por rol, y recibió 43 causas de 43 personas distintas por preguntar por una.
+PAPELES_DE_LA_ACOTACION = {
+    # Acotan una búsqueda que puede devolver muchas: la plataforma los exige según competencia.
+    "acota": {
+        "buscar_causa_por_nombre",
+        "buscar_causa_por_rut_juridica",
+        "buscar_causa_por_fecha",
+    },
+    # Busca por rol, que no identifica una causa: omitirlos barre en vez de ampliar.
+    "rol": {"buscar_causa_por_rit"},
+    # Devuelven UNA causa: sin ellos la llamada falla por ambigüedad.
+    "desambigua": {"obtener_actuaciones_receptor", "obtener_detalle_causa"},
+    # `listar_tribunales` recibe `corte` con otro sentido: no acota una búsqueda de causas,
+    # dice de qué corte se quieren los tribunales.
+    "otro": {"listar_tribunales"},
+}
+
+
+def test_toda_herramienta_que_pide_tribunal_o_corte_declara_para_que(expuestas):
+    """La tabla de arriba tiene que cubrir a todas, y ése es el guardia.
+
+    El anterior recorría las herramientas y le exigía a cada una la frase de las búsquedas de
+    nombre. Por construcción no podía notar dónde esa frase no aplica: una herramienta nueva
+    que devolviera una sola causa pasaba el test copiando una explicación equivocada.
+    """
+    declaran = {
+        n
+        for n, h in expuestas.items()
+        if {"tribunal", "corte"} & set((h.input_schema or {}).get("properties", {}))
+    }
+    clasificadas = set().union(*PAPELES_DE_LA_ACOTACION.values())
+    assert declaran <= clasificadas, (
+        f"estas herramientas piden `tribunal` o `corte` y no dicen para qué: "
+        f"{sorted(declaran - clasificadas)}. Cada papel quiere otra descripción"
+    )
+    assert clasificadas <= declaran, (
+        f"la tabla clasifica herramientas que ya no piden ninguno de los dos: "
+        f"{sorted(clasificadas - declaran)}"
+    )
+
+
+def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
+    """Lo que se perdió al despojar los esquemas de salida tiene que estar en otro lado.
+
+    La prosa por campo dejó de viajar para que el catálogo entre en la ventana del cliente, y
+    era justo ahí donde decía "Sólo en penal y cobranza". Sin eso, cuatro campos en nulo se
+    leen como que la causa no los tiene: es el falso negativo de siempre, corrido del parser a
+    la descripción.
+
+    Se deriva del modelo y no de una lista escrita acá: un campo nuevo de una sola competencia
+    tiene que aparecer solo en las cuatro descripciones o este guardia se cae.
+    """
+    de_una_competencia = [
+        n
+        for n, campo in CausaEncontrada.model_fields.items()
+        if (campo.description or "").startswith("Sólo en")
+    ]
+    assert de_una_competencia, "el modelo dejó de declarar campos de una sola competencia"
+
+    for nombre_h in PAPELES_DE_LA_ACOTACION["acota"] | PAPELES_DE_LA_ACOTACION["rol"]:
+        descripcion = expuestas[nombre_h].description or ""
+        for campo in de_una_competencia:
+            assert f"`{campo}`" in descripcion, (
+                f"{nombre_h}: la descripción no nombra {campo!r}, que sólo publica una "
+                "competencia. En nulo se lee como que la causa no lo tiene"
+            )
+        assert "obtener_detalle_causa" in descripcion, (
+            f"{nombre_h}: la descripción no dice dónde están la historia y las partes, que el "
+            "listado no trae"
+        )
+
+
 def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
     """Y no puede decirlo a mano: se deriva de `parser.COMPETENCIAS`.
 
@@ -1927,15 +2004,8 @@ def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
         "antes de llamar cualquier herramienta"
     )
 
-    # `listar_tribunales` recibe `corte` con otro sentido: no acota una búsqueda de causas,
-    # dice de qué corte se quieren los tribunales. Exigirle la frase de la acotación le pondría
-    # al modelo una explicación que no aplica al parámetro que está leyendo.
-    no_acotan = {"listar_tribunales"}
-
-    for nombre_h, h in expuestas.items():
-        if nombre_h in no_acotan:
-            continue
-        propiedades = (h.input_schema or {}).get("properties", {})
+    for nombre_h in PAPELES_DE_LA_ACOTACION["acota"]:
+        propiedades = (expuestas[nombre_h].input_schema or {}).get("properties", {})
         for campo, exigen in (
             ("tribunal", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal"]),
             ("corte", [n for n in MODULOS if COMPETENCIAS[n].acota_por == "corte"]),
@@ -1948,6 +2018,37 @@ def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
                     f"{nombre_h}: la descripción de {campo!r} no nombra a {competencia!r}, "
                     f"que es una de las que lo exigen"
                 )
+
+
+def test_donde_el_rol_no_identifica_una_causa_el_esquema_no_habla_de_acotar(expuestas):
+    """La frase que costó las 43 causas, prohibida donde no aplica.
+
+    `buscar_causa_por_rit` y las dos que devuelven una sola causa no acotan nada con
+    `tribunal`: lo usan para identificar. Ahí "omitirlo AMPLÍA los resultados" es literalmente
+    cierto y prácticamente engañoso, y "obligatorio en las búsquedas de nombre" describe otra
+    herramienta.
+
+    La cara positiva va contra la constante compartida y no contra una frase escrita acá: el
+    error de ambigüedad y esta descripción tienen que decir lo mismo, porque el modelo lee una
+    antes de llamar y el otro después.
+    """
+    from mcp_pjud.server import ACOTACION
+
+    for papel in ("rol", "desambigua"):
+        for nombre_h in PAPELES_DE_LA_ACOTACION[papel]:
+            propiedades = (expuestas[nombre_h].input_schema or {}).get("properties", {})
+            tribunal = propiedades.get("tribunal", {}).get("description", "")
+            assert EL_ROL_NO_BASTA in tribunal, (
+                f"{nombre_h}: la descripción de `tribunal` no dice por qué el rol no basta, "
+                "que es lo único que evita que el modelo lo omita"
+            )
+            for prohibida in ("AMPLÍA", "búsquedas de nombre", ACOTACION):
+                for campo in ("tribunal", "corte"):
+                    descripcion = propiedades.get(campo, {}).get("description", "")
+                    assert prohibida not in descripcion, (
+                        f"{nombre_h}: la descripción de {campo!r} trae {prohibida[:40]!r}, que "
+                        "describe las búsquedas de nombre y no esta herramienta"
+                    )
 
 
 def _secciones_de_herramientas() -> dict[str, str]:

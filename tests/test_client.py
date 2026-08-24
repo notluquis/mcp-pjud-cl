@@ -1569,6 +1569,58 @@ def test_el_mensaje_de_ambiguedad_nombra_los_libros_encontrados(monkeypatch):
         assert libro in str(fallo.value), f"el mensaje no nombra el libro {libro!r}"
 
 
+def _mismo_rol_en_varios_juzgados(*juzgados: str) -> str:
+    """El listado real de civil con su única fila repetida, un juzgado distinto en cada una.
+
+    Es el caso que la plataforma devuelve de verdad cuando la búsqueda por rol va sin tribunal,
+    y no hay fixture porque una respuesta real de esa forma trae las partes de decenas de
+    causas ajenas. Se sintetiza desde la fila medida para no inventar la estructura.
+    """
+    completo = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    fila = completo[completo.index("<tr") : completo.index("</tr>") + len("</tr>")]
+    filas = "".join(
+        fila.replace("3º Juzgado Civil de Concepción", j).replace(
+            "referencia-ficticia-001", f"referencia-ficticia-90{i}"
+        )
+        for i, j in enumerate(juzgados)
+    )
+    return completo[: completo.index("<tr")] + filas + completo[completo.index("</tr>") + 5 :]
+
+
+def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monkeypatch):
+    """La ambigüedad de civil no es la de apelaciones, y el mensaje mandaba a corregir mal.
+
+    En apelaciones el mismo número existe en varios libros y el remedio es `tipo`. En civil el
+    rol calza exacto en TODOS los juzgados que lo tengan, así que el libro ya está bien: lo que
+    falta es `tribunal`. El mensaje único decía "ninguna corresponde sin ambigüedad", que acá
+    es falso (corresponden todas), y listaba el rol una vez por causa: en el caso medido, el
+    mismo `C-...` cuarenta y tres veces.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    juzgados = (
+        "3º Juzgado Civil de Concepción",
+        "1º Juzgado Civil de Santiago",
+        "Juzgado de Letras de Villarrica",
+    )
+    c, _ = _capturando(_mismo_rol_en_varios_juzgados(*juzgados))
+
+    with pytest.raises(ValueError, match="existe en 3 tribunales") as fallo:
+        c.detalle_causa("E", 468, 2026)
+
+    mensaje = str(fallo.value)
+    assert "`tribunal`" in mensaje, "el mensaje no nombra el parámetro que resuelve el caso"
+    for juzgado in juzgados:
+        assert juzgado in mensaje, f"el mensaje no nombra {juzgado!r}, que es de dónde elegir"
+    assert "`tipo`" not in mensaje, (
+        "manda a corregir el libro, que acá ya calza: quien siga el consejo repite la consulta "
+        "contra la plataforma y recibe el mismo error"
+    )
+    assert "ninguna corresponde" not in mensaje, "corresponden todas; lo que falta es cuál"
+    assert mensaje.count("e-468-2026") + mensaje.count("E-468-2026") == 1, (
+        "el rol se repetía una vez por causa encontrada: en el caso medido, 43 veces"
+    )
+
+
 def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):
     """El atajo de devolver la única coincidencia dejaba el riesgo intacto.
 

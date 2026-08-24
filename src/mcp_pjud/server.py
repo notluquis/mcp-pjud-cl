@@ -30,6 +30,7 @@ from .client import (
     CON_TRIBUNAL,
     DESCRIPCION,
     DOCUMENTOS,
+    EL_ROL_NO_BASTA,
     GEORREFERENCIA,
     INTERVALO_MINIMO,
     LIMITE_EMBEBIDO,
@@ -253,13 +254,35 @@ Competencia = Annotated[
     str,
     Field(description=f"Una de: {', '.join(sorted(MODULOS))}."),
 ]
-CodigoTribunal = Annotated[
+# `tribunal` y `corte` hacen tres cosas distintas según qué herramienta los reciba, y una sola
+# descripción para las seis decía la de las búsquedas de nombre en las otras cinco.
+#
+# El costo está medido. La descripción única decía que en la búsqueda por rol omitir el
+# tribunal "AMPLÍA los resultados": es literalmente cierto y prácticamente engañoso, porque el
+# rol se numera por juzgado. El 24 de agosto de 2026 una sesión lo omitió por eso y recibió 43
+# causas de 43 personas distintas por preguntar por una.
+TribunalQueAcota = Annotated[
     int | None,
     Field(
-        description="Código del tribunal. Obligatorio en las búsquedas de nombre, RUT y "
-        f"fecha cuando la competencia es una de: {', '.join(_EXIGEN_TRIBUNAL)}. En "
-        f"{', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa. En la búsqueda "
-        "por rol es opcional siempre, y omitirlo AMPLÍA los resultados."
+        description="Código del tribunal, para acotar la búsqueda. Obligatorio cuando la "
+        f"competencia es una de: {', '.join(_EXIGEN_TRIBUNAL)}. En "
+        f"{', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+    ),
+]
+TribunalDelRol = Annotated[
+    int | None,
+    Field(
+        description=f"Código del tribunal. La plataforma lo acepta opcional, y {EL_ROL_NO_BASTA}"
+        ". Omitirlo no amplía una búsqueda: barre el país y devuelve una causa por juzgado, "
+        "cada una con sus partes. Indicarlo salvo que se quiera justamente ese barrido."
+    ),
+]
+TribunalQueDesambigua = Annotated[
+    int | None,
+    Field(
+        description="Código del tribunal. Esta herramienta devuelve UNA causa, así que el "
+        f"tribunal no acota nada: la identifica. Como {EL_ROL_NO_BASTA}, sin él la llamada "
+        "falla por ambigüedad en vez de abrir la causa de otra persona."
     ),
 ]
 Paginas = Annotated[
@@ -355,14 +378,34 @@ CompetenciaConDetalle = Annotated[
     ),
 ]
 
-CodigoCorte = Annotated[
+#: La razón por la que fijar la corte sin certeza es peor que omitirla, dicha una vez para los
+#: tres pares. En las tres herramientas el modo de falla es el mismo y es silencioso.
+_CORTE_DE_MAS = (
+    "En el resto, OMITIR salvo certeza: fijarla produce falsos negativos, porque excluye "
+    "causas radicadas en otra jurisdicción."
+)
+CorteQueAcota = Annotated[
     int | None,
     Field(
-        description="Código de la corte. Obligatorio en las búsquedas de nombre, RUT y "
-        f"fecha cuando la competencia es una de: {', '.join(_EXIGEN_CORTE)}, donde la "
-        "plataforma responde 'Por favor seleccione una Corte para la búsqueda'. En el resto, "
-        "OMITIR salvo certeza: fijarla produce falsos negativos, porque excluye causas "
-        "radicadas en otra jurisdicción."
+        description="Código de la corte, para acotar la búsqueda. Obligatorio cuando la "
+        f"competencia es una de: {', '.join(_EXIGEN_CORTE)}, donde la plataforma responde "
+        f"'Por favor seleccione una Corte para la búsqueda'. {_CORTE_DE_MAS}"
+    ),
+]
+CorteDelRol = Annotated[
+    int | None,
+    Field(
+        description="Código de la corte. En "
+        f"{', '.join(_EXIGEN_CORTE)} el mismo número de rol existe en varias, así que "
+        f"omitirla devuelve una causa por corte. {_CORTE_DE_MAS}"
+    ),
+]
+CorteQueDesambigua = Annotated[
+    int | None,
+    Field(
+        description="Código de la corte. Esta herramienta devuelve UNA causa, así que la corte "
+        f"no acota nada: la identifica. En {', '.join(_EXIGEN_CORTE)} el mismo rol existe en "
+        f"varias, y sin ella la llamada falla por ambigüedad. {_CORTE_DE_MAS}"
     ),
 ]
 
@@ -414,20 +457,42 @@ def listar_tribunales(
         return c.listar_tribunales(competencia, corte)
 
 
+#: Los campos del listado que sólo publica una competencia, sacados del modelo para que no
+#: puedan divergir de él. Se buscan por su propia prosa: cada uno la declara con "Sólo en".
+_SOLO_DE_UNA_COMPETENCIA = "; ".join(
+    f"`{nombre}` {(campo.description or '').replace('Sólo', 'sólo', 1).rstrip('.')}"
+    for nombre, campo in CausaEncontrada.model_fields.items()
+    if (campo.description or "").startswith("Sólo en")
+)
+
+#: Lo que las cuatro búsquedas devuelven y lo que no, dicho una vez. Vivía en la descripción de
+#: cada campo del esquema de salida, que dejó de viajar para que el catálogo entre en la
+#: ventana del cliente: una sesión recibió cuatro campos en nulo sin forma de saber si era la
+#: competencia o la causa, que es justo la distinción que este proyecto existe para no borrar.
+LO_QUE_EL_LISTADO_NO_TRAE = (
+    "\n\nEl listado publica lo que la columna trae, y varios campos son de una competencia "
+    f"sola: {_SOLO_DE_UNA_COMPETENCIA}. En nulo significa que esa competencia no lo publica, "
+    "no que la causa no lo tenga.\n\nY no trae historia, partes ni notificaciones: eso es "
+    "`obtener_detalle_causa`, con el mismo tipo, rol y año."
+)
+
+
 @mcp.tool(
     title="Buscar causa por rol",
     annotations=SOLO_LECTURA,
+    description="Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, "
+    f"anio=2026.{LO_QUE_EL_LISTADO_NO_TRAE}",
 )
 def buscar_causa_por_rit(
     tipo: Tipo,
     rol: Rol,
     anio: Anio,
     competencia: Competencia = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalDelRol = None,
+    corte: CorteDelRol = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
-    """Busca causas por rol en la consulta pública. Ej: tipo='E', rol=468, anio=2026."""
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with _cliente() as c:
         return c.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas)
 
@@ -435,6 +500,10 @@ def buscar_causa_por_rit(
 @mcp.tool(
     title="Buscar causa por nombre",
     annotations=SOLO_LECTURA,
+    description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
+    "campos de nombre. El año no cuenta para ese mínimo.\n\nHay que acotar la búsqueda: con "
+    "qué depende de la competencia, y lo dicen las descripciones de `tribunal` y de `corte`."
+    f"{LO_QUE_EL_LISTADO_NO_TRAE}",
 )
 def buscar_causa_por_nombre(
     apellido_paterno: Annotated[str, Field(description="Apellido paterno del litigante.")] = "",
@@ -442,17 +511,11 @@ def buscar_causa_por_nombre(
     nombre: Annotated[str, Field(description="Nombres del litigante.")] = "",
     anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
     competencia: Competencia = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalQueAcota = None,
+    corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
-    """Busca causas por nombre de litigante.
-
-    Exige al menos DOS de los tres campos de nombre. El año no cuenta para ese mínimo.
-
-    Hay que acotar la búsqueda: con qué depende de la competencia, y lo dicen las
-    descripciones de `tribunal` y de `corte`.
-    """
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with _cliente() as c:
         return c.buscar_por_nombre(
             nombre, apellido_paterno, apellido_materno, anio, competencia, tribunal, corte, paginas
@@ -462,21 +525,20 @@ def buscar_causa_por_nombre(
 @mcp.tool(
     title="Buscar causa por RUT de empresa",
     annotations=SOLO_LECTURA,
+    description="Busca causas de una persona jurídica por su RUT.\n\nEs la única vía para "
+    'empresas: no tienen Clave Única, así que no aparecen en "Mis Causas".'
+    f"{LO_QUE_EL_LISTADO_NO_TRAE}",
 )
 def buscar_causa_por_rut_juridica(
     rut: Annotated[int, Field(description="RUT sin dígito verificador ni puntos.", ge=1)],
     digito_verificador: Annotated[str, Field(description="Dígito verificador: 0-9 o K.")],
     anio: Annotated[int | None, Field(description="Año de ingreso, opcional.")] = None,
     competencia: Competencia = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalQueAcota = None,
+    corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
-    """Busca causas de una persona jurídica por su RUT.
-
-    Es la única vía para empresas: no tienen Clave Única, así que no aparecen en
-    "Mis Causas".
-    """
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with _cliente() as c:
         return c.buscar_por_rut_juridica(
             rut, digito_verificador, anio, competencia, tribunal, corte, paginas
@@ -486,24 +548,21 @@ def buscar_causa_por_rut_juridica(
 @mcp.tool(
     title="Buscar causas por fecha de ingreso",
     annotations=SOLO_LECTURA,
+    description="Causas ingresadas en un rango de fechas.\n\nEs la cuarta búsqueda que la "
+    'plataforma ofrece, y sin ella no hay forma de responder "qué ingresó contra esta '
+    'empresa esta semana" sabiendo el tribunal pero no el rol.\n\nUn solo día en un solo '
+    "tribunal puede devolver decenas de causas, así que conviene acotar el rango antes de "
+    f"subir el tope de páginas.{LO_QUE_EL_LISTADO_NO_TRAE}",
 )
 def buscar_causa_por_fecha(
     desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
     hasta: Annotated[str, Field(description="Fecha final del rango, DD/MM/AAAA.")],
     competencia: Competencia = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalQueAcota = None,
+    corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
 ) -> list[CausaEncontrada]:
-    """Causas ingresadas en un rango de fechas.
-
-    Existía en el cliente y no estaba expuesta: es la cuarta búsqueda que la plataforma
-    ofrece, y sin ella no hay forma de responder "qué ingresó contra esta empresa esta
-    semana" sabiendo el tribunal pero no el rol.
-
-    Un solo día en un solo tribunal puede devolver decenas de causas, así que conviene
-    acotar el rango antes de subir el tope de páginas.
-    """
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with _cliente() as c:
         return c.buscar_por_fecha(desde, hasta, competencia, tribunal, corte, paginas)
 
@@ -517,8 +576,8 @@ def obtener_actuaciones_receptor(
     rol: Rol,
     anio: Anio,
     competencia: CompetenciaConReceptor = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalQueDesambigua = None,
+    corte: CorteQueDesambigua = None,
 ) -> list[Actuacion]:
     """Actuaciones del ministro de fe con su fecha real de diligencia.
 
@@ -548,8 +607,8 @@ def obtener_detalle_causa(
     rol: Rol,
     anio: Anio,
     competencia: CompetenciaConDetalle = "civil",
-    tribunal: CodigoTribunal = None,
-    corte: CodigoCorte = None,
+    tribunal: TribunalQueDesambigua = None,
+    corte: CorteQueDesambigua = None,
 ) -> DetalleCausa:
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 

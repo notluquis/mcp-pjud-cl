@@ -2260,6 +2260,29 @@ def test_una_competencia_sin_el_panel_deja_la_causa_de_origen_en_nulo(monkeypatc
     assert detalle.causa_de_origen is None
 
 
+def test_lo_previsto_no_cobra_la_sesion_que_ya_esta_abierta():
+    """Las dos peticiones de la sesión se pagan una vez, y el total tiene que saberlo.
+
+    Va como unitario y no cruzando el protocolo porque ahí no se ve: `_llamar` construye un
+    cliente frío, y con `_adir` puesto o no el sumando de la sesión sólo se distingue mirando
+    el número. El testing de mutación lo encontró vivo justamente por eso.
+
+    Sus dos hermanos de `_peticiones_por_cuadernos` quedaron vivos y NO se persiguen: con uno o
+    ningún cuaderno no sale otra petición después de corregir el total, así que la corrección
+    no alcanza a viajar y el cliente nunca ve la diferencia. Un mutante que nadie puede
+    observar no es un hueco de pruebas.
+    """
+    frio = PjudClient("test@example.cl")
+    assert frio._prever() == 4, "desde frío son cuatro: dos de sesión, la búsqueda y el detalle"
+
+    tibio = PjudClient("test@example.cl")
+    tibio._adir, tibio._token = "ADIR_1", "0" * 32
+    assert tibio._prever() == 2, (
+        "con la sesión abierta son dos, y cobrarle las de la sesión otra vez le promete al "
+        "cliente una barra más larga que la cadena que va a salir"
+    )
+
+
 def test_la_cadena_mas_larga_cabe_en_la_rafaga(monkeypatch):
     """La ráfaga está dimensionada para la cadena más larga, y eso hay que MEDIRLO.
 

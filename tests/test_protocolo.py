@@ -112,7 +112,10 @@ ARGUMENTOS = {"tipo": "E", "rol": 468, "anio": 2026}
 
 
 def _responder(
-    cuerpo: str, detalle: str | None = None, estado_busqueda: int = 200
+    cuerpo: str,
+    detalle: str | None = None,
+    estado_busqueda: int = 200,
+    segundo_detalle: str | None = None,
 ) -> Callable[[httpx.Request], httpx.Response]:
     """Doble del sitio: la portada de la que se deriva la sesión, el listado y el detalle.
 
@@ -123,6 +126,8 @@ def _responder(
     una petición que el test no previó mide otra cosa que la que dice medir.
     """
 
+    pedidos_de_detalle: list[str] = []
+
     def responder(peticion: httpx.Request) -> httpx.Response:
         url = str(peticion.url)
         if url.endswith("sesion-consultaunificada.php"):
@@ -132,6 +137,11 @@ def _responder(
         if url.endswith("/civil/consultaRitCivil.php"):
             return httpx.Response(estado_busqueda, text=cuerpo)
         if detalle is not None and url.endswith("/civil/modal/causaCivil.php"):
+            # El segundo detalle es el cuaderno que no vino desplegado, y se sirve sólo desde
+            # la segunda vuelta: si el recorrido pidiera de más, la cuenta lo nota.
+            pedidos_de_detalle.append(url)
+            if segundo_detalle is not None and len(pedidos_de_detalle) > 1:
+                return httpx.Response(200, text=segundo_detalle)
             return httpx.Response(200, text=detalle)
         raise AssertionError(f"petición no prevista por el doble: {peticion.method} {url}")
 
@@ -146,6 +156,7 @@ def _llamar(
     argumentos: dict | None = None,
     detalle: str | None = None,
     estado_busqueda: int = 200,
+    segundo_detalle: str | None = None,
     servidor_mcp=None,
     progreso: ProgressFnT | None = None,
 ) -> CallToolResult:
@@ -166,7 +177,9 @@ def _llamar(
     def fabricar(contacto: str) -> PjudClient:
         cliente = PjudClient(contacto)
         cliente._http = httpx.Client(
-            transport=httpx.MockTransport(_responder(cuerpo, detalle, estado_busqueda))
+            transport=httpx.MockTransport(
+                _responder(cuerpo, detalle, estado_busqueda, segundo_detalle)
+            )
         )
         return cliente
 
@@ -503,6 +516,62 @@ def test_la_cadena_avisa_su_progreso_por_el_canal_del_protocolo(
     )
     assert all(m for _, _, m in avisos), (
         f"un aviso sin mensaje dice que algo pasa y no qué: {avisos}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("cuadernos", "peticiones"),
+    [
+        # Desde un cliente FRÍO, que es como `server.py` abre uno en cada llamada: dos por
+        # abrir sesión, una por buscar y una por el detalle. Con un cuaderno la página en la
+        # mano ES ése y no se pide de nuevo.
+        pytest.param(1, 4, id="un-cuaderno"),
+        # Con dos, una más por el que no vino desplegado.
+        pytest.param(2, 5, id="dos-cuadernos"),
+    ],
+)
+def test_el_total_anunciado_es_el_de_las_peticiones_que_salen(
+    monkeypatch: pytest.MonkeyPatch, cuadernos: int, peticiones: int
+) -> None:
+    """Un total que miente es peor que no anunciar ninguno.
+
+    Es el argumento por el que `_paginado` NO anuncia total: su tope no es un pronóstico. La
+    cadena del detalle sí lo sabe, y por eso lo dice, pero nadie comprobaba que fuera cierto.
+    El testing de mutación lo encontró: `<= 1` por `< 1`, `return 0` por `return 1`, y el
+    sumando de la sesión por otro, los tres sobrevivían.
+
+    Se comprueban las dos cosas juntas, porque separadas no dicen nada: cuántas peticiones
+    salieron de verdad, y qué total se le prometió al cliente en el último aviso.
+    """
+    principal = (FIXTURES / "detalle_causa_civil.html").read_text(encoding="utf-8")
+    if cuadernos == 2:
+        principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    avisos: list[tuple[float, float | None, str | None]] = []
+
+    async def anotar(progress: float, total: float | None, message: str | None) -> None:
+        avisos.append((progress, total, message))
+
+    resultado = _llamar(
+        monkeypatch,
+        LISTADO,
+        herramienta="obtener_detalle_causa",
+        argumentos={"tipo": "E", "rol": 468, "anio": 2026, "tribunal": 162},
+        detalle=principal,
+        segundo_detalle=apremio,
+        progreso=anotar,
+    )
+
+    assert not resultado.is_error, f"la llamada falló: {_texto(resultado)}"
+    ultimo, total, _ = avisos[-1]
+    assert ultimo == peticiones, (
+        f"salieron {ultimo} avisos y la cadena de {cuadernos} cuaderno(s) son {peticiones} "
+        "peticiones desde un cliente frío: dos de sesión, la búsqueda, el detalle y los "
+        "cuadernos que no vinieron puestos"
+    )
+    assert total == peticiones, (
+        f"se le prometió al cliente un total de {total} y salieron {peticiones}. Un total que "
+        "no calza es peor que no anunciar ninguno: el cliente dibuja una barra que miente"
     )
 
 
@@ -1458,6 +1527,29 @@ def test_ninguna_plantilla_afirma_una_ausencia() -> None:
             assert any(s in ventana for s in SALVEDADES), (
                 f"{etiqueta} afirma una ausencia sin salvedad: ...{ventana}..."
             )
+
+
+def test_revisar_causa_mira_si_la_causa_existe_antes_que_los_nulos() -> None:
+    """Con `causa_encontrada` en falso TODOS los campos vienen en nulo, y por otra razón.
+
+    La plantilla enseña a leer un nulo como "esta competencia no publica ese panel". Si la
+    búsqueda no dio con la causa, esa lectura convierte una causa que no se encontró en una
+    causa revisada cuyos paneles la competencia no publica, y el resumen no deja rastro de que
+    se buscó mal.
+
+    Va con el campo nombrado y no con una frase: lo que hay que hacer es MIRARLO.
+    """
+    texto = _rendidas()["revisar-causa"]
+    assert "causa_encontrada" in texto, (
+        "la plantilla no manda a mirar `causa_encontrada`, así que sus nulos se leen como "
+        "paneles ausentes aunque la causa no se haya encontrado"
+    )
+    antes = texto.index("causa_encontrada")
+    despues = texto.index("NULO")
+    assert antes < despues, (
+        "manda a mirar `causa_encontrada` DESPUÉS de clasificar los nulos, que es cuando ya se "
+        "atribuyeron a la competencia"
+    )
 
 
 def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:

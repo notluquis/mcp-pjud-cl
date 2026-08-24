@@ -734,8 +734,11 @@ def buscar_causa_por_fecha(
     annotations=SOLO_LECTURA,
     description="Actuaciones del ministro de fe con su fecha real de diligencia.\n\nEs el "
     "dato que el ebook oficial de la Oficina Judicial Virtual omite y del que dependen los "
-    "plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.\n\n"
-    f"{QUE_SIGNIFICA_EL_FALSO}",
+    "plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.\n\nUna lista vacía "
+    "significa que la causa NO tiene actuaciones de receptor, y eso es una respuesta. Si la "
+    "búsqueda no encuentra la causa, esto falla en vez de devolver la lista vacía: los dos "
+    "casos daban el mismo valor y un rol mal escrito se leía como una causa sin diligencias."
+    f"\n\n{QUE_SIGNIFICA_EL_FALSO}",
 )
 def obtener_actuaciones_receptor(
     tipo: Tipo,

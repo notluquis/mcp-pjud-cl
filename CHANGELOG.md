@@ -36,6 +36,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- La referencia no tabulaba `ResultadosTruncados` ni `CausaNoEncontrada`, y
+  `obtener_actuaciones_receptor` no decía qué significa que su lista venga vacía.
+
 - `obtener_actuaciones_receptor` devolvía una lista vacía cuando la búsqueda no encontraba la
   causa, que es el mismo valor que una causa sin actuaciones de receptor. Ahora se distingue.
 - Una cancelación del cliente se tragaba y la cadena seguía consultando al Poder Judicial para

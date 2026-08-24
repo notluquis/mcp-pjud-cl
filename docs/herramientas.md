@@ -930,6 +930,8 @@ sentencia no exista.
 | `ValueError` sobre campos | Faltan campos que la plataforma exige | Se detecta antes de consultar, sin gastar una petición |
 | `EstructuraInesperada` | El HTML no tiene la forma esperada | La plataforma cambió. Reportar con la plantilla correspondiente |
 | `ValueError` | Competencia o buscador no verificado, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
+| `CausaNoEncontrada` | La búsqueda no dio con la causa que se pidió | Revisar rol, año, competencia y el código del tribunal o la corte. **No** es que la causa no tenga actuaciones: para eso la lista vacía |
+| `ResultadosTruncados` | La búsqueda excedió el tope de páginas | Hay más resultados de los que caben. Acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada |
 | `PjudNoRespondio` | La petición salió y no volvió en el tiempo de espera | La plataforma puede estar lenta. Se puede reintentar más tarde, respetando el intervalo. **No** es que la causa no exista |
 | `PlataformaNoDisponible` | La plataforma respondió 5xx | Error suyo, no de la consulta. Se reintenta más tarde, respetando el intervalo |
 

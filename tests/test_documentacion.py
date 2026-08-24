@@ -270,12 +270,12 @@ def test_todo_argumento_aparece_en_la_seccion_de_su_plantilla(plantillas, seccio
     for nombre, plantilla in plantillas.items():
         cuerpo = secciones_de_plantillas[nombre]
         declarados = {a.name for a in plantilla.arguments or []}
-        documentados = set(re.findall(r"^\| `(\w+)` \|", cuerpo, re.M))
+        documentados = set(re.findall(r"^\s*\|\s*`(\w+)`\s*\|", cuerpo, re.M))
         assert documentados == declarados, (
             f"`{nombre}` acepta {sorted(declarados)} y la referencia tabula {sorted(documentados)}"
         )
         obligatorios = {a.name for a in plantilla.arguments or [] if a.required}
-        tabulados = set(re.findall(r"^\| `(\w+)` \| sí \|", cuerpo, re.M))
+        tabulados = set(re.findall(r"^\s*\|\s*`(\w+)`\s*\|\s*sí\s*\|", cuerpo, re.M))
         assert tabulados == obligatorios, (
             f"`{nombre}` exige {sorted(obligatorios)} y la referencia marca como obligatorios "
             f"{sorted(tabulados)}"

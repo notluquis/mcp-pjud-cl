@@ -506,39 +506,45 @@ def test_la_cadena_avisa_su_progreso_por_el_canal_del_protocolo(
     )
 
 
-@pytest.mark.parametrize(
-    "falla",
-    [
-        pytest.param(RuntimeError("el cliente se cayó dibujando el progreso"), id="revienta"),
-        # No es un caso rebuscado: es LA forma en que un cliente que se fue llega hasta acá, y
-        # `CancelledError` hereda de `BaseException`, no de `Exception`. Medido: con la
-        # cláusula acotada a `Exception` esta cancelación se escapa y se lleva la llamada, así
-        # que los dos casos tienen que estar o la mitad del guardia no existe.
-        pytest.param(asyncio.CancelledError(), id="se-va"),
-    ],
-)
-def test_un_aviso_que_falla_no_cuesta_la_respuesta(
-    monkeypatch: pytest.MonkeyPatch, falla: BaseException
-) -> None:
-    """La respuesta YA se pagó en peticiones contra la plataforma: no la tira un aviso.
+def test_un_aviso_que_revienta_no_cuesta_la_respuesta(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La respuesta YA se pagó en peticiones contra la plataforma: no la tira un canal roto.
 
-    Los avisos van al cliente, y del cliente no se sabe nada: puede irse, puede cancelar, o
-    puede reventar dibujando lo que le llega. Cualquiera de las tres, si se propagara, haría
-    consultar al Poder Judicial y botar el resultado, que es lo peor de los dos mundos: el
-    tráfico se generó igual, y quien preguntaba se queda sin el dato y con un error que no
-    habla de su causa.
+    Los avisos van al cliente, y del cliente no se sabe nada: puede reventar dibujando lo que le
+    llega. Si eso se propagara, se habría consultado al Poder Judicial para botar el resultado,
+    que es lo peor de los dos mundos: el tráfico se generó igual y quien preguntaba se queda sin
+    el dato y con un error que no habla de su causa.
 
-    Va contra el canal de verdad y no contra el adaptador a mano: lo que importa es de qué
-    TIPO llega el fallo después de cruzar el hilo, y eso no se adivina leyendo.
+    Va contra el canal de verdad y no contra el adaptador a mano: lo que importa es de qué TIPO
+    llega el fallo después de cruzar el hilo, y eso no se adivina leyendo.
     """
 
     async def fallar(progress: float, total: float | None, message: str | None) -> None:
-        raise falla
+        raise RuntimeError("el cliente se cayó dibujando el progreso")
 
     resultado = _llamar(monkeypatch, LISTADO, progreso=fallar)
 
     assert not resultado.is_error, f"un aviso que falló se llevó la respuesta: {_texto(resultado)}"
     assert resultado.structured_content, "la respuesta tiene que llegar entera igual"
+
+
+def test_un_cliente_que_cancela_detiene_la_cadena(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Y una cancelación es lo contrario: se propaga, y tiene que hacerlo.
+
+    Es la forma en que un cliente que se fue llega hasta acá. `_req` avisa antes de CADA
+    petición, así que tragarla en el primer aviso deja la cadena entera saliendo al Poder
+    Judicial para una respuesta que ya nadie puede recibir. Eso es la cláusula CUARTA al revés,
+    y pesa más que terminar una lectura que nadie pidió.
+
+    No hace falta nombrar la clase: `CancelledError` hereda de `BaseException` y no de
+    `Exception`, así que sube sola. Nombrarla costaría un bucle corriendo que en el hilo
+    trabajador no hay.
+    """
+
+    async def cancelar(progress: float, total: float | None, message: str | None) -> None:
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        _llamar(monkeypatch, LISTADO, progreso=cancelar)
 
 
 def test_sin_cliente_que_pida_progreso_la_respuesta_es_la_misma(
@@ -553,6 +559,73 @@ def test_sin_cliente_que_pida_progreso_la_respuesta_es_la_misma(
     con = _llamar(monkeypatch, LISTADO, progreso=None)
     assert not con.is_error, f"la llamada falló: {_texto(con)}"
     assert con.structured_content, "sin progreso la respuesta tiene que llegar igual de entera"
+
+
+def test_las_plantillas_normalizan_la_competencia_antes_de_avisar() -> None:
+    """El cliente acepta cualquier capitalización y las plantillas comparaban el valor crudo.
+
+    Con `competencia="Civil"` el aviso de resolver el `tribunal` no salía, y un rol de civil sin
+    tribunal no falla: abre la causa de otra persona. Es el mismo defecto que ya costó un
+    `KeyError` en `_causa_pedida`, en otra capa.
+    """
+    from mcp_pjud.server import _si_falta_el_codigo
+
+    for escrito in ("civil", "Civil", "CIVIL", " civil "):
+        assert "`tribunal`" in _si_falta_el_codigo(escrito, None, None), (
+            f"con competencia={escrito!r} la plantilla no avisa que falta el tribunal"
+        )
+
+
+def test_las_plantillas_no_mandan_el_codigo_que_la_competencia_no_usa() -> None:
+    """Un código de más convierte una causa que existe en un falso negativo.
+
+    Fijar una corte fuera de apelaciones excluye las causas radicadas en otra jurisdicción: lo
+    dice la descripción de `CorteQueDesambigua`, y una plantilla que arma la llamada no puede
+    contradecir al esquema que la describe.
+    """
+    from mcp_pjud.server import _identificacion
+
+    civil = _identificacion("E", 468, 2026, "civil", tribunal=162, corte=46)
+    assert "tribunal=162" in civil, f"civil se acota por tribunal y no lo lleva: {civil}"
+    assert "corte=" not in civil, (
+        f"civil llevaba la corte igual, y fijarla fuera de apelaciones excluye causas: {civil}"
+    )
+
+    apelaciones = _identificacion("Protección", 9999, 2019, "apelaciones", tribunal=162, corte=46)
+    assert "corte=46" in apelaciones, f"apelaciones se acota por corte y no la lleva: {apelaciones}"
+    assert "tribunal=" not in apelaciones, (
+        f"apelaciones llevaba el tribunal, que ahí la plataforma no usa: {apelaciones}"
+    )
+
+
+def test_una_causa_que_no_se_encontro_no_llega_como_cero_actuaciones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """La otra mitad del mismo falso negativo, y la que no tenía guardia.
+
+    El test de abajo cubre un detalle ilegible. Éste cubre lo anterior: que la BÚSQUEDA no
+    encuentre la causa. Ahí `actuaciones_receptor` devolvía `[]`, exactamente el mismo valor que
+    una causa encontrada sin actuaciones de receptor.
+
+    O sea un rol mal escrito, un año equivocado o el tribunal que no era se presentaban como una
+    causa revisada sin diligencias, y sobre eso se computa un plazo que no existe.
+    `detalle_causa` puede decirlo con `causa_encontrada`; una lista no tiene dónde.
+    """
+    resultado = _llamar(
+        monkeypatch,
+        LISTADO_VACIO,
+        herramienta="obtener_actuaciones_receptor",
+        argumentos={"tipo": "E", "rol": 468, "anio": 2026},
+    )
+
+    assert resultado.is_error, (
+        f"una causa que no se encontró llegó como respuesta: {resultado.structured_content!r}. "
+        "Cero actuaciones y causa inexistente son lo mismo para quien lee"
+    )
+    texto = _texto(resultado)
+    assert "no signific" in texto.lower(), (
+        f"el error no dice que esto NO es que la causa no tenga actuaciones: {texto}"
+    )
 
 
 def test_las_actuaciones_de_receptor_no_llegan_como_lista_vacia(

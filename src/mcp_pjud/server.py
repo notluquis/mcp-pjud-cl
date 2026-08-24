@@ -325,21 +325,27 @@ def _avisos(ctx: Context | None) -> Callable[[int, int | None, str], None] | Non
     no pueden costar una respuesta que YA se pagó en peticiones contra la plataforma: sería
     consultar al Poder Judicial y botar el resultado.
 
-    Y traga `BaseException`, que parece de más y está medido: un cliente que se va llega hasta
-    acá como `CancelledError`, que hereda de `BaseException` y NO de `Exception`. Con la
-    cláusula acotada a `Exception` esa cancelación se escapa y se lleva la llamada entera.
-    `KeyboardInterrupt` y `SystemExit` sí pasan: son el proceso terminando, no un aviso que no
-    llegó.
+    Traga los fallos del aviso y NO la cancelación. Un cliente que se va llega hasta acá como
+    `CancelledError`, y tragarla deja la llamada corriendo: `_req` avisa antes de CADA petición,
+    así que una cancelación en el primer aviso seguiría mandando la cadena entera al Poder
+    Judicial para una respuesta que ya nadie puede recibir. Eso es la cláusula CUARTA al revés,
+    y pesa más que terminar una lectura que nadie pidió.
+
+    Lo que sí se traga es que la notificación no salga: un canal roto no puede costar una
+    consulta que ya se hizo.
     """
     if ctx is None:
         return None
 
     def avisar(numero: int, total: int | None, mensaje: str) -> None:
+        # `Exception` a secas, y eso ES la política: `CancelledError`, `KeyboardInterrupt` y
+        # `SystemExit` heredan de `BaseException`, así que suben solas. No hace falta nombrar
+        # la clase de cancelación, y nombrarla costaría un bucle corriendo que acá no hay:
+        # `anyio.get_cancelled_exc_class()` desde el hilo trabajador levanta "Not currently
+        # running on any asynchronous event loop".
         try:
             _de_vuelta_al_bucle(ctx.report_progress, numero, total, mensaje)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except BaseException as e:
+        except Exception as e:
             _PROGRESO.debug("no se pudo avisar el paso %d (%s): %r", numero, mensaje, e)
 
     return avisar
@@ -1368,6 +1374,16 @@ CorteDeLaPlantilla = Annotated[
 ]
 
 
+def _modulo(competencia: str) -> str:
+    """La competencia como la nombra la tabla, para poder compararla.
+
+    El cliente acepta cualquier capitalización y la normaliza con `PjudClient._modulo`; las
+    plantillas comparaban el valor crudo, así que `competencia="Civil"` se saltaba el aviso de
+    resolver el `tribunal`, y sin tribunal un rol de civil abre la causa de otra persona.
+    """
+    return competencia.strip().lower()
+
+
 def _identificacion(
     tipo: str, rol: int, anio: int, competencia: str, tribunal: int | None, corte: int | None
 ) -> str:
@@ -1376,11 +1392,19 @@ def _identificacion(
     Los nulos se omiten en vez de escribirse: `tribunal=None` dentro de una instrucción se lee
     como un valor que hay que mandar, y hay competencias donde la plataforma no acepta ese
     parámetro.
+
+    Y se omite además el código que ESA competencia no usa, aunque venga con valor. Fijar una
+    corte fuera de apelaciones excluye las causas radicadas en otra jurisdicción, así que un
+    código de más convierte una causa que existe en un falso negativo. Lo dice la descripción
+    de `CorteQueDesambigua`, y la plantilla no puede contradecirla.
     """
+    acota = (
+        COMPETENCIAS[_modulo(competencia)].acota_por if _modulo(competencia) in MODULOS else None
+    )
     partes = [f"tipo={tipo!r}", f"rol={rol}", f"anio={anio}", f"competencia={competencia!r}"]
-    if tribunal is not None:
+    if tribunal is not None and acota == "tribunal":
         partes.append(f"tribunal={tribunal}")
-    if corte is not None:
+    if corte is not None and acota == "corte":
         partes.append(f"corte={corte}")
     return ", ".join(partes)
 
@@ -1392,12 +1416,12 @@ def _si_falta_el_codigo(competencia: str, tribunal: int | None, corte: int | Non
     siempre enseñaría a mandar un parámetro que la plataforma no acepta, y callarlo cuesta
     caro: un rol sin tribunal no falla, abre la causa de otra persona.
     """
-    if competencia in _EXIGEN_TRIBUNAL and tribunal is None:
+    if _modulo(competencia) in _EXIGEN_TRIBUNAL and tribunal is None:
         return (
             f" Va sin `tribunal`, y {EL_ROL_NO_BASTA}. Resolverlo antes con `listar_cortes` y "
             "`listar_tribunales`, o preguntar de qué juzgado es la causa."
         )
-    if competencia in _EXIGEN_CORTE and corte is None:
+    if _modulo(competencia) in _EXIGEN_CORTE and corte is None:
         return (
             " Va sin `corte`, y ahí el mismo rol y el mismo libro existen en varias. "
             "Resolverla antes con `listar_cortes`, o preguntar de qué corte es la causa."
@@ -1478,7 +1502,12 @@ En qué estado está esta causa.
    y trae los paneles juntos, así que no hay que pedirlos por separado.\
 {_si_falta_el_codigo(competencia, tribunal, corte)}
 
-2. Enumerar panel por panel qué vino, distinguiendo tres estados que NO son lo mismo:
+2. Mirar PRIMERO `causa_encontrada`. Si viene en falso, la búsqueda no dio con la causa y
+   todos los demás campos vienen en nulo por eso, no porque {competencia} no los publique:
+   leerlos como paneles ausentes esconde que la causa no se encontró. Revisar rol, año,
+   competencia y el código del tribunal o la corte antes de seguir.
+
+3. Enumerar panel por panel qué vino, distinguiendo tres estados que NO son lo mismo:
 
    - NULO: {competencia} no publica ese panel, y la pregunta no tiene respuesta acá.
      Las competencias con al menos un panel medido son {", ".join(_CON_DETALLE)},
@@ -1486,19 +1515,22 @@ En qué estado está esta causa.
    - Lista vacía: el panel existe y no trae filas. Eso sí es una respuesta.
    - Con elementos: lo que hay.
 
+   `piezas_exhorto` no se rige por eso: su nulo puede ser que la causa no SEA un exhorto, y
+   quien lo distingue es `causa_es_exhorto`, que viaja al lado.
+
    Nombrar los que cayeron en cada estado, incluidos los nulos: un resumen que sólo enumera
    lo que trajo datos borra la diferencia entre "no hay nada" y "acá no se puede preguntar".
 
-3. Si `exhortos` trae algo, avisarlo: parte de la tramitación ocurre en OTRO expediente y sus
+4. Si `exhortos` trae algo, avisarlo: parte de la tramitación ocurre en OTRO expediente y sus
    actuaciones no están en esta respuesta. El panel nombra el tribunal de destino en palabras
    y la búsqueda pide el código, así que seguirlo es resolverlo con `listar_tribunales` y
    abrir la causa de destino. `causa_de_origen` es la misma arista hacia abajo.
 
-4. Al informar fechas de la Historia, distinguir `fecha_diligencia`, que corre los plazos, de
+5. Al informar fechas de la Historia, distinguir `fecha_diligencia`, que corre los plazos, de
    `fecha_registro`, que no. Cuando la de diligencia viene en nulo, esa fila no publica la
    segunda fecha: no es que la diligencia no se haya practicado.
 
-5. Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
+6. Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
    historial. Sumarlas informa una deuda inflada varias veces.
 
 El detalle publica más paneles de los que este servidor sabe leer, y los escritos no están

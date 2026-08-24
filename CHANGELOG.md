@@ -23,36 +23,27 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- El error de causa no encontrada mandaba a indicar el libro en `tipo` en las cinco
-  competencias. En civil `tipo` es la letra del rol, así que el consejo hacía repetir la misma
-  consulta.
+- El error de causa ambigua decía "ninguna corresponde" cuando correspondían todas, repetía el
+  mismo rol una vez por causa encontrada, y mandaba a corregir el libro en competencias donde
+  `tipo` es la letra del rol. Ahora nombra dónde elegir y con qué parámetro.
 - Elegir la causa levantaba `KeyError` con una competencia escrita en mayúscula, en vez del
   error de ambigüedad que dice qué falta.
-- La directiva decía que nada prueba una ausencia, dos líneas después de decir que
-  `georreferenciado: false` sí la prueba donde la columna existe. Ahora habla de las búsquedas.
-- Que `georreferenciado: true` no prueba que el registro exista se decía sólo en la herramienta
-  de civil. Leer la historia de cobranza, laboral o apelaciones no traía el aviso.
-- Las búsquedas mandaban a repetir el tribunal "de la fila elegida": la fila publica el nombre
-  y el detalle exige el código.
-- La duración de las referencias son tres tokens y la documentación contaba dos: falta medir
-  también la del cuaderno.
+- La búsqueda por rol decía que omitir `tribunal` "AMPLÍA los resultados". El rol se numera por
+  juzgado: una sesión lo omitió por eso y recibió 43 causas de 43 personas por preguntar por una.
+- Las búsquedas mandaban al detalle sin la competencia, que asume civil; desde penal, que no
+  tiene detalle; y a repetir un tribunal que la fila publica por su nombre y el detalle exige
+  por código.
+- El esquema afirmaba que sin `tribunal` la llamada falla por ambigüedad también en apelaciones
+  y suprema, donde ese código no acota nada.
+- La directiva decía que nada prueba una ausencia dos líneas después de decir que
+  `georreferenciado: false` sí la prueba donde la columna existe, y que `true` no prueba lo
+  contrario se decía sólo en la herramienta de civil.
+- La referencia del listado decía caducar a la media hora: medido está que su JWT declara
+  1.800 segundos, no que la plataforma lo rechace ahí. Son tres tokens y la documentación
+  contaba dos.
 - Tres encabezados de la hoja de ruta declaraban un estado que dejó de ser el real: la sección
   de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
   estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.
-- La búsqueda por rol decía que omitir `tribunal` "AMPLÍA los resultados". El rol se numera por
-  juzgado: una sesión lo omitió por eso y recibió 43 causas de 43 personas por preguntar por una.
-- El error de causa ambigua decía "ninguna corresponde" cuando correspondían todas y repetía el
-  mismo rol una vez por causa. Ahora nombra dónde elegir, y en `corte` cuando la competencia se
-  acota por corte.
-- Las cuatro búsquedas mandaban al detalle "con el mismo tipo, rol y año", sin la competencia:
-  el detalle asume civil, así que después de una búsqueda laboral abría otra causa. Y penal no
-  tiene detalle, que tampoco decían.
-- El esquema afirmaba que sin `tribunal` la llamada falla por ambigüedad también en apelaciones
-  y suprema, donde ese código no acota nada.
-- La referencia del listado decía caducar a la media hora: medido está que su JWT declara
-  1.800 segundos, no que la plataforma lo rechace ahí. La del documento sigue sin medir.
-- Un test decía que la carga de esos JWT "va cifrada". Va firmada: se lee, y de ahí salió la
-  duración.
 
 ### Cambiado
 

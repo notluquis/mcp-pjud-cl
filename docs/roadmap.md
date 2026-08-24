@@ -489,6 +489,7 @@ dicho, lo que falta **no espera trabajo, espera datos**.
 | Once rutas de anexo | ídem: el sitio las nombra y ninguna causa medida las ofrece |
 | La fecha de las diligencias de cobranza | la plataforma publica el epoch `31/12/1969`, o sea **no la publica**. No hay nada que leer |
 | `ExhortosApe` e `IncompetenciaApe` | no hay qué mapear: dos columnas, la primera en blanco, y el panel falta en la mitad de los detalles |
+| Cuánto duran `Cuaderno.referencia` y `documento_referencia` | del listado se leyó el JWT y declara media hora; de estas dos no se midió, y la del cuaderno está a mitad de la cadena más larga |
 
 Buscar más causas al azar ya se agotó como método: son paneles de etapa o de cola transitoria,
 y aparecerán en una consulta real de alguien que los tenga.

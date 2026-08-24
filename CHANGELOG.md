@@ -77,6 +77,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   penales y el compendio de extranjería publican un dato de una persona en cada fila, y líneas
   jurisprudenciales entrega temas y no sentencias, con los mismos campos Solr significando otra
   cosa.
+- La hoja de ruta separa lo que le queda a este servidor, que espera datos y no trabajo, de lo
+  que sale de su superficie y sería otro proyecto.
 
 ## [0.13.0] - 2026-08-23
 

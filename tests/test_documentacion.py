@@ -575,6 +575,29 @@ def test_los_ejemplos_json_no_ensenan_campos_que_el_modelo_no_tiene():
     )
 
 
+def test_la_hoja_de_ruta_cuenta_lo_que_falta_con_las_cifras_del_codigo():
+    """La tabla de lo que queda es lo primero que alguien lee para saber si el proyecto sirve.
+
+    Sus dos cifras son restas, no datos: rutas aceptadas menos ejecutadas, y rutas que el sitio
+    nombra menos medidas. Escritas a mano quedan viejas justo cuando se mide una más, que es
+    cuando importa que la tabla diga la verdad.
+    """
+    faltan_documentos = sum(len(r) for r in DOCUMENTOS.values()) - len(DOCUMENTOS_EJECUTADAS)
+    js = _texto(RAIZ / "tests" / "fixtures" / "consultaUnificada.html")
+    nombradas = set(re.findall(r"/(?:\w+)/modal/(\w*[Aa]nexo\w*\.php)", js))
+    medidas = {r for paneles in ANEXOS.values() for r in paneles} | set(ANEXOS_MEDIDOS_SIN_EXPONER)
+
+    hoja = " ".join(_texto(RAIZ / "docs" / "roadmap.md").split())
+    total = sum(len(r) for r in DOCUMENTOS.values())
+    assert (
+        f"{EN_LETRAS[faltan_documentos].capitalize()} de las {EN_LETRAS[total]} rutas de documento"
+        in hoja
+    ), f"faltan {faltan_documentos} rutas de documento de {total} y la hoja de ruta dice otra cosa"
+    assert f"{EN_LETRAS[len(nombradas - medidas)].capitalize()} rutas de anexo" in hoja, (
+        f"faltan {len(nombradas - medidas)} rutas de anexo por medir y la hoja dice otra cosa"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

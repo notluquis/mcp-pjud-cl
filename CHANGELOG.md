@@ -71,6 +71,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Los nombres de campo de las cuatro búsquedas no los comprobaba nadie: escribir uno con otra
   caja no da error, da un campo que la plataforma ignora y una búsqueda sin acotar.
 
+### Decidido
+
+- Los diez buscadores de fallos quedan medidos, y los tres que no se exponen es por decisión:
+  penales y el compendio de extranjería publican un dato de una persona en cada fila, y líneas
+  jurisprudenciales entrega temas y no sentencias, con los mismos campos Solr significando otra
+  cosa.
+
 ## [0.13.0] - 2026-08-23
 
 ### Agregado

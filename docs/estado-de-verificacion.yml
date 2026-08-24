@@ -56,13 +56,17 @@ buscadores:
     evidencia: "1.884.905 documentos."
     razon: "Sus caratulados llegan con el nombre del imputado cuando el fallo está marcado como no anonimizable. Que el dato sea consultable no obliga a republicarlo desde acá."
   - nombre: compendio_extranjeria
-    estado: sin-medir
-    razon: "No se conoce su ruta: `Compendio_Extranjeria` devolvió 200 con la página de Cobranza, o sea una ruta plausible contesta con el buscador equivocado. Falta leerla del HTML del portal."
+    id: 648
+    estado: medido-no-expuesto
+    fecha: 2026-08-23
+    evidencia: "Su ruta lleva tilde, `Compendio_Extranjería`, y por eso la versión sin tilde devolvía la página de Cobranza. Tiene la forma de suprema más tres campos propios."
+    razon: "Uno de esos tres campos es `medicamento_ss`, que este buscador publica como **Nacionalidad del recurrente**. Es un atributo personal de quien recurre, en causas de migración, y republicarlo desde acá es lo mismo que el proyecto ya rechazó con el nombre del imputado."
   - nombre: lineas_jurisprudenciales
     id: 628
-    estado: sin-medir
-    evidencia: "457 documentos."
-    razon: "Su respuesta no trae `response.numFound` y no tiene la forma de los que sí están medidos, así que el parser actual no la puede leer sin medirla antes."
+    estado: medido-no-expuesto
+    fecha: 2026-08-23
+    evidencia: "457 documentos. Su página declara `buscador_lineas_jurisprudenciales: true`, que ninguna otra trae."
+    razon: "No es un buscador de fallos: cada fila es una línea jurisprudencial, y reusa seis campos Solr con OTRO significado (`caratulado_s` es el tema, `gls_sala_sup_s` el asunto debatido, `gls_tip_recurso_sup_s` la sala). Leerlo con el mapa de los fallos daría una sentencia con todos sus campos plausibles y todos equivocados."
 
 competencias:
   - nombre: civil

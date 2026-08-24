@@ -43,11 +43,11 @@ from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
 
-#: Ocho de los diez buscadores se midieron contra el sistema real y siete se exponen. El de
-#: Penales se midió
-#: y NO se expone: es una decisión del titular, del 23 de agosto de 2026, por lo mismo que el
-#: detalle de las causas penales queda fuera. Sus caratulados llegan con el nombre del imputado
-#: cuando el fallo está marcado como no anonimizable. No es prudencia de más:
+#: Diez de los diez buscadores se midieron contra el sistema real y siete se exponen. Los tres
+#: que quedan fuera es por decisión y no por falta de medición: penales y el compendio de
+#: extranjería publican un dato de una persona en cada fila (el nombre del imputado, la
+#: nacionalidad del recurrente), y líneas jurisprudenciales no entrega fallos sino temas, con
+#: los mismos campos Solr significando otra cosa. No es prudencia de más:
 #: cada buscador declara sus propios campos Solr (`rol_era_sup_s` en Suprema, `rol_era_ape_s` en
 #: Apelaciones, `gls_juz_s` donde las otras dos ponen la corte), así que exponer los otros sin
 #: medirlos devolvería campos vacíos en vez de un error, que es la falla que este proyecto
@@ -275,6 +275,11 @@ IDENTIFICADORES_MEDIDOS = {
     # Medido y NO expuesto, por decisión. Va acá igual: esta tabla es la constancia de lo que se
     # midió, y dejarlo fuera obligaría a medirlo de nuevo el día que se decida distinto.
     "penales": 268,
+    # Los dos que no son buscadores de fallos ofrecibles, medidos el 23 de agosto de 2026. Van
+    # acá por lo mismo que penales: para que nadie tenga que volver a medirlos, y para que la
+    # ruta con tilde de extranjería no se pierda. Ver `docs/estado-de-verificacion.yml`.
+    "lineas_jurisprudenciales": 628,
+    "compendio_extranjeria": 648,
 }
 
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')

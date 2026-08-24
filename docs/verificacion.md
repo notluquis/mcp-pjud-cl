@@ -248,15 +248,26 @@ leer penal, y decir que penal está "detrás de un captcha" sería afirmar de m�
 
 ### Los diez buscadores
 
-Ocho de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada
+Diez de los diez están verificados y siete se exponen, y la tabla de abajo dice cuáles. **Cada
 buscador declara sus propios campos**, y esa es la razón por la que ninguno se agrega sin
 medirlo: Corte Suprema entrega `rol_era_sup_s` y Apelaciones `rol_era_ape_s`. Un cliente que
 asuma los campos de Suprema devolvería campos vacíos en vez de un error, que es exactamente el
 falso negativo que el proyecto evita.
 
-Que un buscador quede fuera tiene dos causas distintas y conviene no juntarlas: el de penales
-está medido y no se ofrece **por decisión**, y los dos que faltan no se ofrecen porque **nadie
-los ha medido**.
+**Los tres que quedan fuera están medidos**, y ninguno se descarta por falta de datos:
+
+- **Penales** y el **Compendio de Extranjería** publican un dato de una persona en cada fila: el
+  nombre del imputado en uno, la nacionalidad del recurrente en el otro. Que el dato sea
+  consultable no obliga a republicarlo desde acá.
+- **Líneas Jurisprudenciales** no es un buscador de fallos. Cada fila es una línea
+  jurisprudencial, y su página reusa seis campos Solr con otro significado: `caratulado_s` es el
+  tema, `gls_sala_sup_s` el asunto debatido y `gls_tip_recurso_sup_s` la sala. Leerlo con el mapa
+  de los fallos entregaría una sentencia con todos sus campos plausibles y todos equivocados,
+  que es peor que no entregarla.
+
+Y una trampa de la que conviene dejar constancia: la ruta del compendio lleva tilde,
+`Compendio_Extranjería`. Escribirla sin ella no da 404: devuelve **200 con la página de
+Cobranza**, y las búsquedas siguientes contestan ese corpus.
 
 El mecanismo ya no es el obstáculo: `juris.BUSCADORES` es una tabla que mapea nombre del
 modelo a campo Solr, igual que `parser.COMPETENCIAS` para las causas, y `parse_sentencias`

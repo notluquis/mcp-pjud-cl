@@ -531,6 +531,19 @@ _Fila = TypeVar("_Fila", Actuacion, Notificacion, Liquidacion)
 #: documento de un tercero en el log del operador.
 _BITACORA = logging.getLogger("mcp_pjud.bitacora")
 
+#: Qué se avisa cuando el paso no trae frase propia. Los avisos los dibuja y los guarda el
+#: cliente de quien consulta, así que van en palabras y NUNCA llevan una referencia opaca:
+#: `documento_referencia` es un token firmado de una causa de terceros, y acá terminaría en
+#: una pantalla, un paso más allá de donde `_anotar` ya lo tiene prohibido.
+PASO_GENERICO = "consultando al Poder Judicial"
+
+#: Los tres pasos que comparten las dos cadenas largas del cliente. Se nombran una vez porque
+#: `detalle_causa` y `_recorrer_cuadernos` recorren lo mismo por caminos distintos, y dos
+#: frases que se separan describen la misma cadena de dos maneras.
+PASO_SESION = "abriendo sesión"
+PASO_BUSQUEDA = "buscando la causa"
+PASO_DETALLE = "abriendo el detalle"
+
 
 class ResultadosTruncados(Exception):
     """La búsqueda excedió el tope de páginas.
@@ -983,6 +996,23 @@ class Transporte:
             timeout=httpx.Timeout(ESPERA_MAXIMA, connect=SEGUNDOS_CONECTAR),
         )
         self.bitacora: list[tuple[float, str, int]] = []
+        #: A quién avisarle que una petición está por salir, si a alguien. Recibe el número
+        #: de la petición, cuántas se prevén (o nulo si no se sabe) y en qué paso va.
+        #:
+        #: Va como atributo asignable y no como parámetro del constructor porque los dobles
+        #: de los tests construyen el cliente con un solo argumento, y un parámetro más
+        #: obligaría a enhebrarlo por tres `__init__` para algo que el transporte no necesita
+        #: para consultar.
+        self.aviso: Callable[[int, int | None, str], None] | None = None
+        #: Cuántas peticiones se prevén en la cadena que está corriendo. Sólo lo escribe
+        #: quien sabe el largo de antemano: un recorrido con tope, como la paginación, deja
+        #: esto en nulo antes que anunciar un número que casi nunca se alcanza.
+        #:
+        #: Su alcance es la vida del cliente y no la de la cadena: nadie lo limpia al
+        #: terminar. Se puede porque `server.py` abre un cliente por llamada de herramienta y
+        #: cada herramienta hace UNA cadena. Dos seguidas sobre el mismo cliente heredarían el
+        #: total de la primera y el aviso caminaría más allá de él.
+        self.pasos_previstos: int | None = None
 
     def __enter__(self):
         return self
@@ -1043,8 +1073,18 @@ class Transporte:
         _FICHAS -= 1.0
         return 0.0
 
-    def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
+    def _req(self, metodo: str, url: str, *, paso: str = "", **kw) -> httpx.Response:
         global _ULTIMA, _BLOQUEADO
+        # Antes de tomar el turno, nunca adentro, y por dos razones. El aviso viaja al bucle
+        # de eventos del servidor, así que emitirlo con el candado tomado mete una espera
+        # ajena en el recurso más escaso del proceso. Y `_esperar()` duerme DENTRO del
+        # candado: el aviso previo es justamente el que anuncia la espera que va a empezar.
+        #
+        # El número es el que esta petición va a llevar en la bitácora, que `_anotar` escribe
+        # después. Uno que no llegara al total anunciado dejaría la cadena terminada con cara
+        # de colgada, que es lo contrario de lo que esto sirve.
+        if self.aviso is not None:
+            self.aviso(len(self.bitacora) + 1, self.pasos_previstos, paso or PASO_GENERICO)
         # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
         # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
         # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
@@ -1151,6 +1191,29 @@ class Transporte:
         return r
 
 
+def _paso_cuaderno(numero: int, cuadernos: list[Cuaderno]) -> str:
+    """Con qué se anuncia la petición de un cuaderno.
+
+    Por su posición y no por su nombre: el nombre lo escribe el tribunal y puede traer el rol
+    o las partes, y la referencia con que se pide es un token firmado. Ninguno de los dos
+    puede viajar en un aviso que el cliente dibuja y guarda.
+    """
+    return f"cuaderno {numero} de {len(cuadernos)}"
+
+
+def _peticiones_por_cuadernos(cuadernos: list[Cuaderno]) -> int:
+    """Cuántas peticiones más cuesta recorrer estos cuadernos.
+
+    Con uno o ninguno, ninguna: la página que ya está en la mano ES ese cuaderno. Con varios
+    se piden todos menos el que la respuesta trajo desplegado, y `mostrado` es lo que lo
+    marca. Sin ninguno marcado se piden TODOS, así que descontar uno igual anunciaría una
+    petición menos de las que van a salir, y el aviso quedaría corto justo en la última.
+    """
+    if len(cuadernos) <= 1:
+        return 0
+    return len(cuadernos) - (1 if any(c.mostrado for c in cuadernos) else 0)
+
+
 def _con_un_solo_mostrado(cuadernos: list[Cuaderno]) -> list[Cuaderno]:
     """Los cuadernos, con la garantía de que a lo más uno viene marcado como desplegado.
 
@@ -1184,6 +1247,18 @@ class PjudClient(Transporte):
     def __enter__(self) -> PjudClient:
         return self
 
+    def _prever(self) -> int:
+        """Anuncia la cadena hasta el primer cuaderno y devuelve cuántas peticiones son.
+
+        Dos por abrir sesión, que se pagan siempre salvo que ya esté abierta, una por buscar
+        la causa y una por abrir su detalle. Cuántos cuadernos tiene no se sabe hasta leer esa
+        respuesta, así que el total se corrige después: es preferible a esperar a saberlo
+        todo, porque las dos peticiones de la sesión son justo las que el cliente ve pasar
+        antes de tener nada que mostrar.
+        """
+        self.pasos_previstos = pasos = (0 if self._adir else 2) + 2
+        return pasos
+
     def _bloqueo_encubierto(self, r: httpx.Response) -> str | None:
         aviso = leer_aviso(r.text)
         return aviso if aviso and es_aviso_de_captcha(aviso) else None
@@ -1198,7 +1273,7 @@ class PjudClient(Transporte):
         lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
         no detectarla.
         """
-        return parse_resultados(self._ajax(ruta, data), competencia)
+        return parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia)
 
     def _paginado(
         self, ruta: str, data: dict[str, str], paginas: int, competencia: str
@@ -1223,7 +1298,11 @@ class PjudClient(Transporte):
         total: int | None = None
 
         for numero in range(1, paginas + 1):
-            html_ = self._ajax(ruta, data if token is None else {**data, "pagina": token})
+            html_ = self._ajax(
+                ruta,
+                data if token is None else {**data, "pagina": token},
+                PASO_BUSQUEDA if numero == 1 else f"{PASO_BUSQUEDA}, página {numero}",
+            )
 
             if es_sin_resultados(html_):
                 # Esa respuesta viene sin navegación y sin total, así que hay que
@@ -1293,10 +1372,11 @@ class PjudClient(Transporte):
             "un listado recortado en silencio se leería como si no hubiera más."
         )
 
-    def _ajax(self, ruta: str, data: dict[str, str]) -> str:
+    def _ajax(self, ruta: str, data: dict[str, str], paso: str = "") -> str:
         return self._req(
             "POST",
             f"{BASE}/{self._prefijo()}/{ruta}",
+            paso=paso,
             data=data,
             headers={
                 "X-Requested-With": "XMLHttpRequest",
@@ -1304,7 +1384,7 @@ class PjudClient(Transporte):
             },
         ).text
 
-    def _combos(self, ruta: str, data: dict[str, str]) -> list[dict[str, str]]:
+    def _combos(self, ruta: str, data: dict[str, str], paso: str = "") -> list[dict[str, str]]:
         """Lee uno de los combos que llenan los desplegables del formulario.
 
         Cuelgan de la RAÍZ del sitio y no del prefijo `ADIR_`, a diferencia de todo lo demás.
@@ -1317,6 +1397,7 @@ class PjudClient(Transporte):
         r = self._req(
             "POST",
             f"{BASE}/{ruta}",
+            paso=paso,
             data=data,
             headers={
                 "X-Requested-With": "XMLHttpRequest",
@@ -1350,7 +1431,7 @@ class PjudClient(Transporte):
         respuesta ni en la documentación, así que quien no lo supiera no podía buscar en
         apelaciones.
         """
-        filas = self._combos("combosJSON/leeCorte.php", {"tipoBusqueda": "1"})
+        filas = self._combos("combosJSON/leeCorte.php", {"tipoBusqueda": "1"}, "leyendo las cortes")
         cortes = [
             Corte(codigo=int(f["COD_CORTE"]), nombre=" ".join(f["GLS_CORTE"].split()))
             for f in filas
@@ -1385,6 +1466,7 @@ class PjudClient(Transporte):
         filas = self._combos(
             "combosJSON/leeTrib.php",
             {"codCompetencia": str(spec.codigo), "codCorte": str(corte), "tipoBusqueda": "1"},
+            "leyendo los tribunales de la corte",
         )
         tribunales = [
             Tribunal(codigo=int(f["COD_TRIBUNAL"]), nombre=" ".join(f["GLS_TRIBUNAL"].split()))
@@ -1427,6 +1509,7 @@ class PjudClient(Transporte):
             self._req(
                 "POST",
                 f"{BASE}/{AUDIO_RUTA}",
+                paso="leyendo los audios de la audiencia",
                 data={AUDIO_CAMPO: referencia},
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
@@ -1474,6 +1557,7 @@ class PjudClient(Transporte):
             self._req(
                 "POST",
                 f"{BASE}/{self._prefijo()}/{ruta}",
+                paso="leyendo la georreferencia",
                 data={"valGeoRef": referencia},
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
@@ -1523,6 +1607,7 @@ class PjudClient(Transporte):
             self._req(
                 "POST",
                 f"{BASE}/{self._prefijo()}/{nombre}/modal/{ruta}",
+                paso="leyendo los anexos del escrito",
                 data={campo: referencia},
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
@@ -1555,9 +1640,12 @@ class PjudClient(Transporte):
         cambian entre despliegues y entre sesiones. Hardcodearlos rompería las veinte
         rutas a la vez sin previo aviso, así que se leen en caliente.
         """
-        self._req("GET", ENTRADA, headers={"Referer": PORTADA})
+        self._req("GET", ENTRADA, paso=PASO_SESION, headers={"Referer": PORTADA})
         pagina = self._req(
-            "GET", f"{BASE}/consultaUnificada.php", headers={"Referer": f"{BASE}/indexN.php"}
+            "GET",
+            f"{BASE}/consultaUnificada.php",
+            paso=PASO_SESION,
+            headers={"Referer": f"{BASE}/indexN.php"},
         ).text
 
         adir = re.search(r"ADIR_\d+", pagina)
@@ -1779,13 +1867,18 @@ class PjudClient(Transporte):
             competencia,
         )
 
-    def detalle(self, referencia: str, competencia: str = "civil") -> str:
-        """Devuelve el HTML del detalle de una causa a partir de su referencia opaca."""
+    def detalle(self, referencia: str, competencia: str = "civil", paso: str = "") -> str:
+        """Devuelve el HTML del detalle de una causa a partir de su referencia opaca.
+
+        `paso` es la frase con que se anuncia esta petición. La misma llamada sirve para abrir
+        el detalle y para pedir cada cuaderno, y desde acá no se distingue cuál de las dos es.
+        """
         modulo = self._modulo(competencia)
         self._prefijo()
         return self._ajax(
             f"{modulo}/modal/causa{modulo.capitalize()}.php",
             {"dtaCausa": referencia, "token": self._token or ""},
+            paso or PASO_DETALLE,
         )
 
     def documento(self, ruta: str, referencia: str, competencia: str = "civil") -> Documento:
@@ -1839,6 +1932,7 @@ class PjudClient(Transporte):
         r = self._req(
             "GET",
             f"{BASE}/{self._prefijo()}/{modulo}/documentos/{ruta}",
+            paso="descargando el documento",
             params={parametro: referencia},
             headers={"Referer": f"{BASE}/consultaUnificada.php"},
         )
@@ -2049,6 +2143,7 @@ class PjudClient(Transporte):
                 "en nulo, que además se leería como que la causa no tiene nada."
             )
 
+        previstos = self._prever()
         causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
         if not causas:
             return DetalleCausa(causa_encontrada=False)
@@ -2058,6 +2153,7 @@ class PjudClient(Transporte):
             competencia,
         )
         cuadernos = parse_cuadernos(primera)
+        self.pasos_previstos = previstos + _peticiones_por_cuadernos(cuadernos)
 
         # El detalle despliega un cuaderno a la vez, y el de apremio esconde el requerimiento
         # de pago y el embargo. Se recorren todos, igual que las lecturas separadas, PERO el
@@ -2070,8 +2166,11 @@ class PjudClient(Transporte):
             paginas = [
                 (primera, c.nombre)
                 if c.mostrado
-                else (self.detalle(c.referencia, competencia), c.nombre)
-                for c in _con_un_solo_mostrado(cuadernos)
+                else (
+                    self.detalle(c.referencia, competencia, _paso_cuaderno(i, cuadernos)),
+                    c.nombre,
+                )
+                for i, c in enumerate(_con_un_solo_mostrado(cuadernos), 1)
             ]
 
         historia: list[Actuacion] | None = [] if spec.historia else None
@@ -2153,6 +2252,7 @@ class PjudClient(Transporte):
         # recorrer hasta el tope gastaría hasta nueve peticiones y cuarenta y cinco segundos
         # contra la plataforma para descartarlas. El ritmo de consulta no es un parámetro de
         # rendimiento acá.
+        previstos = self._prever()
         causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
         if not causas:
             return []
@@ -2162,6 +2262,7 @@ class PjudClient(Transporte):
             competencia,
         )
         cuadernos = parse_cuadernos(html_)
+        self.pasos_previstos = previstos + _peticiones_por_cuadernos(cuadernos)
 
         # El detalle despliega la Historia de un solo cuaderno. Una causa con cuaderno
         # de apremio esconde ahí actuaciones que no están en el principal, así que se
@@ -2174,7 +2275,11 @@ class PjudClient(Transporte):
         # Mismo ahorro que en `detalle_causa`: el cuaderno que esta respuesta ya trae puesto
         # no se vuelve a pedir.
         actuaciones = []
-        for cuaderno in _con_un_solo_mostrado(cuadernos):
-            pagina = html_ if cuaderno.mostrado else self.detalle(cuaderno.referencia, competencia)
+        for i, cuaderno in enumerate(_con_un_solo_mostrado(cuadernos), 1):
+            pagina = (
+                html_
+                if cuaderno.mostrado
+                else self.detalle(cuaderno.referencia, competencia, _paso_cuaderno(i, cuadernos))
+            )
             actuaciones.extend(leer(pagina, cuaderno.nombre, competencia))
         return actuaciones

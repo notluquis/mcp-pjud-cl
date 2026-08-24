@@ -12,7 +12,7 @@ Un servidor [Model Context Protocol](https://modelcontextprotocol.io) en Python 
 consulta pública de causas del Poder Judicial de Chile como herramientas invocables por un
 cliente MCP.
 
-Solo lectura. Cinco dependencias. Sin base de datos, sin navegador, sin credenciales.
+Solo lectura. Seis dependencias. Sin base de datos, sin navegador, sin credenciales.
 
 ## Instalación
 

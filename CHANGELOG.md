@@ -26,6 +26,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   una dirección que haya que ir a buscar a otro host.
 - El argumento `competencia` de la plantilla `pjud://documento` se completa por
   `completion/complete` con las competencias que publican documentos.
+- Cada petición se avisa por el canal de progreso del protocolo antes de salir, con en qué paso
+  va y cuántos se prevén. Sin eso, una cadena de minutos era indistinguible de un cuelgue y los
+  clientes la cortaban por su propio reloj.
 
 ### Corregido
 

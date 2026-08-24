@@ -29,6 +29,7 @@ from mcp_pjud.client import (
     MAXIMO_MARCADORES,
     MAXIMO_RANGOS,
     MODULOS,
+    PAGINAS_MAXIMAS,
     PROFUNDIDAD_MARCADORES,
     RAFAGA_MAXIMA,
     SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
@@ -1297,6 +1298,231 @@ def test_una_peticion_que_muere_por_timeout_queda_en_la_bitacora(monkeypatch):
     _, url, estado = c.bitacora[0]
     assert url.endswith("buscar_sentencias")
     assert estado == 0, "se anota con estado 0, que ningún código HTTP usa"
+
+
+# -- el progreso se avisa ---------------------------------------------------------
+
+
+def _cliente_frio_de_dos_cuadernos(con_marca: bool = True) -> PjudClient:
+    """Un cliente sin sesión abierta contra la causa de dos cuadernos.
+
+    Frío a propósito: es como `server.py` abre uno en cada llamada de herramienta, y las dos
+    peticiones de la sesión son las primeras que el cliente ve pasar, o sea las que más
+    tardan en tener algo que mostrar.
+
+    `con_marca` decide si el detalle señala qué cuaderno viene desplegado, y de eso depende
+    cuántas peticiones cuesta el recorrido: con marca se reusa esa página y se pide UNO, sin
+    ella se piden los DOS. Los dos casos ocurren de verdad y ninguno es un error.
+    """
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    if not con_marca:
+        # El orden importa: al revés, el primer `replace` deja ` ="selected"`, que lxml lee
+        # como un atributo con ese nombre y produce HTML que la plataforma no puede emitir.
+        principal = principal.replace(' selected="selected"', "").replace(" selected>", ">")
+    apremio = (FIXTURES / "c1156_apremio.html").read_text(encoding="utf-8")
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    portada = "<html><script>var adir = 'ADIR_1'; token: '" + "0" * 32 + "';</script></html>"
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        url = str(peticion.url)
+        pedidos.append(url)
+        if url.endswith("consultaUnificada.php"):
+            return httpx.Response(200, text=portada)
+        if "consultaRit" in url:
+            return httpx.Response(200, text=listado)
+        if "modal" in url:
+            return httpx.Response(
+                200, text=apremio if "causaCivil" in url and len(pedidos) > 4 else principal
+            )
+        return httpx.Response(200, text="")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    return c
+
+
+def test_cada_peticion_avisa_antes_de_salir(monkeypatch):
+    """Una cadena al ritmo de la cláusula CUARTA tarda minutos, y el cliente no lo sabe.
+
+    La primera sesión que usó esto de verdad reportó cuelgues de cuatro minutos que llegaron
+    como "no result received": nada distinguía "no respondió" de "no existe". La
+    especificación permite reiniciar el reloj del cliente al recibir un aviso, así que el
+    aviso tiene que salir ANTES de la petición y no después de su respuesta.
+
+    El número se comprueba contra la bitácora y no contra una cuenta escrita: las dos numeran
+    la misma petición, y una que cuente por su cuenta anunciaría un paso que no salió.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente(httpx.Response(200, text="ok"))
+    registros: list[tuple[int, int | None, str]] = []
+
+    def avisar(numero: int, total: int | None, mensaje: str) -> None:
+        # `_TURNO` es el recurso más escaso del proceso y el aviso viaja al bucle de eventos:
+        # emitirlo con el candado tomado mete una espera ajena adentro y frena a todos los
+        # demás. Que se pueda tomar acá es la prueba de que la llamada quedó afuera.
+        assert client._TURNO.acquire(blocking=False), (
+            "el aviso se emitió con `_TURNO` tomado: una espera ajena dentro del candado "
+            "frena todas las peticiones del proceso"
+        )
+        client._TURNO.release()
+        registros.append((numero, total, mensaje))
+
+    c.aviso = avisar
+    c.pasos_previstos = 2
+    c._req("GET", f"{BASE}/uno", paso="abriendo sesión")
+    c._req("GET", f"{BASE}/dos", paso="buscando la causa")
+
+    assert registros == [(1, 2, "abriendo sesión"), (2, 2, "buscando la causa")]
+    assert [n for n, _, _ in registros] == list(range(1, len(c.bitacora) + 1)), (
+        f"se avisaron {len(registros)} pasos y la bitácora anotó {len(c.bitacora)} "
+        "peticiones. Si el último aviso no llega al total anunciado, una cadena que terminó "
+        "se ve igual que una colgada"
+    )
+
+
+def test_sin_a_quien_avisarle_la_peticion_sale_igual(monkeypatch):
+    """El aviso es opcional, y su ausencia no puede cambiar lo que se consulta."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente(httpx.Response(200, text="ok"))
+    assert c.aviso is None, "sin cliente que escuche no hay a quién avisarle"
+    assert c._req("GET", f"{BASE}/uno").status_code == 200
+    assert len(c.bitacora) == 1
+
+
+def test_la_peticion_que_muere_sin_respuesta_ya_habia_avisado(monkeypatch):
+    """La que se cuelga es justo la que hay que anunciar.
+
+    Es la que va a consumirle el reloj al cliente. Avisar después de la respuesta serviría
+    para todas menos para ésa, que es el caso entero.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("no respondió", request=peticion)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    registros: list[tuple[int, int | None, str]] = []
+    c.aviso = lambda *args: registros.append(args)
+
+    with pytest.raises(PjudNoRespondio):
+        c._req("GET", f"{BASE}/uno", paso="buscando la causa")
+
+    assert registros == [(1, None, "buscando la causa")]
+
+
+def test_el_aviso_no_publica_la_referencia_de_un_documento(monkeypatch):
+    """Los avisos son texto que el cliente dibuja y guarda: no llevan referencias opacas.
+
+    Es la misma regla que gobierna la bitácora, un destinatario más allá:
+    `documento_referencia` es un token firmado de una causa de terceros, y acá no termina en
+    el log del operador sino en la pantalla de quien consulta. Las frases van en palabras.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    referencia = "eyJhbGciOi.TOKEN-DE-UN-TERCERO.firma"
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"%PDF-1.4 x"))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+    registros: list[tuple[int, int | None, str]] = []
+    c.aviso = lambda *args: registros.append(args)
+
+    with contextlib.suppress(Exception):
+        c.documento("docuN.php", referencia, "civil")
+
+    assert registros, "no se avisó nada: el guardia no estaría mirando ninguna petición"
+    for _, _, mensaje in registros:
+        assert "TOKEN-DE-UN-TERCERO" not in mensaje, (
+            f"el aviso {mensaje!r} lleva la referencia del documento, que es un token firmado "
+            "de una causa real y viaja hasta la pantalla de quien consulta"
+        )
+
+
+def test_la_cadena_del_detalle_anuncia_cuantas_peticiones_va_a_costar(monkeypatch):
+    """`pasos_previstos` es lo que convierte el aviso en una barra y no en un latido.
+
+    Se cuenta contra la bitácora: el total anunciado y las peticiones que salieron tienen que
+    ser el mismo número. Una barra que promete cuatro y hace cinco miente igual que una que
+    no dice nada, y el punto entero es que el cliente pueda estimar cuánto falta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_frio_de_dos_cuadernos()
+    totales: list[int | None] = []
+    c.aviso = lambda _numero, total, _mensaje: totales.append(total)
+
+    c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert totales[0] == 4, (
+        "al entrar sólo se sabe la cadena hasta el primer cuaderno: dos de abrir sesión, una "
+        f"de buscar y una de abrir el detalle. Se anunciaron {totales[0]}"
+    )
+    assert totales[-1] == len(c.bitacora), (
+        f"se anunciaron {totales[-1]} pasos y salieron {len(c.bitacora)} peticiones"
+    )
+
+
+def test_sin_marca_de_cuaderno_desplegado_se_anuncia_una_peticion_mas(monkeypatch):
+    """El descuento se apoya en `mostrado`, y sin ninguna marca no hay nada que descontar.
+
+    Con marca se reusa la página que ya está en la mano y se pide un cuaderno; sin ella se
+    piden los dos. Un total que descuente uno igual promete cinco peticiones y hace seis, o
+    sea el aviso se queda corto justo en la última, que es la que más tarda en llegar.
+
+    Va aparte del caso con marca a propósito: la rama sin marca no se ejercita sola, y un
+    total escrito para el caso común pasa verde sin que nada la mire.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_frio_de_dos_cuadernos(con_marca=False)
+    totales: list[int | None] = []
+    c.aviso = lambda _numero, total, _mensaje: totales.append(total)
+
+    c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert len(c.bitacora) == 6, (
+        f"sin marca hay que pedir los dos cuadernos: dos de sesión, una de buscar, una de "
+        f"abrir el detalle y dos de cuadernos son seis. Salieron {len(c.bitacora)}"
+    )
+    assert totales[-1] == len(c.bitacora), (
+        f"se anunciaron {totales[-1]} pasos y salieron {len(c.bitacora)} peticiones"
+    )
+
+
+def test_los_cuadernos_se_avisan_por_su_numero_y_no_por_su_referencia(monkeypatch):
+    """Cada cuaderno que se pide es una petición más, y el aviso dice cuál de cuántas."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_frio_de_dos_cuadernos()
+    mensajes: list[str] = []
+    c.aviso = lambda _numero, _total, mensaje: mensajes.append(mensaje)
+
+    c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert "abriendo sesión" in mensajes, f"la sesión no se anunció: {mensajes}"
+    assert "buscando la causa" in mensajes, f"la búsqueda no se anunció: {mensajes}"
+    assert "cuaderno 2 de 2" in mensajes, (
+        f"ningún aviso nombra el cuaderno que se está pidiendo: {mensajes}"
+    )
+
+
+def test_una_busqueda_paginada_avisa_sin_prometer_un_total(monkeypatch):
+    """`paginas` es un tope, no un plan: anunciarlo como total sería una barra que miente.
+
+    Una búsqueda que puede recorrer hasta `PAGINAS_MAXIMAS` y termina en la primera declararía
+    una cadena que nunca va a ocurrir y se quedaría atascada cerca del principio. El aviso
+    igual sale, que es lo que le reinicia el reloj al cliente; lo que va en nulo es el total.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _cliente_con([(FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")])
+    registros: list[tuple[int, int | None, str]] = []
+    c.aviso = lambda *args: registros.append(args)
+
+    c.buscar_por_rit("E", 468, 2026, tribunal=162, paginas=PAGINAS_MAXIMAS)
+
+    assert registros, "una búsqueda paginada tiene que avisar igual"
+    assert all(total is None for _, total, _ in registros), (
+        f"se anunció un total para un recorrido cuyo largo no se sabe: {registros}"
+    )
 
 
 def test_pedir_actuaciones_de_cobranza_dice_que_estan_en_otro_panel():

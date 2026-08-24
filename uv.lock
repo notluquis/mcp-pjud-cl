@@ -930,6 +930,7 @@ name = "mcp-pjud"
 version = "0.14.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
     { name = "httpx" },
     { name = "lxml" },
     { name = "mcp" },
@@ -962,6 +963,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4.0" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "lxml", specifier = ">=5.3" },
     { name = "mcp", specifier = ">=2.0" },

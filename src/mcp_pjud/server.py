@@ -10,11 +10,21 @@ import base64
 import logging
 import os
 import sys
+from collections.abc import Callable
 from typing import Annotated
 from urllib.parse import quote, urlencode
 
+from anyio.from_thread import run as _de_vuelta_al_bucle
 from mcp.server import MCPServer
 from mcp.server.caching import CacheHint
+
+# Importado normal y NUNCA bajo `TYPE_CHECKING`, aunque este módulo tenga
+# `from __future__ import annotations`: el SDK resuelve las anotaciones con
+# `typing.get_type_hints`, y un nombre que no existe en tiempo de ejecución no se puede
+# resolver. Medido con el import movido bajo la bandera: el servidor no arranca, muere al
+# registrar la primera herramienta con `InvalidSignature: Unable to evaluate type annotations`.
+# Ruidoso y no silencioso, o sea el error se ve, pero se lleva las catorce de una.
+from mcp.server.mcpserver import Context
 from mcp.types import (
     BlobResourceContents,
     Completion,
@@ -292,8 +302,53 @@ def _contacto() -> str:
     return _CONTACTO
 
 
-def _cliente() -> PjudClient:
-    return PjudClient(_contacto())
+#: Por dónde sale el fallo de un aviso de progreso. Cuelga del logger de ESTE paquete, nunca
+#: de la raíz, por lo mismo que `_BITACORA` en `client.py`: encender la raíz enciende `httpx`,
+#: que registra la URL completa y ahí viaja `documento_referencia`.
+_PROGRESO = logging.getLogger("mcp_pjud.progreso")
+
+
+def _avisos(ctx: Context | None) -> Callable[[int, int | None, str], None] | None:
+    """Lleva cada paso de la cadena al canal de progreso del protocolo.
+
+    Para qué: una consulta son varias peticiones encadenadas, cada una con el intervalo de la
+    cláusula CUARTA, y desde afuera eso se ve igual que un cuelgue. La especificación permite
+    al cliente reiniciar su reloj al recibir un aviso, así que esto es lo que distingue "sigo
+    trabajando" de "no respondió", que es lo mismo que "no existe" para quien lee apurado.
+
+    El SDK corre las herramientas síncronas en un hilo aparte, así que el aviso hay que
+    devolverlo al bucle de eventos: eso es `anyio.from_thread.run`, importado por su módulo y
+    no como atributo de `anyio`, que el chequeador de tipos resuelve a otra cosa. Sin token de
+    progreso, `report_progress` es un no-op del propio SDK y esto no cuesta nada.
+
+    Traga sus propios errores a propósito. Un cliente que se fue, o una petición cancelada,
+    no pueden costar una respuesta que YA se pagó en peticiones contra la plataforma: sería
+    consultar al Poder Judicial y botar el resultado.
+
+    Y traga `BaseException`, que parece de más y está medido: un cliente que se va llega hasta
+    acá como `CancelledError`, que hereda de `BaseException` y NO de `Exception`. Con la
+    cláusula acotada a `Exception` esa cancelación se escapa y se lleva la llamada entera.
+    `KeyboardInterrupt` y `SystemExit` sí pasan: son el proceso terminando, no un aviso que no
+    llegó.
+    """
+    if ctx is None:
+        return None
+
+    def avisar(numero: int, total: int | None, mensaje: str) -> None:
+        try:
+            _de_vuelta_al_bucle(ctx.report_progress, numero, total, mensaje)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as e:
+            _PROGRESO.debug("no se pudo avisar el paso %d (%s): %r", numero, mensaje, e)
+
+    return avisar
+
+
+def _cliente(ctx: Context | None = None) -> PjudClient:
+    c = PjudClient(_contacto())
+    c.aviso = _avisos(ctx)
+    return c
 
 
 #: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
@@ -484,7 +539,7 @@ CorteQueDesambigua = Annotated[
     title="Listar las Cortes de Apelaciones y su código",
     annotations=SOLO_LECTURA,
 )
-def listar_cortes() -> list[Corte]:
+def listar_cortes(ctx: Context | None = None) -> list[Corte]:
     """Las Cortes de Apelaciones con el código que las búsquedas exigen.
 
     Llamar esto ANTES de buscar por nombre, RUT o fecha en apelaciones: el parámetro `corte`
@@ -494,7 +549,7 @@ def listar_cortes() -> list[Corte]:
     detalle entrega la corte de origen por su NOMBRE, y la búsqueda pide el código: se resuelve
     acá y con él se busca por rol, indicando en `tipo` el libro que informa `causa_de_origen`.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.listar_cortes()
 
 
@@ -513,6 +568,7 @@ def listar_tribunales(
         ),
     ],
     competencia: CompetenciaConTribunal = "civil",
+    ctx: Context | None = None,
 ) -> list[Tribunal]:
     """Los tribunales de una corte, con el código que las búsquedas exigen.
 
@@ -523,7 +579,7 @@ def listar_tribunales(
     NOMBRE, y la búsqueda pide el código: se ubica la corte con `listar_cortes`, se piden sus
     tribunales acá, y con ese código se busca la causa de destino por su rol.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.listar_tribunales(competencia, corte)
 
 
@@ -585,9 +641,10 @@ def buscar_causa_por_rit(
     tribunal: TribunalDelRol = None,
     corte: CorteDelRol = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
+    ctx: Context | None = None,
 ) -> list[CausaEncontrada]:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas)
 
 
@@ -608,9 +665,10 @@ def buscar_causa_por_nombre(
     tribunal: TribunalQueAcota = None,
     corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
+    ctx: Context | None = None,
 ) -> list[CausaEncontrada]:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.buscar_por_nombre(
             nombre, apellido_paterno, apellido_materno, anio, competencia, tribunal, corte, paginas
         )
@@ -632,9 +690,10 @@ def buscar_causa_por_rut_juridica(
     tribunal: TribunalQueAcota = None,
     corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
+    ctx: Context | None = None,
 ) -> list[CausaEncontrada]:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.buscar_por_rut_juridica(
             rut, digito_verificador, anio, competencia, tribunal, corte, paginas
         )
@@ -657,9 +716,10 @@ def buscar_causa_por_fecha(
     tribunal: TribunalQueAcota = None,
     corte: CorteQueAcota = None,
     paginas: Paginas = PAGINAS_MAXIMAS,
+    ctx: Context | None = None,
 ) -> list[CausaEncontrada]:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.buscar_por_fecha(desde, hasta, competencia, tribunal, corte, paginas)
 
 
@@ -678,9 +738,10 @@ def obtener_actuaciones_receptor(
     competencia: CompetenciaConReceptor = "civil",
     tribunal: TribunalQueDesambigua = None,
     corte: CorteQueDesambigua = None,
+    ctx: Context | None = None,
 ) -> list[Actuacion]:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.actuaciones_receptor(tipo, rol, anio, competencia, tribunal, corte)
 
 
@@ -705,6 +766,7 @@ def obtener_detalle_causa(
     competencia: CompetenciaConDetalle = "civil",
     tribunal: TribunalQueDesambigua = None,
     corte: CorteQueDesambigua = None,
+    ctx: Context | None = None,
 ) -> DetalleCausa:
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
@@ -743,7 +805,7 @@ def obtener_detalle_causa(
     o la corte en palabras, así que hay que resolver el código con `listar_tribunales` o
     `listar_cortes`.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.detalle_causa(tipo, rol, anio, competencia, tribunal, corte)
 
 
@@ -938,6 +1000,9 @@ def documento_de_causa(competencia: str = "civil", ruta: str = "", referencia: s
     Los tres van con valor por defecto porque son variables de consulta de la plantilla, y el
     SDK exige que se puedan omitir: un cliente puede pedir la dirección sin alguna. Cuando eso
     pasa, el cliente rechaza la llamada diciendo qué falta, que es mejor que un valor supuesto.
+
+    Sin avisos de progreso, a diferencia de las herramientas: los tres parámetros de acá son
+    variables de la plantilla de la dirección, y un `ctx` más se leería como una cuarta.
     """
     with _cliente() as c:
         return c.documento(ruta, referencia, competencia).contenido
@@ -990,6 +1055,7 @@ def obtener_documento(
     documento_ruta: RutaDeDocumento,
     documento_referencia: ReferenciaDeDocumento,
     competencia: CompetenciaConDocumentos = "civil",
+    ctx: Context | None = None,
 ) -> list[ContentBlock]:
     """El archivo de una actuación: la resolución, el escrito, el certificado o el expediente.
 
@@ -1015,7 +1081,7 @@ def obtener_documento(
     significa que `documento_referencia` caducó: se vuelve a pedir el detalle de la causa y se
     usa la referencia nueva.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         doc = c.documento(documento_ruta, documento_referencia, competencia)
 
     uri = _uri_del_documento(doc.competencia, doc.ruta, documento_referencia)
@@ -1053,6 +1119,7 @@ def obtener_georreferencia(
         ),
     ],
     competencia: CompetenciaConGeorreferencia = "civil",
+    ctx: Context | None = None,
 ) -> Georreferencia:
     """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
 
@@ -1076,7 +1143,7 @@ def obtener_georreferencia(
 
     Trae las coordenadas de un domicilio de terceros, igual que los litigantes traen su RUT.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.georreferencia(georreferencia_referencia, competencia)
 
 
@@ -1101,6 +1168,7 @@ def obtener_anexos_escrito(
         ),
     ],
     competencia: CompetenciaConAnexos = "civil",
+    ctx: Context | None = None,
 ) -> list[Anexo]:
     """Los documentos que un escrito acompañó, que son un canal distinto del de la resolución.
 
@@ -1122,7 +1190,7 @@ def obtener_anexos_escrito(
     porque ese panel no publica la columna, no porque el dato falte: civil no publica folio,
     suprema no publica fecha y en cambio dice cuántos ejemplares hay y si se exige el físico.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.anexos(anexo_ruta, anexo_referencia, competencia)
 
 
@@ -1138,6 +1206,7 @@ def listar_audios_audiencia(
             "viene nula, la causa no ofrece grabación o su competencia no está medida."
         ),
     ],
+    ctx: Context | None = None,
 ) -> list[AudioAudiencia]:
     """Qué audios de audiencia hay, y con qué enlace se bajan. NO los trae.
 
@@ -1157,7 +1226,7 @@ def listar_audios_audiencia(
     Los enlaces CADUCAN. Si uno deja de funcionar hay que volver a pedir el listado, no
     reintentar el mismo.
     """
-    with _cliente() as c:
+    with _cliente(ctx) as c:
         return c.audios(audio_referencia)
 
 
@@ -1217,9 +1286,11 @@ def buscar_jurisprudencia(
             "una corte."
         ),
     ] = "suprema",
+    ctx: Context | None = None,
 ) -> ResultadoJurisprudencia:
     """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with JurisClient(_contacto()) as c:
+        c.aviso = _avisos(ctx)
         return c.buscar(
             rol=rol,
             anio=anio,
@@ -1245,6 +1316,7 @@ def obtener_texto_sentencia(
         str,
         Field(description=f"Uno de: {', '.join(sorted(BUSCADORES))}."),
     ] = "suprema",
+    ctx: Context | None = None,
 ) -> TextoSentencia:
     """El texto completo de una sentencia, de una en una.
 
@@ -1257,6 +1329,7 @@ def obtener_texto_sentencia(
     datos de personas naturales más allá de lo que la respuesta al usuario necesite.
     """
     with JurisClient(_contacto()) as c:
+        c.aviso = _avisos(ctx)
         return c.texto(rol=rol, anio=anio, buscador=buscador)
 
 

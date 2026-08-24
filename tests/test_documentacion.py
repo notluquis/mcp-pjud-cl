@@ -905,6 +905,28 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     )
 
 
+def test_ninguna_plantilla_pasa_del_tope_en_lo_que_el_cliente_lista():
+    """El mismo corte que a las herramientas, sobre el campo que de verdad viaja en la lista.
+
+    Ojo con cuál es. El CUERPO que una plantilla devuelve entra a la conversación como texto de
+    la persona y no lo corta nadie: medido, `revisar-causa` son 2.177 bytes y está bien. Lo que
+    el cliente lista y podría cortar es la `description`, que es la que decide si alguien elige
+    la plantilla, igual que en una herramienta.
+
+    Se escribe porque la confusión ya ocurrió: al escribirlas se cuidó el largo del cuerpo,
+    que no hacía falta, y nadie miraba el campo que sí.
+    """
+    largas = {
+        p.name: len((p.description or "").encode())
+        for p in asyncio.run(mcp.list_prompts())
+        if len((p.description or "").encode()) > TOPE_DE_UNA_DESCRIPCION
+    }
+    assert not largas, (
+        f"estas descripciones de plantilla pasan de {TOPE_DE_UNA_DESCRIPCION} bytes y el "
+        f"cliente las corta sin avisar: {largas}"
+    )
+
+
 def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
     """`description` es una palabra de JSON Schema en un nivel y un nombre de campo en otro.
 

@@ -1192,6 +1192,9 @@ def test_las_completions_no_contestan_por_argumentos_ajenos():
     )
     assert _completar("", plantilla="pjud://otra{?competencia}").values == [], (
         "se ofrecen competencias para una plantilla que no es la del documento"
+    )
+
+
 # -- las plantillas que la persona invoca ---------------------------------------
 #
 # Un prompt no es una herramienta: no lo llama el modelo, lo invoca la persona desde su

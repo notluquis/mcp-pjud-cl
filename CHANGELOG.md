@@ -36,6 +36,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- `obtener_actuaciones_receptor` devolvía una lista vacía cuando la búsqueda no encontraba la
+  causa, que es el mismo valor que una causa sin actuaciones de receptor. Ahora se distingue.
+- Una cancelación del cliente se tragaba y la cadena seguía consultando al Poder Judicial para
+  una respuesta que ya nadie podía recibir. Ahora se propaga.
+- Las plantillas comparaban la competencia sin normalizar, así que con `"Civil"` no avisaban que
+  faltaba el `tribunal`, y mandaban el código que esa competencia no usa.
+
 - Leer una causa de dos cuadernos costaba una petición de más: el recorrido volvía a pedir el
   cuaderno que la respuesta del detalle ya traía desplegado. Eran seis contra la plataforma
   donde `RAFAGA_MAXIMA` está dimensionada para cinco, que es lo que la documentación decía.

@@ -566,6 +566,16 @@ NO_ES_UNA_AUSENCIA = (
 )
 
 
+class CausaNoEncontrada(Exception):
+    """La búsqueda no devolvió la causa que se pidió.
+
+    Aparte de devolver la lista vacía porque son cosas distintas y la lista no sabe decirlo:
+    "no hay actuaciones de receptor" es una respuesta sobre una causa que existe, y "no
+    encontré la causa" es que no se pudo responder. `detalle_causa` puede distinguirlas con
+    `causa_encontrada`; `actuaciones_receptor` devuelve una lista y no tiene dónde.
+    """
+
+
 class PjudNoRespondio(Exception):
     """La petición salió y no volvió dentro del tiempo que se espera.
 
@@ -2255,7 +2265,17 @@ class PjudClient(Transporte):
         previstos = self._prever()
         causas = self.buscar_por_rit(tipo, rol, anio, competencia, tribunal, corte, paginas=None)
         if not causas:
-            return []
+            # Y NO una lista vacía. `detalle_causa` puede decir `causa_encontrada=False` porque
+            # devuelve un modelo; acá el tipo de retorno es una lista, y ahí "no se encontró la
+            # causa" y "la causa no tiene actuaciones de receptor" serían el mismo valor. Es la
+            # regla 4 en el peor lugar posible: la herramienta que da sentido al proyecto,
+            # informando un plazo que no existe porque se buscó donde no era.
+            raise CausaNoEncontrada(
+                f"No se encontró {f'{tipo}-{rol}-{anio}'.lstrip('-')} en {competencia}. Esto NO "
+                "significa que la causa no tenga actuaciones del ministro de fe: significa que "
+                "la búsqueda no la encontró, y eso puede ser el rol, el año, la competencia o "
+                "el tribunal. Las causas reservadas tampoco aparecen en la consulta pública."
+            )
 
         html_ = self.detalle(
             self._causa_pedida(causas, tipo, rol, anio, self._modulo(competencia)).referencia,

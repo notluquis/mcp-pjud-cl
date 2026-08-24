@@ -157,6 +157,14 @@ _MAPAS_DE_NOMBRES = frozenset(
     {"properties", "$defs", "definitions", "patternProperties", "dependentSchemas"}
 )
 
+#: Claves de JSON Schema cuyo contenido es un VALOR y no un esquema. Un `default` que sea un
+#: objeto con su propia clave `description` es dato del campo, no prosa de la herramienta:
+#: borrarla le cambiaría al modelo el valor por defecto que el servidor sí valida.
+#:
+#: Hoy ningún campo declara ninguna de estas, igual que con los mapas de nombres. Se cubre por
+#: la misma razón: quien agregue un `default` compuesto no va a estar pensando en esto.
+_VALORES_OPACOS = frozenset({"default", "const", "enum", "examples"})
+
 
 def _sin_prosa(nodo: object, dentro_de_un_mapa: bool = False) -> object:
     """El mismo esquema sin las descripciones de campo, recursivo.
@@ -168,12 +176,17 @@ def _sin_prosa(nodo: object, dentro_de_un_mapa: bool = False) -> object:
     `dentro_de_un_mapa` dice si las claves de este nivel son nombres de campo en vez de
     palabras de JSON Schema. Sale de la clave del PADRE y no de las de acá: un campo que se
     llamara `properties` no convierte a sus hermanos en nombres.
+
+    Y lo que cuelga de `default`, `const`, `enum` o `examples` no se toca: ahí adentro no hay
+    esquema, hay el valor del campo, y una clave `description` es parte del dato.
     """
     if isinstance(nodo, dict):
         if dentro_de_un_mapa:
             return {k: _sin_prosa(v) for k, v in nodo.items()}
         return {
-            k: _sin_prosa(v, k in _MAPAS_DE_NOMBRES) for k, v in nodo.items() if k != "description"
+            k: v if k in _VALORES_OPACOS else _sin_prosa(v, k in _MAPAS_DE_NOMBRES)
+            for k, v in nodo.items()
+            if k != "description"
         }
     if isinstance(nodo, list):
         return [_sin_prosa(v) for v in nodo]
@@ -240,13 +253,19 @@ def _cliente() -> PjudClient:
 #: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
 #: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
 _CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
+
+#: Y donde no lleva nada. Son tres formas y el esquema nombraba dos: pedirle una letra a
+#: suprema deja el rol esperado en `X-999999-2020`, no calza ninguna fila, y el error manda a
+#: revisar `tipo` sin decir que ahí va vacío.
+_SIN_TIPO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_sin_prefijo)
 Tipo = Annotated[
     str,
     Field(
         description="Letra del rol. En civil: C, V, E, A, F o I. En "
         f"{', '.join(_CON_LIBRO)} va el LIBRO en vez de una letra (por ejemplo 'Protección' "
         "o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la "
-        "consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada."
+        f"consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En "
+        f"{', '.join(_SIN_TIPO)} el rol no lleva nada adelante y este campo va VACÍO."
     ),
 ]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
@@ -487,9 +506,10 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     "la `corte`. Sin repetirlos abre el mismo rol de otra competencia o de otro juzgado, que "
     "existe y se ve bien. Si la búsqueda ya iba acotada se reusa ese mismo código; si no, la "
     "fila publica el NOMBRE del tribunal o de la corte y el código se resuelve con "
-    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_ACOTAR)} no hay ninguno que "
-    f"resolver ni que repetir: bastan tipo, rol y año. En {', '.join(_SIN_DETALLE)} no hay "
-    "detalle: se rechaza por decisión, no por no estar medido."
+    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_ACOTAR)} no hay ninguno de los "
+    "dos que resolver ni que repetir, y la competencia se repite igual que en el resto. En "
+    f"{', '.join(_SIN_DETALLE)} no hay detalle: se rechaza por decisión, no por no estar "
+    "medido."
 )
 
 

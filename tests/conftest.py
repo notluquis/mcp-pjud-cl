@@ -15,7 +15,7 @@ from mcp_pjud import client
 
 # `httpx.Client()` pregunta por el proxy del sistema, y en macOS eso entra a CoreFoundation.
 # `mutmut` corre cada mutante en un proceso hijo por `fork()`, y CoreFoundation después de un
-# fork en un proceso con hilos revienta: el 24 de agosto de 2026 eso convirtió 2.071 de 3.862
+# fork en un proceso con hilos revienta: el 24 de agosto de 2026 eso convirtió 2.071
 # mutantes en `💥`, o sea la mitad de la medición era del corredor y no del código.
 #
 # Con cualquier variable `*_proxy` puesta, `urllib.request.getproxies()` responde desde el

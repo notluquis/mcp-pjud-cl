@@ -2728,6 +2728,16 @@ class Competencia(NamedTuple):
     #: el esquema seguía anunciando "Letra del rol", y lo que el modelo lee es el esquema: con
     #: eso mandaba una letra, la desambiguación fallaba y el error parecía de la plataforma.
     rol_con_libro: bool
+    #: Si el rol que el listado publica NO lleva nada adelante, ni letra ni libro.
+    #:
+    #: Medido: suprema devuelve `999999-2020` a secas, mientras civil, laboral y cobranza usan
+    #: una letra y apelaciones y penal el libro. Son tres formas y `rol_con_libro` sólo separa
+    #: dos, así que el esquema decía "Letra del rol" también donde no va ninguna.
+    #:
+    #: Importa porque el modelo manda lo que el esquema le pida: una letra en suprema deja el
+    #: rol esperado en `X-999999-2020`, ninguna fila calza, y el error habla de revisar `tipo`
+    #: sin decir que ahí va vacío.
+    rol_sin_prefijo: bool
     #: Campos que la búsqueda POR ROL exige de más en esta competencia, con su valor.
     #:
     #: Existen porque el formulario del sitio es uno solo para las seis y cada competencia
@@ -2806,6 +2816,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=False,
+        rol_sin_prefijo=True,
         campos_rit={"conTipoBus": "0"},
         historia=HISTORIA_SUPREMA,
         receptor=False,
@@ -2828,6 +2839,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
+        rol_sin_prefijo=False,
         campos_rit={"conTipoBusApe": "0"},
         historia=HISTORIA_APELACIONES,
         receptor=False,
@@ -2845,6 +2857,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         liquidaciones=None,
         notificaciones=NOTIFICACIONES_CIVIL,
         rol_con_libro=False,
+        rol_sin_prefijo=False,
         campos_rit={},
         historia=HISTORIA_CIVIL,
         receptor=True,
@@ -2861,6 +2874,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         liquidaciones=LIQUIDACIONES_LABORAL,
         notificaciones=NOTIFICACIONES_LABORAL,
         rol_con_libro=False,
+        rol_sin_prefijo=False,
         campos_rit={},
         historia=HISTORIA_LABORAL,
         receptor=False,
@@ -2875,6 +2889,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=True,
+        rol_sin_prefijo=False,
         campos_rit={"radio-groupPenal": "1"},
         historia=None,
         receptor=False,
@@ -2890,6 +2905,7 @@ COMPETENCIAS: Mapping[str, Competencia] = {
         diligencias=DILIGENCIAS_COBRANZA,
         notificaciones=NOTIFICACIONES_COBRANZA,
         rol_con_libro=False,
+        rol_sin_prefijo=False,
         campos_rit={},
         historia=HISTORIA_COBRANZA,
         receptor=True,

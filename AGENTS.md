@@ -110,7 +110,7 @@ corrida que dé mucho menos es sospechosa del corredor antes que del código.
   sobrevive, vuelve a medirlo con un segundo de separación antes de concluir nada.
 - `mutmut` corre cada mutante en un hijo por `fork()`, y `httpx.Client()` pregunta por el proxy
   del sistema, que en macOS entra a CoreFoundation. CoreFoundation después de un fork revienta:
-  el 24 de agosto de 2026 eso dio 2.071 `💥` de 3.862, o sea la mitad de la medición era del
+  el 24 de agosto de 2026 eso convirtió 2.071 mutantes en `💥`, o sea la mitad de la
   corredor. `tests/conftest.py` pone una variable `*_proxy` para que `getproxies()` responda
   desde el entorno y no le pregunte al sistema. Si vuelven los `💥` en masa, mirar ahí antes
   que al código.

@@ -30,13 +30,18 @@ entre las dos fechas llega antes que cualquier resultado:
 > pública: un resultado vacío no prueba que la causa no exista.
 
 :::{note} Qué revisión del protocolo habla este servidor
-La que trae el SDK de MCP instalado, que hoy es **2026-07-28**. Desde esa revisión el protocolo
-es sin estado y los servidores deben implementar `server/discover`, donde éste publica su
-nombre, su versión y estas herramientas.
+**Depende del transporte, y conviene decir las dos.** El SDK instalado conoce hasta
+**2026-07-28**, la revisión sin estado donde los servidores publican lo suyo por
+`server/discover`. Por ahí se habla cuando el cliente vive en el mismo proceso.
 
-El número no está escrito a mano: `tests/test_documentacion.py` lo compara contra
-`LATEST_PROTOCOL_VERSION` del SDK, así que actualizar la dependencia y no esta página deja la
-suite en rojo.
+Todos los clientes que esta guía documenta lo levantan como **proceso aparte por stdio**, y ahí
+el saludo llega hasta **2025-11-25**: es lo que negocia Claude Desktop, Claude Code, Cursor, VS
+Code y Codex. Medido pidiendo `2026-07-28` en el saludo y viendo qué contesta. En esa ruta
+`server/discover` no se alcanza, así que quien lo intente recibe método desconocido.
+
+Los dos números salen del SDK y no de la memoria: `tests/test_documentacion.py` los compara
+contra `LATEST_PROTOCOL_VERSION` y `LATEST_HANDSHAKE_VERSION`, así que actualizar la dependencia
+y no esta página deja la suite en rojo.
 :::
 
 ## `listar_cortes`

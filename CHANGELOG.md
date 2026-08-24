@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.15.0] - 2026-08-24
+
 ### Agregado
 
 - Tres plantillas que la persona invoca desde su cliente: `computar-plazo` presenta las dos
@@ -36,16 +38,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- La referencia no tabulaba `ResultadosTruncados` ni `CausaNoEncontrada`, y
-  `obtener_actuaciones_receptor` no decía qué significa que su lista venga vacía.
-
 - `obtener_actuaciones_receptor` devolvía una lista vacía cuando la búsqueda no encontraba la
-  causa, que es el mismo valor que una causa sin actuaciones de receptor. Ahora se distingue.
+  causa, que es el mismo valor que una causa sin actuaciones de receptor. Ahora se distingue, y
+  su descripción dice qué significa cada uno.
+- La referencia no tabulaba `ResultadosTruncados` ni `CausaNoEncontrada`, así que quien conecta
+  esto no tenía qué hacer con ninguna de las dos.
 - Una cancelación del cliente se tragaba y la cadena seguía consultando al Poder Judicial para
   una respuesta que ya nadie podía recibir. Ahora se propaga.
 - Las plantillas comparaban la competencia sin normalizar, así que con `"Civil"` no avisaban que
   faltaba el `tribunal`, y mandaban el código que esa competencia no usa.
-
 - Leer una causa de dos cuadernos costaba una petición de más: el recorrido volvía a pedir el
   cuaderno que la respuesta del detalle ya traía desplegado. Eran seis contra la plataforma
   donde `RAFAGA_MAXIMA` está dimensionada para cinco, que es lo que la documentación decía.
@@ -575,7 +576,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.14.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.15.0
 [0.14.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.14.0
 [0.13.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.1
 [0.13.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.0

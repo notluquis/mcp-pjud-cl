@@ -803,10 +803,27 @@ def test_las_cifras_del_corte_son_las_medidas():
             f"{perdidos} bytes que dan {DIRECTIVA_ANTES} menos {TOPE_DEL_CLIENTE}"
         )
 
-    # Y que ninguna fuente le ponga OTRA cifra a lo mismo.
+    # Y que ninguna fuente le ponga OTRA cifra a lo mismo. De quién habla se busca hacia atrás:
+    # las tres cifras son reales y son de objetos distintos, así que aceptar cualquiera para
+    # cualquiera deja pasar "el catálogo pesaba 2.390", que es falso con números verdaderos.
+    de_quien = {
+        "catálogo": catalogo,
+        "tools/list": catalogo,
+        "directiva": directiva,
+        "instructions": directiva,
+        "descripción": escrita(DESCRIPCION_ANTES),
+    }
     pesaba = re.compile(r"[Pp]esaba[n]?\s+(?:de\s+)?([\d.]+)")
     for fuente in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
-        for mencion in pesaba.finditer(_legible(fuente)):
+        texto = _legible(fuente)
+        for mencion in pesaba.finditer(texto):
+            antes = texto[max(0, mencion.start() - CERCA) : mencion.start()].lower()
+            sujetos = [(antes.rfind(n), c) for n, c in de_quien.items() if n in antes]
+            esperada = max(sujetos)[1] if sujetos else None
+            assert mencion.group(1) == (esperada or mencion.group(1)), (
+                f"{fuente.relative_to(RAIZ)} le atribuye {mencion.group(1)} a algo que ese día "
+                f"midió {esperada}"
+            )
             assert mencion.group(1) in medidas, (
                 f"{fuente.relative_to(RAIZ)} dice que algo pesaba {mencion.group(1)}, que no "
                 f"es ninguna de las tres medidas de ese día: {', '.join(medidas)}"
@@ -857,7 +874,13 @@ def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
         },
         "required": ["description", "properties"],
         "$defs": {"description": {"type": "object", "description": "un modelo así llamado"}},
+        # Las cuatro posiciones donde el contenido es el VALOR del campo. Con sólo `default`,
+        # sacar las otras tres de `_VALORES_OPACOS` dejaba la suite verde: ningún esquema real
+        # las usa todavía, que es justo la razón por la que se cubrieron.
         "default": {"description": "esto es el VALOR del campo, no prosa de la herramienta"},
+        "const": {"description": "un valor constante compuesto"},
+        "enum": [{"description": "una alternativa"}, {"description": "otra"}],
+        "examples": [{"description": "un ejemplo"}],
     }
     despojado = _sin_prosa(esquema)
     # `_sin_prosa` declara `object` porque recorre cualquier nodo; acá entró un diccionario.
@@ -876,12 +899,11 @@ def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
     assert "description" not in despojado["$defs"]["description"], (
         "dentro de un modelo de `$defs` la anotación sí es prosa y tenía que irse"
     )
-    assert despojado["default"] == {
-        "description": "esto es el VALOR del campo, no prosa de la herramienta"
-    }, (
-        "lo que cuelga de `default` es el valor del campo: borrarle una clave le cambia al "
-        "modelo el defecto que el servidor sí valida"
-    )
+    for clave in ("default", "const", "enum", "examples"):
+        assert despojado[clave] == esquema[clave], (
+            f"lo que cuelga de `{clave}` es el valor del campo: borrarle una clave le cambia "
+            "al modelo el dato que el servidor sí valida"
+        )
     assert despojado["required"] == ["description", "properties"], (
         "`required` quedó nombrando campos que ya no están en el esquema"
     )
@@ -2230,8 +2252,11 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
 #: duración: dárselas por iguales es lo que haría publicar una cifra que nadie midió.
 TOKENS_SIN_MEDIR = ("documento_referencia", "Cuaderno.referencia")
 
-#: Cómo se nombra en la prosa el token que SÍ se midió.
-TOKEN_MEDIDO = ("CausaEncontrada.referencia", "del listado")
+#: Cómo se nombra en la prosa el token que SÍ se midió. Sólo el nombre del campo: "del
+#: listado" es una frase suelta que puede venir DESPUÉS de nombrar otro token
+#: ("`documento_referencia` se obtiene del listado y dura 30 minutos"), y ahí quedaba haciendo
+#: pasar por medido justamente al que no lo está.
+TOKEN_MEDIDO = ("CausaEncontrada.referencia",)
 
 #: Cuántos caracteres cuentan como "al lado" al atribuirle una duración a un token. En la
 #: tabla de `verificacion.md` los tres caben en menos que esto, y ahí lo que decide es cuál
@@ -2339,6 +2364,21 @@ def test_el_esquema_dice_donde_el_rol_no_lleva_nada_adelante(expuestas):
             assert competencia in tipo, (
                 f"{nombre_h}: en {competencia!r} el rol no lleva nada adelante y la "
                 "descripción de `tipo` no lo dice, así que el modelo manda una letra"
+            )
+
+    # Y la referencia publicada, que se escribe a mano y decía "Letra del rol" en las dos
+    # tablas. Quien arme la llamada leyendo esa página manda un prefijo igual, aunque el
+    # esquema ya no se lo pida.
+    filas = [
+        linea
+        for linea in _texto(RAIZ / "docs" / "herramientas.md").splitlines()
+        if linea.startswith("| `tipo` |")
+    ]
+    assert filas, "la referencia dejó de describir `tipo` en sus tablas de parámetros"
+    for fila in filas:
+        for competencia in sin_prefijo:
+            assert competencia in fila, (
+                f"la referencia describe `tipo` sin decir que en {competencia!r} va vacío: {fila}"
             )
 
 

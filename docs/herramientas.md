@@ -131,7 +131,7 @@ Busca causas por rol en la consulta pública.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `tipo` | str | Letra del rol. En civil: `C`, `V`, `E`, `A`, `F` o `I` |
+| `tipo` | str | Letra del rol. En civil: `C`, `V`, `E`, `A`, `F` o `I`. En apelaciones y penal va el libro, y en suprema va VACÍO |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
 | `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
@@ -445,7 +445,7 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `tipo` | str | Letra del rol, o el libro en Cortes de Apelaciones |
+| `tipo` | str | Letra del rol, el libro en apelaciones y penal, o VACÍO en suprema |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
 | `competencia` | str | Las verificadas. `penal` se rechaza por decisión, no por falta de medición: su detalle se lee y no se expone |

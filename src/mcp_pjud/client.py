@@ -1837,7 +1837,7 @@ class PjudClient(Transporte):
             raise ValueError(
                 f"{esperado!r} calza en {len(exactas)} causas de {modulo}, que no se acota ni "
                 "por tribunal ni por corte: no hay parámetro con que elegir, así que esta "
-                "herramienta no puede abrir ninguna de las dos. `buscar_causa_por_rit` sí las "
+                "herramienta no puede abrir ninguna de ellas. `buscar_causa_por_rit` sí las "
                 "lista con su `tipo_recurso` y su caratulado, aunque abrirlas por rol siga sin "
                 f"poder. {no_se_elige}"
             )

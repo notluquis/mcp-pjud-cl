@@ -6,11 +6,24 @@ estado compartido entre tests: sin limpiarlos, el primer test que reciba un 403 
 proceso detenido y todos los siguientes fallarían por un bloqueo que nunca ocurrió.
 """
 
+import os
 from pathlib import Path
 
 import pytest
 
 from mcp_pjud import client
+
+# `httpx.Client()` pregunta por el proxy del sistema, y en macOS eso entra a CoreFoundation.
+# `mutmut` corre cada mutante en un proceso hijo por `fork()`, y CoreFoundation después de un
+# fork en un proceso con hilos revienta: el 24 de agosto de 2026 eso convirtió 2.071 de 3.862
+# mutantes en `💥`, o sea la mitad de la medición era del corredor y no del código.
+#
+# Con cualquier variable `*_proxy` puesta, `urllib.request.getproxies()` responde desde el
+# entorno y no llega a preguntarle al sistema. El puerto es el descarte de TCP: ningún test
+# sale a la red, así que esto es inerte, y si alguno lo intentara fallaría acá en vez de
+# consultar de verdad al Poder Judicial.
+os.environ.setdefault("http_proxy", "http://127.0.0.1:9")
+os.environ.setdefault("https_proxy", "http://127.0.0.1:9")
 
 
 def raiz_del_repo() -> Path:

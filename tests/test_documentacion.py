@@ -19,7 +19,6 @@ import ast
 import asyncio
 import base64
 import contextlib
-import functools
 import json
 import re
 import subprocess
@@ -662,9 +661,13 @@ PRESUPUESTO_DEL_CATALOGO = 60_000
 TOPE_DE_UNA_DESCRIPCION = TOPE_DEL_CLIENTE
 
 
-@functools.cache
 def _catalogo() -> tuple[dict, ...]:
     """El catálogo tal como viaja, no como está en memoria.
+
+    Sin `functools.cache`, aunque cueste una sesión por test que lo pida. Con la caché, sólo el
+    PRIMER test que llegara acá ejecutaba `list_tools`, así que el testing de mutación atribuía
+    `_sin_prosa` a ese test y a ninguno más: cinco mutantes que dejan la prosa viajando se
+    daban por vivos, y la suite entera los mataba. Medido el 24 de agosto de 2026.
 
     Va por una sesión MCP de verdad y no por `mcp.list_tools()` porque lo que hay que medir es
     lo que el cliente recibe: el SDK cuelga un `_meta` del resultado, y si algún día colgara

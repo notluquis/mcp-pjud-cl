@@ -98,8 +98,8 @@ APROBAR_CONTRATO=1 uv run pytest tests/test_contrato.py   # aprobar un cambio de
 **Todo cambio de lógica deja un test que puede fallar, y hay que verlo en rojo.** Rompe a
 propósito la línea que arreglaste, corre la suite, confirma que se cae, restaura.
 
-**El testing de mutación tiene dos trampas medidas, y las dos hacen que un mutante vivo sea
-mentira.** La línea base del 23 de agosto de 2026 son 3.826 mutantes con 2.811 muertos: una
+**El testing de mutación tiene tres trampas medidas, y las tres hacen que un mutante vivo sea
+mentira.** La línea base del 24 de agosto de 2026 son 3.862 mutantes con 2.894 muertos: una
 corrida que dé mucho menos es sospechosa del corredor antes que del código.
 
 - `mutmut run` con nombres de mutantes explícitos **no vuelve a copiar** `src/` ni `tests/` a
@@ -108,6 +108,12 @@ corrida que dé mucho menos es sospechosa del corredor antes que del código.
 - Al verificar una mutación a mano, escribir el archivo y correr `pytest` dentro del mismo
   segundo puede leer el `.pyc` anterior. **El rojo es confiable; el verde no**: si un mutante
   sobrevive, vuelve a medirlo con un segundo de separación antes de concluir nada.
+- `mutmut` corre cada mutante en un hijo por `fork()`, y `httpx.Client()` pregunta por el proxy
+  del sistema, que en macOS entra a CoreFoundation. CoreFoundation después de un fork revienta:
+  el 24 de agosto de 2026 eso dio 2.071 `💥` de 3.862, o sea la mitad de la medición era del
+  corredor. `tests/conftest.py` pone una variable `*_proxy` para que `getproxies()` responda
+  desde el entorno y no le pregunte al sistema. Si vuelven los `💥` en masa, mirar ahí antes
+  que al código.
 
 De los mutantes vivos, la mayoría son literales de mensaje que mutmut pasa a mayúsculas o
 envuelve en marcadores: no cambian comportamiento y no vale la pena perseguirlos. Lo que sí

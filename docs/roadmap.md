@@ -477,6 +477,42 @@ donde nadie la mira. Doce de los veintitrés paneles del detalle no pasaban por 
 comprueba el mapeo posicional, y las dos cuentas de buscadores estaban viejas en cinco lugares,
 entre ellos `AGENTS.md`, que es lo que otro agente lee como instrucción.
 
+### 0.14: lo que el servidor dice de sí mismo — hecho
+
+Esta versión no agrega una sola capacidad. Corrige lo que el servidor le cuenta al modelo sobre
+las que ya tenía, que es lo que decide si el dato llega bien o llega de otra causa.
+
+**El primer uso real produjo la primera evidencia, y no se parecía a lo que la suite miraba.**
+Tres sesiones lo conectaron a un cliente de escritorio el 23 de agosto de 2026. Ningún hallazgo
+fue un error de cálculo: todos fueron de contrato. Uno costó datos. La descripción decía que en
+la búsqueda por rol omitir `tribunal` "AMPLÍA los resultados", que es literalmente cierto y
+prácticamente engañoso, porque el rol se numera por juzgado: una sesión lo omitió por eso y
+recibió **43 causas de 43 personas distintas** por preguntar por una.
+
+**Y dos pérdidas que ninguna sesión pudo ver, porque no dejan rastro.** El catálogo pesaba
+104.475 caracteres y el cliente difiere las definiciones sobre el 10% de su ventana: una sesión
+cargó **diez de las catorce** sin señal de que le faltaban cuatro. Las instrucciones del
+servidor pesaban 3.770 bytes contra un corte de 2.048, así que un tercio no llegaba, y lo que
+caía del otro lado eran tres reglas de las que evitan afirmar de más.
+
+| | antes | ahora |
+|---|---|---|
+| `tools/list` | 104.475 caracteres | 51.667 |
+| `instructions` | 3.770 bytes | 1.959 |
+| descripción mayor | 2.390 bytes | 2.042 |
+
+Los esquemas de salida viajan sin la descripción de cada campo, que se publica en la referencia,
+y `obtener_detalle_causa` dejó de anunciar esquema: medido, el bloque de texto que el modelo lee
+es idéntico con y sin él.
+
+**`tribunal` y `corte` hacen tres cosas distintas** y las seis herramientas compartían una sola
+descripción, la de las búsquedas de nombre. Ahora hay una por papel: acotar una búsqueda, buscar
+por rol, o identificar la única causa que la herramienta devuelve.
+
+**Y una instantánea del contrato**, con el catálogo entero como viaja y en su orden. Las reglas
+dicen por qué algo tiene que ser así; la instantánea dice qué es, y atrapa el cambio que no
+viola ninguna regla.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 
@@ -489,6 +525,7 @@ dicho, lo que falta **no espera trabajo, espera datos**.
 | Once rutas de anexo | ídem: el sitio las nombra y ninguna causa medida las ofrece |
 | La fecha de las diligencias de cobranza | la plataforma publica el epoch `31/12/1969`, o sea **no la publica**. No hay nada que leer |
 | `ExhortosApe` e `IncompetenciaApe` | no hay qué mapear: dos columnas, la primera en blanco, y el panel falta en la mitad de los detalles |
+| Cuánto duran `Cuaderno.referencia` y `documento_referencia` | del listado se leyó el JWT y declara media hora; de estas dos no se midió, y la del cuaderno está a mitad de la cadena más larga |
 
 Buscar más causas al azar ya se agotó como método: son paneles de etapa o de cola transitoria,
 y aparecerán en una consulta real de alguien que los tenga.

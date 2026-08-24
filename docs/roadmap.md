@@ -49,9 +49,9 @@ Apelaciones, Laborales, Civiles, Cobranza, Familia y Salud CS. El de Penales est
 expone, por decisión y por lo mismo que el detalle de las causas penales. Con la paginación
 medida, una búsqueda ya no se corta en la coincidencia 250.
 
-Faltan dos, y por una razón distinta de la de penales: nadie los ha medido. El Compendio de
-Extranjería no tiene ruta conocida, y Líneas Jurisprudenciales responde con otra forma, sin
-`response.numFound`. La sección de jurisprudencia, más abajo, dice qué costaría.
+Los tres que quedan fuera están medidos, así que ninguno espera trabajo: penales y el compendio
+de extranjería publican un dato de una persona en cada fila, y líneas jurisprudenciales no
+entrega fallos sino temas. La sección de jurisprudencia, más abajo, lo detalla.
 
 ### 0.4: las seis competencias buscables — hecho
 
@@ -449,7 +449,7 @@ desplazamientos 0, 10 y 250: tres páginas distintas, cero solapamiento. Más al
 plataforma responde 200 con la lista **vacía**, no un error, y eso es lo que el esquema
 advierte.
 
-**Cuatro buscadores más**, con lo que ocho de los diez están medidos y siete se exponen: Civiles,
+**Cuatro buscadores más**, con lo que diez de los diez están medidos y siete se exponen: Civiles,
 Cobranza, Familia y Salud CS. El de penales queda medido y fuera, por lo mismo que el detalle
 de las causas penales: sus caratulados traen el nombre del imputado. Los dos que faltan no
 tienen medición y no es lo mismo: el Compendio de Extranjería no tiene ruta conocida y Líneas
@@ -489,7 +489,7 @@ proyecto rechaza, aunque el dato sea público. Si se implementa, será con un ca
 justificado y no "porque se puede".
 
 **Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los buscadores que
-ofrece `juris.pjud.cl` ocho de los diez están medidos, y cada uno declara sus propios campos.
+ofrece `juris.pjud.cl` diez de los diez están medidos, y cada uno declara sus propios campos.
 
 ## Jurisprudencia: qué hay mapeado y qué falta
 

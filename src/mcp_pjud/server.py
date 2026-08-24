@@ -79,6 +79,11 @@ _SIN_ACOTAR = sorted(n for n in MODULOS if COMPETENCIAS[n].acota_por is None)
 #: menos justo donde nulo no es cero.
 _CON_OCULTAS = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
 
+#: Las competencias cuya tabla de Historia publica la columna de georreferencia. Se deriva de
+#: `parser.COMPETENCIAS` y no se escribe a mano: suprema no la publica, y ofrecerla haría que
+#: el modelo intente una llamada para la que nunca va a tener referencia.
+_CON_GEORREFERENCIA = sorted(n for n in MODULOS if n in GEORREFERENCIA)
+
 #: La misma regla dicha una vez, para las tres herramientas que la comparten.
 ACOTACION = (
     "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
@@ -90,6 +95,10 @@ ACOTACION = (
 
 # La directiva viaja en el propio protocolo, no sólo en el README: quien conecte este
 # servidor la recibe antes de llamar cualquier herramienta.
+#: Lo que el cliente corta en silencio, y lo corta igual en las instrucciones del servidor y
+#: en la descripción de cada herramienta: es el mismo tope, así que es la misma constante.
+TOPE_DEL_CLIENTE = 2048
+
 DIRECTIVA = f"""\
 Consulta pública de causas del Poder Judicial de Chile. Solo lectura: este servidor no
 puede ingresar escritos ni modificar nada, y no existe código para hacerlo.
@@ -100,54 +109,27 @@ Al informar fechas de actuaciones de receptor, distinguir siempre:
     CORRE LOS PLAZOS PROCESALES.
   - `fecha_registro`: cuándo se registró en el sistema. NO corre plazos.
 
-Suelen diferir en varios días. El ebook que entrega la Oficina Judicial Virtual no trae
-ninguna de las dos, y ésa es la razón de existir de esta herramienta. Si
-`discrepancia_fechas` es verdadero, las dos fuentes del sitio no coinciden: informarlo
-en vez de elegir una.
+Suelen diferir en varios días. Si `discrepancia_fechas` es verdadero, las dos fuentes del
+sitio no coinciden: informarlo en vez de elegir una.
 
-`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado
-(art. 9 inc. 3 Ley 20.886) SÓLO en las competencias que publican esa columna: civil,
-cobranza, laboral y apelaciones. En suprema el falso significa que no hay dónde mirar. Y
-`true` significa que el sitio la ofrece, no que exista: está medido que una de seis abre un
-panel vacío. No omitir el dato, y no afirmar más de lo que dice.
+`georreferenciado: false` prueba que no hay registro SÓLO en
+{", ".join(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
+significa que no hay dónde mirar. Lo demás lo dice `obtener_georreferencia`.
 
-Las causas reservadas no aparecen en la consulta pública: un resultado vacío no prueba
-que la causa no exista.
-
-{ACOTACION}
+Nada de lo que este servidor devuelve prueba una ausencia. Las causas reservadas no
+aparecen en la consulta pública. En jurisprudencia, `ocultas` o `no_entregadas` mayores
+que cero significan que la lista es un subconjunto, y `ocultas` en NULO tampoco es cero:
+es que en ese buscador no se puede saber. Nunca presentar una cita como verificada si la
+búsqueda no la devolvió.
 
 Si una búsqueda excede el tope de páginas, la herramienta falla en vez de devolver una
 lista recortada. Ese error significa "hay más resultados de los que caben", no "no hay
 resultados": acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada.
 
-Sobre jurisprudencia: `buscar_jurisprudencia` consulta el Buscador Unificado de Fallos.
-Su resultado trae dos números de completitud y hay que mirar los dos. `ocultas` son
-las coincidencias que la plataforma reserva a una consulta anónima. `no_entregadas` son
-las visibles que esta llamada no trajo, porque `filas` acota cuántas se piden. Si
-cualquiera de los dos es mayor que cero, la lista es un subconjunto y hay que decirlo: NO
-se puede afirmar que algo no existe porque no aparezca. `ocultas` en cero no significa
-que la lista esté completa, y `ocultas` en NULO tampoco: nulo no es cero, es que en ese
-buscador no se puede saber. Sólo {", ".join(_CON_OCULTAS)} la trae con número.
-`no_entregadas` mayor que cero se resuelve pidiendo la página siguiente con
-`desplazamiento`.
-Medido el {FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles
-de {miles(INDEXADAS_MEDIDAS)} indexadas.
-
-Una sentencia que la herramienta no encuentra puede ser inexistente, reservada o estar
-fuera del buscador. Son cosas distintas y se informan distinto. Nunca presentar una cita
-como verificada si la búsqueda no la devolvió.
-
-Sobre documentos: `documento_referencia` CADUCA con la sesión en que se leyó, así que se
-usa en el momento y no se guarda para después. Si `obtener_documento` avisa que lo que
-llegó no es un PDF, casi siempre es eso: se vuelve a pedir el detalle de la causa.
-Un documento que llega declarado como escaneo NO se transcribe, ni con OCR propio: una
-transcripción automática de una resolución se ve idéntica a la resolución y no lo es. Se
-informa que es un escaneo y se entrega el archivo.
-
 Las consultas van a ritmo controlado: hasta {RAFAGA_MAXIMA} peticiones seguidas y después
 una cada {INTERVALO_MINIMO:.0f} segundos, que implementa la prohibición de sobrecargar la
-plataforma. Una consulta de actuaciones son
-varias peticiones encadenadas, así que tarda. No es un error ni algo que convenga paralelizar.
+plataforma. Una consulta de actuaciones son varias peticiones encadenadas, así que tarda.
+No es un error ni algo que convenga paralelizar.
 
 Esto acerca la fuente oficial, no reemplaza la revisión de un abogado ni la lectura del
 expediente.
@@ -272,17 +254,21 @@ TribunalQueAcota = Annotated[
 TribunalDelRol = Annotated[
     int | None,
     Field(
-        description=f"Código del tribunal. La plataforma lo acepta opcional, y {EL_ROL_NO_BASTA}"
-        ". Omitirlo no amplía una búsqueda: barre el país y devuelve una causa por juzgado, "
-        "cada una con sus partes. Indicarlo salvo que se quiera justamente ese barrido."
+        description=f"Código del tribunal. En {', '.join(_EXIGEN_TRIBUNAL)} la plataforma lo "
+        f"acepta opcional, y {EL_ROL_NO_BASTA}: omitirlo no amplía la búsqueda, la hace barrer "
+        "y devuelve una causa por juzgado, cada una con sus partes. Indicarlo salvo que se "
+        f"quiera justamente ese barrido. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la "
+        "plataforma no lo usa."
     ),
 ]
 TribunalQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código del tribunal. Esta herramienta devuelve UNA causa, así que el "
-        f"tribunal no acota nada: la identifica. Como {EL_ROL_NO_BASTA}, sin él la llamada "
-        "falla por ambigüedad en vez de abrir la causa de otra persona."
+        f"tribunal no acota nada: la identifica. En {', '.join(_EXIGEN_TRIBUNAL)}, donde "
+        f"{EL_ROL_NO_BASTA}, sin él la llamada falla por ambigüedad en vez de abrir la causa "
+        f"de otra persona. En {', '.join(_EXIGEN_CORTE)} eso lo hace `corte`, y en "
+        f"{', '.join(_SIN_ACOTAR)} no hace falta ninguno de los dos."
     ),
 ]
 Paginas = Annotated[
@@ -327,10 +313,6 @@ CompetenciaConTribunal = Annotated[
     ),
 ]
 
-#: Las competencias cuya tabla de Historia publica la columna de georreferencia. Se deriva de
-#: `parser.COMPETENCIAS` y no se escribe a mano: suprema no la publica, y ofrecerla haría que
-#: el modelo intente una llamada para la que nunca va a tener referencia.
-_CON_GEORREFERENCIA = sorted(n for n in MODULOS if n in GEORREFERENCIA)
 CompetenciaConGeorreferencia = Annotated[
     str,
     Field(
@@ -404,8 +386,9 @@ CorteQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código de la corte. Esta herramienta devuelve UNA causa, así que la corte "
-        f"no acota nada: la identifica. En {', '.join(_EXIGEN_CORTE)} el mismo rol existe en "
-        f"varias, y sin ella la llamada falla por ambigüedad. {_CORTE_DE_MAS}"
+        f"no acota nada: la identifica. En {', '.join(_EXIGEN_CORTE)} el mismo rol y el mismo "
+        "libro existen en varias cortes, y sin ella la llamada falla por ambigüedad. "
+        f"{_CORTE_DE_MAS}"
     ),
 ]
 
@@ -465,6 +448,11 @@ _SOLO_DE_UNA_COMPETENCIA = "; ".join(
     if (campo.description or "").startswith("Sólo en")
 )
 
+#: Las competencias que la búsqueda acepta y el detalle no. Derivado: nombrarlas a mano las
+#: deja viejas, y decir "eso es `obtener_detalle_causa`" sin la salvedad manda al modelo a una
+#: llamada que el cliente rechaza siempre.
+_SIN_DETALLE = sorted(set(MODULOS) - set(_CON_DETALLE))
+
 #: Lo que las cuatro búsquedas devuelven y lo que no, dicho una vez. Vivía en la descripción de
 #: cada campo del esquema de salida, que dejó de viajar para que el catálogo entre en la
 #: ventana del cliente: una sesión recibió cuatro campos en nulo sin forma de saber si era la
@@ -473,7 +461,22 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     "\n\nEl listado publica lo que la columna trae, y varios campos son de una competencia "
     f"sola: {_SOLO_DE_UNA_COMPETENCIA}. En nulo significa que esa competencia no lo publica, "
     "no que la causa no lo tenga.\n\nY no trae historia, partes ni notificaciones: eso es "
-    "`obtener_detalle_causa`, con el mismo tipo, rol y año."
+    "`obtener_detalle_causa`, repitiendo tipo, rol, año Y `competencia`, más el `tribunal` o "
+    "la `corte` de la fila elegida. Sin repetirlos abre el mismo rol de otra competencia o de "
+    f"otro juzgado, que existe y se ve bien. En {', '.join(_SIN_DETALLE)} no hay detalle: se "
+    "rechaza por decisión, no por no estar medido."
+)
+
+
+#: Qué significa `georreferenciado` en falso, dicho una vez para las dos herramientas que
+#: devuelven actuaciones. Salió de la directiva, que el cliente corta en 2 KB: la salvedad
+#: caía del otro lado del corte, y sin ella un falso de suprema se lee como ausencia probada.
+QUE_SIGNIFICA_EL_FALSO = (
+    "`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado "
+    f"(art. 9 inc. 3 Ley 20.886) SÓLO en {', '.join(_CON_GEORREFERENCIA)}, que son las que "
+    "publican esa columna. En el resto, el falso significa que no hay dónde mirar. Y `true` "
+    "significa que el sitio lo ofrece, no que exista: está medido que una de seis abre un "
+    "panel vacío."
 )
 
 
@@ -503,7 +506,8 @@ def buscar_causa_por_rit(
     description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
     "campos de nombre. El año no cuenta para ese mínimo.\n\nHay que acotar la búsqueda: con "
     "qué depende de la competencia, y lo dicen las descripciones de `tribunal` y de `corte`."
-    f"{LO_QUE_EL_LISTADO_NO_TRAE}",
+    f"{LO_QUE_EL_LISTADO_NO_TRAE}"
+    f"\n\n{ACOTACION}",
 )
 def buscar_causa_por_nombre(
     apellido_paterno: Annotated[str, Field(description="Apellido paterno del litigante.")] = "",
@@ -527,7 +531,8 @@ def buscar_causa_por_nombre(
     annotations=SOLO_LECTURA,
     description="Busca causas de una persona jurídica por su RUT.\n\nEs la única vía para "
     'empresas: no tienen Clave Única, así que no aparecen en "Mis Causas".'
-    f"{LO_QUE_EL_LISTADO_NO_TRAE}",
+    f"{LO_QUE_EL_LISTADO_NO_TRAE}"
+    f"\n\n{ACOTACION}",
 )
 def buscar_causa_por_rut_juridica(
     rut: Annotated[int, Field(description="RUT sin dígito verificador ni puntos.", ge=1)],
@@ -552,7 +557,8 @@ def buscar_causa_por_rut_juridica(
     'plataforma ofrece, y sin ella no hay forma de responder "qué ingresó contra esta '
     'empresa esta semana" sabiendo el tribunal pero no el rol.\n\nUn solo día en un solo '
     "tribunal puede devolver decenas de causas, así que conviene acotar el rango antes de "
-    f"subir el tope de páginas.{LO_QUE_EL_LISTADO_NO_TRAE}",
+    f"subir el tope de páginas.{LO_QUE_EL_LISTADO_NO_TRAE}"
+    f"\n\n{ACOTACION}",
 )
 def buscar_causa_por_fecha(
     desde: Annotated[str, Field(description="Fecha inicial del rango, DD/MM/AAAA.")],
@@ -570,6 +576,10 @@ def buscar_causa_por_fecha(
 @mcp.tool(
     title="Actuaciones del receptor",
     annotations=SOLO_LECTURA,
+    description="Actuaciones del ministro de fe con su fecha real de diligencia.\n\nEs el "
+    "dato que el ebook oficial de la Oficina Judicial Virtual omite y del que dependen los "
+    "plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.\n\n"
+    f"{QUE_SIGNIFICA_EL_FALSO}",
 )
 def obtener_actuaciones_receptor(
     tipo: Tipo,
@@ -579,11 +589,7 @@ def obtener_actuaciones_receptor(
     tribunal: TribunalQueDesambigua = None,
     corte: CorteQueDesambigua = None,
 ) -> list[Actuacion]:
-    """Actuaciones del ministro de fe con su fecha real de diligencia.
-
-    Es el dato que el ebook oficial de la Oficina Judicial Virtual omite y del que
-    dependen los plazos procesales. Devolver `fecha_diligencia`, no `fecha_registro`.
-    """
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with _cliente() as c:
         return c.actuaciones_receptor(tipo, rol, anio, competencia, tribunal, corte)
 
@@ -1026,6 +1032,23 @@ def listar_audios_audiencia(
 @mcp.tool(
     title="Buscar jurisprudencia",
     annotations=SOLO_LECTURA,
+    # Las dos cuentas de completitud vivían acá y en la directiva, y la directiva las decía
+    # mejor: sólo ella distinguía el nulo del cero, y era justo lo que el cliente cortaba a
+    # los 2 KB. Ahora se dicen una vez, y acá, que es donde se leen.
+    description="Busca sentencias en el Buscador Unificado de Fallos.\n\nSirve para "
+    "verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve la sentencia "
+    "con su caratulado, sala, fecha y enlace permanente.\n\nEl resultado trae dos cuentas de "
+    "completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma "
+    "reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo "
+    "porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa "
+    "que la lista es un subconjunto, y hay que decirlo.\n\n`ocultas` en cero no prueba que "
+    "la lista esté completa, y en NULO tampoco: nulo no es cero, es que en ese buscador no se "
+    f"puede saber. Sólo {', '.join(_CON_OCULTAS)} la trae con número.\n\n`no_entregadas` "
+    "mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en "
+    "`desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con "
+    "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
+    f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
+    f"{miles(INDEXADAS_MEDIDAS)} indexadas.",
 )
 def buscar_jurisprudencia(
     rol: Annotated[
@@ -1063,20 +1086,7 @@ def buscar_jurisprudencia(
         ),
     ] = "suprema",
 ) -> ResultadoJurisprudencia:
-    """Busca sentencias en el Buscador Unificado de Fallos.
-
-    Sirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve
-    la sentencia con su caratulado, sala, fecha y enlace permanente.
-
-    El resultado trae `ocultas` y `no_entregadas`. Si cualquiera de los dos es mayor que
-    cero, la lista es un subconjunto y no se puede afirmar que falte lo que no aparece:
-    `ocultas` son las que la plataforma reserva, `no_entregadas` las que sí se podrían ver
-    y no se pidieron.
-
-    `no_entregadas` mayor que cero ahora se puede resolver: se vuelve a llamar con
-    `desplazamiento` en `desplazamiento + filas` hasta que llegue a cero. Cada página cuesta una
-    petición con su intervalo, así que se recorre lo que hace falta y no el índice entero.
-    """
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
     with JurisClient(_contacto()) as c:
         return c.buscar(
             rol=rol,

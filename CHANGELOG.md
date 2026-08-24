@@ -24,10 +24,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - La búsqueda por rol decía que omitir `tribunal` "AMPLÍA los resultados". El rol se numera por
   juzgado: una sesión lo omitió por eso y recibió 43 causas de 43 personas por preguntar por una.
 - El error de causa ambigua decía "ninguna corresponde" cuando correspondían todas y repetía el
-  mismo rol una vez por causa. Ahora nombra los tribunales entre los que hay que elegir.
+  mismo rol una vez por causa. Ahora nombra dónde elegir, y en `corte` cuando la competencia se
+  acota por corte.
+- Las cuatro búsquedas mandaban al detalle "con el mismo tipo, rol y año", sin la competencia:
+  el detalle asume civil, así que después de una búsqueda laboral abría otra causa. Y penal no
+  tiene detalle, que tampoco decían.
+- El esquema afirmaba que sin `tribunal` la llamada falla por ambigüedad también en apelaciones
+  y suprema, donde ese código no acota nada.
 
 ### Cambiado
 
+- La directiva del servidor bajó de 3.770 a 1.843 bytes y ahora cabe entera en los 2.048 que el
+  cliente deja: el corte se llevaba el nulo de `ocultas`, la cita no verificada y el régimen de
+  consultas. Lo que salió se mudó a la herramienta que lo necesita.
 - `tribunal` y `corte` traen una descripción por papel: acotar una búsqueda, buscar por rol, o
   identificar la única causa que la herramienta devuelve. Antes las seis herramientas
   compartían la de las búsquedas de nombre.

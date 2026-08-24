@@ -1770,7 +1770,9 @@ class PjudClient(Transporte):
         )
 
     @staticmethod
-    def _causa_pedida(causas: list[CausaEncontrada], tipo: str, rol: int, anio: int):
+    def _causa_pedida(
+        causas: list[CausaEncontrada], tipo: str, rol: int, anio: int, competencia: str
+    ):
         """Elige de la lista la causa que se pidió, o se detiene.
 
         Tomar la primera parecía inofensivo mientras el número de rol identificara una causa.
@@ -1813,11 +1815,22 @@ class PjudClient(Transporte):
             )
 
         # Acá el rol calza exacto en varias, así que el libro ya está bien y repetirlo no
-        # ayuda: lo que falta es el tribunal. Se listan los de las EXACTAS, no los de todas.
-        tribunales = ", ".join(sorted({(c.tribunal or "?") for c in exactas}))
+        # ayuda: lo que falta es DÓNDE. Cuál es el parámetro depende de la competencia, y
+        # nombrar el equivocado manda a repetir la misma consulta ambigua: en apelaciones el
+        # rol se acota por corte, y la columna que el listado publica ES la corte.
+        acota_por = COMPETENCIAS[competencia].acota_por
+        donde = ", ".join(sorted({(c.tribunal or "?") for c in exactas}))
+        if acota_por is None:
+            raise ValueError(
+                f"{esperado!r} calza en {len(exactas)} causas de {competencia}, que no se "
+                f"acota ni por tribunal ni por corte: {donde}. {no_se_elige}"
+            )
+        # La razón sólo aplica donde el rol se numera por juzgado; en apelaciones el mismo rol
+        # y libro existen en varias cortes, que es otra cosa y ya la dice el propio mensaje.
+        razon = f" {EL_ROL_NO_BASTA}." if acota_por == "tribunal" else ""
         raise ValueError(
-            f"{esperado!r} existe en {len(exactas)} tribunales y hay que indicar cuál en "
-            f"`tribunal`: {tribunales}. {EL_ROL_NO_BASTA}. {no_se_elige}"
+            f"{esperado!r} calza en {len(exactas)} causas y hay que indicar en `{acota_por}` "
+            f"en cuál: {donde}.{razon} {no_se_elige}"
         )
 
     def detalle_causa(
@@ -1860,7 +1873,9 @@ class PjudClient(Transporte):
         if not causas:
             return DetalleCausa(causa_encontrada=False)
 
-        primera = self.detalle(self._causa_pedida(causas, tipo, rol, anio).referencia, competencia)
+        primera = self.detalle(
+            self._causa_pedida(causas, tipo, rol, anio, competencia).referencia, competencia
+        )
         cuadernos = parse_cuadernos(primera)
 
         # El detalle despliega un cuaderno a la vez, y el de apremio esconde el requerimiento
@@ -1955,7 +1970,9 @@ class PjudClient(Transporte):
         if not causas:
             return []
 
-        html_ = self.detalle(self._causa_pedida(causas, tipo, rol, anio).referencia, competencia)
+        html_ = self.detalle(
+            self._causa_pedida(causas, tipo, rol, anio, competencia).referencia, competencia
+        )
         cuadernos = parse_cuadernos(html_)
 
         # El detalle despliega la Historia de un solo cuaderno. Una causa con cuaderno

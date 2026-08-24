@@ -26,8 +26,21 @@ entre las dos fechas llega antes que cualquier resultado:
 >   plazos procesales.**
 > - `fecha_registro`: cuándo se registró en el sistema. **No** corre plazos.
 >
-> Suelen diferir en varios días. [...] Las causas reservadas no aparecen en la consulta
-> pública: un resultado vacío no prueba que la causa no exista.
+> Suelen diferir en varios días. [...] Nada de lo que este servidor devuelve prueba una
+> ausencia. Las causas reservadas no aparecen en la consulta pública.
+
+La directiva cabe en **2.048 bytes**, que es donde el cliente la corta sin avisar. Pesaba 3.770
+y el corte se llevaba tres reglas: el nulo de `ocultas`, la cita no verificada y el régimen de
+consultas. Lo que salió no se borró, se mudó a la herramienta que lo necesita, y hay guardias de
+las dos caras: presente donde manda y **ausente de la directiva**, porque reponerlo ahí la llena
+otra vez en silencio.
+
+| lo que salió | ahora vive en |
+|---|---|
+| qué buscadores traen `ocultas` con número, y la medición del índice | `buscar_jurisprudencia` |
+| con qué acotar cada competencia | las tres búsquedas de nombre, RUT y fecha |
+| qué significa `georreferenciado` en falso, entero | `obtener_actuaciones_receptor` |
+| cuándo caduca una referencia de documento y qué hacer con un escaneo | `obtener_documento` |
 
 :::{note} Qué revisión del protocolo habla este servidor
 **Depende del transporte, y conviene decir las dos.** El SDK instalado conoce hasta

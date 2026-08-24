@@ -7,7 +7,9 @@ Corporación Administrativa del Poder Judicial.
 from __future__ import annotations
 
 import base64
+import logging
 import os
+import sys
 from typing import Annotated
 from urllib.parse import quote, urlencode
 
@@ -1172,7 +1174,33 @@ def obtener_texto_sentencia(
         return c.texto(rol=rol, anio=anio, buscador=buscador)
 
 
+#: Con qué nivel sale la bitácora. Encendida por defecto: `docs/instalacion.md` dice que sirve
+#: "para acreditar cuánto se consultó", y un registro apagado no acredita nada. Se puede subir,
+#: bajar o apagar con `MCP_PJUD_BITACORA=WARNING`, `DEBUG`, `CRITICAL`.
+NIVEL_BITACORA = os.environ.get("MCP_PJUD_BITACORA", "INFO").upper()
+
+
 def main() -> None:
+    """Levanta el servidor por stdio, con la bitácora saliendo por el error estándar.
+
+    Se cuelga del logger de ESTE paquete y con `propagate` apagado, nunca de la raíz. El atajo
+    sería `logging.basicConfig`, y está medido lo que cuesta: `httpx` registra la URL completa
+    en INFO, y `documento()` manda `documento_referencia` como parámetro, así que encender la
+    raíz escribiría el token de un documento de un tercero en el log del operador.
+
+    Y va clavado a `sys.stderr`: por stdio, la salida estándar ES el canal del protocolo. Una
+    línea escrita ahí le llega al cliente como JSON inválido.
+
+    Configurar el registro es de la aplicación, no de la librería. Por eso vive acá y no en
+    `client.py`: quien importe `PjudClient` desde un script no recibe salida que no pidió.
+    """
+    manejador = logging.StreamHandler(sys.stderr)
+    manejador.setFormatter(logging.Formatter("%(asctime)s %(name)s %(message)s"))
+    registro = logging.getLogger("mcp_pjud")
+    registro.addHandler(manejador)
+    registro.setLevel(NIVEL_BITACORA)
+    registro.propagate = False
+
     mcp.run()
 
 

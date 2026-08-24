@@ -1,6 +1,8 @@
 """Tests del cliente. Sin red: los controles se prueban con dobles."""
 
 import contextlib
+import io
+import logging
 import re
 import urllib.parse
 from collections.abc import Sequence
@@ -1166,6 +1168,110 @@ def test_una_peticion_colgada_no_gana_fichas(monkeypatch):
     assert dormido == [pytest.approx(INTERVALO_MINIMO)], (
         "la segunda tiene que esperar el intervalo completo: el minuto que la primera estuvo "
         f"colgada no se convierte en fichas. Esperas observadas: {dormido}"
+    )
+
+
+@contextlib.contextmanager
+def _capturando_la_bitacora():
+    """Recoge lo que el registro emite.
+
+    No sirve `caplog`: el logger va con `propagate` apagado a propósito, para que la salida de
+    este paquete no se mezcle con la de `httpx`, que escribe la URL completa. Sin propagación,
+    el manejador que pytest cuelga de la raíz no ve nada.
+    """
+    buffer = io.StringIO()
+    manejador = logging.StreamHandler(buffer)
+    registro = logging.getLogger("mcp_pjud")
+    nivel, propagaba = registro.level, registro.propagate
+    registro.addHandler(manejador)
+    registro.setLevel(logging.INFO)
+    registro.propagate = False
+    try:
+        yield buffer
+    finally:
+        registro.removeHandler(manejador)
+        registro.setLevel(nivel)
+        registro.propagate = propagaba
+
+
+def test_cada_peticion_deja_una_linea_en_el_registro(monkeypatch):
+    """La bitácora existía y no la veía nadie.
+
+    `docs/instalacion.md` dice que sirve "para acreditar cuánto se consultó", y era una lista
+    de instancia que nace y muere dentro de una llamada de herramienta sin que nadie la mire.
+    Un servidor que corrió mil peticiones y uno que corrió tres eran indistinguibles desde
+    fuera del proceso.
+
+    Se cuenta contra la bitácora y no contra un número escrito: las dos tienen que crecer
+    juntas, incluido el camino de la petición que muere sin respuesta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    respuestas = [httpx.Response(200, text="ok"), None]
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        siguiente = respuestas.pop(0)
+        if siguiente is None:
+            raise httpx.ReadTimeout("no respondió", request=peticion)
+        return siguiente
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+
+    with _capturando_la_bitacora() as salida:
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/uno")
+        with pytest.raises(PjudNoRespondio):
+            c._req("GET", "https://oficinajudicialvirtual.pjud.cl/dos")
+
+    lineas = [linea for linea in salida.getvalue().splitlines() if linea.strip()]
+    assert len(lineas) == len(c.bitacora) == 2, (
+        f"la bitácora tiene {len(c.bitacora)} entradas y el registro {len(lineas)} líneas. "
+        "Las dos se llenan en el mismo lugar justamente para que no puedan separarse"
+    )
+    assert "sin respuesta" in lineas[1], (
+        "la petición que murió sin respuesta tiene que distinguirse de una que contestó"
+    )
+
+
+def test_el_registro_no_publica_la_referencia_de_un_documento(monkeypatch):
+    """Un token de un documento de un tercero no puede quedar en el log del operador.
+
+    La regla 5 prohíbe persistir datos de terceros, y hay tres formas de filtrarlos sin querer:
+    la consulta de la URL, donde `documento_referencia` viaja como parámetro; los cuerpos, que
+    llevan el rol y los RUT; y `r.request.url` en vez del argumento, que con `follow_redirects`
+    puede ser otra.
+
+    Está medido que el atajo cuesta: `logging.basicConfig` en la raíz enciende `httpx`, que
+    registra la URL completa en INFO, y ahí sale el token entero.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    referencia = "eyJhbGciOi.TOKEN-DE-UN-TERCERO.firma"
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"%PDF-1.4 x"))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with _capturando_la_bitacora() as salida, contextlib.suppress(Exception):
+        c.documento("docuN.php", referencia, "civil")
+
+    emitido = salida.getvalue()
+    assert emitido.strip(), "no se emitió nada: el guardia no estaría mirando la petición"
+    assert "TOKEN-DE-UN-TERCERO" not in emitido, (
+        "la referencia del documento salió al registro. Es un token firmado de una causa real"
+    )
+    assert "docuN.php" in emitido, "sin la ruta el registro no acredita qué se consultó"
+    # Lo de arriba cubre UNA de las dos protecciones: emitir el argumento y no `r.request.url`.
+    # La otra —cortar antes del `?`— no se puede probar por acá, porque `documento()` manda la
+    # referencia en `params=` y el argumento nunca la lleva. Se prueba aparte, con una URL que
+    # sí traiga consulta, para que quitar cualquiera de las dos se vea.
+    c.bitacora.clear()
+    with _capturando_la_bitacora() as salida:
+        c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x?dtaDoc=" + referencia)
+
+    con_consulta = salida.getvalue()
+    assert "TOKEN-DE-UN-TERCERO" not in con_consulta, (
+        "una URL con consulta salió entera al registro. Ahí es donde viaja "
+        "`documento_referencia` cuando la ruta lo lleva pegado"
     )
 
 

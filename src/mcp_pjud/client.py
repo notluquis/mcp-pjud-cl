@@ -11,6 +11,7 @@ entre peticiones es la implementación de esa cláusula, no una cortesía: no se
 
 from __future__ import annotations
 
+import logging
 import re
 import threading
 import time
@@ -523,6 +524,14 @@ _MAGIA_PDF = b"%PDF-"
 _Fila = TypeVar("_Fila", Actuacion, Notificacion, Liquidacion)
 
 
+#: El registro de tráfico. La librería NO lo configura: quien decide dónde sale es `main()`, y
+#: sólo cuando este paquete es el servidor. Un `logging.basicConfig` en la raíz sería el atajo
+#: y está medido lo que cuesta: `httpx` registra la URL completa en INFO, y `documento()` manda
+#: `documento_referencia` como parámetro, así que encender la raíz escribe el token de un
+#: documento de un tercero en el log del operador.
+_BITACORA = logging.getLogger("mcp_pjud.bitacora")
+
+
 class ResultadosTruncados(Exception):
     """La búsqueda excedió el tope de páginas.
 
@@ -988,8 +997,36 @@ class Transporte:
         """Bloqueo que llega con HTTP 200 en el cuerpo. Cada sistema lo dice a su modo."""
         return None
 
-    def _esperar(self) -> None:
-        """Toma una ficha del balde, esperando si no hay.
+    def _anotar(self, metodo: str, url: str, estado: int, tardo: float, dormido: float) -> None:
+        """Anota la petición en la bitácora y la emite por el registro, en un solo lugar.
+
+        Los dos sitios que anotaban estaban separados —uno en el camino feliz y otro en el que
+        muere sin respuesta—, y con dos lugares es cuestión de tiempo que un camino nuevo
+        registre una cosa y no la otra. Acá no se puede.
+
+        Qué NO sale, y es la parte que importa: la regla 5 prohíbe persistir datos de terceros,
+        y hay tres formas de filtrarlos sin querer. La consulta de la URL, porque
+        `documento_referencia` viaja ahí como parámetro. Los cuerpos, porque llevan el rol, los
+        nombres y los RUT. Y `r.request.url` en vez del argumento, que con `follow_redirects`
+        puede ser otra. Se emite el argumento, cortado antes del `?`.
+        """
+        self.bitacora.append((time.time(), url, estado))
+        _BITACORA.info(
+            "%d %s %s -> %s (%.1fs, esperó %.1fs)",
+            len(self.bitacora),
+            metodo,
+            url.split("?")[0],
+            estado or "sin respuesta",
+            tardo,
+            dormido,
+        )
+
+    def _esperar(self) -> float:
+        """Toma una ficha del balde, esperando si no hay, y devuelve cuánto durmió.
+
+        El número sale a la bitácora al lado de lo que tardó la petición. Separados distinguen
+        "la plataforma va lenta" de "nos estamos frenando solos", que es lo que hay que saber
+        para decidir si un cuelgue es de allá o de acá.
 
         El balde se recarga a razón de una ficha por intervalo, y el reloj de recarga sólo
         corre entre peticiones: el tiempo que la plataforma tarda en responder no cuenta como
@@ -999,10 +1036,12 @@ class Transporte:
         global _FICHAS, _ULTIMA
         _FICHAS = min(RAFAGA_MAXIMA, _FICHAS + (time.monotonic() - _ULTIMA) / self.intervalo)
         if _FICHAS < 1.0:
-            time.sleep((1.0 - _FICHAS) * self.intervalo)
+            dormido = (1.0 - _FICHAS) * self.intervalo
+            time.sleep(dormido)
             _FICHAS = 0.0
-        else:
-            _FICHAS -= 1.0
+            return dormido
+        _FICHAS -= 1.0
+        return 0.0
 
     def _req(self, metodo: str, url: str, **kw) -> httpx.Response:
         global _ULTIMA, _BLOQUEADO
@@ -1014,7 +1053,8 @@ class Transporte:
             if _BLOQUEADO:
                 raise PjudBloqueado(_BLOQUEADO)
 
-            self._esperar()
+            dormido = self._esperar()
+            partio = time.monotonic()
             try:
                 r = self._http.request(metodo, url, **kw)
             except httpx.HTTPError as e:
@@ -1023,7 +1063,7 @@ class Transporte:
                 # quedaban registrados, o sea el registro subestimaba el tráfico generado
                 # justo en las corridas donde la plataforma iba peor. Se anota con estado 0,
                 # que ningún código HTTP usa.
-                self.bitacora.append((time.time(), url, 0))
+                self._anotar(metodo, url, 0, time.monotonic() - partio, dormido)
                 if isinstance(e, _RECHAZO_DE_CONEXION):
                     _BLOQUEADO = (
                         f"La conexión con {url} se cortó: {type(e).__name__}. No se distingue "
@@ -1051,7 +1091,7 @@ class Transporte:
                 # Un timeout que no lo moviera regalaría fichas por el tiempo que estuvo
                 # colgado, justo cuando el portal está peor.
                 _ULTIMA = time.monotonic()
-            self.bitacora.append((time.time(), url, r.status_code))
+            self._anotar(metodo, url, r.status_code, time.monotonic() - partio, dormido)
 
             if r.status_code in (403, 429):
                 _BLOQUEADO = (

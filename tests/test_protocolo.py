@@ -189,6 +189,44 @@ def _texto(resultado: CallToolResult) -> str:
     return "\n".join(bloque.text for bloque in resultado.content if bloque.type == "text")
 
 
+def test_la_bitacora_sale_por_el_error_estandar_y_no_por_el_canal(monkeypatch) -> None:
+    """Por stdio, la salida estándar ES el protocolo.
+
+    Medido con un `print` de más dentro de una herramienta: el cliente levanta
+    `ValidationError: Invalid JSON: expected value at line 1 column 1`. Este SDK sobrevive y
+    sigue, pero eso depende del cliente y nadie lo garantiza, así que el manejador va clavado
+    a `sys.stderr`.
+
+    Y se comprueba que cuelgue del logger de ESTE paquete con la propagación apagada. El atajo
+    sería `logging.basicConfig`, y está medido lo que cuesta: `httpx` registra la URL completa
+    en INFO, y ahí viaja `documento_referencia`.
+    """
+    import logging
+    import sys
+
+    registro = logging.getLogger("mcp_pjud")
+    antes = list(registro.handlers)
+    monkeypatch.setattr(servidor.mcp, "run", lambda *a, **k: None)
+    try:
+        servidor.main()
+        nuevos = [h for h in registro.handlers if h not in antes]
+        assert nuevos, "`main` no dejó por dónde salga la bitácora"
+        for manejador in nuevos:
+            assert isinstance(manejador, logging.StreamHandler)
+            assert manejador.stream is sys.stderr, (
+                "la bitácora sale por la salida estándar, que por stdio es el canal del "
+                "protocolo: cada línea le llega al cliente como JSON inválido"
+            )
+        assert registro.propagate is False, (
+            "con la propagación encendida, encender la raíz para ver esto enciende también "
+            "`httpx`, que registra la URL completa con la referencia del documento adentro"
+        )
+    finally:
+        for manejador in [h for h in registro.handlers if h not in antes]:
+            registro.removeHandler(manejador)
+        registro.propagate = True
+
+
 def test_el_mensaje_del_parser_sobrevive_el_viaje(monkeypatch: pytest.MonkeyPatch) -> None:
     """Un cambio de estructura tiene que llegar al modelo DICIENDO qué pasó.
 

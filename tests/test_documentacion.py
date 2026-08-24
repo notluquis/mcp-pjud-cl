@@ -3958,6 +3958,10 @@ def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
         async with Client(servidor.mcp, mode=modo) as cliente:
             if modo == "legacy":
                 saludo = cliente.session.initialize_result
+                # Con `assert` y no devolviendo un diccionario vacío: sin saludo no hay nada
+                # que acreditar, y un vacío haría PASAR las comprobaciones de abajo, que es
+                # justo el guardia que no puede fallar.
+                assert saludo is not None, "el saludo del carril viejo no trajo capacidades"
                 return saludo.capabilities.model_dump(by_alias=True, exclude_none=True)
             crudo = await cliente.session.send_discover(LATEST_PROTOCOL_VERSION)
             return crudo["capabilities"]

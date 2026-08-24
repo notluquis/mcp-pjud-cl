@@ -59,10 +59,12 @@ Los dos números salen del SDK y no de la memoria: `tests/test_documentacion.py`
 contra `LATEST_PROTOCOL_VERSION` y `LATEST_HANDSHAKE_VERSION`, así que actualizar la dependencia
 y no esta página deja la suite en rojo.
 
-Por el carril de 2026-07-28 el catálogo viaja con una pista de frescura: `tools/list` sale con
-`ttlMs: 3600000` y `cacheScope: public`. Es la única que este servidor declara; `resources/read`
-también admite pista y no la lleva, así que leer un documento siempre vuelve a consultar. Por el
-saludo de 2025-11-25 ese campo no existe y el SDK lo criba: ahí el catálogo llega sin pista.
+Por el carril de 2026-07-28 los catálogos viajan con una pista de frescura: `tools/list`,
+`prompts/list`, `resources/list`, `resources/templates/list` y `server/discover` salen con
+`ttlMs: 3600000` y `cacheScope: public`, porque cambian una vez por versión. `resources/read`
+también admite pista y no la lleva a propósito: leer un documento vuelve a pedírselo al Poder
+Judicial, y una copia guardada de un documento de un tercero es lo que prohíbe la regla 5. Por
+el saludo de 2025-11-25 ese campo no existe y el SDK lo criba: ahí el catálogo llega sin pista.
 :::
 
 El servidor se presenta con un icono propio, una balanza dibujada en SVG que viaja como `data:`

@@ -1239,6 +1239,31 @@ def _listado(modo: str) -> ListToolsResult:
     return asyncio.run(pedir())
 
 
+def _listado_de(metodo: str) -> dict:
+    """Cualquiera de los catálogos cacheables, por el carril moderno, como diccionario.
+
+    Uno por sesión, por lo mismo que `_listado`: el cliente cachea, y con la pista puesta una
+    segunda llamada podría estar mirando su copia.
+    """
+    pedir_por = {
+        "tools/list": lambda c: c.list_tools(),
+        "prompts/list": lambda c: c.list_prompts(),
+        "resources/list": lambda c: c.list_resources(),
+        "resources/templates/list": lambda c: c.list_resource_templates(),
+    }
+
+    async def pedir() -> dict:
+        async with Client(servidor.mcp, mode=LATEST_PROTOCOL_VERSION) as cliente:
+            # El cliente sintetiza el saludo del carril moderno en vez de pedirlo, así que
+            # `server/discover` no tiene método propio: se pide por la sesión y ya viene crudo.
+            if metodo == "server/discover":
+                return await cliente.session.send_discover(LATEST_PROTOCOL_VERSION)
+            resultado = await pedir_por[metodo](cliente)
+            return resultado.model_dump(by_alias=True)
+
+    return asyncio.run(pedir())
+
+
 def test_el_catalogo_viaja_con_pista_de_frescura_por_el_carril_moderno():
     """Sin pista, el catálogo entero se vuelve a traer en cada arranque.
 
@@ -1265,6 +1290,31 @@ def test_el_catalogo_viaja_con_pista_de_frescura_por_el_carril_moderno():
     assert moderno["cacheScope"] == servidor.CACHE_DEL_CATALOGO.scope, (
         f"el alcance que viaja ({moderno['cacheScope']}) no es el declarado "
         f"({servidor.CACHE_DEL_CATALOGO.scope})"
+    )
+
+
+def test_todo_catalogo_cacheable_lleva_su_pista():
+    """Y los que no la llevan están excluidos a mano, no olvidados.
+
+    La pista se puso primero sólo en `tools/list`, y los otros tres catálogos salían con
+    `ttlMs: 0`, o sea "vuelve a traerlo siempre". Cambian por lo mismo y con la misma
+    frecuencia: una vez por versión.
+
+    Se deriva de `CacheableMethod` para que un método cacheable nuevo del protocolo entre
+    solo y haya que decidirlo, en vez de quedarse en cero sin que nadie lo note. `resources/read`
+    es el único excluido, y su razón es la regla 5: leerlo vuelve a pedirle el documento al
+    Poder Judicial y una copia guardada de un documento de un tercero no se puede tener.
+    """
+    from mcp_pjud.server import _LECTURAS_QUE_NO_SE_GUARDAN, CATALOGOS_CON_PISTA
+
+    assert "resources/read" in _LECTURAS_QUE_NO_SE_GUARDAN, (
+        "leer un documento dejó de estar excluido: una copia guardada de un documento de un "
+        "tercero es la regla 5, y servirla vieja como si fuera la de ahora es la regla 4"
+    )
+
+    sin_pista = {m for m in CATALOGOS_CON_PISTA if _listado_de(m).get("ttlMs") in (None, 0)}
+    assert not sin_pista, (
+        f"estos catálogos viajan declarándose rancios al instante: {sorted(sin_pista)}"
     )
 
 

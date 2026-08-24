@@ -12,12 +12,17 @@ import logging
 import os
 import sys
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, get_args
 from urllib.parse import quote, urlencode
 
 from anyio.from_thread import run as _de_vuelta_al_bucle
 from mcp.server import MCPServer
-from mcp.server.caching import CacheHint
+
+# `CacheableMethod` sale de acá y no de `mcp_types`, que es donde vive: `mcp` lo reexporta en
+# el `__all__` de este módulo, y ese paquete sí está declarado. Importarlo del otro haría que
+# el servidor muera al importar el día que `mcp` deje de arrastrarlo, que es lo mismo que ya
+# pasó con `anyio` y por lo que `anyio` está en las dependencias.
+from mcp.server.caching import CacheableMethod, CacheHint
 
 # Importado normal y NUNCA bajo `TYPE_CHECKING`, aunque este módulo tenga
 # `from __future__ import annotations`: el SDK resuelve las anotaciones con
@@ -246,11 +251,27 @@ class _ServidorQueCabe(MCPServer):
 #: `public` porque este servidor no autoriza a nadie: el catálogo es idéntico para quien sea y
 #: no lleva nada de quien lo pidió.
 #:
-#: Y sólo `tools/list`. `resources/read` también es cacheable y queda fuera A PROPÓSITO: leerlo
-#: vuelve a pedirle el documento al Poder Judicial, `documento_referencia` caduca, y una copia
-#: guardada de un documento de un tercero es lo que prohíbe la regla 5. Peor todavía, sería un
-#: PDF viejo presentado como el de ahora, que es la forma de la regla 4 aplicada a un archivo.
+#: Va en TODOS los catálogos y no sólo en `tools/list`: las plantillas, los recursos y sus
+#: direcciones cambian por lo mismo y con la misma frecuencia, o sea una vez por versión.
+#: Dejarlos en cero decía que el cliente los volviera a traer siempre.
+#:
+#: `resources/read` también es cacheable y queda fuera A PROPÓSITO: leerlo vuelve a pedirle el
+#: documento al Poder Judicial, `documento_referencia` caduca, y una copia guardada de un
+#: documento de un tercero es lo que prohíbe la regla 5. Peor todavía, sería un PDF viejo
+#: presentado como el de ahora, que es la forma de la regla 4 aplicada a un archivo.
 CACHE_DEL_CATALOGO = CacheHint(ttl_ms=3_600_000, scope="public")
+
+#: Los catálogos que llevan la pista, derivados de los que la especificación declara cacheables
+#: menos los que se excluyen a mano. Derivado y no escrito: un método cacheable nuevo entra solo
+#: y hay que decidirlo, en vez de quedarse en cero sin que nadie lo note.
+#:
+#: Sale del `Literal` y no de `CACHEABLE_METHODS`, que es su espejo en tiempo de ejecución: los
+#: dos traen lo mismo (el SDK los suelda con un test), pero el espejo está anotado como
+#: `frozenset[str]` y con eso el chequeador no puede comprobar que la clave sea un método real.
+_LECTURAS_QUE_NO_SE_GUARDAN: frozenset[CacheableMethod] = frozenset({"resources/read"})
+CATALOGOS_CON_PISTA: frozenset[CacheableMethod] = (
+    frozenset(get_args(CacheableMethod)) - _LECTURAS_QUE_NO_SE_GUARDAN
+)
 
 #: El dibujo del icono del servidor, en el fuente y no como un chorro de base64: acá se ve qué
 #: es y se puede corregir. Una balanza, que es lo que el servidor consulta.
@@ -288,7 +309,7 @@ mcp = _ServidorQueCabe(
     website_url="https://mcp-pjud-cl.readthedocs.io",
     instructions=DIRECTIVA,
     icons=[Icon(src=ICONO, mime_type="image/svg+xml", sizes=["any"])],
-    cache_hints={"tools/list": CACHE_DEL_CATALOGO},
+    cache_hints=dict.fromkeys(CATALOGOS_CON_PISTA, CACHE_DEL_CATALOGO),
 )
 
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")

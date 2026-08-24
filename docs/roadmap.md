@@ -583,6 +583,21 @@ causas penales, el buscador de penales, el compendio de extranjería, las línea
 jurisprudenciales y la competencia de familia. Cada uno con su razón en
 {doc}`verificacion`, y ninguno por falta de medición.
 
+### De la revisión 2026-07-28, lo que no se adopta
+
+Medido contra el ejecutable el 24 de agosto de 2026, para que la próxima revisión no lo vuelva
+a medir. Lo que sí se usa vive en {doc}`herramientas`.
+
+| Pieza | Por qué no |
+|---|---|
+| Iconos por herramienta | el catálogo ya se recorta para caber; el del servidor viaja en el saludo y es el que se ve |
+| `InputRequiredResult` | pedirle un dato a la persona en vez de fallar. La regla 4 ya da un error que nombra qué herramienta resuelve el dato que falta, y esto sólo existe en el carril moderno |
+| Sampling, roots, elicitación | la revisión no define peticiones del servidor al cliente: no hay nada que adoptar |
+| `tasks/*` | ausente del mapa de métodos del SDK |
+| `extensions` (SEP-2133) | es un registro de extensiones propias, y este servidor no define ninguna |
+| `subscribe` y `listChanged` | en el carril moderno los deriva el SDK de servir `subscriptions/listen`; no son una declaración de este servidor |
+| Esquema de salida en `obtener_detalle_causa` y `obtener_documento` | apagado a propósito: uno por presupuesto del catálogo, el otro porque devuelve bloques del protocolo y no un modelo |
+
 ## Otro objetivo: lo que sale de este servidor
 
 Todo lo de acá está medido y ninguno tiene número de versión, a propósito: no es que falte

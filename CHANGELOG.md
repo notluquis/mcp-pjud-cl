@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Los argumentos de conjunto cerrado de las tres plantillas se completan: `competencia` en
+  `computar-plazo` y `revisar-causa`, y `buscador` en `verificar-cita`. Cada una ofrece las
+  suyas y no la unión.
+
 ### Corregido
 
 - El servidor importaba un tipo desde `mcp_types`, que no está entre sus dependencias y hoy

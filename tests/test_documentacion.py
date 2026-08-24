@@ -4678,6 +4678,34 @@ def test_la_referencia_cita_la_pista_de_frescura_que_de_verdad_viaja():
         )
 
 
+def test_la_referencia_nombra_todo_lo_que_se_completa():
+    """Un argumento completable que la página no nombra es una función que nadie va a usar.
+
+    Se deriva del mapa del servidor y no de una frase, porque una frase se queda vieja en cuanto
+    entra un argumento más: es el mismo descuido que dejó la página diciendo que la pista de
+    frescura iba en un solo catálogo.
+
+    Se mira sólo en los párrafos que hablan de `completion/complete`: los nombres aparecen
+    también en las tablas de argumentos, así que buscarlos en la página entera pasaría con la
+    función sin documentar.
+    """
+    from mcp_pjud.server import VALORES_COMPLETABLES
+
+    parrafos = [
+        " ".join(bloque.split())
+        for bloque in HERRAMIENTAS.split("\n\n")
+        if "completion/complete" in bloque
+    ]
+    assert parrafos, "la referencia no habla de `completion/complete` en ninguna parte"
+
+    donde = " ".join(parrafos)
+    for prompt, argumento in VALORES_COMPLETABLES:
+        assert f"`{prompt}`" in donde, f"la referencia no dice que `{prompt}` complete argumentos"
+        assert f"`{argumento}`" in donde, (
+            f"la referencia no nombra `{argumento}` entre lo que se completa"
+        )
+
+
 def test_la_cuenta_de_buscadores_verificados_es_la_del_codigo():
     """Registrar un buscador nuevo y no tocar la prosa deja la página contando de menos.
 

@@ -16,6 +16,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- La bitácora sale por el error estándar, con lo que tardó cada petición y lo que se esperó por
+  el ritmo, y se ajusta con `MCP_PJUD_BITACORA`. Existía desde siempre y no la veía nadie.
+
 ### Corregido
 
 - Leer una causa de dos cuadernos costaba una petición de más: el recorrido volvía a pedir el

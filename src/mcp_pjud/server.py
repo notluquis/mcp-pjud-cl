@@ -1333,6 +1333,246 @@ def obtener_texto_sentencia(
         return c.texto(rol=rol, anio=anio, buscador=buscador)
 
 
+# -- plantillas ----------------------------------------------------------------
+#
+# Una plantilla no la llama el modelo: la invoca la PERSONA desde su cliente, donde aparece
+# como un comando, y lo que devuelve entra a la conversación como si lo hubiera escrito ella.
+# Por eso ninguna consulta al Poder Judicial: arman la instrucción y dicen cómo leer lo que
+# vuelva. Las peticiones las hace después la herramienta que cada una nombra, con su ritmo.
+#
+# Y por eso repiten distinciones que ya están en la directiva y en las descripciones: quien
+# invoca la plantilla es justo quien va a leer la respuesta, y lo que la plantilla no diga
+# queda a que el modelo se acuerde de dónde lo leyó.
+#
+# `TOPE_DEL_CLIENTE` está medido para la descripción de una herramienta y para las
+# instrucciones del servidor. Para una plantilla NO se midió si el cliente corta, así que acá
+# no se afirma que quepan ni hay guardia que lo exija: se escriben del orden de una
+# descripción por prudencia, no por una regla que alguien haya verificado.
+
+TribunalDeLaPlantilla = Annotated[
+    int | None,
+    Field(
+        description="Código del tribunal, si se sabe. En "
+        f"{', '.join(_EXIGEN_TRIBUNAL)} hace falta para abrir una causa concreta, porque "
+        f"{EL_ROL_NO_BASTA}. Cuando no se sabe, la plantilla dice cómo resolverlo en vez de "
+        f"exigirlo acá. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+    ),
+]
+CorteDeLaPlantilla = Annotated[
+    int | None,
+    Field(
+        description=f"Código de la corte, si se sabe. En {', '.join(_EXIGEN_CORTE)} el mismo "
+        "rol y el mismo libro existen en varias, así que hace falta para abrir una causa "
+        f"concreta. En {', '.join(_EXIGEN_TRIBUNAL + _SIN_ACOTAR)} la plataforma no lo usa."
+    ),
+]
+
+
+def _identificacion(
+    tipo: str, rol: int, anio: int, competencia: str, tribunal: int | None, corte: int | None
+) -> str:
+    """Los parámetros de la llamada tal como hay que pasárselos a la herramienta.
+
+    Los nulos se omiten en vez de escribirse: `tribunal=None` dentro de una instrucción se lee
+    como un valor que hay que mandar, y hay competencias donde la plataforma no acepta ese
+    parámetro.
+    """
+    partes = [f"tipo={tipo!r}", f"rol={rol}", f"anio={anio}", f"competencia={competencia!r}"]
+    if tribunal is not None:
+        partes.append(f"tribunal={tribunal}")
+    if corte is not None:
+        partes.append(f"corte={corte}")
+    return ", ".join(partes)
+
+
+def _si_falta_el_codigo(competencia: str, tribunal: int | None, corte: int | None) -> str:
+    """Qué hacer cuando la plantilla llega sin el código que identifica la causa.
+
+    Se avisa sólo cuando falta, y sólo del parámetro que esa competencia usa. Advertirlo
+    siempre enseñaría a mandar un parámetro que la plataforma no acepta, y callarlo cuesta
+    caro: un rol sin tribunal no falla, abre la causa de otra persona.
+    """
+    if competencia in _EXIGEN_TRIBUNAL and tribunal is None:
+        return (
+            f" Va sin `tribunal`, y {EL_ROL_NO_BASTA}. Resolverlo antes con `listar_cortes` y "
+            "`listar_tribunales`, o preguntar de qué juzgado es la causa."
+        )
+    if competencia in _EXIGEN_CORTE and corte is None:
+        return (
+            " Va sin `corte`, y ahí el mismo rol y el mismo libro existen en varias. "
+            "Resolverla antes con `listar_cortes`, o preguntar de qué corte es la causa."
+        )
+    return ""
+
+
+@mcp.prompt(
+    name="computar-plazo",
+    title="Desde cuándo corre el plazo de una diligencia",
+    description="Pide las actuaciones del ministro de fe y las presenta con las dos fechas "
+    "separadas, que es de lo que depende el plazo. No hace la cuenta de días: entrega la "
+    "fecha desde la que se cuenta, y dice qué quedó fuera de esa lectura.",
+)
+def computar_plazo(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: CompetenciaConReceptor = "civil",
+    tribunal: TribunalDeLaPlantilla = None,
+    corte: CorteDeLaPlantilla = None,
+) -> str:
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
+    return f"""\
+Desde cuándo corre el plazo en esta causa.
+
+1. Pedir `obtener_actuaciones_receptor` con \
+{_identificacion(tipo, rol, anio, competencia, tribunal, corte)}.\
+{_si_falta_el_codigo(competencia, tribunal, corte)}
+
+2. Presentar cada actuación con las DOS fechas, una al lado de la otra y cada una con su
+   nombre. `fecha_diligencia` es cuándo el ministro de fe la practicó y ES LA QUE CORRE EL
+   PLAZO; `fecha_registro` es cuándo el tribunal la registró y NO corre plazo. Suelen diferir
+   en varios días, así que contar desde la de registro computa un plazo que no es. No
+   presentarlas como una sola ni elegir una en silencio.
+
+3. Si `discrepancia_fechas` viene en verdadero, las dos fuentes del sitio no coinciden entre
+   ellas: informar las dos y decir que no coinciden.
+
+4. Decir qué NO cubre esta lectura, junto con el resultado y no después:
+
+   - Estas actuaciones sólo se publican en {", ".join(_CON_RECEPTOR)}.
+     Que no aparezca ninguna no prueba que no existan: prueba que ahí termina lo que ese
+     panel publica.
+   - Son las del ministro de fe, no la historia entera: las resoluciones y las notificaciones
+     están en `obtener_detalle_causa`, y ahí una notificación puede figurar como NO
+     practicada.
+   - Si la causa tiene exhortos, parte de la tramitación ocurre en otro expediente y sus
+     actuaciones no están en esta respuesta.
+   - La cuenta de días hábiles, con los feriados y las suspensiones que correspondan, no la
+     hace este servidor: entrega la fecha desde la que se cuenta.
+
+Esto acerca la fuente oficial y no reemplaza la lectura del expediente.
+"""
+
+
+@mcp.prompt(
+    name="revisar-causa",
+    title="Estado de la causa, panel por panel",
+    description="Pide el detalle completo y enumera qué panel trajo datos, cuál vino vacío y "
+    "cuál vino en NULO porque esa competencia no lo publica. Avisa si hay exhortos, o sea si "
+    "parte de la tramitación ocurre en otro expediente.",
+)
+def revisar_causa(
+    tipo: Tipo,
+    rol: Rol,
+    anio: Anio,
+    competencia: CompetenciaConDetalle = "civil",
+    tribunal: TribunalDeLaPlantilla = None,
+    corte: CorteDeLaPlantilla = None,
+) -> str:
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
+    return f"""\
+En qué estado está esta causa.
+
+1. Pedir `obtener_detalle_causa` con \
+{_identificacion(tipo, rol, anio, competencia, tribunal, corte)}. Recorre TODOS los cuadernos
+   y trae los paneles juntos, así que no hay que pedirlos por separado.\
+{_si_falta_el_codigo(competencia, tribunal, corte)}
+
+2. Enumerar panel por panel qué vino, distinguiendo tres estados que NO son lo mismo:
+
+   - NULO: {competencia} no publica ese panel, y la pregunta no tiene respuesta acá.
+     Las competencias con al menos un panel medido son {", ".join(_CON_DETALLE)},
+     y cada una publica los suyos.
+   - Lista vacía: el panel existe y no trae filas. Eso sí es una respuesta.
+   - Con elementos: lo que hay.
+
+   Nombrar los que cayeron en cada estado, incluidos los nulos: un resumen que sólo enumera
+   lo que trajo datos borra la diferencia entre "no hay nada" y "acá no se puede preguntar".
+
+3. Si `exhortos` trae algo, avisarlo: parte de la tramitación ocurre en OTRO expediente y sus
+   actuaciones no están en esta respuesta. El panel nombra el tribunal de destino en palabras
+   y la búsqueda pide el código, así que seguirlo es resolverlo con `listar_tribunales` y
+   abrir la causa de destino. `causa_de_origen` es la misma arista hacia abajo.
+
+4. Al informar fechas de la Historia, distinguir `fecha_diligencia`, que corre los plazos, de
+   `fecha_registro`, que no. Cuando la de diligencia viene en nulo, esa fila no publica la
+   segunda fecha: no es que la diligencia no se haya practicado.
+
+5. Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
+   historial. Sumarlas informa una deuda inflada varias veces.
+
+El detalle publica más paneles de los que este servidor sabe leer, y los escritos no están
+medidos: su ausencia acá NO significa que no existan. Trae datos personales de terceros, como
+el RUT de los litigantes: no reproducirlos más allá de lo que la respuesta necesite.
+"""
+
+
+@mcp.prompt(
+    name="verificar-cita",
+    title="Si el buscador de fallos publica esta sentencia",
+    description="Busca la sentencia por su rol e informa las dos cuentas de completitud, "
+    "`ocultas` y `no_entregadas`, que dicen si la lista es un subconjunto. Que la búsqueda no "
+    "la devuelva no se informa como que la sentencia no exista.",
+)
+def verificar_cita(
+    rol: Annotated[int, Field(description="Rol de la sentencia citada, sin el año.", ge=1)],
+    anio: Annotated[int, Field(description="Año del rol.", ge=1900, le=2100)],
+    buscador: Annotated[
+        str,
+        Field(
+            description="Cuál de los buscadores de fallos consultar. Se aceptan: "
+            f"{', '.join(sorted(BUSCADORES))}."
+        ),
+    ] = "suprema",
+    literal: Annotated[
+        str,
+        Field(
+            description="Una frase textual de la cita, opcional. Sirve para contrastar lo que "
+            "se citó contra lo que el fallo dice, no para encontrarlo."
+        ),
+    ] = "",
+) -> str:
+    """Ver `description` en el decorador: lleva interpolación y un docstring no puede."""
+    frase = f", literal={literal!r}" if literal else ""
+    contraste = (
+        f"\n\n5. La frase citada es {literal!r}. Contrastarla contra el texto del fallo con "
+        "`obtener_texto_sentencia`, y si no aparece ahí, decir que no se encontró en el texto "
+        "entregado. Que no esté no prueba que no exista en el fallo: la versión anonimizada y "
+        "la original no traen lo mismo, y `anonimizada` y `fuente` dicen cuál se entregó."
+        if literal
+        else ""
+    )
+    return f"""\
+Si el Buscador Unificado de Fallos publica la sentencia de esta cita.
+
+1. Pedir `buscar_jurisprudencia` con rol={rol}, anio={anio}, buscador={buscador!r}{frase}.
+   Los buscadores que este servidor acepta son {", ".join(sorted(BUSCADORES))}.
+   Cada uno indexa lo suyo: preguntarle al que no es devuelve una lista sin la sentencia.
+
+2. Informar SIEMPRE las dos cuentas de completitud, las dos y no una:
+
+   - `ocultas` son las coincidencias que la plataforma reserva a una consulta anónima.
+     Sólo {", ".join(_CON_OCULTAS)} la trae con número, y en NULO no es cero: es que ahí no
+     se puede saber.
+   - `no_entregadas` son las visibles que esta llamada no trajo porque `filas` acota cuántas
+     se piden. Mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en
+     `desplazamiento + filas`, hasta que llegue a cero.
+
+   Cualquiera de las dos mayor que cero significa que la lista es un subconjunto, y hay que
+   decirlo.
+
+3. Si la sentencia aparece, dar su caratulado, la sala, la fecha y el enlace permanente, y
+   decir que eso es lo que el buscador publica: no es una validación de la cita.
+
+4. Si NO aparece, decir exactamente eso, que la búsqueda no la devolvió. Una búsqueda que no
+   la devuelve no prueba que no exista, así que nunca informar que la sentencia no existe ni
+   que la cita es falsa. Antes de concluir algo, probar en otro buscador y sin acotar por
+   fecha, y decir qué se probó.{contraste}
+
+Nunca presentar una cita como verificada si la búsqueda no la devolvió.
+"""
+
+
 #: Con qué nivel sale la bitácora. Encendida por defecto: `docs/instalacion.md` dice que sirve
 #: "para acreditar cuánto se consultó", y un registro apagado no acredita nada. Se puede subir,
 #: bajar o apagar con `MCP_PJUD_BITACORA=WARNING`, `DEBUG`, `CRITICAL`.

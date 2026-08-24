@@ -52,6 +52,7 @@ from mcp.types import (
     EmbeddedResource,
     Icon,
     ListToolsResult,
+    Prompt,
     ResourceLink,
     ResourceTemplateReference,
     Tool,
@@ -66,6 +67,7 @@ from mcp_pjud.client import (
     MODULOS,
     PjudClient,
 )
+from mcp_pjud.juris import BUSCADORES
 from mcp_pjud.parser import SIN_RESULTADOS, EstructuraInesperada, parse_resultados
 
 # Los PDF de prueba y su constructor viven en test_client.py, que es donde se prueba lo que
@@ -99,6 +101,11 @@ LISTADO_VACIO = f"<div class='panel'><p>{SIN_RESULTADOS}</p></div>"
 #: Lo mínimo que `abrir_sesion` necesita derivar de la portada: el prefijo de rutas y el token
 #: de los modales, los dos interpolados en el HTML real y versionados por despliegue.
 PORTADA = "<html><script>var adir = 'ADIR_1'; token: '" + "0" * 32 + "';</script></html>"
+
+#: Las plantillas que el servidor tiene que anunciar. Van escritas y no derivadas de
+#: `mcp._prompt_manager`: un guardia que saca de ahí la lista que después compara se pone
+#: verde con las tres borradas, porque estaría comparando el registro consigo mismo.
+PLANTILLAS = frozenset({"computar-plazo", "revisar-causa", "verificar-cita"})
 
 HERRAMIENTA = "buscar_causa_por_rit"
 ARGUMENTOS = {"tipo": "E", "rol": 468, "anio": 2026}
@@ -1185,4 +1192,230 @@ def test_las_completions_no_contestan_por_argumentos_ajenos():
     )
     assert _completar("", plantilla="pjud://otra{?competencia}").values == [], (
         "se ofrecen competencias para una plantilla que no es la del documento"
+# -- las plantillas que la persona invoca ---------------------------------------
+#
+# Un prompt no es una herramienta: no lo llama el modelo, lo invoca la persona desde su
+# cliente, y lo que devuelve es texto que entra a la conversación como si lo hubiera escrito
+# ella. Por eso se prueban acá y no en `test_client`: no tocan la red, y lo único que importa
+# de ellos es qué cruza el protocolo.
+
+
+def _anunciados() -> dict[str, Prompt]:
+    """Las plantillas tal como `prompts/list` las anuncia, por nombre."""
+
+    async def anunciar() -> dict[str, Prompt]:
+        async with Client(servidor.mcp) as cliente:
+            listado = await cliente.list_prompts()
+            return {p.name: p for p in listado.prompts}
+
+    return asyncio.run(anunciar())
+
+
+#: Con qué se rinde cada plantilla, por etiqueta, y con VARIOS juegos por plantilla: el texto
+#: cambia según lo que llegue, y un solo juego deja ramas enteras sin rendirse nunca. Es el modo
+#: de falla de un parámetro opcional con valor por defecto: la suite queda verde porque nadie
+#: pasa el argumento que enciende la rama, y dentro de esa rama cabe cualquier cosa.
+#:
+#: Los argumentos viajan como TEXTO por el protocolo, así que acá van como texto: pasarlos ya
+#: convertidos mediría una ruta que ningún cliente usa.
+ARGUMENTOS_DE_LA_PLANTILLA: dict[str, tuple[str, dict[str, str]]] = {
+    "computar-plazo": (
+        "computar-plazo",
+        {"tipo": "C", "rol": "1156", "anio": "2026", "competencia": "civil"},
+    ),
+    "computar-plazo con los códigos": (
+        "computar-plazo",
+        {
+            "tipo": "C",
+            "rol": "1156",
+            "anio": "2026",
+            "competencia": "civil",
+            "tribunal": "1131",
+            "corte": "46",
+        },
+    ),
+    "revisar-causa": (
+        "revisar-causa",
+        {"tipo": "C", "rol": "1156", "anio": "2026", "competencia": "civil"},
+    ),
+    "revisar-causa con los códigos": (
+        "revisar-causa",
+        {
+            "tipo": "C",
+            "rol": "1156",
+            "anio": "2026",
+            "competencia": "civil",
+            "tribunal": "1131",
+            "corte": "46",
+        },
+    ),
+    # Sin `corte` a propósito: es la competencia que la exige, así que acá se rinde el aviso que
+    # manda a resolverla antes de abrir la causa.
+    "revisar-causa en apelaciones": (
+        "revisar-causa",
+        {"tipo": "Protección", "rol": "1504", "anio": "2019", "competencia": "apelaciones"},
+    ),
+    # La que no se acota por ninguno de los dos, y donde el rol va sin nada adelante.
+    "revisar-causa en suprema": (
+        "revisar-causa",
+        {"tipo": "", "rol": "999999", "anio": "2020", "competencia": "suprema"},
+    ),
+    "verificar-cita": ("verificar-cita", {"rol": "1234", "anio": "2020", "buscador": "suprema"}),
+    "verificar-cita con una frase": (
+        "verificar-cita",
+        {"rol": "1234", "anio": "2020", "literal": "en cuanto a la prescripción alegada"},
+    ),
+}
+
+#: Qué herramienta tiene que nombrar cada plantilla. Escrito y no sacado de la plantilla: leer
+#: de ahí el nombre que después se compara sería comparar el texto consigo mismo.
+HERRAMIENTA_DE_LA_PLANTILLA = {
+    "computar-plazo": "obtener_actuaciones_receptor",
+    "revisar-causa": "obtener_detalle_causa",
+    "verificar-cita": "buscar_jurisprudencia",
+}
+
+#: Las frases que afirman que algo no está. `no hay que` queda fuera a propósito: es una
+#: instrucción y no una afirmación sobre el mundo, y contarla pondría en rojo un texto correcto.
+AFIRMA_AUSENCIA = re.compile(r"\bno (?:existe[ns]?|exista[ns]?|haya)\b|\bno hay\b(?! que)")
+
+#: Cómo se dice una ausencia sin afirmarla. Cerca de cada una de las de arriba tiene que ir una
+#: de estas: sin la salvedad, la plantilla le enseña al modelo a informar como probado algo que
+#: la consulta pública no puede probar, que es el error que este proyecto existe para evitar.
+SALVEDADES = ("no prueba", "no significa", "no es que", "tampoco", "no se puede")
+
+
+def _rendidas() -> dict[str, str]:
+    """El texto de cada juego, tal como `prompts/get` lo entrega y con los saltos juntados.
+
+    Se normalizan los espacios porque el texto va envuelto a mano y las listas se interpolan
+    al medio: atar un guardia al punto exacto donde cae el salto lo pone en rojo por un
+    reajuste de línea que no cambia nada de lo que el modelo lee.
+    """
+
+    async def rendir() -> dict[str, str]:
+        async with Client(servidor.mcp) as cliente:
+            rendidas = {}
+            for etiqueta, (nombre, argumentos) in ARGUMENTOS_DE_LA_PLANTILLA.items():
+                resultado = await cliente.get_prompt(nombre, argumentos)
+                rendidas[etiqueta] = " ".join(
+                    "\n".join(
+                        m.content.text for m in resultado.messages if m.content.type == "text"
+                    ).split()
+                )
+            return rendidas
+
+    return asyncio.run(rendir())
+
+
+def test_las_tres_plantillas_se_anuncian() -> None:
+    """El servidor anunciaba catorce herramientas y cero plantillas."""
+    anunciados = _anunciados()
+    faltan = sorted(PLANTILLAS - set(anunciados))
+    assert not faltan, f"`prompts/list` no anuncia {faltan}: anuncia {sorted(anunciados)}"
+
+
+def test_los_juegos_rinden_todo_argumento_que_las_plantillas_aceptan() -> None:
+    """Un argumento opcional que ningún juego pasa es una rama que la suite no puede ver.
+
+    Es el modo de falla que este archivo no atrapaba: los guardias de abajo recorren lo que
+    `_rendidas` devuelve, así que un argumento con valor por defecto que apaga su rama los
+    deja a todos verdes sin que ninguno mire el texto que esa rama produce. Acá se exige que
+    los juegos cubran lo declarado, y no al revés.
+    """
+    for nombre, plantilla in _anunciados().items():
+        pasados = {
+            clave
+            for etiqueta, argumentos in ARGUMENTOS_DE_LA_PLANTILLA.values()
+            if etiqueta == nombre
+            for clave in argumentos
+        }
+        declarados = {a.name for a in plantilla.arguments or []}
+        assert pasados == declarados, (
+            f"{nombre} acepta {sorted(declarados)} y los juegos pasan {sorted(pasados)}: lo "
+            "que no se pasa nunca se rinde, y lo que no se rinde no lo mira ningún guardia"
+        )
+
+
+def test_cada_plantilla_nombra_la_herramienta_que_le_toca() -> None:
+    """Una plantilla que no nombra su herramienta deja al modelo eligiendo cuál usar.
+
+    Y la nombrada tiene que existir: mandar a llamar algo que el servidor no expone produce un
+    error que el modelo le atribuye a la plataforma en vez de a la plantilla.
+    """
+
+    async def anunciar() -> set[str]:
+        async with Client(servidor.mcp) as cliente:
+            return {h.name for h in (await cliente.list_tools()).tools}
+
+    expuestas = asyncio.run(anunciar())
+    rendidas = _rendidas()
+    for etiqueta, (plantilla, _) in ARGUMENTOS_DE_LA_PLANTILLA.items():
+        herramienta = HERRAMIENTA_DE_LA_PLANTILLA[plantilla]
+        assert herramienta in expuestas, (
+            f"{plantilla} manda a llamar {herramienta!r} y el servidor no la expone"
+        )
+        assert f"`{herramienta}`" in rendidas[etiqueta], (
+            f"{etiqueta} no nombra {herramienta!r}, así que no dice qué hay que pedir"
+        )
+
+
+def test_ninguna_plantilla_afirma_una_ausencia() -> None:
+    """Ninguna puede decir que algo no existe sin la salvedad de que eso no se prueba.
+
+    La consulta pública no ve las causas reservadas, y el buscador de fallos entrega un
+    subconjunto. Una plantilla que enseñe a informar "no existe" convierte una lectura parcial
+    en una afirmación, que es lo mismo que la regla 4 evita una capa más abajo.
+
+    Se exige además que cada juego diga ALGO del asunto: sin eso, uno que no hablara nunca de
+    ausencias pasaría este guardia sin que mirara nada.
+    """
+    for etiqueta, texto in _rendidas().items():
+        plano = texto.lower()
+        hallazgos = list(AFIRMA_AUSENCIA.finditer(plano))
+        assert hallazgos, (
+            f"{etiqueta} no dice qué significa que algo no aparezca, así que este guardia no lo "
+            "está mirando"
+        )
+        for m in hallazgos:
+            ventana = plano[max(0, m.start() - 160) : m.end() + 160]
+            assert any(s in ventana for s in SALVEDADES), (
+                f"{etiqueta} afirma una ausencia sin salvedad: ...{ventana}..."
+            )
+
+
+def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:
+    """Las competencias y los buscadores que nombran salen del código, no de la prosa.
+
+    Escritos a mano envejecen en silencio, y de la peor forma: la plantilla ofrecería una
+    competencia que el cliente rechaza, el modelo la intentaría, y el error terminaría
+    atribuido a la plataforma. Es la misma razón por la que las descripciones de las
+    herramientas derivan sus listas de la tabla en vez de nombrarlas.
+    """
+    rendidas = _rendidas()
+    listas = {
+        "computar-plazo": (", ".join(servidor._CON_RECEPTOR), set(MODULOS)),
+        "revisar-causa": (", ".join(servidor._CON_DETALLE), set(MODULOS)),
+        "verificar-cita": (", ".join(sorted(BUSCADORES)), set(BUSCADORES)),
+    }
+    for etiqueta, (plantilla, _) in ARGUMENTOS_DE_LA_PLANTILLA.items():
+        lista, universo = listas[plantilla]
+        texto = rendidas[etiqueta]
+        donde = texto.find(lista)
+        assert donde != -1, f"{etiqueta} no nombra {lista!r}, que es lo que el código acepta"
+        # Y que ahí TERMINE. Sin esto el guardia mira una subcadena: una lista escrita a mano
+        # con un nombre de más la contiene entera, así que quitar ese nombre del código no la
+        # pondría en rojo. Es la mitad que hace falta para que romper la constante se note.
+        sigue = re.match(r", (\w+)", texto[donde + len(lista) :])
+        de_mas = sigue.group(1) if sigue else ""
+        assert de_mas not in universo, (
+            f"{etiqueta} nombra {de_mas!r} después de {lista!r}, que es lo que el código "
+            "acepta: la lista está escrita a mano"
+        )
+    # `ocultas` con número es la otra lista derivada, y la que más caro sale escribir a mano:
+    # cada buscador nuevo llega con la bandera en falso, así que una lista vieja cuenta de menos
+    # justo donde nulo no es cero.
+    con_numero = ", ".join(servidor._CON_OCULTAS)
+    assert f"Sólo {con_numero} la trae con número" in rendidas["verificar-cita"], (
+        f"verificar-cita no dice que sólo {con_numero} trae `ocultas` con número"
     )

@@ -1896,13 +1896,16 @@ class PjudClient(Transporte):
         cuadernos = parse_cuadernos(primera)
 
         # El detalle despliega un cuaderno a la vez, y el de apremio esconde el requerimiento
-        # de pago y el embargo. Se recorren todos, igual que las lecturas separadas.
-        paginas = [(primera, cuadernos[0].nombre if cuadernos else "")]
-        if len(cuadernos) > 1:
-            paginas = [
-                (self.detalle(cuaderno.referencia, competencia), cuaderno.nombre)
-                for cuaderno in cuadernos
-            ]
+        # de pago y el embargo. Se recorren todos, igual que las lecturas separadas, PERO el
+        # que la respuesta ya trae puesto no se vuelve a pedir: `mostrado` lo marca. Sin eso
+        # la cadena de una causa de dos cuadernos eran seis peticiones, una más que las cinco
+        # para las que `RAFAGA_MAXIMA` está dimensionada, y la de más era contra la plataforma.
+        paginas = [
+            (primera, c.nombre)
+            if c.mostrado
+            else (self.detalle(c.referencia, competencia), c.nombre)
+            for c in cuadernos
+        ] or [(primera, "")]
 
         historia: list[Actuacion] | None = [] if spec.historia else None
         if historia is not None:
@@ -2001,8 +2004,10 @@ class PjudClient(Transporte):
             nombre = cuadernos[0].nombre if cuadernos else ""
             return leer(html_, nombre, competencia)
 
+        # Mismo ahorro que en `detalle_causa`: el cuaderno que esta respuesta ya trae puesto
+        # no se vuelve a pedir.
         actuaciones = []
         for cuaderno in cuadernos:
-            pagina = self.detalle(cuaderno.referencia, competencia)
+            pagina = html_ if cuaderno.mostrado else self.detalle(cuaderno.referencia, competencia)
             actuaciones.extend(leer(pagina, cuaderno.nombre, competencia))
         return actuaciones

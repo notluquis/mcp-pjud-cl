@@ -2610,6 +2610,10 @@ class Cuaderno(BaseModel):
 
     nombre: str
     referencia: str = Field(description="Identificador opaco para pedir ese cuaderno.")
+    mostrado: bool = Field(
+        description="Si es el que ESTA respuesta ya trae desplegado, o sea el que no hace "
+        "falta volver a pedir."
+    )
 
 
 def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
@@ -2622,7 +2626,16 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
     """
     doc = html.fromstring(html_detalle)
     return [
-        Cuaderno(nombre=" ".join(op.text_content().split()), referencia=op.get("value", ""))
+        Cuaderno(
+            nombre=" ".join(op.text_content().split()),
+            referencia=op.get("value", ""),
+            # El desplegable marca el que la respuesta trae puesto, y eso ahorra una petición
+            # por causa: sin la marca, el recorrido vuelve a pedir el que ya está en la mano.
+            # Medido en las dos fixtures de C-1156-2026: `c1156_principal` marca el principal
+            # y `c1156_apremio` marca el de apremio, o sea la marca sigue a la respuesta y no
+            # al orden de la lista.
+            mostrado=op.get("selected") is not None,
+        )
         for op in doc.xpath('//select[@id="selCuaderno"]/option')
         if op.get("value")
     ]

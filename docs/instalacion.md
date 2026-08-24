@@ -40,7 +40,7 @@ forma de omitirlo.
 
 :::{tab-item} Claude Code
 ```bash
-claude mcp add pjud -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
+claude mcp add mcp-pjud-cl -e MCP_PJUD_CONTACTO=informatica@estudio.cl \
   -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl@stable mcp-pjud
 ```
 :::
@@ -57,7 +57,7 @@ cog.out('\n```json\n' + configuracion() + '\n```\n')
 ```json
 {
   "mcpServers": {
-    "pjud": {
+    "mcp-pjud-cl": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
@@ -80,7 +80,7 @@ cog.out('\n```json\n' + configuracion() + '\n```\n')
 ```json
 {
   "mcpServers": {
-    "pjud": {
+    "mcp-pjud-cl": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
@@ -104,7 +104,7 @@ cog.out('\n```json\n' + configuracion("servers") + '\n```\n')
 ```json
 {
   "servers": {
-    "pjud": {
+    "mcp-pjud-cl": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"],
       "env": { "MCP_PJUD_CONTACTO": "informatica@estudio.cl" }
@@ -117,14 +117,14 @@ cog.out('\n```json\n' + configuracion("servers") + '\n```\n')
 
 :::{tab-item} Codex
 ```bash
-codex mcp add pjud --env MCP_PJUD_CONTACTO=informatica@estudio.cl \
+codex mcp add mcp-pjud-cl --env MCP_PJUD_CONTACTO=informatica@estudio.cl \
   -- uvx --from git+https://github.com/notluquis/mcp-pjud-cl@stable mcp-pjud
 ```
 
 O a mano, en `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.pjud]
+[mcp_servers."mcp-pjud-cl"]
 command = "uvx"
 args = ["--from", "git+https://github.com/notluquis/mcp-pjud-cl@stable", "mcp-pjud"]
 env = { MCP_PJUD_CONTACTO = "informatica@estudio.cl" }

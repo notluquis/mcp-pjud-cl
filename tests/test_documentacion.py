@@ -3916,13 +3916,19 @@ def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto
 
     v = LATEST_PROTOCOL_VERSION
     tareas = [m for m, _ in CLIENT_REQUESTS] + [m for m, _ in SERVER_REQUESTS]
-    assert not [m for m in tareas if m.startswith("tasks/")], (
-        "el SDK ya trae métodos `tasks/*` y la hoja de ruta los da por ausentes: hay que "
-        "decidir si se adoptan en vez de que la tabla lo niegue"
+    # La lista se arma para NOMBRARLA en el mensaje. Un `any()` corta antes, y lo que ahorra es
+    # nada contra lo que cuesta: el guardia diría que apareció algo sin decir qué, y lo primero
+    # que hace falta para decidir si se adopta es el nombre.
+    con_tareas = sorted({m for m in tareas if m.startswith("tasks/")})
+    assert not con_tareas, (
+        f"el SDK ya trae métodos `tasks/*` ({', '.join(con_tareas)}) y la hoja de ruta los da "
+        "por ausentes: hay que decidir si se adoptan en vez de que la tabla lo niegue"
     )
-    assert not [m for m, r in SERVER_REQUESTS if r == v], (
-        f"la revisión {v} ya define peticiones del servidor al cliente, y la tabla dice que "
-        "no hay ninguna que adoptar (sampling, roots, elicitación)"
+    del_servidor = sorted(m for m, r in SERVER_REQUESTS if r == v)
+    assert not del_servidor, (
+        f"la revisión {v} ya define peticiones del servidor al cliente "
+        f"({', '.join(del_servidor)}), y la tabla dice que no hay ninguna que adoptar "
+        "(sampling, roots, elicitación)"
     )
     assert ("subscriptions/listen", v) in CLIENT_REQUESTS, (
         "desapareció `subscriptions/listen`, de la que el SDK deriva `subscribe` y "

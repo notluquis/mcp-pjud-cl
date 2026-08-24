@@ -53,6 +53,7 @@ from mcp.types import (
     Icon,
     ListToolsResult,
     Prompt,
+    PromptReference,
     ResourceLink,
     ResourceTemplateReference,
     Tool,
@@ -1238,6 +1239,31 @@ def _listado(modo: str) -> ListToolsResult:
     return asyncio.run(pedir())
 
 
+def _listado_de(metodo: str) -> dict:
+    """Cualquiera de los catálogos cacheables, por el carril moderno, como diccionario.
+
+    Uno por sesión, por lo mismo que `_listado`: el cliente cachea, y con la pista puesta una
+    segunda llamada podría estar mirando su copia.
+    """
+    pedir_por = {
+        "tools/list": lambda c: c.list_tools(),
+        "prompts/list": lambda c: c.list_prompts(),
+        "resources/list": lambda c: c.list_resources(),
+        "resources/templates/list": lambda c: c.list_resource_templates(),
+    }
+
+    async def pedir() -> dict:
+        async with Client(servidor.mcp, mode=LATEST_PROTOCOL_VERSION) as cliente:
+            # El cliente sintetiza el saludo del carril moderno en vez de pedirlo, así que
+            # `server/discover` no tiene método propio: se pide por la sesión y ya viene crudo.
+            if metodo == "server/discover":
+                return await cliente.session.send_discover(LATEST_PROTOCOL_VERSION)
+            resultado = await pedir_por[metodo](cliente)
+            return resultado.model_dump(by_alias=True)
+
+    return asyncio.run(pedir())
+
+
 def test_el_catalogo_viaja_con_pista_de_frescura_por_el_carril_moderno():
     """Sin pista, el catálogo entero se vuelve a traer en cada arranque.
 
@@ -1264,6 +1290,31 @@ def test_el_catalogo_viaja_con_pista_de_frescura_por_el_carril_moderno():
     assert moderno["cacheScope"] == servidor.CACHE_DEL_CATALOGO.scope, (
         f"el alcance que viaja ({moderno['cacheScope']}) no es el declarado "
         f"({servidor.CACHE_DEL_CATALOGO.scope})"
+    )
+
+
+def test_todo_catalogo_cacheable_lleva_su_pista():
+    """Y los que no la llevan están excluidos a mano, no olvidados.
+
+    La pista se puso primero sólo en `tools/list`, y los otros tres catálogos salían con
+    `ttlMs: 0`, o sea "vuelve a traerlo siempre". Cambian por lo mismo y con la misma
+    frecuencia: una vez por versión.
+
+    Se deriva de `CacheableMethod` para que un método cacheable nuevo del protocolo entre
+    solo y haya que decidirlo, en vez de quedarse en cero sin que nadie lo note. `resources/read`
+    es el único excluido, y su razón es la regla 5: leerlo vuelve a pedirle el documento al
+    Poder Judicial y una copia guardada de un documento de un tercero no se puede tener.
+    """
+    from mcp_pjud.server import _LECTURAS_QUE_NO_SE_GUARDAN, CATALOGOS_CON_PISTA
+
+    assert "resources/read" in _LECTURAS_QUE_NO_SE_GUARDAN, (
+        "leer un documento dejó de estar excluido: una copia guardada de un documento de un "
+        "tercero es la regla 5, y servirla vieja como si fuera la de ahora es la regla 4"
+    )
+
+    sin_pista = {m for m in CATALOGOS_CON_PISTA if _listado_de(m).get("ttlMs") in (None, 0)}
+    assert not sin_pista, (
+        f"estos catálogos viajan declarándose rancios al instante: {sorted(sin_pista)}"
     )
 
 
@@ -1381,6 +1432,96 @@ def test_las_completions_no_contestan_por_argumentos_ajenos():
     assert _completar("", plantilla="pjud://otra{?competencia}").values == [], (
         "se ofrecen competencias para una plantilla que no es la del documento"
     )
+
+
+def _completar_del_prompt(prompt: str, argumento: str, valor: str = "") -> Completion:
+    """Lo que el servidor ofrece para un argumento de una plantilla que la persona invoca."""
+
+    async def pedir() -> Completion:
+        async with Client(servidor.mcp) as cliente:
+            resultado = await cliente.complete(
+                ref=PromptReference(name=prompt),
+                argument={"name": argumento, "value": valor},
+            )
+            return resultado.completion
+
+    return asyncio.run(pedir())
+
+
+def test_los_prompts_completan_sus_argumentos_de_conjunto_cerrado():
+    """Y cada uno con SU conjunto, no con la unión.
+
+    `completion/complete` existe desde 2024-11-05, así que esto es lo único de este servidor que
+    se completa en el carril que hoy negocian los clientes. Sin esto, la persona escribe la
+    competencia a mano y la plantilla sale armada con un valor que la herramienta rechaza.
+
+    Se pide por el cable y no llamando al manejador: entre los dos está el despacho por tipo de
+    referencia, que es justo donde una plantilla nueva se cuela sin ser atendida.
+    """
+    # Segunda copia A PROPÓSITO. La primera versión de este guardia recorría
+    # `VALORES_COMPLETABLES` y comparaba contra sí mismo, así que cambiarle el conjunto a un
+    # prompt lo dejaba verde: se vio en verde con `computar-plazo` ofreciendo el conjunto del
+    # detalle, que incluye competencias donde no hay actuaciones del ministro de fe.
+    esperado = {
+        ("computar-plazo", "competencia"): servidor._CON_RECEPTOR,
+        ("revisar-causa", "competencia"): servidor._CON_DETALLE,
+        ("verificar-cita", "buscador"): sorted(BUSCADORES),
+    }
+    assert set(esperado) == set(servidor.VALORES_COMPLETABLES), (
+        "el servidor declara completable algo que este guardia no mira, o al revés: "
+        f"{set(esperado) ^ set(servidor.VALORES_COMPLETABLES)}"
+    )
+
+    for (prompt, argumento), esperados in esperado.items():
+        ofrecidos = _completar_del_prompt(prompt, argumento)
+        assert ofrecidos.values == list(esperados), (
+            f"`{prompt}` ofrece para `{argumento}` {ofrecidos.values} y acepta {list(esperados)}"
+        )
+        assert ofrecidos.total == len(ofrecidos.values), (
+            f"el total de `{prompt}`/`{argumento}` dice {ofrecidos.total} y viajan "
+            f"{len(ofrecidos.values)} valores"
+        )
+
+
+def test_los_prompts_no_completan_lo_que_depende_de_otra_respuesta():
+    """`tipo` es lo que se ofrecería sin pensarlo, y es lo único que no se puede ofrecer.
+
+    Sus valores dependen de la competencia: una letra en civil, el LIBRO en las de libro, vacío
+    en las que no llevan nada adelante. La unión de las tres ofrece en civil un libro que la
+    consulta va a rechazar, y ese error se le atribuye a la plataforma.
+    """
+    assert _completar_del_prompt("revisar-causa", "tipo").values == [], (
+        "se ofrecen valores para `tipo`, que sólo se puede acotar con la competencia ya elegida"
+    )
+    assert _completar_del_prompt("computar-plazo", "rol").values == [], (
+        "se ofrecen valores para `rol`, que es un número y no un conjunto"
+    )
+    assert _completar_del_prompt("verificar-cita", "competencia").values == [], (
+        "`verificar-cita` completa `competencia`, que no es uno de sus argumentos"
+    )
+
+
+def test_lo_que_se_declara_completable_existe_de_verdad():
+    """Un nombre de prompt mal escrito no rompe nada: deja de completar y nadie se entera.
+
+    Es la forma silenciosa del fallo, y por eso el mapa se compara contra el catálogo que viaja
+    en vez de contra sí mismo.
+    """
+
+    async def catalogo() -> dict[str, set[str]]:
+        async with Client(servidor.mcp) as cliente:
+            listado = await cliente.list_prompts()
+            return {p.name: {a.name for a in (p.arguments or [])} for p in listado.prompts}
+
+    publicados = asyncio.run(catalogo())
+    for prompt, argumento in servidor.VALORES_COMPLETABLES:
+        assert prompt in publicados, (
+            f"se declara completable `{argumento}` de `{prompt}`, y ese prompt no existe: "
+            f"{sorted(publicados)}"
+        )
+        assert argumento in publicados[prompt], (
+            f"`{prompt}` no tiene un argumento `{argumento}`: {sorted(publicados[prompt])}"
+        )
 
 
 # -- las plantillas que la persona invoca ---------------------------------------

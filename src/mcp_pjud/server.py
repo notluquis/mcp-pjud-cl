@@ -12,12 +12,17 @@ import logging
 import os
 import sys
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, get_args
 from urllib.parse import quote, urlencode
 
 from anyio.from_thread import run as _de_vuelta_al_bucle
 from mcp.server import MCPServer
-from mcp.server.caching import CacheHint
+
+# `CacheableMethod` sale de acá y no de `mcp_types`, que es donde vive: `mcp` lo reexporta en
+# el `__all__` de este módulo, y ese paquete sí está declarado. Importarlo del otro haría que
+# el servidor muera al importar el día que `mcp` deje de arrastrarlo, que es lo mismo que ya
+# pasó con `anyio` y por lo que `anyio` está en las dependencias.
+from mcp.server.caching import CacheableMethod, CacheHint
 
 # Importado normal y NUNCA bajo `TYPE_CHECKING`, aunque este módulo tenga
 # `from __future__ import annotations`: el SDK resuelve las anotaciones con
@@ -246,11 +251,27 @@ class _ServidorQueCabe(MCPServer):
 #: `public` porque este servidor no autoriza a nadie: el catálogo es idéntico para quien sea y
 #: no lleva nada de quien lo pidió.
 #:
-#: Y sólo `tools/list`. `resources/read` también es cacheable y queda fuera A PROPÓSITO: leerlo
-#: vuelve a pedirle el documento al Poder Judicial, `documento_referencia` caduca, y una copia
-#: guardada de un documento de un tercero es lo que prohíbe la regla 5. Peor todavía, sería un
-#: PDF viejo presentado como el de ahora, que es la forma de la regla 4 aplicada a un archivo.
+#: Va en TODOS los catálogos y no sólo en `tools/list`: las plantillas, los recursos y sus
+#: direcciones cambian por lo mismo y con la misma frecuencia, o sea una vez por versión.
+#: Dejarlos en cero decía que el cliente los volviera a traer siempre.
+#:
+#: `resources/read` también es cacheable y queda fuera A PROPÓSITO: leerlo vuelve a pedirle el
+#: documento al Poder Judicial, `documento_referencia` caduca, y una copia guardada de un
+#: documento de un tercero es lo que prohíbe la regla 5. Peor todavía, sería un PDF viejo
+#: presentado como el de ahora, que es la forma de la regla 4 aplicada a un archivo.
 CACHE_DEL_CATALOGO = CacheHint(ttl_ms=3_600_000, scope="public")
+
+#: Los catálogos que llevan la pista, derivados de los que la especificación declara cacheables
+#: menos los que se excluyen a mano. Derivado y no escrito: un método cacheable nuevo entra solo
+#: y hay que decidirlo, en vez de quedarse en cero sin que nadie lo note.
+#:
+#: Sale del `Literal` y no de `CACHEABLE_METHODS`, que es su espejo en tiempo de ejecución: los
+#: dos traen lo mismo (el SDK los suelda con un test), pero el espejo está anotado como
+#: `frozenset[str]` y con eso el chequeador no puede comprobar que la clave sea un método real.
+_LECTURAS_QUE_NO_SE_GUARDAN: frozenset[CacheableMethod] = frozenset({"resources/read"})
+CATALOGOS_CON_PISTA: frozenset[CacheableMethod] = (
+    frozenset(get_args(CacheableMethod)) - _LECTURAS_QUE_NO_SE_GUARDAN
+)
 
 #: El dibujo del icono del servidor, en el fuente y no como un chorro de base64: acá se ve qué
 #: es y se puede corregir. Una balanza, que es lo que el servidor consulta.
@@ -288,7 +309,7 @@ mcp = _ServidorQueCabe(
     website_url="https://mcp-pjud-cl.readthedocs.io",
     instructions=DIRECTIVA,
     icons=[Icon(src=ICONO, mime_type="image/svg+xml", sizes=["any"])],
-    cache_hints={"tools/list": CACHE_DEL_CATALOGO},
+    cache_hints=dict.fromkeys(CATALOGOS_CON_PISTA, CACHE_DEL_CATALOGO),
 )
 
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")
@@ -1026,21 +1047,43 @@ def documento_de_causa(competencia: str = "civil", ruta: str = "", referencia: s
         return c.documento(ruta, referencia, competencia).contenido
 
 
+#: Qué argumento de qué plantilla acepta un conjunto cerrado de valores, y cuál es.
+#:
+#: `completion/complete` existe desde 2024-11-05, así que esto llega también por el saludo que
+#: negocian hoy Claude Desktop, Claude Code, Cursor, VS Code y Codex: es lo único de este
+#: servidor que se completa en el carril que los clientes de verdad hablan.
+#:
+#: Cada plantilla ofrece SU conjunto y no la unión: `computar-plazo` sólo sirve donde hay
+#: actuaciones del ministro de fe, y ofrecer ahí una competencia que no las publica termina en
+#: un error que quien lo reciba le va a atribuir a la plataforma.
+#:
+#: `tipo` queda fuera a propósito, y no por olvido: sus valores dependen de la competencia (una
+#: letra en civil, el LIBRO en las de libro, vacío en las que no llevan nada adelante), así que
+#: la única lista honesta se arma con la competencia ya elegida. Ofrecer la unión es justamente
+#: lo que este mapa evita.
+VALORES_COMPLETABLES: dict[tuple[str, str], list[str]] = {
+    ("computar-plazo", "competencia"): _CON_RECEPTOR,
+    ("revisar-causa", "competencia"): _CON_DETALLE,
+    ("verificar-cita", "buscador"): sorted(BUSCADORES),
+}
+
+
 @mcp.completion()
 async def completar_argumento(
     ref: ResourceTemplateReference | PromptReference,
     argumento: CompletionArgument,
     contexto: CompletionContext | None,
 ) -> Completion | None:
-    """Qué valores acepta `competencia` en la plantilla del documento.
+    """Qué valores aceptan los argumentos de conjunto cerrado, en las plantillas y en los prompts.
 
     `completion/complete` habla de prompts y de plantillas de recurso, y de nada más: para los
     argumentos de una herramienta no existe, así que ésta es la única puerta por la que este
     servidor puede decir qué valores hay antes de que alguien pida uno que no existe.
 
-    Se ofrecen las competencias que el cliente ACEPTA para un documento, derivadas de la misma
-    tabla que describe el parámetro. `penal` queda fuera porque no publica documentos: ofrecerla
-    haría que quien la elija reciba un error y se lo atribuya a la plataforma.
+    Para la plantilla del documento se ofrecen las competencias que el cliente ACEPTA, derivadas
+    de la misma tabla que describe el parámetro. `penal` queda fuera porque no publica
+    documentos: ofrecerla haría que quien la elija reciba un error y se lo atribuya a la
+    plataforma. Para los prompts, lo que `VALORES_COMPLETABLES` declare.
 
     Devolver nulo es "de esto no sé", que no es lo mismo que una lista vacía. El SDK lo convierte
     en el completado vacío que la especificación pide para lo que no se completa.
@@ -1049,15 +1092,21 @@ async def completar_argumento(
     método y el segundo reemplaza al primero SIN avisar. Lo que haya que completar de un prompt o
     de otra plantilla entra acá adentro, no en un decorador nuevo.
     """
-    if not isinstance(ref, ResourceTemplateReference) or ref.uri != PLANTILLA_DOCUMENTO:
-        return None
-    if argumento.name != "competencia":
+    if isinstance(ref, ResourceTemplateReference):
+        acepta = (
+            _CON_DOCUMENTOS
+            if ref.uri == PLANTILLA_DOCUMENTO and argumento.name == "competencia"
+            else None
+        )
+    else:
+        acepta = VALORES_COMPLETABLES.get((ref.name, argumento.name))
+    if acepta is None:
         return None
     # Por prefijo y sin distinguir mayúsculas, que es como llega lo escrito a medias. Lo que se
     # devuelve va igual en minúscula: es la forma que el cliente acepta, y ofrecer la escrita
     # como vino terminaría en el `KeyError` que ya costó una vez.
     empezado = argumento.value.strip().lower()
-    valores = [n for n in _CON_DOCUMENTOS if n.startswith(empezado)]
+    valores = [n for n in acepta if n.startswith(empezado)]
     return Completion(values=valores, total=len(valores), has_more=False)
 
 

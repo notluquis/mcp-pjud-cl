@@ -16,8 +16,19 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Los argumentos de conjunto cerrado de las tres plantillas se completan: `competencia` en
+  `computar-plazo` y `revisar-causa`, y `buscador` en `verificar-cita`. Cada una ofrece las
+  suyas y no la unión.
+
 ### Corregido
 
+- El servidor importaba un tipo desde `mcp_types`, que no está entre sus dependencias y hoy
+  entra de prestado por `mcp`: ahora sale del módulo del SDK que lo reexporta.
+- La pista de frescura iba sólo en `tools/list`, así que las plantillas, los recursos y sus
+  direcciones seguían saliendo con `ttlMs: 0`, o sea "vuelve a traerlo siempre". Ahora la llevan
+  todos los catálogos cacheables menos `resources/read`, que queda fuera a propósito.
 - En cobranza el desplegable de cuadernos se llama distinto, así que toda causa de esa
   competencia se leía como si tuviera uno solo: una con cuaderno de apremio venía a medias y
   con cara de completa.

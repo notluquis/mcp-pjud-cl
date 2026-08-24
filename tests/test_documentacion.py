@@ -3895,6 +3895,50 @@ def test_la_portada_declara_las_dos_lecturas():
         )
 
 
+def test_el_codigo_no_importa_nada_que_no_este_declarado():
+    """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
+    importar, antes de la primera línea de trabajo.
+
+    Ya pasó dos veces: `anyio` entraba de prestado por `mcp` y se declaró por eso, y
+    `mcp_types` se importó directo aunque quien lo trae es `mcp`, que lo fija en una versión
+    exacta. La segunda no la vio ningún guardia, por eso existe éste.
+
+    Mira los imports de verdad y no una lista escrita al lado, que sería otra copia que se
+    queda vieja.
+
+    Compara el nombre del paquete con el del módulo, que en las cinco dependencias de hoy es
+    el mismo. Si algún día entra una donde no lo sea (`python-dateutil` se importa `dateutil`),
+    esto se pone rojo con una dependencia legítima y lo que falta es la equivalencia, no la
+    declaración.
+    """
+    import ast
+    import sys
+
+    declaradas = {
+        re.split(r"[<>=!\[;\s]", d)[0].replace("-", "_").lower()
+        for d in tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]["dependencies"]
+    }
+    propias = {"mcp_pjud", "__future__"}
+
+    # `rglob` y no `glob`: hoy el paquete es plano y el día que deje de serlo este guardia
+    # no se entera, que es como se le escapó `mcp_types`.
+    for modulo in sorted((RAIZ / "src" / "mcp_pjud").rglob("*.py")):
+        arbol = ast.parse(modulo.read_text(encoding="utf-8"))
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Import):
+                raices = {a.name.split(".")[0] for a in nodo.names}
+            elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+                raices = {nodo.module.split(".")[0]}
+            else:
+                continue
+            for raiz in raices - propias - set(sys.stdlib_module_names):
+                assert raiz.replace("-", "_").lower() in declaradas, (
+                    f"`{modulo.name}` importa `{raiz}`, que no está en las dependencias del "
+                    f"paquete: hoy entra de prestado y el día que deje de entrar el servidor "
+                    f"muere al importar"
+                )
+
+
 def test_la_cuenta_de_dependencias_que_cita_la_guia_es_la_del_paquete():
     """La guía de instalación abre diciendo cuántas dependencias trae, y es lo primero que
     alguien mira para decidir si esto le entra al entorno.
@@ -4621,7 +4665,44 @@ def test_la_referencia_cita_la_pista_de_frescura_que_de_verdad_viaja():
         f"`cacheScope: {CACHE_DEL_CATALOGO.scope}`",
     ):
         assert escrito in referencia, (
-            f"la referencia no cita {escrito}, que es lo que sale hoy en `tools/list`"
+            f"la referencia no cita {escrito}, que es lo que sale hoy en los catálogos"
+        )
+
+    # Y CUÁLES la llevan, que es la mitad que se quedó vieja: la página decía "`tools/list`,
+    # y es la única" cuando ya la llevaban los cinco.
+    from mcp_pjud.server import CATALOGOS_CON_PISTA
+
+    for metodo in sorted(CATALOGOS_CON_PISTA):
+        assert f"`{metodo}`" in referencia, (
+            f"la referencia no nombra `{metodo}` entre los catálogos que llevan pista"
+        )
+
+
+def test_la_referencia_nombra_todo_lo_que_se_completa():
+    """Un argumento completable que la página no nombra es una función que nadie va a usar.
+
+    Se deriva del mapa del servidor y no de una frase, porque una frase se queda vieja en cuanto
+    entra un argumento más: es el mismo descuido que dejó la página diciendo que la pista de
+    frescura iba en un solo catálogo.
+
+    Se mira sólo en los párrafos que hablan de `completion/complete`: los nombres aparecen
+    también en las tablas de argumentos, así que buscarlos en la página entera pasaría con la
+    función sin documentar.
+    """
+    from mcp_pjud.server import VALORES_COMPLETABLES
+
+    parrafos = [
+        " ".join(bloque.split())
+        for bloque in HERRAMIENTAS.split("\n\n")
+        if "completion/complete" in bloque
+    ]
+    assert parrafos, "la referencia no habla de `completion/complete` en ninguna parte"
+
+    donde = " ".join(parrafos)
+    for prompt, argumento in VALORES_COMPLETABLES:
+        assert f"`{prompt}`" in donde, f"la referencia no dice que `{prompt}` complete argumentos"
+        assert f"`{argumento}`" in donde, (
+            f"la referencia no nombra `{argumento}` entre lo que se completa"
         )
 
 

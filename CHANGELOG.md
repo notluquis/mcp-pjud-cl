@@ -38,6 +38,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   por código.
 - El esquema afirmaba que sin `tribunal` la llamada falla por ambigüedad también en apelaciones
   y suprema, donde ese código no acota nada.
+- El rol se publica de tres formas y el esquema nombraba dos: en suprema no lleva nada adelante
+  y `tipo` va vacío, y la descripción pedía una letra.
 - La directiva decía que nada prueba una ausencia dos líneas después de decir que
   `georreferenciado: false` sí la prueba donde la columna existe, y que `true` no prueba lo
   contrario se decía sólo en la herramienta de civil.
@@ -59,10 +61,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Las cuatro búsquedas dicen qué campos publica una sola competencia y que la historia y las
   partes están en `obtener_detalle_causa`. Eso vivía en la prosa del esquema de salida, que
   dejó de viajar.
-- El catálogo que viaja pasó de 104.475 a 51.667 caracteres: los esquemas de salida van sin la
-  descripción de cada campo, y `obtener_detalle_causa` ya no anuncia esquema. Sobre el 10% de
-  la ventana del cliente las definiciones se difieren en silencio, y una sesión cargó 10 de las
-  14 herramientas sin saber que le faltaban.
+- El catálogo que viaja pesaba 104.475 caracteres y ahora cabe holgado en el presupuesto: los
+  esquemas de salida van sin la descripción de cada campo, y `obtener_detalle_causa` ya no
+  anuncia esquema. Sobre el 10% de la ventana del cliente las definiciones se difieren en
+  silencio, y una sesión cargó 10 de las 14 herramientas sin saber que le faltaban.
 - La descripción de `obtener_detalle_causa` bajó de 2.390 a 2.042 bytes, porque el cliente
   corta en 2.048 sin avisar y lo que se pierde es el final.
 - La referencia publicada sigue trayendo la descripción de cada campo de salida, incluida la de

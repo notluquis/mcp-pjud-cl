@@ -664,7 +664,14 @@ PRESUPUESTO_DEL_CATALOGO = 60_000
 #: por qué existen los topes, y sin fuente única cada página los iba a envejecer por su lado.
 CATALOGO_ANTES = 104_475
 DIRECTIVA_ANTES = 3_770
+DESCRIPCION_ANTES = 2_390
 HERRAMIENTAS_QUE_LLEGARON = 10
+
+#: Cuántas había ese día. Congelada y NO `len(_catalogo())`: atada al número de hoy, agregar la
+#: decimoquinta herramienta pondría la suite en rojo hasta que alguien escribiera "diez de las
+#: quince", que es una medición que nadie hizo. El guardia obligaría a falsear el hecho que dice
+#: proteger.
+HERRAMIENTAS_DE_ESE_DIA = 14
 
 #: Claude Code trunca en 2 KB cada descripción de herramienta y las instrucciones del servidor,
 #: en silencio. Lo que cae del otro lado del corte no llega y nadie lo nota. El número sale del
@@ -762,8 +769,14 @@ def test_las_cifras_del_corte_son_las_medidas():
     aquel catálogo o de aquella directiva se rechaza, porque el modo de falla no es que la
     frase desaparezca, es que se escriba distinta en una página sola.
     """
-    catalogo = f"{CATALOGO_ANTES:,}".replace(",", ".")
-    directiva = f"{DIRECTIVA_ANTES:,}".replace(",", ".")
+
+    def escrita(n: int) -> str:
+        return f"{n:,}".replace(",", ".")
+
+    catalogo, directiva = escrita(CATALOGO_ANTES), escrita(DIRECTIVA_ANTES)
+    # Las tres del mismo trabajo. La de la descripción mayor no es obligatoria en ninguna
+    # página, pero tiene que poder escribirse con el mismo verbo sin poner la suite en rojo.
+    medidas = (catalogo, directiva, escrita(DESCRIPCION_ANTES))
     obligadas = [RAIZ / "docs" / "uso.md"]
     for pagina in obligadas:
         texto = _texto(pagina)
@@ -772,9 +785,10 @@ def test_las_cifras_del_corte_son_las_medidas():
                 f"{pagina.relative_to(RAIZ)} explica el corte y no cita lo que pesaba {que} "
                 f"antes ({cifra})"
             )
-        assert f"{EN_LETRAS[HERRAMIENTAS_QUE_LLEGARON]} de las {EN_LETRAS[len(_catalogo())]}" in (
-            texto
-        ), (
+        cuantas = (
+            f"{EN_LETRAS[HERRAMIENTAS_QUE_LLEGARON]} de las {EN_LETRAS[HERRAMIENTAS_DE_ESE_DIA]}"
+        )
+        assert cuantas in texto, (
             f"{pagina.relative_to(RAIZ)} no dice cuántas herramientas llegaron de las que hay "
             "hoy, que es lo que vuelve concreto el defecto"
         )
@@ -792,11 +806,10 @@ def test_las_cifras_del_corte_son_las_medidas():
     # Y que ninguna fuente le ponga OTRA cifra a lo mismo.
     pesaba = re.compile(r"[Pp]esaba[n]?\s+(?:de\s+)?([\d.]+)")
     for fuente in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
-        for mencion in pesaba.finditer(_texto(fuente)):
-            assert mencion.group(1) in (catalogo, directiva), (
+        for mencion in pesaba.finditer(_legible(fuente)):
+            assert mencion.group(1) in medidas, (
                 f"{fuente.relative_to(RAIZ)} dice que algo pesaba {mencion.group(1)}, que no "
-                f"es ninguna de las dos medidas ({catalogo} el catálogo, {directiva} la "
-                "directiva)"
+                f"es ninguna de las tres medidas de ese día: {', '.join(medidas)}"
             )
 
 
@@ -844,6 +857,7 @@ def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
         },
         "required": ["description", "properties"],
         "$defs": {"description": {"type": "object", "description": "un modelo así llamado"}},
+        "default": {"description": "esto es el VALOR del campo, no prosa de la herramienta"},
     }
     despojado = _sin_prosa(esquema)
     # `_sin_prosa` declara `object` porque recorre cualquier nodo; acá entró un diccionario.
@@ -857,6 +871,17 @@ def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
         "la anotación DENTRO del campo sí es prosa y tenía que irse"
     )
     assert set(despojado["$defs"]) == {"description"}, "se perdió un modelo de `$defs`"
+    # Los nombres sobreviven Y sus valores se siguen recorriendo: sin esta línea, una rama que
+    # devolviera el mapa tal cual pasaría el test dejando viajar la prosa de adentro.
+    assert "description" not in despojado["$defs"]["description"], (
+        "dentro de un modelo de `$defs` la anotación sí es prosa y tenía que irse"
+    )
+    assert despojado["default"] == {
+        "description": "esto es el VALOR del campo, no prosa de la herramienta"
+    }, (
+        "lo que cuelga de `default` es el valor del campo: borrarle una clave le cambia al "
+        "modelo el defecto que el servidor sí valida"
+    )
     assert despojado["required"] == ["description", "properties"], (
         "`required` quedó nombrando campos que ya no están en el esquema"
     )
@@ -2185,6 +2210,15 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
                 f"{nombre_h}: {competencia!r} no se acota por tribunal ni por corte y la "
                 "descripción manda a resolver un código que no existe"
             )
+        # La salvedad es la que enumera qué se repite ahí, así que enumerarlo de menos es
+        # peor que no decirlo: decía "bastan tipo, rol y año", y `competencia` omitida cae en
+        # su valor por defecto, que es civil. Se comprueba DENTRO de la frase porque el
+        # literal aparece igual dos oraciones antes, y el guardia ancho pasaba con la
+        # enumeración corta puesta.
+        assert "competencia" in salvedad, (
+            f"{nombre_h}: la salvedad enumera qué repetir y deja fuera la competencia, que "
+            "omitida vale civil y abre el mismo rol de otra"
+        )
         for competencia in sin_detalle:
             assert competencia in aviso, (
                 f"{nombre_h}: {competencia!r} no tiene detalle y el aviso no lo nombra"
@@ -2195,6 +2229,14 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
 #: existen. Se nombran acá para que el guardia pueda distinguir a cuál se le atribuye una
 #: duración: dárselas por iguales es lo que haría publicar una cifra que nadie midió.
 TOKENS_SIN_MEDIR = ("documento_referencia", "Cuaderno.referencia")
+
+#: Cómo se nombra en la prosa el token que SÍ se midió.
+TOKEN_MEDIDO = ("CausaEncontrada.referencia", "del listado")
+
+#: Cuántos caracteres cuentan como "al lado" al atribuirle una duración a un token. En la
+#: tabla de `verificacion.md` los tres caben en menos que esto, y ahí lo que decide es cuál
+#: queda más cerca; en la prosa suelta alcanza para cruzar el corte de línea.
+CERCA = 200
 
 
 def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
@@ -2223,19 +2265,33 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
     # `verificacion.md` pone los tres a menos de doscientos caracteres, así que una ventana
     # sola le daría a uno la cifra del otro: el día que se mida el del cuaderno, documentarlo
     # bien pondría la suite en rojo contra la constante equivocada.
+    def a_quien_se_lo_atribuye(texto: str, posicion: int) -> str | None:
+        """Qué token nombra el texto justo ANTES de la duración, si nombra alguno.
+
+        Antes y no "el más cercano": en la tabla de `verificacion.md` la fila del token medido
+        termina con su cifra y la del siguiente empieza a 49 caracteres, más cerca que el
+        nombre de su propia fila. Quien escribe nombra el token y después dice cuánto dura.
+
+        Sobre `_legible`, que junta los literales adyacentes y colapsa los saltos: así el corte
+        de línea a noventa y ocho columnas deja de partir la frase, que es por donde se colaba.
+        """
+        candidatos = [
+            (texto.rfind(nombre, max(0, posicion - CERCA), posicion), nombre)
+            for nombre in (*TOKENS_SIN_MEDIR, *TOKEN_MEDIDO)
+        ]
+        encontrados = [(donde, nombre) for donde, nombre in candidatos if donde != -1]
+        return max(encontrados)[1] if encontrados else None
+
     duracion = re.compile(r"(\d+)\s+minutos")
     for fuente in fuentes:
-        texto = _texto(fuente)
+        texto = _legible(fuente)
         for mencion in duracion.finditer(texto):
-            desde = texto.rfind("\n", 0, mencion.start()) + 1
-            hasta = texto.find("\n", mencion.end())
-            linea = texto[desde : hasta if hasta != -1 else len(texto)]
-            sin_medir = [t for t in TOKENS_SIN_MEDIR if t in linea]
-            assert not sin_medir, (
-                f"{fuente.relative_to(RAIZ)} le pone una duración a {sin_medir}, y de esos "
-                "tokens no se midió ninguna: sólo se leyó el `exp` del listado"
+            de_quien = a_quien_se_lo_atribuye(texto, mencion.start())
+            assert de_quien not in TOKENS_SIN_MEDIR, (
+                f"{fuente.relative_to(RAIZ)} le pone una duración a `{de_quien}`, y de ése no "
+                "se midió ninguna: sólo se leyó el `exp` del listado"
             )
-            contexto = texto[max(0, mencion.start() - 200) : mencion.end() + 200].lower()
+            contexto = texto[max(0, mencion.start() - CERCA) : mencion.end() + CERCA].lower()
             if "referencia" not in contexto:
                 continue
             assert int(mencion.group(1)) == minutos, (
@@ -2257,6 +2313,33 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
         "`documento_referencia` dejó de decir que su duración no se midió, y es el único aviso "
         "que impide leerle la del listado"
     )
+
+
+def test_el_esquema_dice_donde_el_rol_no_lleva_nada_adelante(expuestas):
+    """El rol se publica de tres formas y el esquema nombraba dos.
+
+    En civil va una letra, en apelaciones y penal el libro, y en suprema no va nada. Sin la
+    tercera dicha, el modelo manda una letra donde no corresponde: el rol esperado queda en
+    `X-999999-2020`, no calza ninguna fila, y el error habla de revisar `tipo` sin decir que
+    ahí va vacío.
+
+    Sale de `parser.COMPETENCIAS` y no de una lista escrita acá, igual que las otras dos.
+    """
+    sin_prefijo = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_sin_prefijo)
+    assert sin_prefijo, "si ninguna publicara el rol pelado, la salvedad sobra"
+    assert set(MODULOS) - set(sin_prefijo), (
+        "si todas lo publicaran pelado, lo que sobra es el resto de la descripción"
+    )
+
+    for nombre_h, h in expuestas.items():
+        tipo = (h.input_schema or {}).get("properties", {}).get("tipo", {}).get("description", "")
+        if not tipo:
+            continue
+        for competencia in sin_prefijo:
+            assert competencia in tipo, (
+                f"{nombre_h}: en {competencia!r} el rol no lleva nada adelante y la "
+                "descripción de `tipo` no lo dice, así que el modelo manda una letra"
+            )
 
 
 def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):

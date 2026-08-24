@@ -1005,6 +1005,7 @@ def test_pedir_actuaciones_de_una_competencia_sin_panel_mapeado_no_gasta_peticio
         liquidaciones=None,
         notificaciones=None,
         rol_con_libro=False,
+        rol_sin_prefijo=False,
         campos_rit={},
         historia=None,
         receptor=True,
@@ -1705,10 +1706,17 @@ def test_en_suprema_la_ambiguedad_no_nombra_un_parametro_que_no_existe(monkeypat
         c.detalle_causa("", 999999, 2020, competencia="suprema")
 
     mensaje = str(fallo.value)
-    for inservible in ("`tribunal`", "`corte`"):
-        assert inservible not in mensaje, (
-            f"suprema no se acota por {inservible}: quien siga el consejo repite la consulta"
-        )
+    # Sin comillas invertidas: el mensaje que esto rechaza nunca las tuvo, así que buscarlas
+    # con ellas pasa contra el texto que el test existe para rechazar. Lo que sí distingue es
+    # la fórmula con que las otras dos ramas mandan a corregir un parámetro.
+    assert "indicar en `" not in mensaje, (
+        "manda a corregir un parámetro, y en suprema la plataforma ignora los dos: quien siga "
+        "el consejo repite la misma consulta"
+    )
+    assert "no puede abrir" in mensaje, (
+        "no dice que acá la herramienta no tiene forma de abrirla, que es lo único que evita "
+        "que el modelo lo intente otra vez"
+    )
     assert "tipo_recurso" in mensaje, "no dice dónde mirar para distinguirlas"
 
 

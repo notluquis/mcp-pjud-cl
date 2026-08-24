@@ -495,11 +495,11 @@ cargó **diez de las catorce** sin señal de que le faltaban cuatro. Las instruc
 servidor pesaban 3.770 bytes contra un corte de 2.048, así que 1.722 no llegaban, y lo que
 caía del otro lado eran tres reglas de las que evitan afirmar de más.
 
-| | medido antes | tope del cliente |
+| | medido antes | tope, y hoy cabe |
 |---|---|---|
-| `tools/list` | 104.475 caracteres | 60.000, y hoy cabe |
-| `instructions` | 3.770 bytes | 2.048 bytes, y hoy cabe |
-| descripción mayor | 2.390 bytes | 2.048 bytes, y hoy cabe |
+| `tools/list` | 104.475 caracteres | 60.000, presupuesto propio: el cliente no corta, difiere sobre el 10% de su ventana |
+| `instructions` | 3.770 bytes | 2.048 bytes, que es donde el cliente corta |
+| descripción mayor | 2.390 bytes | 2.048 bytes, el mismo corte |
 
 La columna de la derecha son los topes y no lo que pesa hoy, a propósito: lo de hoy cambia con
 cada descripción que se toca, y una cifra escrita así queda vieja al cambio siguiente. Los topes

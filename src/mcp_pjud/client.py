@@ -34,6 +34,7 @@ from .parser import (
     AudioAudiencia,
     CausaEncontrada,
     Corte,
+    Cuaderno,
     DetalleCausa,
     EstructuraInesperada,
     Georreferencia,
@@ -1021,6 +1022,28 @@ class Transporte:
         return r
 
 
+def _con_un_solo_mostrado(cuadernos: list[Cuaderno]) -> list[Cuaderno]:
+    """Los cuadernos, con la garantía de que a lo más uno viene marcado como desplegado.
+
+    El ahorro de una petición se apoya en que `mostrado` señale UNO. Con dos marcados, la
+    misma página se etiquetaría con dos nombres y el otro cuaderno no se pediría nunca: no es
+    una respuesta rara, es una respuesta a la que le faltan actuaciones y se ve completa. Ese
+    es el falso negativo que el proyecto existe para evitar, así que se levanta.
+
+    Cero marcados sí es aceptable y se resuelve pidiendo todos: `mostrado` es un atributo del
+    sitio y su ausencia sólo cuesta la petición que había antes.
+    """
+    marcados = [c.nombre for c in cuadernos if c.mostrado]
+    if len(marcados) > 1:
+        raise EstructuraInesperada(
+            f"El detalle marca {len(marcados)} cuadernos como desplegados a la vez "
+            f"({', '.join(marcados)}), y sólo puede mostrar uno. Con más de uno, esta lectura "
+            "reusaría la misma página para dos cuadernos distintos y dejaría de pedir el otro: "
+            "la respuesta vendría sin sus actuaciones y se vería completa."
+        )
+    return cuadernos
+
+
 class PjudClient(Transporte):
     """Consulta pública de causas de la Oficina Judicial Virtual."""
 
@@ -1900,12 +1923,15 @@ class PjudClient(Transporte):
         # que la respuesta ya trae puesto no se vuelve a pedir: `mostrado` lo marca. Sin eso
         # la cadena de una causa de dos cuadernos eran seis peticiones, una más que las cinco
         # para las que `RAFAGA_MAXIMA` está dimensionada, y la de más era contra la plataforma.
-        paginas = [
-            (primera, c.nombre)
-            if c.mostrado
-            else (self.detalle(c.referencia, competencia), c.nombre)
-            for c in cuadernos
-        ] or [(primera, "")]
+        if len(cuadernos) <= 1:
+            paginas = [(primera, cuadernos[0].nombre if cuadernos else "")]
+        else:
+            paginas = [
+                (primera, c.nombre)
+                if c.mostrado
+                else (self.detalle(c.referencia, competencia), c.nombre)
+                for c in _con_un_solo_mostrado(cuadernos)
+            ]
 
         historia: list[Actuacion] | None = [] if spec.historia else None
         if historia is not None:
@@ -2007,7 +2033,7 @@ class PjudClient(Transporte):
         # Mismo ahorro que en `detalle_causa`: el cuaderno que esta respuesta ya trae puesto
         # no se vuelve a pedir.
         actuaciones = []
-        for cuaderno in cuadernos:
+        for cuaderno in _con_un_solo_mostrado(cuadernos):
             pagina = html_ if cuaderno.mostrado else self.detalle(cuaderno.referencia, competencia)
             actuaciones.extend(leer(pagina, cuaderno.nombre, competencia))
         return actuaciones

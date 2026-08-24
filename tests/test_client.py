@@ -20,6 +20,7 @@ from mcp_pjud.client import (
     AUDIO_RUTA,
     BASE,
     DOCUMENTOS,
+    EL_ROL_NO_BASTA,
     INTERVALO_MINIMO,
     LARGO_MAXIMO_MARCADOR,
     MAXIMO_MARCADORES,
@@ -1618,6 +1619,13 @@ def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monke
     assert "ninguna corresponde" not in mensaje, "corresponden todas; lo que falta es cuál"
     assert mensaje.count("e-468-2026") + mensaje.count("E-468-2026") == 1, (
         "el rol se repetía una vez por causa encontrada: en el caso medido, 43 veces"
+    )
+    # La razón medida viaja en el error y no sólo en el esquema. Es la mitad que el modelo lee
+    # DESPUÉS de llamar, y por eso sale de la misma constante: si acá desaparece, la
+    # descripción sigue diciéndolo y el error deja de explicarlo, que es como estaba antes.
+    assert EL_ROL_NO_BASTA in mensaje, (
+        "el error dejó de decir por qué el rol no basta, que es lo único que distingue este "
+        "fallo de uno de la plataforma"
     )
 
 

@@ -1278,7 +1278,13 @@ def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) 
     # acepta ese caso y pide todos los cuadernos, y exigir una marca que ese sitio no emite
     # dejaría sin leer causas que hoy se leen. Nunca se ha observado una página así; la única
     # que existe es un doble de test que borra el atributo a propósito.
-    marcado = next((c.nombre for c in parse_cuadernos(pagina) if c.mostrado), "")
+    # Por `_con_un_solo_mostrado` y no leyendo el desplegable a mano: esa guardia corre sobre
+    # la PRIMERA página y las que se piden después se la saltaban. Con dos marcados, quedarse
+    # con el primero acepta la respuesta cuando ese primero casualmente calza con el pedido, y
+    # ahí ya no se puede acreditar de qué cuaderno es la historia que se está leyendo.
+    marcado = next(
+        (c.nombre for c in _con_un_solo_mostrado(parse_cuadernos(pagina)) if c.mostrado), ""
+    )
     if marcado == pedido.nombre or (not marcado and not el_sitio_marca):
         return
     raise EstructuraInesperada(

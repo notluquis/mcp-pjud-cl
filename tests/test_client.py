@@ -2970,6 +2970,45 @@ def test_una_respuesta_sin_marca_no_acredita_nada_si_el_sitio_marca(monkeypatch)
     )
 
 
+def test_una_respuesta_con_dos_cuadernos_marcados_tampoco_acredita(monkeypatch):
+    """`_con_un_solo_mostrado` corre sobre la PRIMERA página, y las que se piden después se la
+    saltaban.
+
+    Con dos marcados no se puede acreditar de qué cuaderno es la historia que se está leyendo,
+    y quedarse con el primero acepta la respuesta cuando ése calza con el pedido por
+    casualidad: la lectura la etiqueta como el cuaderno pedido y las actuaciones del otro
+    quedan afuera.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    principal = (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8")
+    # El apremio marcado ADEMÁS del principal, que es la ambigüedad que se prueba.
+    dos_marcas = principal.replace(
+        f'value="{REFERENCIA_APREMIO}"', f'value="{REFERENCIA_APREMIO}" selected="selected"'
+    )
+    assert dos_marcas != principal, "cambió la fixture y este doble dejó de armar la ambigüedad"
+    listado = (FIXTURES / "busqueda_rit_civil.html").read_text(encoding="utf-8")
+    pedidos: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        if "consultaRit" in str(peticion.url):
+            return httpx.Response(200, text=listado)
+        cuerpo = peticion.content.decode()
+        pedidos.append(cuerpo)
+        return httpx.Response(200, text=dos_marcas if REFERENCIA_APREMIO in cuerpo else principal)
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="desplegados a la vez"):
+        c.detalle_causa("E", 468, 2026, tribunal=162)
+
+    assert any(REFERENCIA_APREMIO in cuerpo for cuerpo in pedidos), (
+        "el cuaderno de apremio no se llegó a pedir, así que la excepción no la levantó lo que "
+        "este test dice medir"
+    )
+
+
 def test_el_endpoint_que_ignora_la_referencia_se_levanta_tambien_en_las_actuaciones(monkeypatch):
     """El otro recorrido. `detalle_causa` y `actuaciones_receptor` piden los cuadernos por
     caminos distintos, y una defensa puesta en uno deja el otro leyendo el equivocado.

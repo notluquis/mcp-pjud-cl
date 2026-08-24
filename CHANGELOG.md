@@ -22,6 +22,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
   estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.
 
+### Cambiado
+
+- El servidor se registra como `mcp-pjud-cl` y ya no como `pjud`: es el nombre del repositorio,
+  que es lo que alguien busca para saber qué es esto. Quien lo tenga instalado con el alias
+  viejo sigue funcionando; para cambiarlo hay que reinstalarlo con el nombre nuevo.
+
 ## [0.13.1] - 2026-08-23
 
 ### Corregido

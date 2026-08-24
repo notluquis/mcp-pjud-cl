@@ -16,6 +16,12 @@ ORIGEN = "git+https://github.com/notluquis/mcp-pjud-cl@stable"
 #: El ejecutable que el paquete declara en `[project.scripts]`.
 COMANDO = "mcp-pjud"
 
+#: Con qué nombre queda registrado en el cliente. No tiene por qué coincidir con el paquete ni
+#: con el repositorio, y se elige el del repositorio porque es lo que alguien busca cuando
+#: quiere saber qué es esto. Vive acá porque además va en los botones de un clic del README,
+#: que no pasan por `cog`, y ahí es donde se desincronizaba.
+ALIAS = "mcp-pjud-cl"
+
 #: Un correo de ejemplo. No es de nadie: el dominio `estudio.cl` no existe como buzón real, y
 #: la guía explica al lado que el valor tiene que ser uno al que de verdad se pueda escribir.
 CONTACTO_EJEMPLO = "informatica@estudio.cl"
@@ -30,7 +36,7 @@ def configuracion(clave: str = "mcpServers", contacto: str = CONTACTO_EJEMPLO) -
     """
     bloque = {
         clave: {
-            "pjud": {
+            ALIAS: {
                 "command": "uvx",
                 "args": ["--from", ORIGEN, COMANDO],
                 "env": {"MCP_PJUD_CONTACTO": contacto},

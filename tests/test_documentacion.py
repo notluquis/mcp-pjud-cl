@@ -598,6 +598,35 @@ def test_la_hoja_de_ruta_cuenta_lo_que_falta_con_las_cifras_del_codigo():
     )
 
 
+def test_el_servidor_se_registra_con_el_mismo_nombre_en_todas_las_guias():
+    """Seis lugares registran el servidor y sólo cuatro pasan por `cog`.
+
+    Los otros dos son los botones de un clic del README, que llevan el nombre dentro de una URL
+    y encima repetido: en `name=` y dentro del `config` codificado. Ahí es donde se desincroniza
+    sin que nadie lo note, porque un botón con otro alias instala igual y deja al usuario con
+    dos servidores que hacen lo mismo.
+    """
+    import sys
+
+    sys.path.insert(0, str(RAIZ / "docs"))
+    from _bloques import ALIAS
+
+    readme = _texto(RAIZ / "README.md")
+    guia = _texto(RAIZ / "docs" / "instalacion.md")
+
+    assert f"claude mcp add {ALIAS} " in readme
+    assert f"claude mcp add {ALIAS} " in guia
+    assert f"codex mcp add {ALIAS} " in guia
+    assert f'[mcp_servers."{ALIAS}"]' in guia
+    assert readme.count(f"name={ALIAS}&config=") == 2, (
+        "los dos botones de un clic tienen que registrar el mismo alias que el resto"
+    )
+    # Y el alias dentro del `config` del botón de VS Code, que va aparte del `name=`.
+    assert f"%22name%22%3A%22{ALIAS}%22" in readme, (
+        "el botón de VS Code lleva el nombre dos veces y una quedó con el alias viejo"
+    )
+
+
 def test_la_seccion_de_anexos_nombra_cada_panel_medido_con_su_campo_y_su_descarga():
     """Lo que la página afirma sobre los paneles medidos sale del código, no de la memoria.
 

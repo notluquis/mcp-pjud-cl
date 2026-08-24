@@ -23,6 +23,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   donde `RAFAGA_MAXIMA` está dimensionada para cinco, que es lo que la documentación decía.
 - Un detalle que marcara dos cuadernos como desplegados a la vez dejaba uno sin pedir y
   entregaba la respuesta sin sus actuaciones. Ahora se levanta.
+- Un timeout llegaba al modelo como `Error executing tool listar_cortes: timed out`, sin los
+  segundos ni qué hacer. Igual los 5xx, los 404 y un combo que contestaba HTML donde prometía
+  JSON: las cuatro ahora dicen que esperar no prueba una ausencia.
+- El techo de espera decía en su comentario ser "el doble del peor medido" y eran 240 segundos
+  contra 177 medidos, o sea 354. Sube a 360 y hay un test que fija la regla.
 
 ## [0.14.0] - 2026-08-24
 

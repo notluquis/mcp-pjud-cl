@@ -293,6 +293,8 @@ querría poder explicar.
 ### Qué monitorear
 
 - `PjudBloqueado` → revisar si la IP quedó bloqueada **antes** de reintentar nada.
+- `PjudNoRespondio` o `PlataformaNoDisponible` → la plataforma va lenta o está caída. Se
+  reintenta más tarde, respetando el intervalo. Ninguno significa que la causa no exista.
 - `EstructuraInesperada` → la plataforma cambió. Reportar con la plantilla correspondiente.
 - `discrepancia_fechas: true` en la salida → dato que necesita revisión humana.
 

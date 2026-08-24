@@ -130,6 +130,22 @@ caracteres y el cliente difiere las definiciones sobre el 10% de su ventana, as�
 cargó diez de las catorce sin señal de que le faltaban cuatro. La herramienta que el modelo no
 ve no la puede pedir, y eso no falla: calla.
 
+## Un error no es una ausencia
+
+Es la misma regla que gobierna el parser, dicha una capa más abajo. Cuando la plataforma no
+contesta, contesta 503, o devuelve una página donde prometía JSON, la respuesta correcta no es
+una lista vacía: es un error que diga qué pasó.
+
+Costó descubrirlo. La primera sesión que usó esto de verdad reportó dos consultas colgadas y lo
+dijo así: *"Los tres cuelgues devolvieron 'no result received'. Nada distingue 'no respondió'
+de 'no existe'. Un lector apurado reporta que la causa no existe."*
+
+Y era exacto: `httpx.TimeoutException` es **hermana** de `NetworkError`, no subclase, así que la
+clasificación que atrapa los rechazos no la tomaba y salía cruda. Ahora las tres dicen
+textualmente que no significa que la causa no exista, y ninguna detiene el proceso: la
+detención total es para cuando la plataforma nos rechaza a propósito, y un portal lento no
+rechaza a nadie.
+
 ## Qué NO hace
 
 Decirlo con todas sus letras evita malentendidos caros:

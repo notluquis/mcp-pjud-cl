@@ -1806,12 +1806,19 @@ class PjudClient(Transporte):
         # y el listado publica el nombre del libro, así que `esperado` no va a calzar nunca.
         # Hoy no llega acá porque penal no tiene historia mapeada ni receptor.
         if not exactas:
-            libros = ", ".join(sorted({(c.rol or "?") for c in causas}))
+            encontrados = ", ".join(sorted({(c.rol or "?") for c in causas}))
+            # El consejo del libro sólo vale donde el rol lo lleva adelante. Dárselo a civil
+            # manda a corregir un campo que en civil es la letra del rol, y quien lo siga
+            # repite la misma consulta.
+            remedio = (
+                "hay que indicar el libro en `tipo` (por ejemplo 'Protección'), porque en "
+                f"{competencia} el mismo número de rol se repite entre libros"
+                if COMPETENCIAS[competencia].rol_con_libro
+                else "hay que revisar `tipo`, que es la letra del rol, y el año"
+            )
             raise ValueError(
                 f"La búsqueda devolvió {len(causas)} causas y ninguna corresponde sin "
-                f"ambigüedad a {esperado!r}: {libros}. En Cortes de Apelaciones el número de "
-                "rol se repite entre libros, así que hay que indicar el libro en `tipo` (por "
-                f"ejemplo 'Protección'). {no_se_elige}"
+                f"ambigüedad a {esperado!r}: {encontrados}. {remedio}. {no_se_elige}"
             )
 
         # Acá el rol calza exacto en varias, así que el libro ya está bien y repetirlo no

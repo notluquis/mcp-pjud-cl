@@ -16,8 +16,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Una instantánea de todo lo que el servidor promete por el protocolo, comparada en cada
+  corrida: un cambio de contrato falla hasta que alguien lo mire y lo apruebe regenerándola.
+
 ### Corregido
 
+- El error de causa no encontrada mandaba a indicar el libro en `tipo` en las cinco
+  competencias. En civil `tipo` es la letra del rol, así que el consejo hacía repetir la misma
+  consulta.
 - Tres encabezados de la hoja de ruta declaraban un estado que dejó de ser el real: la sección
   de jurisprudencia decía "hecho parcialmente" sin nada pendiente, la de documentos no declaraba
   estado, y la de penal abría diciendo "sigue sin mapear" cuando la decisión ya estaba tomada.

@@ -14,6 +14,12 @@ de que este servidor no escribe es que **el código de escritura no existe**, y 
 CI que lo comprueba en cada cambio.
 :::
 
+Todo lo de esta página se compara contra una instantánea en cada corrida: `tests/contrato.json`
+guarda el catálogo entero como viaja, con su orden, más la directiva. Un cambio de lo que el
+servidor promete falla hasta que alguien lo mire y lo apruebe regenerándola. Las reglas de más
+abajo dicen POR QUÉ algo tiene que ser así; la instantánea dice QUÉ es, y atrapa el cambio que
+no viola ninguna regla: un campo renombrado, una anotación perdida, media descripción borrada.
+
 ## Directiva operativa
 
 El servidor expone una directiva por el campo `instructions` del protocolo. Cualquier cliente

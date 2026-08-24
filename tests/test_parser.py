@@ -704,6 +704,16 @@ def test_la_marca_de_rol_con_libro_calza_con_lo_que_publican_las_fixtures():
             f"{COMPETENCIAS[competencia].rol_con_libro} y sus roles reales son {prefijos}"
         )
 
+        # Y la tercera forma, que no es lo contrario de la anterior: civil tampoco lleva libro
+        # y sí lleva letra. Sin medirla contra las fixtures, el guardia del esquema deriva la
+        # lista de la misma bandera que pretende validar, así que marcar civil como pelada lo
+        # dejaba verde y el esquema pasaba a pedir `tipo` vacío donde va una letra.
+        sin_prefijo = all(p.isdigit() for p in prefijos)
+        assert sin_prefijo == COMPETENCIAS[competencia].rol_sin_prefijo, (
+            f"{competencia} declara rol_sin_prefijo="
+            f"{COMPETENCIAS[competencia].rol_sin_prefijo} y sus roles reales son {prefijos}"
+        )
+
 
 # -- las notificaciones ---------------------------------------------------------
 

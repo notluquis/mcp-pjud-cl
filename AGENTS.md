@@ -99,7 +99,7 @@ APROBAR_CONTRATO=1 uv run pytest tests/test_contrato.py   # aprobar un cambio de
 propósito la línea que arreglaste, corre la suite, confirma que se cae, restaura.
 
 **El testing de mutación tiene tres trampas medidas, y las tres hacen que un mutante vivo sea
-mentira.** La línea base del 24 de agosto de 2026 son 3.862 mutantes con 2.894 muertos: una
+mentira.** La línea base del 24 de agosto de 2026 son 3.870 mutantes con 2.905 muertos: una
 corrida que dé mucho menos es sospechosa del corredor antes que del código.
 
 - `mutmut run` con nombres de mutantes explícitos **no vuelve a copiar** `src/` ni `tests/` a

@@ -16,67 +16,31 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.13.1] - 2026-08-23
+
 ### Corregido
 
-- `mutmut run` no corría: la suite lee la documentación y mutmut copia sólo `src/` y `tests/`,
-  así que la corrida moría al importar. La raíz se resuelve una vez y los guardias leen la
-  documentación de verdad.
-- Cinco campos de cada actuación no los miraba ninguna prueba, y `documento_ruta` con
-  `documento_referencia` se podían intercambiar sin que nada fallara: cruzarlos manda la
-  referencia opaca como ruta.
-- El panel de anexos cortaba la lectura en la primera fila corta si alguien cambiaba un
-  `continue` por un `break`, y las tres columnas propias de suprema se podían anular.
-- Las cuatro cuentas de la descripción del PDF se comprobaban sobre la función que las
-  calcula y no sobre la respuesta, así que entre las dos se podían perder las cuatro.
-- `obtener_actuaciones_receptor` podía perder el tribunal camino a la búsqueda: el mismo rol
-  existe en varios juzgados, así que la respuesta habría sido la causa de otro.
-- Del formulario de búsqueda sólo se comprobaban los nombres de campo: el rol, el año y el
-  tribunal podían viajar en nulo, y la plataforma responde eso sin coincidencias.
-- El sobre del documento podía llamar MIXTO a un PDF cuyas páginas traen todas texto, y decir
-  que faltan más páginas que las que tiene.
-- Una georreferencia con latitud y sin longitud, o al revés, se entregaba como medida: es un
-  punto en un meridiano entero. Ahora levanta igual que si faltaran las dos.
-- Media sesión, con prefijo y sin token o al revés, se daba por abierta. No falla ahí: falla en
-  la consulta siguiente, que responde un listado sin filas.
-- De las piezas de un exhorto sólo se comprobaba la que NO trae documento, así que la celda se
-  podía leer con un selector que no calza nunca y las seis salían sin nada.
-- Cambiar de buscador podía no reabrir la sesión, y entonces la búsqueda contestaba con el
-  corpus del buscador anterior sin que nada lo dijera.
-- `obtener_texto_sentencia` podía perder el rol o el año camino a la búsqueda y entregar el
-  texto de otro fallo, con su caratulado, a quien pidió verificar una cita.
-- Una causa de un solo cuaderno podía gastar una petición de más: el detalle ya trae su
-  Historia, y volver a pedirlo es una consulta regalada contra la misma institución.
-- Las cabeceras con que se piden los tres modales (anexos, georreferencia y audios) no las
-  comprobaba nadie, y sin ellas la plataforma responde otra cosa en vez de un error.
-- `obtener_detalle_causa` podía perder el tribunal camino a la búsqueda, igual que las
-  actuaciones de receptor: la respuesta habría sido el detalle de la causa de otro juzgado.
-- El trámite de una notificación y el cuaderno de una liquidación se podían anular sin que
-  nada fallara: son lo que dice QUÉ se notificó y sobre qué cuaderno se liquidó.
-- El sobre del documento decía mal desde qué página no se enumeraron los tramos, y enumeraba
-  tramos también cuando todas las páginas traen texto.
+- La documentación afirmaba tres cosas que el código dejó de hacer hace versiones: que la
+  columna `Anexo` no se puede pedir, que sólo civil está verificada, y que faltaban buscadores
+  por medir. Ninguna era cierta.
+- La directiva que viaja en el protocolo advertía sobre `ocultas` en cero y no sobre el nulo,
+  que es lo que llega en seis de los siete buscadores. Nulo no es cero: ahí no se puede saber.
 
 ### Agregado
 
-- La tabla de las veintisiete rutas de documento se genera desde `client.DOCUMENTOS`, con qué
-  parámetro lleva cada una y cuáles se pidieron de verdad.
-- El estado de cada buscador y de cada competencia sale de `docs/estado-de-verificacion.yml` y
-  ya no de la prosa: lo que no se expone tiene que decir por qué, y eso se comprueba en CI.
-- Los ejemplos de respuesta en JSON de la documentación se comparan contra el modelo: un campo
-  renombrado dejaba ejemplos enseñando a leer una respuesta que ya no llega.
-- Los dos documentos de trabajo se retiran, con lo medido que tenían movido a `verificacion` y
-  a `herramientas`: afirmaban cosas que la 0.13.0 ya había cambiado.
-- `ecosistema` decía que este servidor cubre una competencia contra ocho, que los escritos
-  faltaban y que ninguno de los modales se pedía. Las tres dejaron de ser ciertas hace
-  versiones.
-- Los nombres de campo de las cuatro búsquedas no los comprobaba nadie: escribir uno con otra
-  caja no da error, da un campo que la plataforma ignora y una búsqueda sin acotar.
+- El estado de cada buscador y de cada competencia sale de `docs/estado-de-verificacion.yml`:
+  lo que no se expone tiene que decir por qué, y eso lo comprueba CI contra el código.
+- Cuarenta huecos de pruebas cerrados con testing de mutación. **Ninguno era una falla
+  publicada**: el código hacía lo correcto y nada lo comprobaba, así que lo que cambia es qué
+  puede romperse sin que la suite se entere.
+- Las tablas de rutas de documento y de estado se generan desde el código, y los ejemplos JSON
+  de la documentación se comparan contra el modelo.
 
 ### Decidido
 
 - Los diez buscadores de fallos quedan medidos, y los tres que no se exponen es por decisión:
-  penales y el compendio de extranjería publican un dato de una persona en cada fila, y líneas
-  jurisprudenciales entrega temas y no sentencias, con los mismos campos Solr significando otra
-  cosa.
+  penales y extranjería publican un dato de una persona en cada fila, y líneas
+  jurisprudenciales entrega temas y no sentencias.
 - La hoja de ruta separa lo que le queda a este servidor, que espera datos y no trabajo, de lo
   que sale de su superficie y sería otro proyecto.
 
@@ -511,7 +475,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.13.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.1
 [0.13.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.13.0
 [0.12.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.12.0
 [0.11.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.11.0

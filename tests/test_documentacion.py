@@ -233,6 +233,55 @@ def test_todo_parametro_aparece_en_la_seccion_de_su_herramienta(expuestas, secci
     assert not faltantes, f"Parámetros sin documentar en su sección: {faltantes}"
 
 
+@pytest.fixture(scope="module")
+def plantillas():
+    return {p.name: p for p in asyncio.run(mcp.list_prompts())}
+
+
+@pytest.fixture(scope="module")
+def secciones_de_plantillas():
+    """Cada `### \\`nombre\\`` de la sección de plantillas, con su cuerpo.
+
+    Va con `###` y con guiones en el nombre porque así se llaman: el barrido de herramientas
+    busca `## \\`nombre_con_guion_bajo\\``, así que las dos secciones no se pisan y ninguna
+    plantilla se cuela entre las herramientas que la referencia promete.
+    """
+    seccion = HERRAMIENTAS.split("\n## Plantillas\n")[1].split("\n## ")[0]
+    nombres = re.findall(r"^### `([a-z-]+)`", seccion, re.M)
+    cuerpos = re.split(r"^### `[a-z-]+`", seccion, flags=re.M)[1:]
+    return dict(zip(nombres, cuerpos, strict=True))
+
+
+def test_toda_plantilla_del_servidor_esta_documentada(plantillas, secciones_de_plantillas):
+    """Y el error contrario: una plantilla que se quitó del servidor y quedó descrita."""
+    faltantes = sorted(set(plantillas) - set(secciones_de_plantillas))
+    assert not faltantes, f"El servidor expone plantillas sin documentar: {faltantes}"
+    inventadas = sorted(set(secciones_de_plantillas) - set(plantillas))
+    assert not inventadas, f"La referencia describe plantillas inexistentes: {inventadas}"
+
+
+def test_todo_argumento_aparece_en_la_seccion_de_su_plantilla(plantillas, secciones_de_plantillas):
+    """La tabla de argumentos de cada plantilla dice exactamente los que acepta.
+
+    Las dos direcciones importan por lo mismo que en las herramientas: uno sin documentar deja
+    a quien invoca sin saber que existe, y uno documentado de más lo hace escribir un argumento
+    que el servidor rechaza.
+    """
+    for nombre, plantilla in plantillas.items():
+        cuerpo = secciones_de_plantillas[nombre]
+        declarados = {a.name for a in plantilla.arguments or []}
+        documentados = set(re.findall(r"^\| `(\w+)` \|", cuerpo, re.M))
+        assert documentados == declarados, (
+            f"`{nombre}` acepta {sorted(declarados)} y la referencia tabula {sorted(documentados)}"
+        )
+        obligatorios = {a.name for a in plantilla.arguments or [] if a.required}
+        tabulados = set(re.findall(r"^\| `(\w+)` \| sí \|", cuerpo, re.M))
+        assert tabulados == obligatorios, (
+            f"`{nombre}` exige {sorted(obligatorios)} y la referencia marca como obligatorios "
+            f"{sorted(tabulados)}"
+        )
+
+
 def test_los_campos_de_completitud_estan_documentados(expuestas):
     """`ocultas` es la razón por la que la búsqueda de jurisprudencia devuelve un objeto y no
     una lista. Si sale del modelo o de la página, la herramienta se lee como si entregara
@@ -853,6 +902,28 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     assert not largas, (
         f"estas descripciones pasan de {TOPE_DE_UNA_DESCRIPCION} bytes y el cliente las corta "
         f"por la mitad sin avisar: {largas}"
+    )
+
+
+def test_ninguna_plantilla_pasa_del_tope_en_lo_que_el_cliente_lista():
+    """El mismo corte que a las herramientas, sobre el campo que de verdad viaja en la lista.
+
+    Ojo con cuál es. El CUERPO que una plantilla devuelve entra a la conversación como texto de
+    la persona y no lo corta nadie: medido, `revisar-causa` son 2.177 bytes y está bien. Lo que
+    el cliente lista y podría cortar es la `description`, que es la que decide si alguien elige
+    la plantilla, igual que en una herramienta.
+
+    Se escribe porque la confusión ya ocurrió: al escribirlas se cuidó el largo del cuerpo,
+    que no hacía falta, y nadie miraba el campo que sí.
+    """
+    largas = {
+        p.name: len((p.description or "").encode())
+        for p in asyncio.run(mcp.list_prompts())
+        if len((p.description or "").encode()) > TOPE_DE_UNA_DESCRIPCION
+    }
+    assert not largas, (
+        f"estas descripciones de plantilla pasan de {TOPE_DE_UNA_DESCRIPCION} bytes y el "
+        f"cliente las corta sin avisar: {largas}"
     )
 
 

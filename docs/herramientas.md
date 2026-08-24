@@ -1,7 +1,7 @@
 ---
 myst:
   html_meta:
-    description: "Referencia de las 14 herramientas MCP, sus parámetros y cada campo que devuelven."
+    description: "Referencia de las 14 herramientas MCP, sus parámetros y cada campo que devuelven, más las plantillas que se invocan desde el cliente."
 ---
 
 # Referencia de herramientas
@@ -866,6 +866,60 @@ tribunal, y `fuente` dice cuál de los dos campos del buscador se leyó (`texto_
 Si la sentencia existe en el índice pero está reservada para consultas anónimas, se levanta
 `PlataformaRechaza` con el número de coincidencias reservadas, en vez de devolver un texto
 vacío. Distinguir "existe y no se publica" de "no existe" es el punto.
+
+## Plantillas
+
+Además de las herramientas, el servidor expone **plantillas** por `prompts/list` (`prompts` en
+el protocolo). No las llama el modelo: las invoca la persona desde su cliente, donde aparecen
+como comandos. Lo que devuelven es texto que entra a la conversación, y la consulta al Poder
+Judicial la hace después la herramienta que cada plantilla nombra, con su ritmo.
+
+Los argumentos viajan como texto. Los que no son obligatorios se pueden omitir: cuando falta el
+código que identifica la causa, la plantilla dice con qué resolverlo antes de abrirla.
+
+### `computar-plazo`
+
+Manda a pedir `obtener_actuaciones_receptor` y a presentar cada actuación con
+`fecha_diligencia` y `fecha_registro` separadas, más `discrepancia_fechas` cuando las dos
+fuentes del sitio no coinciden. Enumera qué queda fuera de esa lectura. No hace la cuenta de
+días hábiles: entrega la fecha desde la que se cuenta.
+
+| Argumento | Obligatorio | Qué es |
+|---|---|---|
+| `tipo` | sí | Letra del rol, el libro en apelaciones y penal, o VACÍO en suprema |
+| `rol` | sí | Número del rol, sin la letra ni el año |
+| `anio` | sí | Año del rol |
+| `competencia` | no | Sólo las que publican al ministro de fe en la Historia. Por defecto `civil` |
+| `tribunal` | no | Código del tribunal, donde la competencia lo usa |
+| `corte` | no | Código de la corte, donde la competencia la usa |
+
+### `revisar-causa`
+
+Manda a pedir `obtener_detalle_causa` y a enumerar panel por panel cuál trajo datos, cuál vino
+vacío y cuál vino en NULO porque esa competencia no lo publica. Avisa si hay exhortos, o sea si
+parte de la tramitación ocurre en otro expediente.
+
+| Argumento | Obligatorio | Qué es |
+|---|---|---|
+| `tipo` | sí | Letra del rol, el libro en apelaciones y penal, o VACÍO en suprema |
+| `rol` | sí | Número del rol, sin la letra ni el año |
+| `anio` | sí | Año del rol |
+| `competencia` | no | Sólo las que tienen al menos un panel del detalle medido. Por defecto `civil` |
+| `tribunal` | no | Código del tribunal, donde la competencia lo usa |
+| `corte` | no | Código de la corte, donde la competencia la usa |
+
+### `verificar-cita`
+
+Manda a pedir `buscar_jurisprudencia` por rol y a informar `ocultas` y `no_entregadas`, las dos
+cuentas de completitud. Que la búsqueda no devuelva la sentencia no se informa como que la
+sentencia no exista.
+
+| Argumento | Obligatorio | Qué es |
+|---|---|---|
+| `rol` | sí | Rol de la sentencia citada, sin el año |
+| `anio` | sí | Año del rol |
+| `buscador` | no | Cuál de los buscadores de fallos consultar. Por defecto `suprema` |
+| `literal` | no | Una frase textual de la cita, para contrastarla contra el texto del fallo |
 
 ## Errores
 

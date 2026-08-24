@@ -18,6 +18,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Agregado
 
+- Tres plantillas que la persona invoca desde su cliente: `computar-plazo` presenta las dos
+  fechas separadas, `revisar-causa` enumera qué panel vino en NULO por competencia y cuál
+  vacío, y `verificar-cita` informa `ocultas` y `no_entregadas` sin dar por inexistente lo que
+  la búsqueda no devolvió.
 - La bitácora sale por el error estándar, con lo que tardó cada petición y lo que se esperó por
   el ritmo, y se ajusta con `MCP_PJUD_BITACORA`. Existía desde siempre y no la veía nadie.
 - El catálogo viaja con una pista de frescura de una hora en vez de declararse rancio al

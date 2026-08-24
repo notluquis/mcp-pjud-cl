@@ -114,9 +114,11 @@ sitio no coinciden: informarlo en vez de elegir una.
 
 `georreferenciado: false` prueba que no hay registro SÓLO en
 {", ".join(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
-significa que no hay dónde mirar. Lo demás lo dice `obtener_georreferencia`.
+significa que no hay dónde mirar. Y `true` significa que el sitio lo ofrece, no que exista:
+está medido que una de seis abre un panel vacío, y saberlo cuesta pedir
+`obtener_georreferencia`.
 
-Nada de lo que este servidor devuelve prueba una ausencia. Las causas reservadas no
+Una búsqueda que no encuentra no prueba que algo no exista. Las causas reservadas no
 aparecen en la consulta pública. En jurisprudencia, `ocultas` o `no_entregadas` mayores
 que cero significan que la lista es un subconjunto, y `ocultas` en NULO tampoco es cero:
 es que en ese buscador no se puede saber. Nunca presentar una cita como verificada si la
@@ -462,8 +464,10 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     f"sola: {_SOLO_DE_UNA_COMPETENCIA}. En nulo significa que esa competencia no lo publica, "
     "no que la causa no lo tenga.\n\nY no trae historia, partes ni notificaciones: eso es "
     "`obtener_detalle_causa`, repitiendo tipo, rol, año Y `competencia`, más el `tribunal` o "
-    "la `corte` de la fila elegida. Sin repetirlos abre el mismo rol de otra competencia o de "
-    f"otro juzgado, que existe y se ve bien. En {', '.join(_SIN_DETALLE)} no hay detalle: se "
+    "la `corte`. Sin repetirlos abre el mismo rol de otra competencia o de otro juzgado, que "
+    "existe y se ve bien. Si la búsqueda ya iba acotada se reusa ese mismo código; si no, la "
+    "fila publica el NOMBRE del tribunal o de la corte y el código se resuelve con "
+    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_DETALLE)} no hay detalle: se "
     "rechaza por decisión, no por no estar medido."
 )
 

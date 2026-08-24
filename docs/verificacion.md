@@ -177,11 +177,16 @@ fila es que aparezca en una consulta real.
 ### Sin cubrir del todo
 
 - **Causas reservadas.** No aparecen y no aparecerán.
-- **Expiración de referencias.** Son dos tokens distintos y sólo uno está medido. El del
-  listado es un JWT cuya carga va firmada, no cifrada: se lee, y su `exp - iat` declara durar
-  30 minutos (medido el 24 de agosto de 2026). Eso es lo que el token dice, no lo que la
-  plataforma hace: que rechace justo ahí no se probó. De `documento_referencia` **cuánto dura
-  no se midió**. El flujo cabe holgado, pero no hay manejo explícito de expiración a mitad de
+- **Expiración de referencias.** Son **tres** tokens distintos y sólo uno está medido.
+
+  | token | qué se sabe |
+  |---|---|
+  | `CausaEncontrada.referencia`, del listado | JWT con la carga firmada, no cifrada: se lee, y su `exp - iat` declara durar 30 minutos (medido el 24 de agosto de 2026) |
+  | `Cuaderno.referencia`, con la que se pide cada cuaderno del detalle | sin medir, y está justo a mitad de la cadena más larga |
+  | `documento_referencia` | sin medir |
+
+  Lo medido es lo que el token **declara**, no lo que la plataforma hace: que rechace justo ahí
+  no se probó. El flujo cabe holgado, pero no hay manejo explícito de expiración a mitad de
   cadena.
 
 ## Penal se lee, y no por la ruta que lleva su nombre

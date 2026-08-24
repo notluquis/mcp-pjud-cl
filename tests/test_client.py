@@ -1604,7 +1604,7 @@ def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monke
     )
     c, _ = _capturando(_mismo_rol_en_varios_juzgados(*juzgados))
 
-    with pytest.raises(ValueError, match="existe en 3 tribunales") as fallo:
+    with pytest.raises(ValueError, match="indicar en `tribunal`") as fallo:
         c.detalle_causa("E", 468, 2026)
 
     mensaje = str(fallo.value)
@@ -1619,6 +1619,39 @@ def test_un_rol_repetido_en_varios_juzgados_pide_el_tribunal_y_no_el_libro(monke
     assert mensaje.count("e-468-2026") + mensaje.count("E-468-2026") == 1, (
         "el rol se repetía una vez por causa encontrada: en el caso medido, 43 veces"
     )
+
+
+def test_en_apelaciones_la_ambiguedad_de_varias_cortes_pide_corte_y_no_tribunal(monkeypatch):
+    """El mismo rol y el mismo libro existen en varias Cortes de Apelaciones.
+
+    Ahí las filas calzan todas, así que el remedio no es `tipo`. Y tampoco es `tribunal`:
+    apelaciones se acota por corte, y la columna que el listado publica ES la corte. Nombrar
+    el parámetro equivocado manda a repetir la misma consulta ambigua contra la plataforma.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    completo = (FIXTURES / "busqueda_rit_apelaciones.html").read_text(encoding="utf-8")
+    inicio = completo.index("<tr")
+    fila = completo[inicio : completo.index("</tr>") + len("</tr>")]
+    proteccion = fila.replace("Exhorto-9999-2019", "Protección-9999-2019")
+    cortes = ("C.A. de Temuco", "C.A. de Valdivia")
+    filas = "".join(
+        proteccion.replace("C.A. de Concepción", corte).replace(
+            "referencia-ficticia-001", f"referencia-ficticia-80{i}"
+        )
+        for i, corte in enumerate(cortes)
+    )
+    listado = completo[:inicio] + filas + completo[completo.index("</tr>") + 5 :]
+
+    c, _ = _capturando(listado)
+    with pytest.raises(ValueError, match="indicar en `corte`") as fallo:
+        c.detalle_causa("Protección", 9999, 2019, competencia="apelaciones")
+
+    mensaje = str(fallo.value)
+    assert "`tribunal`" not in mensaje, (
+        "apelaciones no se acota por tribunal: quien siga el consejo repite la consulta"
+    )
+    for corte in cortes:
+        assert corte in mensaje, f"el mensaje no nombra {corte!r}, que es de dónde elegir"
 
 
 def test_un_unico_resultado_de_otro_libro_tampoco_se_abre(monkeypatch):

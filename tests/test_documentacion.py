@@ -43,6 +43,7 @@ from mcp_pjud.client import (
     EL_ROL_NO_BASTA,
     INTERVALO_MINIMO,
     MODULOS,
+    RAFAGA_MAXIMA,
     SEGUNDOS_BUSQUEDA_MEDIDOS,
     SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
     SEGUNDOS_PAGINA_MEDIDOS,
@@ -66,7 +67,7 @@ from mcp_pjud.parser import (
     Panel,
     parse_historia,
 )
-from mcp_pjud.server import mcp
+from mcp_pjud.server import _CON_DETALLE, TOPE_DEL_CLIENTE, mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA, raiz_del_repo
 
@@ -477,13 +478,17 @@ def test_ninguna_pagina_cuenta_las_competencias_por_su_cuenta():
     assert not malas, "cuentas de competencias que el código contradice: " + "; ".join(malas)
 
 
-def test_la_directiva_avisa_donde_ocultas_viene_en_nulo():
-    """La directiva viaja en el protocolo y es lo que el modelo lee antes de responder.
+def test_el_nulo_de_ocultas_esta_avisado_donde_sobrevive_al_corte(expuestas):
+    """`ocultas` en nulo llega en seis de los siete buscadores, y leerlo como cero es afirmar
+    completitud sin fundamento: justo lo que el proyecto entero existe para no hacer.
 
-    Decía que `ocultas` en cero no prueba completitud, y no decía nada del **nulo**, que es lo
-    que llega en seis de los siete buscadores. Un modelo que lee nulo como cero afirma que una
-    búsqueda trajo todo lo que hay justo donde la plataforma no publica esa cuenta, y eso es la
-    afirmación de completitud sin fundamento que el proyecto entero existe para no hacer.
+    El aviso estaba en la directiva, y la directiva pesaba 3.770 bytes contra un tope de
+    corte de 2.048: esta regla caía del otro lado y no llegaba. Ahora la advertencia corta va
+    en la directiva, que cabe entera, y el detalle con los nombres en la herramienta que lo
+    devuelve.
+
+    La cara negativa importa tanto como la positiva: sin ella, reponer el detalle en la
+    directiva la vuelve a llenar y nadie se entera hasta que se corte otra regla.
     """
     from mcp_pjud.server import DIRECTIVA
 
@@ -491,8 +496,13 @@ def test_la_directiva_avisa_donde_ocultas_viene_en_nulo():
     assert "`ocultas` en NULO tampoco" in DIRECTIVA, (
         "la directiva dejó de advertir que `ocultas` puede venir en nulo"
     )
-    assert f"Sólo {', '.join(con_numero)} la trae con número." in DIRECTIVA, (
-        f"la directiva no nombra {con_numero} como los que traen `ocultas` con número"
+    detalle = f"Sólo {', '.join(con_numero)} la trae con número."
+    descripcion = expuestas["buscar_jurisprudencia"].description or ""
+    assert detalle in descripcion, (
+        f"`buscar_jurisprudencia` no nombra {con_numero} como los que traen `ocultas` con número"
+    )
+    assert detalle not in DIRECTIVA, (
+        "el detalle volvió a la directiva, que tiene 2.048 bytes para todo el servidor"
     )
 
 
@@ -646,8 +656,9 @@ def test_el_servidor_se_registra_con_el_mismo_nombre_en_todas_las_guias():
 PRESUPUESTO_DEL_CATALOGO = 60_000
 
 #: Claude Code trunca en 2 KB cada descripción de herramienta y las instrucciones del servidor,
-#: en silencio. Lo que cae del otro lado del corte no llega y nadie lo nota.
-TOPE_DE_UNA_DESCRIPCION = 2048
+#: en silencio. Lo que cae del otro lado del corte no llega y nadie lo nota. El número sale del
+#: código, que es donde lo mira quien escribe la prosa.
+TOPE_DE_UNA_DESCRIPCION = TOPE_DEL_CLIENTE
 
 
 @functools.cache
@@ -668,6 +679,34 @@ def _catalogo() -> tuple[dict, ...]:
             return tuple(h.model_dump(by_alias=True, exclude_none=True) for h in listado.tools)
 
     return asyncio.run(anunciar())
+
+
+def test_la_directiva_entera_llega_al_modelo():
+    """Las instrucciones del servidor se cortan en el mismo tope que una descripción.
+
+    Pesaban 3.770 bytes y nadie lo notó, porque un corte silencioso se ve igual que un texto
+    que termina. Lo que caía del otro lado eran tres reglas, y las tres son de las que evitan
+    afirmar de más: el nulo de `ocultas`, la cita no verificada, y el ritmo.
+
+    Se comprueban por separado de la medida porque son cosas distintas: el tope se puede
+    cumplir borrando justamente lo que hay que decir.
+    """
+    from mcp_pjud.server import DIRECTIVA
+
+    pesa = len(DIRECTIVA.encode())
+    assert pesa <= TOPE_DEL_CLIENTE, (
+        f"la directiva pesa {pesa} bytes y el cliente corta en {TOPE_DEL_CLIENTE}, sin avisar. "
+        "Lo que sobra no llega, y lo que sobra es el final"
+    )
+    for regla in (
+        f"hasta {RAFAGA_MAXIMA} peticiones",
+        f"cada {INTERVALO_MINIMO:.0f} segundos",
+        "en NULO tampoco es cero",
+        "Nunca presentar una cita como verificada si la",
+    ):
+        assert regla in DIRECTIVA, (
+            f"la directiva dejó de decir {regla!r}, que es de las que el corte se llevaba"
+        )
 
 
 def test_el_catalogo_cabe_en_el_presupuesto_del_cliente():
@@ -1987,6 +2026,22 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
             f"{nombre_h}: la descripción no dice dónde están la historia y las partes, que el "
             "listado no trae"
         )
+        # El puente del listado al detalle: el rol se repite entre competencias y entre
+        # juzgados, así que mandar a llamar el detalle "con el mismo rol" deja que use su
+        # `competencia` por defecto y abra una causa ajena que se ve perfectamente bien.
+        assert "`competencia`" in descripcion, (
+            f"{nombre_h}: manda al detalle sin decir que hay que repetir la competencia, y el "
+            "detalle asume civil"
+        )
+        # Y la búsqueda ofrece competencias que el detalle rechaza: sin la salvedad, después
+        # de una búsqueda ahí el modelo hace una llamada que falla siempre.
+        sin_detalle = sorted(set(MODULOS) - set(_CON_DETALLE))
+        aviso = next((f for f in descripcion.split(".") if "no hay detalle" in f), "")
+        assert aviso, f"{nombre_h}: no dice qué competencias no tienen detalle"
+        for competencia in sin_detalle:
+            assert competencia in aviso, (
+                f"{nombre_h}: {competencia!r} no tiene detalle y el aviso no lo nombra"
+            )
 
 
 def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
@@ -1999,9 +2054,15 @@ def test_el_esquema_dice_que_competencia_exige_que_acotacion(expuestas):
 
     for nombre in MODULOS:
         assert nombre in ACOTACION, f"la regla de acotación no nombra a {nombre!r}"
-    assert ACOTACION in DIRECTIVA, (
-        "la regla tiene que viajar en la directiva del servidor: es lo que el modelo lee "
-        "antes de llamar cualquier herramienta"
+    # Viajaba en la directiva, que no cabe en los 2.048 bytes que el cliente deja: se leía a
+    # medias o no se leía. Va con las tres búsquedas que la obedecen, y en ninguna otra.
+    for nombre_h in PAPELES_DE_LA_ACOTACION["acota"]:
+        assert ACOTACION in (expuestas[nombre_h].description or ""), (
+            f"{nombre_h} tiene que traer la regla de acotación: es la que dice con qué acotar "
+            "según la competencia, y el modelo la lee al elegir la herramienta"
+        )
+    assert ACOTACION not in DIRECTIVA, (
+        "la regla volvió a la directiva, que tiene 2.048 bytes para todo el servidor"
     )
 
     for nombre_h in PAPELES_DE_LA_ACOTACION["acota"]:
@@ -2042,6 +2103,14 @@ def test_donde_el_rol_no_identifica_una_causa_el_esquema_no_habla_de_acotar(expu
                 f"{nombre_h}: la descripción de `tribunal` no dice por qué el rol no basta, "
                 "que es lo único que evita que el modelo lo omita"
             )
+            # Y esa razón no vale en todas: apelaciones se desambigua por corte y suprema por
+            # ninguno de los dos. Sin la salvedad, el esquema afirma que la llamada falla sin
+            # `tribunal` justo donde ese código no existe, y el modelo va a buscar uno.
+            for otra in [n for n in MODULOS if COMPETENCIAS[n].acota_por != "tribunal"]:
+                assert otra in tribunal, (
+                    f"{nombre_h}: `tribunal` no acota {otra!r} y la descripción no lo dice, "
+                    "así que afirma que sin él la llamada falla también ahí"
+                )
             for prohibida in ("AMPLÍA", "búsquedas de nombre", ACOTACION):
                 for campo in ("tribunal", "corte"):
                     descripcion = propiedades.get(campo, {}).get("description", "")

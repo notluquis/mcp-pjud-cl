@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.16.0] - 2026-08-24
+
 ### Agregado
 
 - Los argumentos de conjunto cerrado de las tres plantillas se completan: `competencia` en
@@ -611,7 +613,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.15.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.16.0
 [0.15.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.15.1
 [0.15.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.15.0
 [0.14.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.14.0

@@ -38,7 +38,7 @@ from typing import NamedTuple
 import httpx
 from pydantic import BaseModel, Field
 
-from .client import INTERVALO_MINIMO, Transporte
+from .client import INTERVALO_MINIMO, PASO_SESION, Transporte
 from .parser import EstructuraInesperada, PlataformaRechaza
 
 BASE = "https://juris.pjud.cl"
@@ -588,7 +588,9 @@ class JurisClient(Transporte):
                 f"{', '.join(sorted(BUSCADORES))}. Los demás declaran otros campos y "
                 "devolverían datos vacíos en vez de un error."
             )
-        html = self._req("GET", f"{BASE}/busqueda?{BUSCADORES[buscador].ruta}").text
+        html = self._req(
+            "GET", f"{BASE}/busqueda?{BUSCADORES[buscador].ruta}", paso=PASO_SESION
+        ).text
 
         token = _TOKEN.search(html)
         ident = _ID_BUSCADOR.search(html)
@@ -679,6 +681,10 @@ class JurisClient(Transporte):
         self._ultima_respuesta = self._req(
             "POST",
             f"{BASE}/busqueda/buscar_sentencias",
+            # El buscador tarda minutos con una consulta amplia, y el aviso es lo único que
+            # distingue eso de un cuelgue mientras se espera. La frase no nombra qué se busca:
+            # el texto libre lo escribe quien consulta y puede traer el nombre de una parte.
+            paso="buscando sentencias",
             files={
                 "_token": (None, self._token),
                 "id_buscador": (None, self._id_buscador),

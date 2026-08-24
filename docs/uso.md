@@ -146,6 +146,32 @@ textualmente que no significa que la causa no exista, y ninguna detiene el proce
 detención total es para cuando la plataforma nos rechaza a propósito, y un portal lento no
 rechaza a nadie.
 
+## Por qué te avisa que está trabajando
+
+Una consulta no es una petición: son varias encadenadas, y entre cada una el servidor espera
+a propósito, porque el ritmo se lo debe a la plataforma. Abrir sesión, buscar la causa, abrir
+su detalle y recorrer sus cuadernos toma minutos, no segundos.
+
+Desde afuera eso se ve exactamente igual que un cuelgue. La misma sesión que reportó los
+cuelgues de arriba los describió así: nada distinguía "no respondió" de "no existe". Y hay una
+consecuencia más: muchos clientes cortan la llamada por su cuenta al cabo de unos segundos sin
+noticias, así que la consulta moría por el reloj del cliente mientras el servidor seguía
+esperando la respuesta del Poder Judicial.
+
+Por eso ahora el servidor avisa cada petición antes de que salga, con una frase de qué está
+haciendo ("abriendo sesión", "buscando la causa", "cuaderno 2 de 2") y, cuando se sabe de
+antemano, cuántas faltan. El protocolo permite que el cliente reinicie su reloj al recibir uno.
+
+Qué esperar de eso:
+
+- **Depende del cliente.** Si el tuyo no muestra progreso, la consulta funciona igual: los
+  avisos se descartan y no cambian ni lo que se consulta ni lo que se responde.
+- **La cuenta no siempre existe.** Una búsqueda que puede recorrer varias páginas no sabe
+  cuántas va a necesitar hasta llegar a la última, así que ahí se avisa el paso sin prometer
+  un total. Anunciar el tope sería una barra que se queda pegada cerca del principio.
+- **Un aviso no es un resultado.** Que la barra avance dice que la plataforma sigue
+  contestando, no que la causa exista ni que se haya podido leer.
+
 ## Qué NO hace
 
 Decirlo con todas sus letras evita malentendidos caros:

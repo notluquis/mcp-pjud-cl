@@ -42,6 +42,7 @@ import jsonschema
 import pytest
 from mcp.client import Client
 from mcp.server import MCPServer
+from mcp.shared.dispatcher import ProgressFnT
 from mcp.types import (
     LATEST_PROTOCOL_VERSION,
     SERVER_INFO_META_KEY,
@@ -139,6 +140,7 @@ def _llamar(
     detalle: str | None = None,
     estado_busqueda: int = 200,
     servidor_mcp=None,
+    progreso: ProgressFnT | None = None,
 ) -> CallToolResult:
     """Llama la herramienta a través de una sesión MCP real y devuelve lo que viaja por el cable.
 
@@ -165,7 +167,9 @@ def _llamar(
 
     async def ida_y_vuelta() -> CallToolResult:
         async with Client(servidor_mcp or servidor.mcp) as cliente:
-            return await cliente.call_tool(herramienta, argumentos or ARGUMENTOS)
+            return await cliente.call_tool(
+                herramienta, argumentos or ARGUMENTOS, progress_callback=progreso
+            )
 
     return asyncio.run(ida_y_vuelta())
 
@@ -456,6 +460,92 @@ def test_el_aviso_de_detencion_total_llega_al_modelo(monkeypatch: pytest.MonkeyP
     texto = _texto(resultado)
     assert resultado.is_error
     assert "403" in texto, f"el modelo tiene que ver el código que lo detuvo: {texto}"
+
+
+def test_la_cadena_avisa_su_progreso_por_el_canal_del_protocolo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lo que le permite al cliente distinguir "no respondió" de "todavía estoy trabajando".
+
+    Una consulta son varias peticiones encadenadas, cada una con el intervalo de la cláusula
+    CUARTA, y desde afuera eso se ve igual que un cuelgue. La primera sesión que usó esto de
+    verdad reportó dos de cuatro minutos y los tres murieron con "no result received". La
+    especificación 2025-11-25 dice que el cliente PUEDE reiniciar su reloj al recibir un
+    aviso de progreso: ése es todo el punto.
+
+    Se mide del lado del cliente, con una sesión real, porque el aviso cruza tres fronteras
+    que ningún test del cliente ve: el hilo en que el SDK corre una herramienta síncrona, la
+    inyección del contexto, y el canal del protocolo. Cualquiera de las tres rota deja la
+    lista vacía sin que nada más se ponga en rojo.
+    """
+    avisos: list[tuple[float, float | None, str | None]] = []
+
+    async def anotar(progress: float, total: float | None, message: str | None) -> None:
+        avisos.append((progress, total, message))
+
+    resultado = _llamar(monkeypatch, LISTADO, progreso=anotar)
+
+    assert not resultado.is_error, f"la llamada falló: {_texto(resultado)}"
+    assert avisos, (
+        "la herramienta terminó sin avisar nada: para el cliente es indistinguible de una "
+        "que se colgó, que es el problema que esto existe para resolver"
+    )
+    numeros = [p for p, _, _ in avisos]
+    assert numeros == sorted(numeros), (
+        f"el progreso retrocedió, y la especificación exige que aumente: {numeros}"
+    )
+    assert all(m for _, _, m in avisos), (
+        f"un aviso sin mensaje dice que algo pasa y no qué: {avisos}"
+    )
+
+
+@pytest.mark.parametrize(
+    "falla",
+    [
+        pytest.param(RuntimeError("el cliente se cayó dibujando el progreso"), id="revienta"),
+        # No es un caso rebuscado: es LA forma en que un cliente que se fue llega hasta acá, y
+        # `CancelledError` hereda de `BaseException`, no de `Exception`. Medido: con la
+        # cláusula acotada a `Exception` esta cancelación se escapa y se lleva la llamada, así
+        # que los dos casos tienen que estar o la mitad del guardia no existe.
+        pytest.param(asyncio.CancelledError(), id="se-va"),
+    ],
+)
+def test_un_aviso_que_falla_no_cuesta_la_respuesta(
+    monkeypatch: pytest.MonkeyPatch, falla: BaseException
+) -> None:
+    """La respuesta YA se pagó en peticiones contra la plataforma: no la tira un aviso.
+
+    Los avisos van al cliente, y del cliente no se sabe nada: puede irse, puede cancelar, o
+    puede reventar dibujando lo que le llega. Cualquiera de las tres, si se propagara, haría
+    consultar al Poder Judicial y botar el resultado, que es lo peor de los dos mundos: el
+    tráfico se generó igual, y quien preguntaba se queda sin el dato y con un error que no
+    habla de su causa.
+
+    Va contra el canal de verdad y no contra el adaptador a mano: lo que importa es de qué
+    TIPO llega el fallo después de cruzar el hilo, y eso no se adivina leyendo.
+    """
+
+    async def fallar(progress: float, total: float | None, message: str | None) -> None:
+        raise falla
+
+    resultado = _llamar(monkeypatch, LISTADO, progreso=fallar)
+
+    assert not resultado.is_error, f"un aviso que falló se llevó la respuesta: {_texto(resultado)}"
+    assert resultado.structured_content, "la respuesta tiene que llegar entera igual"
+
+
+def test_sin_cliente_que_pida_progreso_la_respuesta_es_la_misma(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sin token de progreso el aviso es un no-op del SDK, y eso no puede costar la respuesta.
+
+    Es la mitad que no se ve: la mayoría de las llamadas no piden progreso, y ahí el camino
+    nuevo corre igual hasta el final. Que el resultado sea idéntico al de antes es lo que
+    permite afirmar que avisar no cambia lo que se consulta.
+    """
+    con = _llamar(monkeypatch, LISTADO, progreso=None)
+    assert not con.is_error, f"la llamada falló: {_texto(con)}"
+    assert con.structured_content, "sin progreso la respuesta tiene que llegar igual de entera"
 
 
 def test_las_actuaciones_de_receptor_no_llegan_como_lista_vacia(

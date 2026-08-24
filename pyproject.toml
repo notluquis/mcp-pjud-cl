@@ -19,6 +19,11 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=2.0",
+    # El SDK corre las herramientas síncronas en un hilo, y el aviso de progreso hay que
+    # devolverlo al bucle de eventos con `anyio.from_thread.run`. Hoy entra de prestado por
+    # `mcp` y por eso se declara: apoyarse en una dependencia transitiva es depender de una
+    # decisión ajena, y si esa cadena cambia el servidor muere al importar.
+    "anyio>=4.0",
     "httpx>=0.28",
     "lxml>=5.3",
     "pydantic>=2.10",

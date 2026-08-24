@@ -474,22 +474,40 @@ donde nadie la mira. Doce de los veintitrés paneles del detalle no pasaban por 
 comprueba el mapeo posicional, y las dos cuentas de buscadores estaban viejas en cinco lugares,
 entre ellos `AGENTS.md`, que es lo que otro agente lee como instrucción.
 
-### Sin versión asignada
+(sin-version-asignada)=
+## Lo que queda de este servidor
 
-**Detección de cambios entre consultas: descartada.** Avisar cuando aparece una actuación
-nueva implica persistir datos de terceros, y eso cambia todo el perfil del proyecto bajo la
-Ley 21.719. El titular la descartó el 17 de agosto de 2026. Queda anotada como decisión y no
-como pendiente, porque es la función que alguien va a pedir mirando lo que vende la
-competencia.
+La superficie no cambia: leer la Oficina Judicial Virtual y el buscador de fallos. Con eso
+dicho, lo que falta **no espera trabajo, espera datos**.
 
-**Búsqueda de cartera por identificador de abogado.** El campo `Institución` de los listados
-permite reconstruir la cartera completa de un abogado. Técnicamente es directo.
-**Deliberadamente en duda**: construir perfiles de personas está en la lista de usos que el
-proyecto rechaza, aunque el dato sea público. Si se implementa, será con un caso de uso
-justificado y no "porque se puede".
+| Qué falta | Por qué no avanza |
+|---|---|
+| Veinte de las veintisiete rutas de documento | ninguna de las sesenta y una causas abiertas ofrece la fila que las entrega |
+| Once rutas de anexo | ídem: el sitio las nombra y ninguna causa medida las ofrece |
+| La fecha de las diligencias de cobranza | la plataforma publica el epoch `31/12/1969`, o sea **no la publica**. No hay nada que leer |
+| `ExhortosApe` e `IncompetenciaApe` | no hay qué mapear: dos columnas, la primera en blanco, y el panel falta en la mitad de los detalles |
 
-**Jurisprudencia de otros buscadores.** Ver la sección propia más abajo: de los buscadores que
-ofrece `juris.pjud.cl` diez de los diez están medidos, y cada uno declara sus propios campos.
+Buscar más causas al azar ya se agotó como método: son paneles de etapa o de cola transitoria,
+y aparecerán en una consulta real de alguien que los tenga.
+
+Y lo que está **cerrado por decisión**, para que no se relea como pendiente: el detalle de las
+causas penales, el buscador de penales, el compendio de extranjería, las líneas
+jurisprudenciales y la competencia de familia. Cada uno con su razón en
+{doc}`verificacion`, y ninguno por falta de medición.
+
+## Otro objetivo: lo que sale de este servidor
+
+Todo lo de acá está medido y ninguno tiene número de versión, a propósito: no es que falte
+tiempo, es que sería otro proyecto o le cambiaría el perfil a éste. Se dejan escritos con su
+medición para que la próxima persona no tenga que descubrirlos de nuevo.
+
+| Qué | Dónde vive | Qué obligaría a decidir |
+|---|---|---|
+| **Monitor de Salas** | `salas.pjud.cl`: otro host, sin la cookie de F5 que comparten los otros dos, y con los códigos de corte cifrados en vez de numéricos | consultar un tercer host, y aun así no responde "¿cuándo me ven?": es un tablero de qué se ve ahora en una sala |
+| **Calendario de días hábiles**, UTM y UF | la API de Boostr, un tercero | depender de un servicio ajeno para un cómputo que hoy este servidor no hace |
+| **Detección de cambios y alertas** | acá mismo, pero guardando lo consultado | persistir datos de terceros, o sea otro perfil bajo la Ley 21.719. Descartada el 17 de agosto de 2026 |
+| **Cartera por identificador de abogado** | acá mismo, con el campo `Institución` | es construir el perfil de una persona, que está en los usos que el proyecto rechaza |
+| **Ver más sentencias con una cuenta** | el mismo buscador, autenticado | dejaría de ser consulta pública: identificarse como funcionario es otra cosa |
 
 ## Jurisprudencia: qué hay mapeado y qué falta
 

@@ -3895,6 +3895,83 @@ def test_la_portada_declara_las_dos_lecturas():
         )
 
 
+def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto():
+    """La tabla de "lo que no se adopta" existe para no volver a medir, y por eso puede mentir.
+
+    Sus filas son afirmaciones sobre el SDK, y `pyproject.toml` no le pone techo a `mcp`: una
+    actualización puede volverlas falsas con la suite entera en verde. Peor que una página
+    vieja, porque se presenta como una medición que ya no hace falta repetir, así que la
+    próxima revisión leería la tabla en vez de medir.
+
+    Cada fila se compara contra su fuente. Las que no dependen del SDK (los iconos por
+    herramienta, el esquema de salida apagado) tienen su propio guardia y no se repiten acá.
+    """
+    from mcp_types.methods import CLIENT_REQUESTS, INPUT_REQUIRED_METHODS, SERVER_REQUESTS
+    from mcp_types.version import LATEST_PROTOCOL_VERSION
+
+    hoja = " ".join(_texto(RAIZ / "docs" / "roadmap.md").split())
+    assert "lo que no se adopta" in hoja, (
+        "desapareció la tabla que este guardia cuida, así que estaría cuidando nada"
+    )
+
+    v = LATEST_PROTOCOL_VERSION
+    tareas = [m for m, _ in CLIENT_REQUESTS] + [m for m, _ in SERVER_REQUESTS]
+    assert not [m for m in tareas if m.startswith("tasks/")], (
+        "el SDK ya trae métodos `tasks/*` y la hoja de ruta los da por ausentes: hay que "
+        "decidir si se adoptan en vez de que la tabla lo niegue"
+    )
+    assert not [m for m, r in SERVER_REQUESTS if r == v], (
+        f"la revisión {v} ya define peticiones del servidor al cliente, y la tabla dice que "
+        "no hay ninguna que adoptar (sampling, roots, elicitación)"
+    )
+    assert ("subscriptions/listen", v) in CLIENT_REQUESTS, (
+        "desapareció `subscriptions/listen`, de la que el SDK deriva `subscribe` y "
+        "`listChanged` en el carril moderno: la explicación de la tabla deja de aplicar"
+    )
+    assert "tools/call" in INPUT_REQUIRED_METHODS, (
+        "`InputRequiredResult` dejó de alcanzar a `tools/call`, así que la fila que explica "
+        "por qué no se adopta ya no habla de lo que hay"
+    )
+
+
+def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
+    """La tabla dice que `subscribe` y `listChanged` los deriva el SDK, no nosotros.
+
+    Se mide por el cable en los dos carriles: en el viejo salen en falso, que es lo que este
+    servidor pide, y en el moderno en verdadero sin que nadie los haya pedido. Si algún día
+    salen iguales en los dos, la fila deja de ser cierta y hay que decidir qué se declara.
+    """
+    import asyncio
+
+    from mcp.client import Client
+    from mcp_types.version import LATEST_PROTOCOL_VERSION
+
+    from mcp_pjud import server as servidor
+
+    async def capacidades(modo: str) -> dict:
+        async with Client(servidor.mcp, mode=modo) as cliente:
+            if modo == "legacy":
+                saludo = cliente.session.initialize_result
+                return saludo.capabilities.model_dump(by_alias=True, exclude_none=True)
+            crudo = await cliente.session.send_discover(LATEST_PROTOCOL_VERSION)
+            return crudo["capabilities"]
+
+    viejo = asyncio.run(capacidades("legacy"))
+    moderno = asyncio.run(capacidades(LATEST_PROTOCOL_VERSION))
+
+    assert viejo["resources"]["subscribe"] is False, (
+        "el carril viejo declara `subscribe`, y este servidor no atiende suscripciones"
+    )
+    assert moderno["resources"]["subscribe"] is True, (
+        "el carril moderno dejó de declarar `subscribe`: la hoja de ruta explica que el SDK lo "
+        "deriva de servir `subscriptions/listen`, y esa explicación ya no aplica"
+    )
+    assert "extensions" not in moderno, (
+        "el servidor empezó a anunciar extensiones (SEP-2133) y la hoja de ruta dice que no "
+        "define ninguna"
+    )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

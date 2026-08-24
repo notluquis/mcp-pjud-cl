@@ -113,7 +113,7 @@ Las observadas en causas civiles:
 ## Por qué la directiva es corta
 
 El servidor entrega una directiva por el protocolo, y el cliente la **corta en 2.048 bytes sin
-avisar**. Pesaba 3.770, así que un tercio no llegaba, y lo que caía del otro lado eran tres
+avisar**. Pesaba 3.770, así que 1.722 bytes no llegaban, y lo que caía del otro lado eran tres
 reglas de las que evitan afirmar de más: que `ocultas` en nulo no es cero, que una cita no está
 verificada si la búsqueda no la devolvió, y el régimen de consultas.
 

@@ -67,7 +67,7 @@ from mcp_pjud.parser import (
     Panel,
     parse_historia,
 )
-from mcp_pjud.server import _CON_DETALLE, TOPE_DEL_CLIENTE, mcp
+from mcp_pjud.server import _CON_DETALLE, TOPE_DEL_CLIENTE, _sin_prosa, mcp
 
 from .conftest import CARACTERES_DE_UNA_SENTENCIA, raiz_del_repo
 
@@ -648,12 +648,23 @@ def test_el_servidor_se_registra_con_el_mismo_nombre_en_todas_las_guias():
     )
 
 
-#: Lo que `tools/list` pesa hoy en el cable, medido el 24 de agosto de 2026 con el ejecutable
-#: publicado: 104.475 caracteres antes de este tope, y 46.865 después. El tope no es estético.
-#: El cliente DIFIERE las definiciones cuando pasan del 10% de su ventana de contexto, y ahí
-#: una sesión carga diez de catorce herramientas sin enterarse de que le faltan cuatro: pasó,
-#: y por eso existe este guardia. El número deja holgura para dos herramientas más.
+#: El tope no es estético: el cliente DIFIERE las definiciones cuando pasan del 10% de su
+#: ventana de contexto, y ahí una sesión carga parte del catálogo sin enterarse de que le
+#: faltan herramientas. Pasó, y por eso existe este guardia.
+#:
+#: Lo que el catálogo pesa HOY no se escribe en ninguna parte a propósito: cambia con cada
+#: descripción que se toca, así que una cifra escrita queda vieja al PR siguiente. Ya pasó una
+#: vez, en este mismo comentario. Lo que sí se escribe es lo medido antes del tope, que es un
+#: hecho fechado, y vive abajo con su guardia.
 PRESUPUESTO_DEL_CATALOGO = 60_000
+
+#: Lo que pesaban el catálogo y la directiva ANTES de este trabajo, medido el 24 de agosto de
+#: 2026 por stdio contra el ejecutable publicado, y cuántas herramientas llegaron de las
+#: catorce. Son hechos fechados, no valores vigentes: la documentación los cita para explicar
+#: por qué existen los topes, y sin fuente única cada página los iba a envejecer por su lado.
+CATALOGO_ANTES = 104_475
+DIRECTIVA_ANTES = 3_770
+HERRAMIENTAS_QUE_LLEGARON = 10
 
 #: Claude Code trunca en 2 KB cada descripción de herramienta y las instrucciones del servidor,
 #: en silencio. Lo que cae del otro lado del corte no llega y nadie lo nota. El número sale del
@@ -715,18 +726,77 @@ def test_la_directiva_entera_llega_al_modelo():
     # Y el tope escrito a mano en la prosa, contra la constante. Sin esto, cambiar el número
     # deja el test verde y las páginas documentando un corte que ya no es el que ocurre.
     escrito = f"{TOPE_DEL_CLIENTE:,}".replace(",", ".")
-    obligadas = [RAIZ / "docs" / "herramientas.md", RAIZ / "docs" / "uso.md"]
+    obligadas = [
+        RAIZ / "docs" / "herramientas.md",
+        RAIZ / "docs" / "uso.md",
+        RAIZ / "docs" / "roadmap.md",
+    ]
     for pagina in obligadas:
         assert f"{escrito} bytes" in _texto(pagina), (
             f"{pagina.relative_to(RAIZ)} explica el corte del cliente y no cita los {escrito} "
             "bytes en que ocurre"
         )
+    # El otro tope, el del catálogo entero. La hoja de ruta lo cita al lado del anterior: si
+    # cambia la constante y no la página, queda describiendo un corte que ya no es el que hay.
+    presupuesto = f"{PRESUPUESTO_DEL_CATALOGO:,}".replace(",", ".")
+    assert presupuesto in _texto(RAIZ / "docs" / "roadmap.md"), (
+        f"la hoja de ruta explica el diferimiento del catálogo y no cita su tope ({presupuesto})"
+    )
     donde_corta = re.compile(r"(?:corta en|cabe en) \*{0,2}([\d.]+) bytes")
     for fuente in PROSA:
         for cita in donde_corta.finditer(_texto(fuente)):
             assert cita.group(1) == escrito, (
                 f"{fuente.relative_to(RAIZ)} dice que el corte es a los {cita.group(1)} bytes "
                 f"y la constante son {escrito}"
+            )
+
+
+def test_las_cifras_del_corte_son_las_medidas():
+    """Las tres que explican por qué existen los topes, contra su fuente única.
+
+    Son de una medición fechada, así que no se derivan de nada vivo: si alguien las corrige o
+    vuelve a medir, la página que no se toque sigue publicando la vieja y nadie se entera. Es
+    la misma clase de dato repetido que el resto de este archivo persigue, y se coló igual.
+
+    La cara negativa es la que hace trabajo: cualquier OTRA cifra presentada como el peso de
+    aquel catálogo o de aquella directiva se rechaza, porque el modo de falla no es que la
+    frase desaparezca, es que se escriba distinta en una página sola.
+    """
+    catalogo = f"{CATALOGO_ANTES:,}".replace(",", ".")
+    directiva = f"{DIRECTIVA_ANTES:,}".replace(",", ".")
+    obligadas = [RAIZ / "docs" / "uso.md"]
+    for pagina in obligadas:
+        texto = _texto(pagina)
+        for cifra, que in ((catalogo, "el catálogo"), (directiva, "la directiva")):
+            assert cifra in texto, (
+                f"{pagina.relative_to(RAIZ)} explica el corte y no cita lo que pesaba {que} "
+                f"antes ({cifra})"
+            )
+        assert f"{EN_LETRAS[HERRAMIENTAS_QUE_LLEGARON]} de las {EN_LETRAS[len(_catalogo())]}" in (
+            texto
+        ), (
+            f"{pagina.relative_to(RAIZ)} no dice cuántas herramientas llegaron de las que hay "
+            "hoy, que es lo que vuelve concreto el defecto"
+        )
+
+    # Cuánto se perdía es una resta, no una medición aparte: escrita a mano fue "un tercio",
+    # que sobre 3.770 contra 2.048 son 1.722, o sea casi la mitad. Una fracción redonda en la
+    # prosa no tiene con qué comprobarse; la resta sí.
+    perdidos = f"{DIRECTIVA_ANTES - TOPE_DEL_CLIENTE:,}".replace(",", ".")
+    for pagina in (RAIZ / "docs" / "uso.md", RAIZ / "docs" / "roadmap.md"):
+        assert perdidos in _texto(pagina), (
+            f"{pagina.relative_to(RAIZ)} dice cuánto de la directiva se perdía y no son los "
+            f"{perdidos} bytes que dan {DIRECTIVA_ANTES} menos {TOPE_DEL_CLIENTE}"
+        )
+
+    # Y que ninguna fuente le ponga OTRA cifra a lo mismo.
+    pesaba = re.compile(r"[Pp]esaba[n]?\s+(?:de\s+)?([\d.]+)")
+    for fuente in [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]:
+        for mencion in pesaba.finditer(_texto(fuente)):
+            assert mencion.group(1) in (catalogo, directiva), (
+                f"{fuente.relative_to(RAIZ)} dice que algo pesaba {mencion.group(1)}, que no "
+                f"es ninguna de las dos medidas ({catalogo} el catálogo, {directiva} la "
+                "directiva)"
             )
 
 
@@ -753,6 +823,42 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     assert not largas, (
         f"estas descripciones pasan de {TOPE_DE_UNA_DESCRIPCION} bytes y el cliente las corta "
         f"por la mitad sin avisar: {largas}"
+    )
+
+
+def test_despojar_la_prosa_no_se_lleva_un_campo_que_se_llame_asi():
+    """`description` es una palabra de JSON Schema en un nivel y un nombre de campo en otro.
+
+    Dentro de `properties` o de `$defs` la clave es el nombre, así que filtrarla sacaría el
+    campo del esquema anunciado y dejaría su `required` apuntando a nada: el modelo dejaría de
+    ver un campo que la respuesta sí trae, sin que nada falle.
+
+    Hoy ningún modelo tiene un campo así porque los nombres van en español. El guardia va sobre
+    un esquema sintético a propósito: el día que alguien agregue uno, esto ya está puesto.
+    """
+    esquema = {
+        "description": "esto es prosa y se va",
+        "properties": {
+            "description": {"type": "string", "description": "esto también es prosa"},
+            "properties": {"type": "integer", "description": "un campo con nombre engañoso"},
+        },
+        "required": ["description", "properties"],
+        "$defs": {"description": {"type": "object", "description": "un modelo así llamado"}},
+    }
+    despojado = _sin_prosa(esquema)
+    # `_sin_prosa` declara `object` porque recorre cualquier nodo; acá entró un diccionario.
+    assert isinstance(despojado, dict)
+
+    assert "description" not in despojado, "la anotación del nivel de arriba tenía que irse"
+    assert set(despojado["properties"]) == {"description", "properties"}, (
+        "se perdió un campo: su nombre coincidía con una palabra de JSON Schema"
+    )
+    assert "description" not in despojado["properties"]["description"], (
+        "la anotación DENTRO del campo sí es prosa y tenía que irse"
+    )
+    assert set(despojado["$defs"]) == {"description"}, "se perdió un modelo de `$defs`"
+    assert despojado["required"] == ["description", "properties"], (
+        "`required` quedó nombrando campos que ya no están en el esquema"
     )
 
 
@@ -2066,19 +2172,38 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
                 f"{nombre_h}: manda a repetir el tribunal o la corte y no dice que el listado "
                 f"publica el nombre y el código sale de `{resolutor}`"
             )
+        # Y ese consejo no vale en todas: suprema no se acota por ninguno de los dos, y su
+        # código no existe (`listar_cortes` enumera las Cortes de Apelaciones). Sin la
+        # salvedad, el modelo busca un número que no hay y se detiene antes del detalle.
+        # Se busca dentro de la frase de la salvedad y no en toda la descripción: "suprema"
+        # aparece igual en la lista de campos de una sola competencia, así que el guardia
+        # ancho pasa aunque la salvedad no exista. Medido: se puso verde sin ella.
+        salvedad = next((f for f in descripcion.split(".") if "que resolver" in f), "")
+        assert salvedad, f"{nombre_h}: no dice dónde no hay código que resolver"
+        for competencia in (n for n in MODULOS if COMPETENCIAS[n].acota_por is None):
+            assert competencia in salvedad, (
+                f"{nombre_h}: {competencia!r} no se acota por tribunal ni por corte y la "
+                "descripción manda a resolver un código que no existe"
+            )
         for competencia in sin_detalle:
             assert competencia in aviso, (
                 f"{nombre_h}: {competencia!r} no tiene detalle y el aviso no lo nombra"
             )
 
 
-def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
-    """Son DOS tokens y sólo uno está medido; aplanarlos haría la documentación más falsa.
+#: Los otros dos identificadores opacos que la plataforma emite, y de los que sólo se sabe que
+#: existen. Se nombran acá para que el guardia pueda distinguir a cuál se le atribuye una
+#: duración: dárselas por iguales es lo que haría publicar una cifra que nadie midió.
+TOKENS_SIN_MEDIR = ("documento_referencia", "Cuaderno.referencia")
 
-    El JWT del listado declara `exp - iat` y ahí sale la cifra. De `documento_referencia` no
-    se midió nada, así que su prosa NO se deriva de la constante y tiene que seguir diciendo
-    que no se midió: borrar esa frase para que las dos digan lo mismo se siente limpieza y es
-    una afirmación inventada.
+
+def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
+    """Son TRES tokens y sólo uno está medido; aplanarlos haría la documentación más falsa.
+
+    El JWT del listado declara `exp - iat` y ahí sale la cifra. De `documento_referencia` y de
+    `Cuaderno.referencia` no se midió nada, así que su prosa NO se deriva de la constante y
+    tiene que seguir diciendo que no se midió: borrar esa frase para que las tres digan lo
+    mismo se siente limpieza y es una afirmación inventada.
 
     También se cuida el verbo. "Caduca a los N minutos" afirma lo que hace la plataforma;
     medido está lo que el token DICE, y las dos cosas se separan por una petición que nadie
@@ -2092,11 +2217,24 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
 
     # No basta con que ALGUNA diga la cifra buena: así, una página que cambie a 20 minutos
     # deja el guardia verde porque las otras dos siguen bien. Se mira cada mención de una
-    # duración que hable de una referencia, y todas tienen que dar la misma.
+    # duración que hable de una referencia.
+    #
+    # Y se mira a qué token se la atribuye, porque no todas son de la misma. La tabla de
+    # `verificacion.md` pone los tres a menos de doscientos caracteres, así que una ventana
+    # sola le daría a uno la cifra del otro: el día que se mida el del cuaderno, documentarlo
+    # bien pondría la suite en rojo contra la constante equivocada.
     duracion = re.compile(r"(\d+)\s+minutos")
     for fuente in fuentes:
         texto = _texto(fuente)
         for mencion in duracion.finditer(texto):
+            desde = texto.rfind("\n", 0, mencion.start()) + 1
+            hasta = texto.find("\n", mencion.end())
+            linea = texto[desde : hasta if hasta != -1 else len(texto)]
+            sin_medir = [t for t in TOKENS_SIN_MEDIR if t in linea]
+            assert not sin_medir, (
+                f"{fuente.relative_to(RAIZ)} le pone una duración a {sin_medir}, y de esos "
+                "tokens no se midió ninguna: sólo se leyó el `exp` del listado"
+            )
             contexto = texto[max(0, mencion.start() - 200) : mencion.end() + 200].lower()
             if "referencia" not in contexto:
                 continue
@@ -2113,7 +2251,7 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
         "Medido está lo que el token declara; que la plataforma lo rechace ahí no se probó"
     )
 
-    # El otro token, el de los documentos, con la salvedad que lo distingue.
+    # El de los documentos, con la salvedad que lo distingue.
     sin_medir = RAIZ / "src" / "mcp_pjud" / "server.py"
     assert "Cuánto dura no se midió" in _texto(sin_medir), (
         "`documento_referencia` dejó de decir que su duración no se midió, y es el único aviso "

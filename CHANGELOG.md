@@ -27,7 +27,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - El error de causa ambigua decía "ninguna corresponde" cuando correspondían todas, repetía el
   mismo rol una vez por causa encontrada, y mandaba a corregir el libro en competencias donde
-  `tipo` es la letra del rol. Ahora nombra dónde elegir y con qué parámetro.
+  `tipo` es la letra del rol. Ahora nombra dónde elegir y con qué parámetro, y en suprema, que
+  no se acota por ninguno, dice que ahí no hay parámetro con que elegir.
 - Elegir la causa levantaba `KeyError` con una competencia escrita en mayúscula, en vez del
   error de ambigüedad que dice qué falta.
 - La búsqueda por rol decía que omitir `tribunal` "AMPLÍA los resultados". El rol se numera por

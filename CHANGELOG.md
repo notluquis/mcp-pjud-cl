@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Un aviso de la plataforma con una tilde literal llegaba degradado, y uno con una secuencia
+  de escape a medias tumbaba la petición con un error sin clasificar.
+- Un valor ilegible en el panel de georreferencia salía como error crudo en vez de decir que
+  la estructura cambió.
+- Un PDF que sí se abrió se informaba como "no se pudo abrir" cuando ninguna de sus páginas
+  legibles traía texto y alguna no se dejó leer.
+
 ## [0.16.0] - 2026-08-24
 
 ### Agregado

@@ -1369,6 +1369,20 @@ class PjudClient(Transporte):
                 # Esa respuesta viene sin navegación y sin total, así que hay que
                 # reconocerla antes de exigir esos datos. Una búsqueda legítima sin
                 # coincidencias no es un cambio de estructura.
+                #
+                # Pero eso vale en la PRIMERA página. A mitad del recorrido significa otra
+                # cosa: la plataforma ya declaró cuántas hay y de golpe contesta que no hay
+                # ninguna, así que lo acumulado está incompleto. Devolverlo callando es lo
+                # mismo que el resto de esta función existe para impedir: una lista parcial
+                # que se lee como completa.
+                if total is not None and len(acumuladas) != total:
+                    raise EstructuraInesperada(
+                        f"La plataforma declaró {total} resultados y en la página {numero} "
+                        f"respondió que no hay ninguno, con {len(acumuladas)} recuperados. "
+                        "Puede ser un identificador de página vencido o un cambio de "
+                        "estructura. No se devuelve la lista parcial porque se leería como "
+                        "completa."
+                    )
                 return acumuladas
 
             acumuladas.extend(parse_resultados(html_, competencia))

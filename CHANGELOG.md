@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Si la plataforma respondía "no hay resultados" a mitad de un recorrido de páginas, la
+  búsqueda devolvía lo acumulado sin avisar, y esa lista parcial se leía como completa. Ahora
+  se levanta, salvo en la primera página, donde no encontrar nada sigue siendo una respuesta.
+
 ## [0.16.0] - 2026-08-24
 
 ### Agregado

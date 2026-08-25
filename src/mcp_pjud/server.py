@@ -76,6 +76,7 @@ from .client import (
 )
 from .juris import (
     BUSCADORES,
+    CUAL_DE_LA_CASACION_MEDIDO,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
@@ -130,6 +131,36 @@ def _y(nombres: list[str]) -> str:
     return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
 
 
+#: Los campos de una sentencia que no todo buscador declara. Sale de comparar el modelo con el
+#: mapa de cada uno: los seis llegaban en cadena vacía donde nadie los publica.
+_OPCIONALES_DE_LA_SENTENCIA = [
+    "ministros",
+    "redactor",
+    "rol_corte_apelaciones",
+    "sala",
+    "tipo_recurso",
+    "resultado_recurso",
+]
+
+
+def _por_quien_los_publica(campos: list[str]) -> str:
+    """Los campos agrupados por qué buscadores los declaran, en una frase.
+
+    Cada campo se deriva por su cuenta y después se juntan los que coinciden. Nombrar uno y
+    colgarle otros dos ("`sala`, `tipo_recurso` y `resultado_recurso` en …") sale igual hoy y
+    afirma de más mañana: el día que un buscador declare `sala` sin `tipo_recurso`, el contrato
+    diría que lo publica y llegaría en nulo, que es el falso negativo que se vino a cerrar.
+    Y derivarlos de a uno sin agrupar repite la misma lista tres veces con una `y` en medio,
+    que se lee peor que lo que reemplaza.
+    """
+    grupos: dict[tuple[str, ...], list[str]] = {}
+    for campo in campos:
+        grupos.setdefault(tuple(buscadores_que_publican(campo)), []).append(campo)
+    return "; ".join(
+        f"{_y([f'`{c}`' for c in cs])} en {_y(list(quien))}" for quien, cs in grupos.items()
+    )
+
+
 ACOTACION = (
     "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
     f"la competencia: {_y(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
@@ -158,7 +189,7 @@ Suelen diferir en varios días. Si `discrepancia_fechas` es verdadero, las dos f
 sitio no coinciden: informarlo en vez de elegir una.
 
 `georreferenciado: false` prueba que no hay registro SÓLO en
-{", ".join(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
+{_y(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
 significa que no hay dónde mirar. Y `true` significa que el sitio lo ofrece, no que exista:
 está medido que una de seis abre un panel vacío, y saberlo cuesta pedir
 `obtener_georreferencia`.
@@ -732,7 +763,8 @@ def buscar_causa_por_rit(
     f"con tilde salen {CAUSAS_DEL_APELLIDO_CON_TILDE}, y escribir un campo con tilde y el otro "
     "sin ella da CERO. Por eso una lista vacía acá NO significa que la persona no tenga causas, "
     "y una lista con resultados TAMPOCO está completa: falta la mitad escrita de la otra forma. "
-    "Repetir con la otra grafía antes de informar un total."
+    "Repetir con la otra grafía SÓLO antes de informar un total: para abrir una causa que "
+    "ya apareció no hace falta."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
     f"\n\n{ACOTACION}",
 )
@@ -1266,7 +1298,8 @@ def obtener_georreferencia(
     ninguna. Está medido: una de seis. No es lo mismo que no haber preguntado.
 
     `intentos` cuenta cuántas veces el aparato trató de fijar la posición, según el sitio. Qué
-    significa un número alto NO está medido, y en nulo el panel no publicó esa columna.
+    significa un número alto NO está medido. Viene en nulo SÓLO cuando `existe` es falso, o
+    sea cuando no hay georreferencia que contar: si la hay y falta la cuenta, esto levanta.
 
     Informar SIEMPRE `precision_metros` junto con las coordenadas. Está medido que varía entre
     6 y 103 metros en una misma causa, y con 103 la coordenada dice el sector y no la puerta:
@@ -1369,7 +1402,7 @@ def listar_audios_audiencia(
     # los 2 KB. Ahora se dicen una vez, y acá, que es donde se leen.
     description="Busca sentencias en el Buscador Unificado de Fallos.\n\nSirve para "
     "verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve la sentencia "
-    "con su caratulado, sala, fecha y enlace permanente.\n\nEl resultado trae dos cuentas de "
+    "con su caratulado, su fecha y su enlace permanente.\n\nEl resultado trae dos cuentas de "
     "completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma "
     "reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo "
     "porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa "
@@ -1382,12 +1415,11 @@ def listar_audios_audiencia(
     f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
     f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
     "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
-    f"que la sentencia no los tenga: `ministros` y `redactor` sólo en "
-    f"{_y(buscadores_que_publican('ministros'))}, `rol_corte_apelaciones` en "
-    f"{_y(buscadores_que_publican('rol_corte_apelaciones'))}, y `sala`, `tipo_recurso` "
-    f"y `resultado_recurso` en {_y(buscadores_que_publican('sala'))}. La extensión en "
-    "`palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se puede decidir por "
-    "el tamaño si vale pedir el texto completo.\n\n`condiciones_de_publicacion` desglosa la "
+    "que la sentencia no los tenga: "
+    f"{_por_quien_los_publica(_OPCIONALES_DE_LA_SENTENCIA)}. "
+    "La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se "
+    "puede decidir por el tamaño si vale pedir el texto completo."
+    "\n\n`condiciones_de_publicacion` desglosa la "
     "consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la "
     "plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y "
     "`ocultas`: no es que no haya condiciones.",
@@ -1461,11 +1493,13 @@ def obtener_texto_sentencia(
         int | None,
         Field(
             description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
-            "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con su "
-            "resultado y su extensión, y hay que elegir.\n\nEl número es la POSICIÓN EN QUE "
+            "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo "
+            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número es la "
+            "POSICIÓN EN QUE "
             "EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para "
-            "nombrarlas: en suprema está medido que la casación con el razonamiento no es la "
-            "1. Elegir por el orden en que se leyó una explicación entrega la de reemplazo, "
+            "nombrarlas: en suprema está medido que la casación con el razonamiento es "
+            f"la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1. Elegir por el orden en que se leyó "
+            "una explicación entrega la de reemplazo, "
             "que confirma en una línea. Hay que leer la enumeración de la detención y tomar el "
             "número de ahí.",
             ge=1,
@@ -1620,7 +1654,7 @@ Desde cuándo corre el plazo en esta causa.
 
 4. Decir qué NO cubre esta lectura, junto con el resultado y no después:
 
-   - Estas actuaciones sólo se publican en {", ".join(_CON_RECEPTOR)}.
+   - Estas actuaciones sólo se publican en {_y(_CON_RECEPTOR)}.
      Que no aparezca ninguna no prueba que no existan: prueba que ahí termina lo que ese
      panel publica.
    - Son las del ministro de fe, no la historia entera: las resoluciones y las notificaciones
@@ -1667,7 +1701,7 @@ En qué estado está esta causa.
 3. Enumerar panel por panel qué vino, distinguiendo tres estados que NO son lo mismo:
 
    - NULO: {competencia} no publica ese panel, y la pregunta no tiene respuesta acá.
-     Las competencias con al menos un panel medido son {", ".join(_CON_DETALLE)},
+     Las competencias con al menos un panel medido son {_y(_CON_DETALLE)},
      y cada una publica los suyos.
    - Lista vacía: el panel existe y no trae filas. Eso sí es una respuesta.
    - Con elementos: lo que hay.
@@ -1737,13 +1771,13 @@ def verificar_cita(
 Si el Buscador Unificado de Fallos publica la sentencia de esta cita.
 
 1. Pedir `buscar_jurisprudencia` con rol={rol}, anio={anio}, buscador={buscador!r}{frase}.
-   Los buscadores que este servidor acepta son {", ".join(sorted(BUSCADORES))}.
+   Los buscadores que este servidor acepta son {_y(sorted(BUSCADORES))}.
    Cada uno indexa lo suyo: preguntarle al que no es devuelve una lista sin la sentencia.
 
 2. Informar SIEMPRE las dos cuentas de completitud, las dos y no una:
 
    - `ocultas` son las coincidencias que la plataforma reserva a una consulta anónima.
-     Sólo {", ".join(_CON_OCULTAS)} la trae con número, y en NULO no es cero: es que ahí no
+     Sólo {_y(_CON_OCULTAS)} la trae con número, y en NULO no es cero: es que ahí no
      se puede saber.
    - `no_entregadas` son las visibles que esta llamada no trajo porque `filas` acota cuántas
      se piden. Mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en

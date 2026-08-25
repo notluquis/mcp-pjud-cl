@@ -35,8 +35,10 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `condiciones_de_publicacion` no decía qué significa su nulo, que es lo mismo que en
   `coincidencias` y `ocultas`: ahí la plataforma cuenta el índice y no la consulta.
 - `intentos` de la georreferencia no estaba documentado en ninguna parte que el modelo lea.
-- Veintiún frases enumeraban competencias con coma sola, que es lo que hizo leer "en
+- Veintiséis frases enumeraban competencias con coma sola, que es lo que hizo leer "en
   apelaciones, penal" como un solo nombre compuesto. Ahora llevan la `y` antes de la última.
+- El contrato decía que `intentos` viene en nulo cuando el sitio no publica esa columna, y el
+  único nulo posible es que no haya georreferencia: si la hay y falta la cuenta, se levanta.
 - El detalle decía que los escritos pendientes de proveer no están medidos, y se leen donde la
   plataforma los publica.
 

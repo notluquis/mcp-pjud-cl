@@ -3492,7 +3492,10 @@ def test_el_contrato_no_llama_sin_medir_a_un_panel_que_ya_entrega(expuestas):
             p for p in campo.split("_") if p not in genericas
         }
         for forma in formas:
-            assert forma not in aviso, (
+            # Con límite de palabra: sin él, el día que una competencia declare
+            # `causa_es_exhorto` la forma "es" calza dentro de "paneles" y "este" del propio
+            # aviso, y el guardia se cae por algo que no tiene que ver con lo que protege.
+            assert not re.search(rf"\b{re.escape(forma)}\b", aviso), (
                 f"el contrato entrega {campo!r} y el aviso lo nombra como {forma!r} entre los "
                 "paneles sin medir"
             )
@@ -5839,8 +5842,12 @@ def test_el_selector_de_sentencia_dice_de_donde_sale_su_numero(expuestas):
     prosa = (esquema["properties"]["cual"].get("description") or "").lower()
 
     assert prosa, "`cual` se quedó sin descripción, que es lo único que el modelo lee de él"
+    assert f"es la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1" in prosa, (
+        "la medición no aparece en la descripción, así que la constante no sostiene nada y "
+        "cambiarla no pondría nada en rojo"
+    )
     for aviso, porque in [
-        ("no es la 1", "sin esto, el orden de la prosa se lee como el del índice"),
+        ("y no la 1", "sin esto, el orden de la prosa se lee como el del índice"),
         ("enumeración", "el número sale de la detención y hay que decir de dónde"),
     ]:
         assert aviso in prosa, f"la descripción de `cual` no dice {aviso!r}: {porque}"
@@ -5883,9 +5890,9 @@ def test_el_contrato_avisa_que_el_panel_de_notificaciones_llega_vacio(expuestas)
     con_receptor = 0
     for nombre in ("c1156_principal.html", "c1156_apremio.html"):
         html = (RAIZ / "tests" / "fixtures" / nombre).read_text(encoding="utf-8", errors="replace")
-        assert not parse_notificaciones(html, "civil"), (
-            f"{nombre} ya trae filas en el panel: si la plataforma cambió, hay que volver a "
-            "medir antes de mantener el aviso"
+        assert parse_notificaciones(html, "civil") == [], (
+            f"{nombre} ya no devuelve el panel vacío: si la plataforma cambió, o si el parser "
+            "pasó a devolver nulo, hay que volver a medir antes de mantener el aviso"
         )
         con_receptor += sum(1 for a in parse_historia(html, "civil") if a.fecha_diligencia)
     assert con_receptor, "la fixture perdió las actuaciones de receptor y el contraste se cae"
@@ -5894,4 +5901,24 @@ def test_el_contrato_avisa_que_el_panel_de_notificaciones_llega_vacio(expuestas)
     tramo = contrato[contrato.index("`notificaciones`") :]
     assert "vacío" in tramo, (
         "el contrato no avisa que `notificaciones` llega vacío en una causa que sí se notificó"
+    )
+
+
+def test_la_frase_de_campos_opcionales_los_nombra_a_todos():
+    """La lista que la frase enumera se escribe a mano y el modelo crece solo.
+
+    Un campo que alguna competencia no declare y que no esté en la lista queda sin aparecer en
+    el contrato: llega en nulo y nadie dijo por qué. Es el mismo agujero que el resto de este
+    trabajo cierra, un nivel más arriba.
+    """
+    from mcp_pjud.juris import BUSCADORES, Sentencia, buscadores_que_publican
+    from mcp_pjud.server import _OPCIONALES_DE_LA_SENTENCIA
+
+    desiguales = {
+        c for c in Sentencia.model_fields if 0 < len(buscadores_que_publican(c)) < len(BUSCADORES)
+    }
+    assert desiguales, "si todos los buscadores declararan lo mismo, la frase entera sobraría"
+    assert set(_OPCIONALES_DE_LA_SENTENCIA) == desiguales, (
+        f"la frase enumera {sorted(_OPCIONALES_DE_LA_SENTENCIA)} y los campos que unos "
+        f"buscadores declaran y otros no son {sorted(desiguales)}"
     )

@@ -126,9 +126,11 @@ RAFAGA_MAXIMA = 4
 #: mitad que falta llega como lista vacía, que es el falso negativo que la regla 4 existe para
 #: no producir.
 #:
-#: No se corrige consultando las dos grafías: serían dos peticiones por cada búsqueda para
-#: siempre, y el régimen de consulta es una obligación del proyecto, no un ajuste. Se dice, que
-#: es lo que permite no concluir de menos.
+#: No se corrige acá consultando las dos grafías, y la razón no es la carga: la segunda
+#: petición pesa lo mismo la haga el cliente o la pida quien consulta. Es CUÁNDO hace falta.
+#: Hacerlo acá la gasta siempre, incluso en un apellido sin una sola letra acentuable y en las
+#: búsquedas donde no se va a informar un total. La descripción la pide donde sí cambia la
+#: respuesta: antes de decir cuántas causas tiene alguien.
 CAUSAS_DEL_APELLIDO_SIN_TILDE = 5
 CAUSAS_DEL_APELLIDO_CON_TILDE = 25
 

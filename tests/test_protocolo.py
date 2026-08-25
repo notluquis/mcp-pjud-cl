@@ -1844,9 +1844,11 @@ def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:
     """
     rendidas = _rendidas()
     listas = {
-        "computar-plazo": (", ".join(servidor._CON_RECEPTOR), set(MODULOS)),
-        "revisar-causa": (", ".join(servidor._CON_DETALLE), set(MODULOS)),
-        "verificar-cita": (", ".join(sorted(BUSCADORES)), set(BUSCADORES)),
+        # Con `_y`, que es como la prosa las enumera. Los NOMBRES siguen saliendo de la
+        # constante, que es lo que este guardia mide; `_y` es sólo cómo se escriben.
+        "computar-plazo": (servidor._y(servidor._CON_RECEPTOR), set(MODULOS)),
+        "revisar-causa": (servidor._y(servidor._CON_DETALLE), set(MODULOS)),
+        "verificar-cita": (servidor._y(sorted(BUSCADORES)), set(BUSCADORES)),
     }
     for etiqueta, (plantilla, _) in ARGUMENTOS_DE_LA_PLANTILLA.items():
         lista, universo = listas[plantilla]
@@ -1856,7 +1858,7 @@ def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:
         # Y que ahí TERMINE. Sin esto el guardia mira una subcadena: una lista escrita a mano
         # con un nombre de más la contiene entera, así que quitar ese nombre del código no la
         # pondría en rojo. Es la mitad que hace falta para que romper la constante se note.
-        sigue = re.match(r", (\w+)", texto[donde + len(lista) :])
+        sigue = re.match(r"(?:, | y )(\w+)", texto[donde + len(lista) :])
         de_mas = sigue.group(1) if sigue else ""
         assert de_mas not in universo, (
             f"{etiqueta} nombra {de_mas!r} después de {lista!r}, que es lo que el código "
@@ -1865,7 +1867,7 @@ def test_las_plantillas_nombran_lo_que_el_codigo_acepta() -> None:
     # `ocultas` con número es la otra lista derivada, y la que más caro sale escribir a mano:
     # cada buscador nuevo llega con la bandera en falso, así que una lista vieja cuenta de menos
     # justo donde nulo no es cero.
-    con_numero = ", ".join(servidor._CON_OCULTAS)
+    con_numero = servidor._y(servidor._CON_OCULTAS)
     assert f"Sólo {con_numero} la trae con número" in rendidas["verificar-cita"], (
         f"verificar-cita no dice que sólo {con_numero} trae `ocultas` con número"
     )

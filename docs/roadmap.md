@@ -684,6 +684,48 @@ estar verde sobre él.** El aviso decía "los escritos no están medidos" mientr
 leía donde la plataforma los publica, y el guardia buscaba el identificador `escritos_pendientes` mientras
 la prosa nombraba el panel en palabras. Se encontró leyendo la prosa, no corriendo la suite.
 
+### 0.19: acotar una búsqueda de fallos, con la clave que la plataforma declara — hecho
+
+Dos sesiones reportaron lo mismo: el rol de una Corte de Apelaciones no es único a nivel
+nacional. Medido, `2476-2023` devuelve trece sentencias de cinco cortes distintas, y con
+cuarenta y dos sin entregar la cita que se fue a verificar puede quedar fuera de alcance.
+
+En la 0.18 esto quedó fuera por una razón que dejó de valer: hacía falta la clave del
+formulario, y adivinarla es lo que `AGENTS.md` prohíbe. **No hubo que adivinarla.**
+`parametros_buscador`, que cada página del buscador publica, trae `campos_facetas`, y su propio
+JavaScript arma el envío con `facetas_seleccionadas: [{nombre, valores}]`. Medido en los siete,
+y difieren tanto que una lista escrita a mano habría sido la misma clase de defecto que la 0.18
+vino a cerrar: cobranza declara tres facetas y suprema diez.
+
+**Lo que hizo que esto no se pudiera exponer tal cual.** Un valor de faceta que no calza no da
+error: la búsqueda vuelve con cero resultados, indistinguible de que la cita no exista, en la
+herramienta cuyo trabajo es probar que existe. Y no calzar es lo normal, porque la plataforma
+publica su propia ortografía: en la misma respuesta conviven `C.A. de Valparaiso` sin tilde y un
+libro escrito `PROTECCIN`.
+
+| | |
+|---|---|
+| el desglose viene en el resultado | de ahí se copia el valor exacto, en vez de teclearlo |
+| una faceta que el buscador no declara | falla antes de consultar |
+| una búsqueda con facetas que vuelve vacía | se detiene en vez de entregar la lista vacía |
+| y si además hay reservadas | se dice que la cita existe y no se publica, que es otra cosa |
+
+**Dos facetas que la plataforma declara y este servidor no expone**: enfermedad y medicamento,
+del buscador de salud. Un desglose acotado a un rol publica de qué está enferma y qué toma la
+persona que recurrió, que es el mismo criterio por el que no se ofrecen los buscadores penales
+ni el compendio de extranjería.
+
+Lo que este trabajo deja para el próximo, además de lo de siempre: **cuatro guardias de este
+lote empezaron verdes y los cuatro se vieron**. Uno buscaba una faceta prohibida en un tramo
+donde el párrafo que dice que NO se expone contiene la palabra; otro comprobaba el nombre
+nuestro cuando el defecto deja el de Solr; otro miraba la tabla entera, así que mover una faceta
+de un buscador a otro no lo movía; y ninguno probaba que un filtro válido llegara a la petición,
+o sea borrar el envío entero los dejaba a todos verdes.
+
+Y una deuda anotada con su motivo: exigir el desglose también cuando NO se filtra pone 44 tests
+en rojo, porque las fixtures guardadas son copias podadas sin ese bloque y recapturarlas pide el
+mapeo de anonimización, que no se versiona a propósito.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

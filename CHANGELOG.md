@@ -18,6 +18,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- `discrepancia_fechas` venía en falso donde no hay nada que comparar, y eso se lee como que
+  las dos fuentes de la fecha concuerdan. Ahora va en nulo, y su descripción dice que NO
+  compara contra `fecha_registro`.
+- El detalle prometía "cuánto se debe y a qué fecha" en las liquidaciones de laboral, que no
+  publican fecha: ahí no hay con qué saber cuál es la vigente.
 - Las búsquedas por nombre, RUT y fecha mandaban el texto `None` en el campo del tribunal
   cuando la competencia no lo usa, en vez del cero que el sitio emite. La plataforma no da
   error con eso: devuelve un listado vacío, que se lee como que la causa no existe.
@@ -38,10 +43,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   causa esos paneles no existen.
 - El detalle prometía `fecha_diligencia` en cobranza y ahí la plataforma no la publica: la
   frase mandaba a computar un plazo con un dato que nunca está.
-- `tipo` no decía qué va en cobranza ni en laboral, que son competencias aceptadas, y su
-  enumeración de las de libro se podía leer como una sola competencia. Y mandaba a buscar en
-  penal con el nombre del libro, donde la plataforma exige el código y con el nombre devuelve
-  un listado vacío.
+- `tipo` no decía qué va en cobranza ni en laboral, ni qué letras acepta cada una, y están
+  medidas. Y mandaba a buscar en penal con el nombre del libro, donde la plataforma exige el
+  código y con el nombre devuelve un listado vacío.
 - Cuando `piezas_exhorto` y `causa_es_exhorto` vienen los dos en nulo, la descripción ahora
   dice qué significa en vez de mandar a mirar un campo igual de nulo.
 - `obtener_texto_sentencia` elegía en silencio cuando un rol trae más de una sentencia, y

@@ -4082,14 +4082,33 @@ def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
             "herramienta se detenga en vez de elegir"
         )
 
-    # Y TODAS las apariciones, no que el valor esté en alguna parte: `157` sale dos veces en
-    # esa advertencia, así que cambiar una y dejar la otra vieja pasaba igual. Se compara el
-    # conjunto entero de extensiones que la página cita contra las dos medidas.
-    medidas = {str(PALABRAS_DE_LA_CASACION), str(PALABRAS_DEL_REEMPLAZO)}
-    citadas = {n.replace(".", "") for n in re.findall(r"([\d.]+) palabras", referencia)}
-    assert citadas == medidas, (
-        f"la referencia cita las extensiones {sorted(citadas)} y las medidas son "
-        f"{sorted(medidas)}: una copia vieja se esconde detrás de la otra"
+    # Cada aparición contra la SUYA, no el conjunto: `157 palabras` sale dos veces, y con un
+    # conjunto cambiar una por `3.646 palabras` daba el mismo resultado aunque la frase quede
+    # falsa. Lo que ata cada copia es de qué sentencia habla, y eso lo dice la frase.
+    de_cada_una = {
+        "casación": str(PALABRAS_DE_LA_CASACION),
+        "reemplazo": str(PALABRAS_DEL_REEMPLAZO),
+    }
+    citadas = 0
+    for frase in re.split(r"(?<=[.;])\s+", referencia):
+        extensiones = [n.replace(".", "") for n in re.findall(r"([\d.]+) palabras", frase)]
+        if not extensiones:
+            continue
+        # En minúscula: una frase que empiece por "Casación" no calzaba, y el guardia
+        # levantaba su propio error sobre prosa legítima.
+        cual = [c for c in de_cada_una if c in frase.lower()]
+        assert len(cual) == 1, (
+            f"esta frase cita una extensión y no se sabe de cuál de las dos sentencias habla, "
+            f"así que no hay contra qué compararla: {frase!r}"
+        )
+        citadas += len(extensiones)
+        assert set(extensiones) == {de_cada_una[cual[0]]}, (
+            f"la frase de la {cual[0]} cita {extensiones} y lo medido es "
+            f"{de_cada_una[cual[0]]}: una copia se quedó vieja"
+        )
+    assert citadas >= len(de_cada_una), (
+        f"la referencia cita {citadas} extensiones y las medidas son {len(de_cada_una)}: "
+        "falta al menos una"
     )
 
 
@@ -4113,12 +4132,19 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
     # Y qué letras acepta cada una, no sólo su nombre: "una letra" sin decir cuál obliga a
     # adivinar igual, y una letra equivocada devuelve un listado vacío, o sea una causa que
     # existe informada como inexistente.
-    from mcp_pjud.client import TIPOS_MEDIDOS_EN_COBRANZA
+    from mcp_pjud.client import TIPOS_MEDIDOS_EN_COBRANZA, TIPOS_MEDIDOS_EN_LABORAL
 
-    assert TIPOS_MEDIDOS_EN_COBRANZA in dice, (
-        f"`tipo` no dice qué letras acepta cobranza, y están medidas: "
-        f"{TIPOS_MEDIDOS_EN_COBRANZA}. Dice: {dice!r}"
-    )
+    # Las letras JUNTO a su competencia, no sueltas: la de laboral es una sola `O` y la
+    # descripción está llena de oes mayúsculas (LIBRO, CÓDIGO, VACÍO), así que buscarla por su
+    # cuenta pasaba sin que la frase existiera. Ese guardia no podía fallar.
+    for competencia, letras in (
+        ("cobranza", TIPOS_MEDIDOS_EN_COBRANZA),
+        ("laboral", TIPOS_MEDIDOS_EN_LABORAL),
+    ):
+        assert f"en {competencia} {letras}" in dice, (
+            f"`tipo` no dice qué letras acepta {competencia}, y están medidas: {letras}. "
+            f"Dice: {dice!r}"
+        )
 
     # Y en penal, QUÉ va: `rol_con_libro` dice cómo se MUESTRA el rol y no qué se escribe para
     # buscarlo. Está medido que con el nombre del libro el listado vuelve vacío, o sea decir
@@ -4257,6 +4283,86 @@ def _mensaje_al_leer(lector, competencia: str) -> str:
     except EstructuraInesperada as dicho:
         return str(dicho)
     return ""
+
+
+def test_donde_falta_la_fecha_no_se_manda_a_elegir_la_mas_reciente():
+    """La regla "la más reciente es la vigente" necesita una fecha con qué ordenarlas.
+
+    En laboral el panel no la publica, así que ahí esa instrucción manda a señalar una
+    liquidación como vigente sin nada que lo sostenga. Se comprueba en los TRES lugares donde
+    la instrucción viaja: la descripción del campo, el docstring de la herramienta (que va en
+    el contrato) y la plantilla que la persona invoca.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+    from mcp_pjud.server import obtener_detalle_causa
+
+    con_panel = {n: COMPETENCIAS[n].liquidaciones for n in COMPETENCIAS}
+    sin_fecha = sorted(
+        n for n, panel in con_panel.items() if panel is not None and "fecha" not in panel.columnas
+    )
+    assert sin_fecha, "todas las competencias con liquidaciones publican la fecha"
+
+    # El TEXTO que la plantilla devuelve, no su descripción: la instrucción numerada vive en
+    # lo que entra a la conversación, y mirando la descripción el guardia pasaba en vacío.
+    from mcp_pjud.server import revisar_causa
+
+    textos = {
+        "el docstring de la herramienta": obtener_detalle_causa.__doc__ or "",
+        "la plantilla `revisar-causa`": revisar_causa(tipo="C", rol=1, anio=2026),
+    }
+    # Dentro del PÁRRAFO que hace la afirmación, no del texto entero: los dos nombran laboral
+    # en otra parte (los datos personales de una liquidación laboral), así que buscar la
+    # palabra suelta pasaba con la salvedad borrada. Ese guardia no podía fallar.
+    for donde, texto in textos.items():
+        parrafos = [" ".join(b.split()) for b in re.split(r"\n\s*\n", texto)]
+        for parrafo in parrafos:
+            if "más reciente" not in parrafo:
+                continue
+            for competencia in sin_fecha:
+                assert competencia in parrafo, (
+                    f"{donde} manda a tomar la más reciente como vigente y no dice que en "
+                    f"{competencia} no hay fecha con qué ordenarlas: {parrafo!r}"
+                )
+
+
+def test_ningun_campo_se_promete_donde_su_mapa_no_lo_declara():
+    """Compartir el panel no es publicar las mismas columnas.
+
+    `liquidaciones` la traen cobranza y laboral, y sus mapas son distintos: laboral declara
+    documento, RUT, nombre y monto, sin fecha. La descripción prometía "cuánto se debe y a qué
+    fecha" para las dos, y en laboral `fecha` sale siempre en nulo. Peor: la regla de "la más
+    reciente es la vigente" no se puede aplicar sin fecha con qué ordenarlas.
+    """
+    from mcp_pjud.parser import COMPETENCIAS, DetalleCausa, Liquidacion
+
+    for panel, campo in (("liquidaciones", "fecha"),):
+        mapas = {
+            n: getattr(COMPETENCIAS[n], panel)
+            for n in COMPETENCIAS
+            if getattr(COMPETENCIAS[n], panel) is not None
+        }
+        sin_el_campo = sorted(n for n, m in mapas.items() if campo not in m.columnas)
+        if not sin_el_campo:
+            continue
+
+        modelo = {"liquidaciones": Liquidacion}[panel]
+        dicho = modelo.model_fields[campo].description or ""
+        for competencia in sin_el_campo:
+            assert competencia in dicho, (
+                f"`{panel}.{campo}` no dice que en {competencia} viene en nulo, y el mapa de "
+                f"esa competencia no declara la columna: la promesa no se cumple. "
+                f"Dice: {dicho!r}"
+            )
+
+        # Y la descripción del panel, que es la que se lee antes de mirar el campo: si nombra
+        # el dato, tiene que nombrar también dónde no está.
+        panel_dicho = DetalleCausa.model_fields[panel].description or ""
+        if campo in panel_dicho.lower():
+            for competencia in sin_el_campo:
+                assert competencia in panel_dicho, (
+                    f"la descripción de `{panel}` habla de `{campo}` y no dice que "
+                    f"{competencia} no lo publica: {panel_dicho!r}"
+                )
 
 
 def test_ningun_comentario_del_parser_declara_exclusivo_un_panel_compartido():

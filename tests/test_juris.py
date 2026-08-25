@@ -870,6 +870,25 @@ def test_con_reservadas_tambien_se_enumeran_todas_las_visibles(monkeypatch):
         assert palabras in dicho, f"no enumera las tres visibles: {dicho}"
 
 
+def test_si_el_relleno_vuelve_truncado_no_se_enumera_a_medias(monkeypatch):
+    """La segunda consulta también puede volver corta.
+
+    Con tres visibles y una reservada, si el relleno trae una sola fila el mensaje de
+    reservadas enumeraría esa página parcial: volvería a obligar a elegir sin ver todas las
+    alternativas, que es lo que la enumeración existe para evitar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "1933-2025"
+    d["response"]["numFound"] = 3
+    d["condition_pub_sf"] = {"numFound_sf": 4, "counts": ["Publicable", 3, "Reservada", 1]}
+    # Devuelve SIEMPRE una fila, pidan las que pidan: el relleno vuelve truncado.
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(EstructuraInesperada, match="no se pueden enumerar"):
+        c.texto(rol=1933, anio=2025)
+
+
 def test_al_enumerar_va_la_fecha_de_cada_sentencia(monkeypatch):
     """En `familia` el caratulado llega como ANONIMIZADO y no hay tipo ni resultado.
 

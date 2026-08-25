@@ -279,7 +279,7 @@ direcciona el detalle por rol. Son varias peticiones bajo el intervalo mínimo, 
 | `fecha_diligencia` | date \| null | **La que corre los plazos**, ISO 8601 |
 | `hora_diligencia` | time \| null | Cuando la descripción la trae |
 | `fecha_registro` | date \| null | Ingreso al sistema. No corre plazos |
-| `discrepancia_fechas` | bool | Las dos fuentes del sitio no coinciden |
+| `discrepancia_fechas` | bool \| null | Las dos fuentes de `fecha_diligencia` no coinciden. **Nulo** cuando falta una: ahí no hay nada que comparar. NO compara contra `fecha_registro` |
 | `cuaderno` | str | A qué cuaderno pertenece |
 | `foja` | str | Foja |
 | `georreferenciado` | bool | `true` significa que el sitio la OFRECE, no que exista: medido, una de seis abría un panel vacío. `false` significa **ausente** (art. 9 inc. 3 Ley 20.886) sólo donde la competencia publica la columna, y suprema no la publica |
@@ -855,8 +855,8 @@ El texto completo de una sentencia, de una en una.
 
 Medido en suprema, rol **1933-2025**: la de casación en el fondo son **3.646 palabras** y trae
 el razonamiento; la de reemplazo son **157 palabras** y sólo confirma. Antes esta herramienta
-entregaba la que el buscador pusiera primero, y devolvió la de 157 palabras sin decir que
-existía otra.
+entregaba la que el buscador pusiera primero, y devolvió la de reemplazo, de 157 palabras,
+sin decir que existía otra.
 
 Y no siempre son dos: el rol **1504-2019** de apelaciones trae **tres**, medido. Cuando pasan
 de **10**, el mensaje enumera las primeras y dice cuántas quedan fuera.

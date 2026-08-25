@@ -1,6 +1,7 @@
 """Tests del buscador de fallos. Sin red: las fixtures son respuestas reales anonimizadas."""
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -614,6 +615,317 @@ def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
     assert s.paginas == 13
 
 
+def _con_dos_sentencias() -> str:
+    """La misma respuesta con DOS documentos bajo el mismo rol.
+
+    Sintético y dicho: las fixtures guardadas traen una sola. Lo que se sintetiza es la
+    segunda fila, copiada de la primera con su resultado y su extensión cambiados, que es la
+    forma medida en suprema: la casación de 3.646 palabras y la de reemplazo de 157.
+    """
+    d = json.loads(CITA)
+    primera = d["response"]["docs"][0]
+    # El rol de la fixture es otro, y la selección comprueba que lo que llega sea del rol
+    # pedido: sin esto el doble sirve una causa distinta y el guardia mide esa otra cosa.
+    primera["rol_era_sup_s"] = "1933-2025"
+    primera["texto_sentencia"] = "Casación: considerando primero."
+    primera["sent__word_count_i"] = 3646
+    segunda = dict(primera)
+    segunda["resultado_recurso_sup_s"] = "Sentencia de reemplazo"
+    segunda["texto_sentencia"] = "Se confirma."
+    segunda["sent__word_count_i"] = 157
+    d["response"]["docs"] = [primera, segunda]
+    d["response"]["numFound"] = 2
+    return json.dumps(d, ensure_ascii=False)
+
+
+def test_un_rol_con_dos_sentencias_no_se_resuelve_eligiendo_una(monkeypatch):
+    """Medido en suprema, rol 1933-2025: la casación trae 3.646 palabras con el razonamiento y
+    la de reemplazo 157 que sólo confirman.
+
+    Con `filas=1` el buscador elegía, y devolvió la de 157 sin decir que existía otra. Quien
+    verifique una cita se lleva un documento que se ve correcto y no contiene la doctrina.
+    Es la misma decisión que ante dos causas homónimas: no se elige.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_dos_sentencias())
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    # Y el mensaje enumera con qué elegir, no sólo avisa que hay dos.
+    dicho = str(caida.value)
+    assert "3646 palabras" in dicho, f"el mensaje no dice la extensión de la primera: {dicho}"
+    assert "157 palabras" in dicho, f"el mensaje no dice la extensión de la segunda: {dicho}"
+
+
+def _paginando(cuerpo: str) -> JurisClient:
+    """Un cliente cuyo doble RESPETA `filas` y `offset_paginacion`.
+
+    Sin esto el doble devuelve la lista entera pase lo que pase, o sea se comporta como un
+    buscador que ignora la paginación, y un selector que pidiera la página equivocada saldría
+    verde igual.
+    """
+    d = json.loads(cuerpo)
+    todos = d["response"]["docs"]
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        crudo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        desde = re.search(r"offset_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {crudo[:200]}"
+        assert desde, f"el formulario dejó de declarar desde dónde: {crudo[:200]}"
+        inicio = int(desde.group(1))
+        d["response"]["docs"] = todos[inicio : inicio + int(cuantas.group(1))]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    return c
+
+
+def test_con_cual_se_entrega_la_sentencia_que_se_pidio(monkeypatch):
+    """Y la segunda no es la primera: si el índice se ignorara, las dos devolverían lo mismo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _paginando(_con_dos_sentencias())
+
+    assert "Casación" in c.texto(rol=1933, anio=2025, cual=1).texto
+    assert c.texto(rol=1933, anio=2025, cual=2).texto == "Se confirma."
+
+    with pytest.raises(ValueError, match="entrega 2"):
+        c.texto(rol=1933, anio=2025, cual=3)
+
+
+def test_elegir_una_sentencia_no_descarga_las_anteriores(monkeypatch):
+    """La herramienta existe para pedir fallos de a uno: una sentencia de trece páginas son
+    veinticinco mil caracteres.
+
+    Con `filas=cual`, pedir la número 250 descargaba también las 249 anteriores con su texto
+    completo, o sea megabytes para devolver uno, y el riesgo de timeout justo acá. Se pide UNA
+    fila desplazada hasta la elegida.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    formularios: list[str] = []
+    d = json.loads(_con_dos_sentencias())
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        formularios.append(peticion.content.decode(errors="replace"))
+        d["response"]["docs"] = d["response"]["docs"][:1]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    c.texto(rol=1933, anio=2025, cual=2)
+
+    (formulario,) = formularios
+    assert re.search(r"numero_filas_paginacion\"\r?\n\r?\n1\b", formulario), (
+        f"se pidió más de una fila para devolver una sola: {formulario[:400]}"
+    )
+    assert re.search(r"offset_paginacion\"\r?\n\r?\n1\b", formulario), (
+        f"no se desplazó hasta la sentencia elegida: {formulario[:400]}"
+    )
+
+
+def test_al_enumerar_no_falta_ninguna_ni_se_elige_a_ciegas(monkeypatch):
+    """Un rol con TRES: el mensaje decía "tiene 3" y listaba dos.
+
+    Medido en el repo: el rol 1504-2019 de apelaciones devuelve tres. Con el listado a medias,
+    quien necesita la tercera no tiene su rótulo ni su extensión, o sea el selector obliga a
+    elegir a ciegas justo donde más falta hace.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    d["response"]["docs"] = [
+        {**base, "rol_era_sup_s": "1504-2019", "sent__word_count_i": n} for n in (900, 500, 100)
+    ]
+    d["response"]["numFound"] = 3
+    todos = d["response"]["docs"]
+
+    # El doble RESPETA `numero_filas_paginacion`: si sirviera siempre las tres, la primera
+    # consulta ya traería todo y la segunda no se ejercitaría, que es justo lo que se prueba.
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        cuerpo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", cuerpo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {cuerpo[:200]}"
+        pedidas = int(cuantas.group(1))
+        d["response"]["docs"] = todos[:pedidas]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1504, anio=2019)
+
+    dicho = str(caida.value)
+    for palabras in ("900 palabras", "500 palabras", "100 palabras"):
+        assert palabras in dicho, f"el mensaje no enumera las tres opciones: {dicho}"
+
+
+def test_al_enumerar_va_el_caratulado_y_no_solo_el_rotulo(monkeypatch):
+    """En `laborales` el mapeo no declara `resultado_recurso` ni `tipo_recurso`.
+
+    Sin el caratulado las opciones salían todas como "sin rótulo" y se distinguían sólo por el
+    largo, y ahí el propio buscador mezcla causas distintas con el mismo número (`T-364-2020`
+    contra `O-364-2020`): lo que las separa es justamente el caratulado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    d["response"]["docs"] = [
+        {**base, "caratulado_s": "PEREZ / EMPRESA UNO"},
+        {**base, "caratulado_s": "SOTO / EMPRESA DOS"},
+    ]
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=364, anio=2020)
+
+    dicho = str(caida.value)
+    assert "PEREZ / EMPRESA UNO" in dicho, f"falta el caratulado de la primera: {dicho}"
+    assert "SOTO / EMPRESA DOS" in dicho, f"falta el caratulado de la segunda: {dicho}"
+
+
+def test_la_ambiguedad_se_decide_por_lo_que_la_plataforma_declara(monkeypatch):
+    """Una respuesta que declara tres y trae una es la misma elección silenciosa, disfrazada.
+
+    Con la ambigüedad decidida por cuántas filas llegaron, un truncamiento o un cambio de
+    contrato devolvía esa única como si fuera la única que hay. Se decide por `visibles`, y si
+    las filas no alcanzan para enumerar se levanta en vez de elegir.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "1933-2025"
+    d["response"]["numFound"] = 3  # la plataforma declara tres y manda una
+
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(EstructuraInesperada, match="no se pueden enumerar"):
+        c.texto(rol=1933, anio=2025)
+
+
+def test_una_reservada_bajo_el_mismo_rol_tambien_detiene(monkeypatch):
+    """En suprema `ocultas` corresponde a la consulta, así que una visible más una reservada
+    da `visibles == 1`.
+
+    Entregar la visible la hace pasar por la única del rol, y si la cita que se fue a
+    verificar es la reservada, lo que vuelve es otro fallo del mismo rol: verosímil y
+    distinto. Es el mismo error que esta herramienta cerró para dos visibles.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "1933-2025"
+    # Una visible en la página, y el recuento por condición de publicación declara dos: la
+    # diferencia es la reservada, que es como la plataforma la publica.
+    d["condition_pub_sf"] = {
+        "numFound_sf": 2,
+        "counts": ["Con interes jurisprudencial, no anonimizable", 1, "Reservada", 1],
+    }
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(PlataformaRechaza, match="reservada"):
+        c.texto(rol=1933, anio=2025)
+
+
+def test_con_reservadas_tambien_se_enumeran_todas_las_visibles(monkeypatch):
+    """La rama de reservadas corría ANTES de volver a pedirlas, así que listaba las dos filas
+    que se habían traído para detectar la ambigüedad.
+
+    Con tres visibles y una reservada, quien necesita la tercera seguía eligiendo a ciegas,
+    justo cuando además hay una opción que no se ve.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    base["rol_era_sup_s"] = "1933-2025"
+    todos = [{**base, "sent__word_count_i": n} for n in (900, 500, 100)]
+    d["response"]["numFound"] = 3
+    d["condition_pub_sf"] = {"numFound_sf": 4, "counts": ["Publicable", 3, "Reservada", 1]}
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        crudo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {crudo[:200]}"
+        d["response"]["docs"] = todos[: int(cuantas.group(1))]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    with pytest.raises(PlataformaRechaza, match="reservada") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    dicho = str(caida.value)
+    for palabras in ("900 palabras", "500 palabras", "100 palabras"):
+        assert palabras in dicho, f"no enumera las tres visibles: {dicho}"
+
+
+def test_al_enumerar_va_la_fecha_de_cada_sentencia(monkeypatch):
+    """En `familia` el caratulado llega como ANONIMIZADO y no hay tipo ni resultado.
+
+    Sin la fecha, las opciones quedaban en el mismo rol, el mismo caratulado y un número de
+    palabras: elegir por extensión en vez de por lo que identifica una cita.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    base["rol_era_sup_s"] = "1933-2025"
+    d["response"]["docs"] = [
+        {**base, "fec_sentencia_sup_dt": "2025-03-25T00:00:00Z"},
+        {**base, "fec_sentencia_sup_dt": "2025-04-10T00:00:00Z"},
+    ]
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    dicho = str(caida.value)
+    assert "2025-03-25" in dicho, f"falta la fecha de la primera: {dicho}"
+    assert "2025-04-10" in dicho, f"falta la fecha de la segunda: {dicho}"
+
+
+def test_si_llega_otra_causa_en_la_posicion_pedida_no_se_entrega(monkeypatch):
+    """`cual` es una posición, y entre la enumeración y la selección el orden puede cambiar.
+
+    No hay identificador estable medido en estos buscadores, así que lo que se puede
+    comprobar es que lo que llegó siga siendo del rol pedido. Una sentencia de otra causa se
+    lee como la que se fue a verificar, que es el peor resultado de esta herramienta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "9999-2025"
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(EstructuraInesperada, match="el listado cambió"):
+        c.texto(rol=1933, anio=2025, cual=2)
+
+
+def test_un_indice_menor_que_uno_se_rechaza(monkeypatch):
+    """`JurisClient` se usa también sin pasar por el protocolo, donde el esquema exige `ge=1`.
+
+    Con `cual=0` el `or` lo convertía en 1 y entregaba la primera en silencio; con `cual=-1`
+    indexaba desde el final y devolvía otra. El selector volvía a elegir por su cuenta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_dos_sentencias())
+
+    for malo in (0, -1):
+        with pytest.raises(ValueError, match="empieza en 1"):
+            c.texto(rol=1933, anio=2025, cual=malo)
+
+
 def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):
     """`texto` resuelve con una búsqueda, y el rol o el año se podían perder en el camino.
 
@@ -638,7 +950,9 @@ def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):
     # El diccionario entero y no campo por campo: así también cae un argumento de más, y el
     # buscador, que es el otro camino por el que la respuesta puede venir de otro corpus.
     assert len(pedidos) == 1, "una sola búsqueda: el texto viene en la misma respuesta"
-    assert pedidos[0] == {"rol": 34546, "anio": 2025, "filas": 1, "buscador": "suprema"}
+    # `filas: 2` y no 1: con una sola, un rol con dos sentencias dejaba que el buscador
+    # eligiera cuál. Lo que este test cuida sigue siendo que el rol y el año viajen.
+    assert pedidos[0] == {"rol": 34546, "anio": 2025, "filas": 2, "buscador": "suprema"}
 
     # Y con otro buscador, para que fijar el nombre en el código no pase por bueno: con la
     # sesión en suprema, un `buscador` perdido acá devuelve el texto del corpus equivocado.

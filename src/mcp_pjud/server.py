@@ -1425,9 +1425,23 @@ def obtener_texto_sentencia(
         str,
         Field(description=f"Uno de: {', '.join(sorted(BUSCADORES))}."),
     ] = "suprema",
+    cual: Annotated[
+        int | None,
+        Field(
+            description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
+            "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con su "
+            "resultado y su extensión, y hay que elegir.",
+            ge=1,
+        ),
+    ] = None,
     ctx: Context | None = None,
 ) -> TextoSentencia:
     """El texto completo de una sentencia, de una en una.
+
+    Un mismo rol puede traer MÁS DE UNA sentencia: en suprema, la de casación con el
+    razonamiento y la de reemplazo, que confirma en una línea. Ahí esto se detiene en vez de
+    elegir, porque la equivocada se ve igual de válida y no contiene la doctrina que se fue a
+    buscar.
 
     Se pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son
     unos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en
@@ -1439,7 +1453,7 @@ def obtener_texto_sentencia(
     """
     with JurisClient(_contacto()) as c:
         c.aviso = _avisos(ctx)
-        return c.texto(rol=rol, anio=anio, buscador=buscador)
+        return c.texto(rol=rol, anio=anio, buscador=buscador, cual=cual)
 
 
 # -- plantillas ----------------------------------------------------------------

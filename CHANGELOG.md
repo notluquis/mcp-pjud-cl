@@ -44,6 +44,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   un listado vacío.
 - Cuando `piezas_exhorto` y `causa_es_exhorto` vienen los dos en nulo, la descripción ahora
   dice qué significa en vez de mandar a mirar un campo igual de nulo.
+- `obtener_texto_sentencia` elegía en silencio cuando un rol trae más de una sentencia, y
+  podía devolver la de reemplazo (que confirma en una línea) en vez de la de casación (que
+  trae el razonamiento). Ahora se detiene, las enumera y hay que elegir con `cual`.
 
 ## [0.16.0] - 2026-08-24
 

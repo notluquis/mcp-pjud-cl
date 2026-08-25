@@ -554,6 +554,56 @@ def parse_sentencias(
     )
 
 
+#: Cuántas sentencias se enumeran como mucho al pedir que se elija una. Es un tope de
+#: mensaje, no de la plataforma: cada documento que se trae para enumerar arrastra su texto
+#: completo, y lo que falta se dice en vez de callarse.
+TOPE_AL_ENUMERAR = 10
+
+#: El caso medido de un rol con más de una sentencia, que es lo que justifica que esta
+#: herramienta se detenga en vez de elegir. Vive acá y no sólo en la prosa porque la
+#: referencia lo cita y `tests/test_documentacion.py` compara las dos.
+ROL_CON_DOS_SENTENCIAS = "1933-2025"
+
+#: Y el que trae TRES, medido el 17 de agosto de 2026 en el buscador de apelaciones. Que no
+#: siempre sean dos es lo que obliga a enumerar de verdad en vez de listar un par.
+ROL_CON_TRES_SENTENCIAS = "1504-2019"
+PALABRAS_DE_LA_CASACION = 3646
+PALABRAS_DEL_REEMPLAZO = 157
+
+
+def _es_del_rol(sentencia: Sentencia, rol: int, anio: int) -> bool:
+    """Si la sentencia que llegó corresponde al rol que se pidió.
+
+    El buscador publica el rol como texto y no siempre con el mismo formato, así que se
+    comparan sus dígitos: lo que se quiere descartar es haber recibido OTRA causa, no una
+    diferencia de puntuación.
+    """
+    digitos = re.sub(r"\D", "", sentencia.rol or "")
+    return digitos == f"{rol}{anio}"
+
+
+def _enumerar(sentencias: list[Sentencia]) -> str:
+    """Las opciones como las lee quien tiene que elegir una.
+
+    Va el rol y el caratulado además del rótulo: en `laborales` el mapeo no declara
+    `resultado_recurso` ni `tipo_recurso`, así que sin ellos las opciones salían todas como
+    "sin rótulo" y sólo se distinguían por el largo. Y ahí el propio buscador mezcla causas
+    distintas con el mismo número (`T-364-2020` contra `O-364-2020`), que es justo lo que el
+    caratulado separa.
+
+    Y la FECHA, porque el caratulado tampoco siempre distingue: en `familia` llega como
+    `ANONIMIZADO` y ese buscador tampoco declara tipo ni resultado, así que sin la fecha las
+    opciones quedaban en el mismo rol, el mismo caratulado y un número de palabras. El rol y
+    la fecha son lo que identifica una cita, que es lo que se vino a verificar.
+    """
+    return "; ".join(
+        f"{i}: {s.rol or 'sin rol'} del {s.fecha_sentencia or 'sin fecha'},"
+        f" {s.caratulado or 'sin caratulado'}"
+        f" [{s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}, {s.palabras} palabras]"
+        for i, s in enumerate(sentencias, 1)
+    )
+
+
 class JurisClient(Transporte):
     """Buscador Unificado de Fallos.
 
@@ -701,7 +751,9 @@ class JurisClient(Transporte):
         ).text
         return parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
 
-    def texto(self, *, rol: int, anio: int, buscador: str = "suprema") -> TextoSentencia:
+    def texto(
+        self, *, rol: int, anio: int, buscador: str = "suprema", cual: int | None = None
+    ) -> TextoSentencia:
         """El texto completo de una sentencia, de una en una.
 
         Se resuelve con la misma búsqueda por rol y año: el buscador ya devuelve el texto en
@@ -712,7 +764,44 @@ class JurisClient(Transporte):
         personas naturales suprimidos por el propio tribunal, y se dice cuál de los dos
         campos se entregó.
         """
-        r = self.buscar(rol=rol, anio=anio, filas=1, buscador=buscador)
+        if cual is not None and cual < 1:
+            # `JurisClient` se usa también sin pasar por el protocolo, donde el esquema ya
+            # exige `ge=1`. Sin esta comprobación, `cual=0` entregaba en silencio la primera
+            # (el `or` lo convertía en 1) y `cual=-1` indexaba desde el final: el selector
+            # volvía a elegir un fallo por su cuenta, que es lo que existe para no hacer.
+            raise ValueError(f"`cual` empieza en 1 y se pidió {cual}.")
+
+        # Con `cual`, se pide UNA fila desplazada hasta ella. Pedir `filas=cual` traería
+        # también todas las anteriores con su texto completo, y una sentencia de trece páginas
+        # son veinticinco mil caracteres: con un índice alto eso son megabytes descargados para
+        # devolver uno, justo en la herramienta que existe para pedirlos de a uno.
+        #
+        # Sin `cual`, dos filas: alcanzan para DETECTAR que hay más de una sin arrastrar de más.
+        if cual is None:
+            r = self.buscar(rol=rol, anio=anio, filas=2, buscador=buscador)
+        else:
+            r = self.buscar(rol=rol, anio=anio, filas=1, desplazamiento=cual - 1, buscador=buscador)
+            # `cual` es una POSICIÓN dentro del orden que la búsqueda devuelve, y entre la
+            # enumeración y esta llamada ese orden podría cambiar (una sentencia nueva del
+            # mismo rol, o dos empatadas por fecha que se ordenen al revés). Lo que sí se
+            # comprueba es que lo que llegó siga siendo del rol pedido: sin identificador
+            # estable medido en este buscador, no hay con qué comprobar más, y construir la
+            # selección sobre la clave del `url` sería suponer que dura, que no está medido.
+            if r.sentencias and not _es_del_rol(r.sentencias[0], rol, anio):
+                raise EstructuraInesperada(
+                    f"Se pidió la sentencia {cual} del rol {rol}-{anio} y llegó "
+                    f"{r.sentencias[0].rol!r}: el listado cambió entre una consulta y otra, o "
+                    "el buscador dejó de ordenarlas igual. No se entrega, porque una sentencia "
+                    "de otro rol se lee como la que se fue a verificar."
+                )
+            if not r.sentencias and r.visibles:
+                # La página vacía por pasarse del final NO es "la sentencia no existe": el rol
+                # está y el índice se fue de rango. Se separa antes de llegar a la rama de
+                # abajo, que diría que no aparece ninguna.
+                raise ValueError(
+                    f"Se pidió la sentencia número {cual} del rol {rol}-{anio} y el buscador "
+                    f"entrega {r.visibles}."
+                )
         if not r.sentencias:
             if r.ocultas:
                 raise PlataformaRechaza(
@@ -732,13 +821,62 @@ class JurisClient(Transporte):
                 "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
             )
 
+        # Más de una bajo el mismo rol: NO se elige. La ambigüedad se decide por `visibles`,
+        # que es lo que la plataforma DECLARA, y no por cuántas filas llegaron: una respuesta
+        # que declare tres y traiga una (truncada, o el contrato cambió) dejaba pasar la misma
+        # elección silenciosa que esto existe para cerrar.
+        #
+        # Y una reservada cuenta: en suprema, donde `ocultas` corresponde a la consulta, una
+        # visible más una reservada da `visibles == 1` y entregarla la haría pasar por la
+        # única del rol. Si la cita que se fue a verificar es la reservada, se devuelve otro
+        # fallo del mismo rol, verosímil y distinto.
+        if cual is None and r.visibles + (r.ocultas or 0) > 1:
+            # Se vuelve a pedir con todas para poder ENUMERARLAS, y ANTES de decidir por qué
+            # se detiene: con reservadas el mensaje también las enumera, y hacerlo después
+            # dejaba ese camino listando las dos filas que se habían traído para detectar la
+            # ambigüedad. Sin esto, un rol de tres (medido: 1504-2019 en apelaciones) decía
+            # "tiene 3" y listaba dos. Es una petición más y sólo ocurre en el caso ambiguo.
+            if r.visibles > len(r.sentencias):
+                r = self.buscar(
+                    rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
+                )
+            if r.ocultas:
+                raise PlataformaRechaza(
+                    f"El rol {rol}-{anio} tiene {r.visibles} sentencia(s) que se pueden ver y "
+                    f"{r.ocultas} reservada(s) a una consulta anónima. No se entrega ninguna "
+                    "sin decir cuál en `cual`: la que falta puede ser justamente la que se "
+                    f"busca, y las visibles son {_enumerar(r.sentencias)}."
+                )
+            if len(r.sentencias) < min(r.visibles, TOPE_AL_ENUMERAR):
+                # Se pidieron y no llegaron: enumerar a medias haría elegir a ciegas entre
+                # opciones que no se ven, y seguir devolvería una sola como si fuera la única.
+                raise EstructuraInesperada(
+                    f"El rol {rol}-{anio} declara {r.visibles} sentencias en {buscador} y la "
+                    f"respuesta trajo {len(r.sentencias)}: no se pueden enumerar para que se "
+                    "elija una, y devolver la que llegó la haría pasar por la única."
+                )
+            faltan = max(0, r.visibles - len(r.sentencias))
+            raise ValueError(
+                f"El rol {rol}-{anio} tiene {r.visibles} sentencias en {buscador} y esta "
+                f"herramienta entrega una: hay que decir cuál en `cual`. Son: "
+                f"{_enumerar(r.sentencias)}"
+                + (f" (y {faltan} más, que no caben en este mensaje)" if faltan else "")
+                + ". No se elige por ti: en suprema está medido que un rol trae la casación "
+                "con el razonamiento y la de reemplazo que confirma en una línea, y la "
+                "equivocada se ve igual de válida."
+            )
+
+        # Siempre la primera de la página: sin `cual` es la única que hay, y con `cual` la
+        # página ya viene desplazada hasta ella.
+        indice = 0
+
         # El texto viene en la misma respuesta del listado, así que no hace falta otra
         # petición: se relee el cuerpo que `buscar` acaba de traer. `Sentencia` no lo lleva a
         # propósito, para que una búsqueda no arrastre veinticinco mil caracteres por fila.
         campos = BUSCADORES[buscador.lower()].campos
         docs = json.loads(self._ultima_respuesta or "{}").get("response", {}).get("docs", [])
-        crudo = docs[0] if docs else {}
-        s = r.sentencias[0]
+        crudo = docs[indice] if len(docs) > indice else {}
+        s = r.sentencias[indice]
         anon = s.anonimizada
         clave = campos["texto_anonimizado"] if anon else campos["texto"]
         texto = str(crudo.get(clave, "") or "")

@@ -1032,6 +1032,66 @@ def test_un_pdf_ilegible_no_se_describe_como_escaneo(monkeypatch: pytest.MonkeyP
     )
 
 
+def test_cual_llega_hasta_el_buscador_por_el_protocolo(monkeypatch: pytest.MonkeyPatch):
+    """El parámetro se anuncia en el contrato y podía no estar cableado.
+
+    Los otros guardias llaman a `JurisClient.texto` directo, así que borrar el `cual=cual` de
+    la herramienta los dejaba a todos verdes: el contrato seguiría prometiendo el selector y
+    quien lo usara recibiría siempre la misma sentencia, que es exactamente el defecto que
+    este parámetro existe para cerrar.
+    """
+    import json as _json
+
+    from mcp_pjud import juris as juris_modulo
+
+    monkeypatch.setattr(servidor, "_CONTACTO", "test@example.cl")
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    crudo = _json.loads((FIXTURES / "juris_cita_unica.json").read_text(encoding="utf-8"))
+    primera = crudo["response"]["docs"][0]
+    # Del rol que se va a pedir: la selección comprueba que lo que llega sea de ese rol.
+    primera["rol_era_sup_s"] = "1933-2025"
+    primera["texto_sentencia"] = "Casación: considerando primero."
+    segunda = dict(primera)
+    segunda["texto_sentencia"] = "Se confirma."
+    crudo["response"]["docs"] = [primera, segunda]
+    crudo["response"]["numFound"] = 2
+
+    todos = crudo["response"]["docs"]
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        # El doble respeta la paginación: elegir una sentencia pide UNA fila desplazada hasta
+        # ella, y un doble que devuelva siempre las dos no distingue la primera de la segunda.
+        formulario = peticion.content.decode(errors="replace")
+        desde = re.search(r"offset_paginacion\"\r?\n\r?\n(\d+)", formulario)
+        assert desde, f"el formulario dejó de declarar desde dónde: {formulario[:200]}"
+        inicio = int(desde.group(1))
+        crudo["response"]["docs"] = todos[inicio : inicio + 1]
+        return httpx.Response(200, text=_json.dumps(crudo, ensure_ascii=False))
+
+    def fabricar(contacto: str) -> juris_modulo.JurisClient:
+        cliente = juris_modulo.JurisClient(contacto)
+        cliente._http = httpx.Client(transport=httpx.MockTransport(responder))
+        cliente._token, cliente._id_buscador = "tok", "528"
+        cliente._buscador_de_la_sesion = "suprema"
+        return cliente
+
+    monkeypatch.setattr(servidor, "JurisClient", fabricar)
+
+    async def pedir(cual: int) -> CallToolResult:
+        async with Client(servidor.mcp) as cliente:
+            return await cliente.call_tool(
+                "obtener_texto_sentencia", {"rol": 1933, "anio": 2025, "cual": cual}
+            )
+
+    assert "Se confirma." in _texto(asyncio.run(pedir(2))), (
+        "pedir la segunda sentencia por el protocolo devolvió otra cosa: `cual` no llega"
+    )
+    assert "Casación" in _texto(asyncio.run(pedir(1))), (
+        "y la primera tiene que seguir siendo la primera"
+    )
+
+
 def test_un_pdf_que_si_se_abrio_no_dice_que_no_se_pudo_abrir():
     """Hay DOS caminos al nulo de `capa_de_texto` y el resumen contemplaba uno.
 

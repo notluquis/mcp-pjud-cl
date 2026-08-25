@@ -18,6 +18,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Las búsquedas por nombre, RUT y fecha mandaban el texto `None` en el campo del tribunal
+  cuando la competencia no lo usa, en vez del cero que el sitio emite. La plataforma no da
+  error con eso: devuelve un listado vacío, que se lee como que la causa no existe.
+- Si la plataforma respondía "no hay resultados" a mitad de un recorrido de páginas, la
+  búsqueda devolvía lo acumulado sin avisar, y esa lista parcial se leía como completa. Ahora
+  se levanta, salvo en la primera página, donde no encontrar nada sigue siendo una respuesta.
+- La Historia de cobranza entregaba nueve filas de más: la plataforma repite algunos trámites
+  con las columnas de etapa y trámite en blanco, y venían como actuaciones distintas. Una de
+  ellas tampoco podía reconocerse como actuación del ministro de fe.
 - Un aviso de la plataforma con una tilde literal llegaba degradado, y uno con una secuencia
   de escape a medias tumbaba la petición con un error sin clasificar.
 - Un valor ilegible en el panel de georreferencia salía como error crudo en vez de decir que

@@ -4068,6 +4068,16 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
             f"use tiene que adivinar. Dice: {dice!r}"
         )
 
+    # Y qué letras acepta cada una, no sólo su nombre: "una letra" sin decir cuál obliga a
+    # adivinar igual, y una letra equivocada devuelve un listado vacío, o sea una causa que
+    # existe informada como inexistente.
+    from mcp_pjud.client import TIPOS_MEDIDOS_EN_COBRANZA
+
+    assert TIPOS_MEDIDOS_EN_COBRANZA in dice, (
+        f"`tipo` no dice qué letras acepta cobranza, y están medidas: "
+        f"{TIPOS_MEDIDOS_EN_COBRANZA}. Dice: {dice!r}"
+    )
+
     # Y en penal, QUÉ va: `rol_con_libro` dice cómo se MUESTRA el rol y no qué se escribe para
     # buscarlo. Está medido que con el nombre del libro el listado vuelve vacío, o sea decir
     # "manda 'Ordinaria'" convierte una causa que existe en un falso negativo.
@@ -4164,15 +4174,28 @@ def test_la_referencia_no_promete_la_fecha_de_diligencia_en_cobranza():
         for n in COMPETENCIAS
         if COMPETENCIAS[n].receptor and not COMPETENCIAS[n].receptor_en_historia
     )
-    aviso = referencia[referencia.index("Al computar plazos") :]
-    aviso = aviso[: aviso.index("Y las notificaciones")]
-    nombradas = sorted({c for c in COMPETENCIAS if c in aviso})
+    # La página Y el docstring de la herramienta, que se publica en el esquema MCP: la
+    # instantánea del contrato reproduce esa misma prosa, así que sin esto la afirmación que
+    # decide desde cuándo se cuenta un plazo podía volver a separarse de su fuente.
+    from mcp_pjud.server import obtener_detalle_causa
 
-    assert nombradas == sorted(con_fecha + sin_la_fecha), (
-        f"la advertencia de plazos nombra {nombradas}; la fecha de diligencia la traen "
-        f"{con_fecha} y {sin_la_fecha} tienen receptor sin ella, así que son las que hay que "
-        "nombrar: es lo que decide desde cuándo se cuenta un plazo"
-    )
+    for texto in (referencia, " ".join((obtener_detalle_causa.__doc__ or "").split())):
+        # La lista de nombres no basta: "salvo en civil y cobranza" nombra las mismas dos que
+        # "sólo en civil; en cobranza no", y dicen lo contrario. Lo que separa las dos frases
+        # es el "salvo", que es la forma exacta que prometía el dato donde no está.
+        assert "salvo en civil y cobranza" not in texto, (
+            "vuelve a prometerse `fecha_diligencia` en cobranza, donde la plataforma no "
+            f"publica cuándo se practicó la diligencia: {texto[:200]!r}"
+        )
+        aviso = texto[texto.index("Al computar plazos") :]
+        aviso = aviso[: aviso.index("Y las notificaciones")]
+        nombradas = sorted({c for c in COMPETENCIAS if c in aviso})
+
+        assert nombradas == sorted(con_fecha + sin_la_fecha), (
+            f"la advertencia de plazos nombra {nombradas}; la fecha de diligencia la traen "
+            f"{con_fecha} y {sin_la_fecha} tienen receptor sin ella, así que son las que hay "
+            "que nombrar: es lo que decide desde cuándo se cuenta un plazo"
+        )
 
 
 def _mensaje_al_leer(lector, competencia: str) -> str:
@@ -4184,14 +4207,39 @@ def _mensaje_al_leer(lector, competencia: str) -> str:
     """
     from mcp_pjud.parser import EstructuraInesperada
 
+    # Cualquier otra excepción SE PROPAGA: si un lector cambia de firma o revienta antes de
+    # llegar a su `EstructuraInesperada`, devolver "" apagaba este guardia en silencio ante
+    # justo el cambio que tiene que delatar.
     try:
         lector("<html></html>", competencia)
     except EstructuraInesperada as dicho:
         return str(dicho)
-    except Exception:
-        # Otros lectores piden otros argumentos; lo que interesa es el mensaje del panel.
-        return ""
     return ""
+
+
+def test_ningun_comentario_del_parser_declara_exclusivo_un_panel_compartido():
+    """Los comentarios `#:` de los mapas de panel también afirman quién lo publica.
+
+    Dos decían "es la única competencia que la publica" de paneles que laboral también trae,
+    contradiciendo a los mapas laborales definidos en el mismo archivo. No viajan al cliente,
+    pero son lo que lee quien mantiene el parser, y con esa frase descartaría los paneles
+    laborales por error.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+
+    fuente = _texto(RAIZ / "src" / "mcp_pjud" / "parser.py")
+    compartidos = [
+        p
+        for p in ("liquidaciones", "diligencias")
+        if len([n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], p) is not None]) > 1
+    ]
+    assert compartidos, "estos dos paneles dejaron de estar en más de una competencia"
+
+    for frase in ("única competencia que la publica", "única competencia que lo publica"):
+        assert frase not in fuente, (
+            f"un comentario del parser declara exclusivo un panel que comparten varias "
+            f"competencias ({compartidos}): quien lo lea va a descartar las otras"
+        )
 
 
 def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():

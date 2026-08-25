@@ -155,7 +155,8 @@ NOTIFICACIONES_LABORAL = Notificaciones(
 )
 
 
-#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#: La de cobranza, medida sobre `C-208-2019`. Laboral publica el mismo panel con su
+#: propio mapa: éste NO se lee en otra competencia.
 #:
 #: Responde la pregunta que da sentido a un juicio de cobro y que hasta ahora no se contestaba:
 #: cuánto se debe y a qué fecha. La causa medida trae tres liquidaciones sucesivas, de
@@ -173,7 +174,8 @@ LIQUIDACIONES_COBRANZA = Liquidaciones(
 )
 
 
-#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#: La de cobranza, medida sobre `C-208-2019`. Laboral publica el mismo panel con su
+#: propio mapa: éste NO se lee en otra competencia.
 #:
 #: Es donde cobranza guarda de verdad las diligencias del ministro de fe: su Historia nombra
 #: tres filas `Actuacion - Receptor` y ninguna trae fecha de diligencia, así que leerlas de ahí

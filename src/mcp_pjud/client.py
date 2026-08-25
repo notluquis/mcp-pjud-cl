@@ -279,6 +279,12 @@ MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelac
 #: que decirle a alguien que mande "Ordinaria" convierte una causa que existe en un falso
 #: negativo. Vive acá para que la prosa salga de la medición y no al revés.
 TIPO_PENAL_MEDIDO = "1"
+
+#: Las letras de rol medidas en cobranza, sobre el tribunal 1332 el 20 de agosto de 2026. La
+#: descripción del parámetro las cita: decir "una letra" sin decir cuáles obliga a adivinar, y
+#: una letra equivocada devuelve un listado vacío, o sea una causa que existe informada como
+#: inexistente.
+TIPOS_MEDIDOS_EN_COBRANZA = "A C D E J L P R"
 LIBRO_DEL_TIPO_PENAL_MEDIDO = "Ordinaria"
 #: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
 #: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.

@@ -64,6 +64,7 @@ from .client import (
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
     TIPO_PENAL_MEDIDO,
+    TIPOS_MEDIDOS_EN_COBRANZA,
     VERSION,
     Corte,
     Documento,
@@ -422,8 +423,9 @@ _CON_LIBRO_POR_NOMBRE = sorted(set(_CON_LIBRO) - {"penal"})
 Tipo = Annotated[
     str,
     Field(
-        description=f"Letra del rol en {_y(_CON_LETRA)}; en civil son C, V, E, A, F "
-        f"o I. En {_y(_CON_LIBRO_POR_NOMBRE)} va el LIBRO en vez de una letra (por ejemplo "
+        description=f"Letra del rol en {_y(_CON_LETRA)}; en civil son C, V, E, A, F o I y en "
+        f"cobranza {TIPOS_MEDIDOS_EN_COBRANZA}, medidas. "
+        f"En {_y(_CON_LIBRO_POR_NOMBRE)} va el LIBRO en vez de una letra (por ejemplo "
         "'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin "
         "él la consulta es ambigua y la herramienta falla en vez de abrir la causa "
         f"equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, "
@@ -854,18 +856,18 @@ def obtener_detalle_causa(
     - Con elementos: lo que hay.
 
     `piezas_exhorto` no se rige por eso: su panel sólo existe en las causas que SON un exhorto,
-    así que en nulo hay que mirar `causa_es_exhorto`. Y si ÉSE también viene nulo, que es lo
-    que pasa fuera de civil, la pregunta no está medida en esa competencia.
+    así que en nulo hay que mirar `causa_es_exhorto`. Y si ÉSE también viene nulo, cosa que
+    pasa fuera de civil, la pregunta no está medida ahí.
 
     Al computar plazos: `fecha_diligencia` trae dato SÓLO en civil; en cobranza el sitio no
     publica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su
     `estado` distingue.
 
     Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el
-    historial. Sumarlas informa una deuda inflada varias veces.
+    historial. Sumarlas informa una deuda inflada.
 
-    Trae datos personales de terceros: RUT y nombres de litigantes, de quien figura a cargo de
-    una diligencia y de a quién se le paga una liquidación.
+    Trae datos personales de terceros: el RUT y el nombre de los litigantes y de a quién se le
+    paga una liquidación laboral, y SÓLO el nombre de quien figura a cargo de una diligencia.
 
     Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente y sus
     actuaciones NO están acá. `causa_de_origen` es la misma arista hacia abajo: la causa de la

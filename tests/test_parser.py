@@ -226,21 +226,76 @@ def test_la_historia_no_repite_el_mismo_tramite_dos_veces():
     )
 
 
-def test_una_fila_sin_tramite_que_no_repite_la_anterior_se_conserva():
-    """Y no se puede borrar al arreglar lo de arriba.
+def test_con_el_mismo_folio_y_la_misma_descripcion_basta_un_dato_propio_para_conservarla():
+    """La condición que ninguna fixture ejercita, probada sobre el predicado.
 
-    En civil hay cinco filas legítimas con el trámite en blanco, repartidas en tres fixtures, y
-    ninguna repite el folio ni la descripción de la de más arriba. Una regla que sólo mirara el
-    trámite vacío las habría borrado: son actuaciones reales de la causa.
+    Las repeticiones medidas vienen empobrecidas: pierden etapa, trámite y documento. Pero la
+    regla tiene que sostenerse también si el sitio emitiera dos filas con el mismo folio y la
+    misma descripción donde la segunda trae algo propio: ahí no es una repetición y borrarla
+    perdería una actuación. Sin este test esa mitad de la regla no la mira nadie.
     """
+    from datetime import date
+
+    from mcp_pjud.parser import Actuacion, _no_agrega_nada_a_la_anterior
+
+    def fila(**cambios) -> Actuacion:
+        base = {
+            "folio": "12",
+            "etapa": "",
+            "tramite": "",
+            "desc_tramite": "Téngase presente",
+            "georreferenciado": False,
+            "tiene_documento": False,
+        }
+        return Actuacion(**{**base, **cambios})
+
+    primera = fila(etapa="Cumplimiento", tramite="Resolución", fecha_registro=date(2026, 3, 31))
+    vacia = fila()
+    con_fecha_propia = fila(fecha_registro=date(2026, 4, 1))
+    con_documento = fila(fecha_registro=date(2026, 3, 31), tiene_documento=True)
+
+    assert _no_agrega_nada_a_la_anterior(vacia, primera), (
+        "la fila empobrecida es la repetición medida y tiene que descartarse"
+    )
+    assert not _no_agrega_nada_a_la_anterior(con_fecha_propia, primera), (
+        "una fila con OTRA fecha de registro trae algo propio: descartarla pierde una actuación"
+    )
+    assert not _no_agrega_nada_a_la_anterior(con_documento, primera), (
+        "una fila que sí ofrece documento trae algo propio"
+    )
+
+
+def test_una_fila_que_trae_algo_propio_se_conserva_aunque_repita_el_folio():
+    """El riesgo del arreglo de arriba es borrar una actuación legítima, y la fixture lo tiene.
+
+    En `c1156_principal` el folio 6 aparece dos veces y la segunda TAMBIÉN viene con etapa y
+    trámite en blanco y sin documento. No es una repetición: su `desc_tramite` es otro
+    ("Ordena despachar mandamiento" contra "Exhórtese"), o sea son dos trámites distintos bajo
+    el mismo folio. Borrarla perdería una actuación de la causa.
+
+    Por eso la regla no es "se parece a la anterior" sino "no agrega nada": mismo folio, misma
+    descripción, y cada campo o vacío o igual al de arriba.
+    """
+    historia = parse_historia(
+        (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8"), "P", "civil"
+    )
+
+    seis = [a for a in historia if a.folio == "6"]
+    assert len(seis) == 2, (
+        f"el folio 6 de esta causa son dos trámites distintos y quedaron {len(seis)}"
+    )
+    assert {a.desc_tramite for a in seis} == {"Exhórtese", "Ordena despachar mandamiento"}, (
+        f"se perdió uno de los dos trámites del folio 6: {[a.desc_tramite for a in seis]}"
+    )
+
     sin_tramite = 0
     for nombre in (
         "c1156_principal.html",
         "c1156_apremio.html",
         "detalle_civil_notificaciones.html",
     ):
-        historia = parse_historia((FIXTURES / nombre).read_text(encoding="utf-8"), "X", "civil")
-        sin_tramite += sum(1 for a in historia if not a.tramite.strip())
+        filas = parse_historia((FIXTURES / nombre).read_text(encoding="utf-8"), "X", "civil")
+        sin_tramite += sum(1 for a in filas if not a.tramite.strip())
 
     assert sin_tramite == 5, (
         f"se conservan {sin_tramite} filas civiles sin trámite y las medidas son cinco: si "

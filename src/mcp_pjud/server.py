@@ -58,10 +58,13 @@ from .client import (
     EL_ROL_NO_BASTA,
     GEORREFERENCIA,
     INTERVALO_MINIMO,
+    LIBRO_DEL_TIPO_PENAL_MEDIDO,
     LIMITE_EMBEBIDO,
     MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
+    TIPO_PENAL_MEDIDO,
+    TIPOS_MEDIDOS_EN_COBRANZA,
     VERSION,
     Corte,
     Documento,
@@ -389,20 +392,46 @@ def _cliente(ctx: Context | None = None) -> PjudClient:
 
 #: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
 #: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
+def _y(nombres: list[str]) -> str:
+    """Los nombres como los enumera una frase en español, con la `y` antes del último.
+
+    Con coma sola, "en apelaciones, penal va el LIBRO" se puede leer como una sola cosa
+    llamada "apelaciones penal", y una sesión de prueba dudó justo ahí.
+    """
+    if len(nombres) < 2:
+        return "".join(nombres)
+    return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
+
+
 _CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
 
 #: Y donde no lleva nada. Son tres formas y el esquema nombraba dos: pedirle una letra a
 #: suprema deja el rol esperado en `X-999999-2020`, no calza ninguna fila, y el error manda a
 #: revisar `tipo` sin decir que ahí va vacío.
 _SIN_TIPO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_sin_prefijo)
+
+#: Las que llevan una LETRA adelante, que son las que no llevan libro ni van vacías. Salen de
+#: la resta y no de una lista escrita: la descripción nombraba civil y dejaba fuera a cobranza
+#: y laboral, que son competencias aceptadas, y una sesión de prueba puso 'C' en cobranza
+#: adivinando. Acertó, que es el peor resultado: se repite hasta que falla.
+_CON_LETRA = sorted(set(MODULOS) - set(_CON_LIBRO) - set(_SIN_TIPO))
+
+#: Las que se buscan escribiendo el NOMBRE del libro. `rol_con_libro` dice cómo se MUESTRA el
+#: rol, no qué se escribe para buscarlo, y confundir las dos cosas mandaba a poner "Ordinaria"
+#: en penal, donde el listado vuelve vacío: una causa que existe informada como inexistente.
+_CON_LIBRO_POR_NOMBRE = sorted(set(_CON_LIBRO) - {"penal"})
 Tipo = Annotated[
     str,
     Field(
-        description="Letra del rol. En civil: C, V, E, A, F o I. En "
-        f"{', '.join(_CON_LIBRO)} va el LIBRO en vez de una letra (por ejemplo 'Protección' "
-        "o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la "
-        f"consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En "
-        f"{', '.join(_SIN_TIPO)} el rol no lleva nada adelante y este campo va VACÍO."
+        description=f"Letra del rol en {_y(_CON_LETRA)}; en civil son C, V, E, A, F o I y en "
+        f"cobranza {TIPOS_MEDIDOS_EN_COBRANZA}, medidas. "
+        f"En {_y(_CON_LIBRO_POR_NOMBRE)} va el LIBRO en vez de una letra (por ejemplo "
+        "'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin "
+        "él la consulta es ambigua y la herramienta falla en vez de abrir la causa "
+        f"equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, "
+        f"{TIPO_PENAL_MEDIDO!r} es {LIBRO_DEL_TIPO_PENAL_MEDIDO}, y con el nombre el listado "
+        f"vuelve vacío. En {_y(_SIN_TIPO)} el rol no lleva nada adelante y este campo va "
+        "VACÍO."
     ),
 ]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]
@@ -471,9 +500,11 @@ CompetenciaConReceptor = Annotated[
     str,
     Field(
         description=f"Una de: {', '.join(_CON_RECEPTOR)}. Sólo esas publican las actuaciones "
-        "del ministro de fe en la tabla de Historia. En cobranza viven en `diligenciaCob`, que "
-        "`obtener_detalle_causa` entrega en `diligencias`: ahí no vienen como actuaciones "
-        "porque ese panel no publica la fecha en que se practicaron. En las demás no existen."
+        "del ministro de fe en la tabla de Historia. En cobranza el sitio las rotula en la "
+        "Historia pero SIN la fecha en que se practicaron, así que no sirven para computar un "
+        "plazo y esta herramienta no las ofrece; el panel `diligencias` de "
+        "`obtener_detalle_causa` es otra cosa y puede venir vacío en una causa que sí tuvo "
+        "diligencias. En las demás no existen."
     ),
 ]
 
@@ -825,18 +856,18 @@ def obtener_detalle_causa(
     - Con elementos: lo que hay.
 
     `piezas_exhorto` no se rige por eso: su panel sólo existe en las causas que SON un exhorto,
-    así que en nulo hay que mirar `causa_es_exhorto` para saber si es porque la causa no lo es
-    o porque la competencia no tiene medida la pregunta.
+    así que en nulo hay que mirar `causa_es_exhorto`. Y si ÉSE también viene nulo, cosa que
+    pasa fuera de civil, la pregunta no está medida ahí.
 
-    Al computar plazos: `fecha_diligencia` de la historia viene en nulo salvo en civil y
-    cobranza, y las notificaciones incluyen las NO practicadas, distinguibles por su `estado`.
+    Al computar plazos: `fecha_diligencia` trae dato SÓLO en civil; en cobranza el sitio no
+    publica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su
+    `estado` distingue.
 
     Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el
-    historial. Sumarlas informa una deuda inflada varias veces.
+    historial. Sumarlas informa una deuda inflada.
 
-    Trae datos personales de terceros: RUT de los litigantes, el nombre de quien figura a cargo
-    de las diligencias de cobranza, y el RUT y el nombre de a quién se le paga en la
-    liquidación laboral.
+    Trae datos personales de terceros: el RUT y el nombre de los litigantes y de a quién se le
+    paga una liquidación laboral, y SÓLO el nombre de quien figura a cargo de una diligencia.
 
     Y si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente y sus
     actuaciones NO están acá. `causa_de_origen` es la misma arista hacia abajo: la causa de la

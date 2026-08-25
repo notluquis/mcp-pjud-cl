@@ -4051,6 +4051,287 @@ def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
     )
 
 
+def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
+    """Un parámetro obligatorio cuyo valor válido no se documenta para una competencia que el
+    servidor SÍ acepta.
+
+    La frase nombraba civil, las de libro y suprema, y dejaba fuera a cobranza y laboral. Una
+    sesión de prueba puso 'C' en cobranza adivinando y acertó, que es el peor resultado: se
+    repite hasta que falla.
+    """
+    from mcp_pjud.server import MODULOS, Tipo
+
+    dice = Tipo.__metadata__[0].description
+    for competencia in sorted(MODULOS):
+        assert competencia in dice, (
+            f"`tipo` no dice qué va en {competencia}, y es una competencia aceptada: quien la "
+            f"use tiene que adivinar. Dice: {dice!r}"
+        )
+
+    # Y qué letras acepta cada una, no sólo su nombre: "una letra" sin decir cuál obliga a
+    # adivinar igual, y una letra equivocada devuelve un listado vacío, o sea una causa que
+    # existe informada como inexistente.
+    from mcp_pjud.client import TIPOS_MEDIDOS_EN_COBRANZA
+
+    assert TIPOS_MEDIDOS_EN_COBRANZA in dice, (
+        f"`tipo` no dice qué letras acepta cobranza, y están medidas: "
+        f"{TIPOS_MEDIDOS_EN_COBRANZA}. Dice: {dice!r}"
+    )
+
+    # Y en penal, QUÉ va: `rol_con_libro` dice cómo se MUESTRA el rol y no qué se escribe para
+    # buscarlo. Está medido que con el nombre del libro el listado vuelve vacío, o sea decir
+    # "manda 'Ordinaria'" convierte una causa que existe en un falso negativo.
+    from mcp_pjud.client import LIBRO_DEL_TIPO_PENAL_MEDIDO, TIPO_PENAL_MEDIDO
+
+    assert "En penal" in dice, (
+        f"`tipo` dejó de decir aparte qué va en penal, así que vuelve a caer en la frase del "
+        f"libro por nombre, que ahí devuelve un listado vacío: {dice!r}"
+    )
+    penal = dice[dice.index("En penal") :]
+    assert TIPO_PENAL_MEDIDO in penal, (
+        f"`tipo` no dice cuál es el código que penal acepta, que es {TIPO_PENAL_MEDIDO!r}: "
+        f"{penal!r}"
+    )
+    assert "CÓDIGO" in penal, (
+        f"`tipo` no dice que en penal va un código y no el nombre del libro: {penal!r}"
+    )
+    assert "'Protección' o 'Exhorto'" not in penal, (
+        "los ejemplos de libro por nombre quedaron dentro de la frase de penal, donde el "
+        f"nombre devuelve un listado vacío: {penal!r}"
+    )
+    assert LIBRO_DEL_TIPO_PENAL_MEDIDO in penal, (
+        f"`tipo` no dice a qué libro corresponde ese código: {penal!r}"
+    )
+
+
+def test_la_referencia_no_manda_a_buscar_penal_por_el_nombre_del_libro():
+    """El esquema quedó bien y la página publicada seguía diciendo lo contrario, en cuatro
+    tablas.
+
+    Quien arme la llamada leyendo la referencia manda `Ordinaria`, recibe un listado vacío
+    para una causa que existe, y lo lee como que no existe. Que el parámetro esté bien no
+    sirve si la página que se consulta para usarlo dice otra cosa.
+    """
+    from mcp_pjud.client import LIBRO_DEL_TIPO_PENAL_MEDIDO, TIPO_PENAL_MEDIDO
+
+    referencia = " ".join(HERRAMIENTAS.split())
+
+    assert "el libro en apelaciones y penal" not in referencia, (
+        "la referencia vuelve a mandar el nombre del libro en penal, donde la plataforma "
+        "exige el código y con el nombre devuelve un listado vacío"
+    )
+    assert "En apelaciones y penal va el libro" not in referencia, (
+        "ídem, en la otra forma en que la tabla lo decía"
+    )
+    # Y que las tablas nombren TODAS las competencias, no sólo las cuatro que el esquema ya
+    # distinguía: cobranza y laboral aceptan la herramienta, `tipo` es obligatorio, y quien
+    # use la referencia para una de ellas tenía que adivinar la letra.
+    from mcp_pjud.server import MODULOS
+
+    # "Letra del rol" distingue las filas del PARÁMETRO de las de otros campos que se llaman
+    # igual: el anexo publica un `tipo` que es cómo el sitio clasifica el documento.
+    filas = [
+        f for f in HERRAMIENTAS.splitlines() if f.startswith("| `tipo` |") and "Letra del rol" in f
+    ]
+    assert filas, "la referencia dejó de documentar el parámetro `tipo` en ninguna tabla"
+    for fila in filas:
+        faltan = sorted(c for c in MODULOS if c not in fila)
+        assert not faltan, (
+            f"esta fila de `tipo` no dice qué va en {faltan}: quien use la referencia para "
+            f"esas competencias tiene que adivinar. Dice: {fila}"
+        )
+
+    assert f"`{TIPO_PENAL_MEDIDO}` es {LIBRO_DEL_TIPO_PENAL_MEDIDO}" in referencia, (
+        f"la referencia no dice cuál es el código que penal acepta ({TIPO_PENAL_MEDIDO} para "
+        f"{LIBRO_DEL_TIPO_PENAL_MEDIDO})"
+    )
+
+
+def test_la_referencia_no_promete_la_fecha_de_diligencia_en_cobranza():
+    """La advertencia de plazos seguía diciendo "salvo en civil y cobranza".
+
+    Es la misma promesa que el esquema corrigió, y la que orienta el cómputo hacia un dato que
+    en cobranza no llega nunca. Se ata a `receptor_en_historia`, que es de dónde sale.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+
+    con_fecha = sorted(n for n in COMPETENCIAS if COMPETENCIAS[n].receptor_en_historia)
+    referencia = " ".join(HERRAMIENTAS.split())
+
+    assert "salvo en civil y cobranza" not in referencia, (
+        "la referencia vuelve a prometer `fecha_diligencia` en cobranza, donde la plataforma "
+        "no publica cuándo se practicó la diligencia"
+    )
+
+    # La lista COMPLETA y no sólo la primera: si otra competencia pasara a publicar la fecha,
+    # la página seguiría diciendo "sólo en civil" y con interpolar `con_fecha[0]` el guardia
+    # pasaba igual. Se compara qué competencias nombra la advertencia contra la fuente.
+    # Las que tienen actuaciones de receptor pero NO su fecha: son las que la advertencia
+    # tiene que nombrar además, justamente para decir que ahí el dato no está. Sale de
+    # `COMPETENCIAS` y no escrito acá, que es lo que se le pide a la página.
+    sin_la_fecha = sorted(
+        n
+        for n in COMPETENCIAS
+        if COMPETENCIAS[n].receptor and not COMPETENCIAS[n].receptor_en_historia
+    )
+    # La página Y el docstring de la herramienta, que se publica en el esquema MCP: la
+    # instantánea del contrato reproduce esa misma prosa, así que sin esto la afirmación que
+    # decide desde cuándo se cuenta un plazo podía volver a separarse de su fuente.
+    from mcp_pjud.server import obtener_detalle_causa
+
+    for texto in (referencia, " ".join((obtener_detalle_causa.__doc__ or "").split())):
+        # La lista de nombres no basta: "salvo en civil y cobranza" nombra las mismas dos que
+        # "sólo en civil; en cobranza no", y dicen lo contrario. Lo que separa las dos frases
+        # es el "salvo", que es la forma exacta que prometía el dato donde no está.
+        assert "salvo en civil y cobranza" not in texto, (
+            "vuelve a prometerse `fecha_diligencia` en cobranza, donde la plataforma no "
+            f"publica cuándo se practicó la diligencia: {texto[:200]!r}"
+        )
+        aviso = texto[texto.index("Al computar plazos") :]
+        aviso = aviso[: aviso.index("Y las notificaciones")]
+        nombradas = sorted({c for c in COMPETENCIAS if c in aviso})
+
+        assert nombradas == sorted(con_fecha + sin_la_fecha), (
+            f"la advertencia de plazos nombra {nombradas}; la fecha de diligencia la traen "
+            f"{con_fecha} y {sin_la_fecha} tienen receptor sin ella, así que son las que hay "
+            "que nombrar: es lo que decide desde cuándo se cuenta un plazo"
+        )
+
+
+def _mensaje_al_leer(lector, competencia: str) -> str:
+    """Lo que un lector de panel dice al pedírselo a una competencia que no lo publica.
+
+    Ese mensaje es prosa igual que una descripción, y ya se había separado de su fuente: uno
+    decía "sólo cobranza" de un panel que laboral también publica, contradiciendo a la
+    docstring de la función que lo levanta.
+    """
+    from mcp_pjud.parser import EstructuraInesperada
+
+    # Cualquier otra excepción SE PROPAGA: si un lector cambia de firma o revienta antes de
+    # llegar a su `EstructuraInesperada`, devolver "" apagaba este guardia en silencio ante
+    # justo el cambio que tiene que delatar.
+    try:
+        lector("<html></html>", competencia)
+    except EstructuraInesperada as dicho:
+        return str(dicho)
+    return ""
+
+
+def test_ningun_comentario_del_parser_declara_exclusivo_un_panel_compartido():
+    """Los comentarios `#:` de los mapas de panel también afirman quién lo publica.
+
+    Dos decían "es la única competencia que la publica" de paneles que laboral también trae,
+    contradiciendo a los mapas laborales definidos en el mismo archivo. No viajan al cliente,
+    pero son lo que lee quien mantiene el parser, y con esa frase descartaría los paneles
+    laborales por error.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+
+    fuente = _texto(RAIZ / "src" / "mcp_pjud" / "parser.py")
+    compartidos = [
+        p
+        for p in ("liquidaciones", "diligencias")
+        if len([n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], p) is not None]) > 1
+    ]
+    assert compartidos, "estos dos paneles dejaron de estar en más de una competencia"
+
+    for frase in ("única competencia que la publica", "única competencia que lo publica"):
+        assert frase not in fuente, (
+            f"un comentario del parser declara exclusivo un panel que comparten varias "
+            f"competencias ({compartidos}): quien lo lea va a descartar las otras"
+        )
+
+
+def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
+    """Cuatro frases afirmaban "sólo cobranza" de paneles que laboral también publica.
+
+    Y el código se contradecía a sí mismo cien líneas más abajo: mientras `parse_liquidaciones`
+    decía "sólo cobranza", el campo `rut_beneficiario` describía "las liquidaciones de laboral".
+    Las cuatro llegaban publicadas a la referencia y al esquema de salida que el modelo lee.
+
+    Daño: quien litiga en laboral lee "sólo cobranza liquida el crédito" y concluye que en su
+    causa ese panel no existe. Existe, y es cuánto se debe.
+
+    Se compara la PROSA contra `COMPETENCIAS`, que es su fuente única. Vale para cualquier
+    panel: si mañana una competencia gana o pierde uno, la frase que lo declara exclusivo se
+    cae sola.
+    """
+    import re
+
+    from mcp_pjud.parser import COMPETENCIAS, DetalleCausa
+
+    paneles = [
+        c
+        for c in DetalleCausa.model_fields
+        if any(getattr(COMPETENCIAS[n], c, None) is not None for n in COMPETENCIAS)
+    ]
+    assert paneles, "no se encontró ningún panel, así que este guardia no está mirando nada"
+
+    for panel in paneles:
+        publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
+        parser = __import__("mcp_pjud.parser", fromlist=["x"])
+        # `prosa` se filtra por verbo; `afirmaciones` se compara siempre, porque son frases
+        # que acotan el panel aunque no usen uno.
+        afirmaciones: list[str] = []
+        prosa = [DetalleCausa.model_fields[panel].description or ""]
+        # Y el docstring del MODELO de las filas, que también se publica: `docs/conf.py` arma
+        # la referencia del detalle con `DetalleCausa.model_json_schema()`, así que
+        # `Diligencia.__doc__` viaja igual que la descripción del campo. Decía "en un juicio
+        # de cobranza" de un panel que laboral también publica.
+        # `list[Diligencia] | None`: hay que bajar por la unión Y por la lista. Con un solo
+        # nivel el modelo nunca entraba y el guardia se quedaba mirando lo de siempre.
+        por_ver = [DetalleCausa.model_fields[panel].annotation]
+        while por_ver:
+            anotacion = por_ver.pop()
+            por_ver.extend(getattr(anotacion, "__args__", ()))
+            if hasattr(anotacion, "model_fields"):
+                # La PRIMERA línea, que es lo que el esquema publica como descripción del
+                # elemento, y se compara aunque no traiga verbo: "una diligencia del ministro
+                # de fe en un juicio de cobranza" acota sin decir "publica", y acotaba mal.
+                resumen = (anotacion.__doc__ or "").strip().splitlines()[:1]
+                afirmaciones.extend(resumen)
+        lector = getattr(parser, f"parse_{panel}", None)
+        if lector is not None and lector.__doc__:
+            prosa.append(lector.__doc__)
+        # Y el MENSAJE de error de ese lector, que es prosa igual y ya se había separado de su
+        # fuente: decía "sólo cobranza" de un panel que laboral también publica, contradiciendo
+        # a la docstring de la función que lo levanta. Se provoca pidiéndoselo a una
+        # competencia que no lo tiene.
+        sin_el_panel = next(
+            (n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is None), None
+        )
+        if lector is not None and sin_el_panel is not None:
+            # Sin el nombre de la competencia a la que se le preguntó: ése no es una
+            # afirmación sobre quién publica el panel, es a quién se le pidió.
+            prosa.append(_mensaje_al_leer(lector, sin_el_panel).replace(sin_el_panel, ""))
+
+        # Se compara la LISTA COMPLETA que la prosa nombra, no sólo las frases con "sólo".
+        # Mirando nada más el "sólo", la frase corregida ("las publican cobranza y laboral")
+        # podía quedarse vieja sin que nada se cayera: bastaba que una competencia perdiera el
+        # panel para que la enumeración mintiera al revés.
+        # Se mira la FRASE que afirma quién lo publica, no el texto entero: una prosa puede
+        # nombrar otra competencia para contrastar ("una actuación de civil trae la fecha
+        # doble") sin estar diciendo que publica el panel. Lo que discrimina es el verbo, que
+        # es la misma lección que ya costó una vez en las cuentas de buscadores.
+        verbos = ("publica", "publican", "tienen medido", "tiene el panel", "lo tiene", "liquida")
+        prosa.extend(afirmaciones)
+        for texto in prosa:
+            for frase in re.split(r"(?<=[.;:])\s+", " ".join(texto.split())):
+                if not any(v in frase for v in verbos) and frase not in afirmaciones:
+                    continue
+                nombradas = sorted({c for c in COMPETENCIAS if re.search(rf"\b{c}\b", frase)})
+                if not nombradas:
+                    # Afirmar sin nombrar a nadie es legítimo: "sólo esas publican..." se apoya
+                    # en una lista interpolada más arriba.
+                    continue
+                assert nombradas == publican, (
+                    f"la prosa de `{panel}` dice {frase!r}, o sea nombra {nombradas}, y "
+                    f"`COMPETENCIAS` dice {publican}. Quien litigue en las que faltan va a "
+                    "concluir que en su causa ese panel no existe, y quien litigue en las que "
+                    "sobran va a buscar algo que no está"
+                )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

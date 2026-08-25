@@ -2033,7 +2033,7 @@
               }
             ],
             "default": null,
-            "description": "Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es estable, en un rol la de reemplazo llega primera y en otro segunda. Lo que las separa es su resultado: la que dice SENTENCIA DE REEMPLAZO confirma en una línea, y la otra trae el razonamiento que se fue a buscar.",
+            "description": "Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es estable, en un rol la de reemplazo llega primera y en otro segunda. En apelaciones, salud y suprema, que publican el resultado, la que dice SENTENCIA DE REEMPLAZO confirma en una línea y la otra trae el razonamiento; en el resto la enumeración distingue por caratulado y fecha, que es lo que esos buscadores publican.",
             "title": "Cual"
           },
           "rol": {

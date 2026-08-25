@@ -342,6 +342,22 @@ IDENTIFICADORES_MEDIDOS = {
     "compendio_extranjeria": 648,
 }
 
+
+def _es_iso(fecha: str) -> bool:
+    """Que tenga la forma Y que sea una fecha. `2024-02-30` cumple lo primero y no existe.
+
+    Sin lo segundo la consulta salía igual y volvía con el error genérico de Solr, o sea la
+    garantía de rechazar antes de consultar valía sólo para el formato equivocado.
+    """
+    if not _ISO.fullmatch(fecha):
+        return False
+    try:
+        date.fromisoformat(fecha)
+    except ValueError:
+        return False
+    return True
+
+
 #: El formato de fecha que el buscador acepta, que es el que emite su propio `input
 #: type="date"`. Cualquier otro le hace responder una excepción de Solr.
 _ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -547,12 +563,18 @@ def _firmantes(d: dict, campos: Mapping[str, str]) -> list[str]:
     partirla por comas cortaba nombres por la mitad.
     """
     clave = campos.get("ministros")
-    if clave is None:
+    if clave is None or clave not in d:
         return []
-    valor = d.get(clave)
-    if isinstance(valor, list):
-        return [str(x).strip() for x in valor if str(x).strip()]
-    return _lista(str(valor or ""))
+    valor = d[clave]
+    if not isinstance(valor, list):
+        # Partir una cadena por comas acá inventa firmantes: un apellido compuesto lleva coma,
+        # así que "PEREZ ROJAS, JUAN" saldría como dos personas que firmaron. Si el campo deja
+        # de ser lista, lo que cambió es la estructura y hay que ir a mirarla.
+        raise EstructuraInesperada(
+            f"El campo de firmantes llegó como {type(valor).__name__} y no como lista. "
+            "Separarlo por comas publicaría un apellido compuesto como dos ministros."
+        )
+    return [str(x).strip() for x in valor if str(x).strip()]
 
 
 def _lista(valor: str | None) -> list[str]:
@@ -900,15 +922,16 @@ class JurisClient(Transporte):
         if desplazamiento < 0:
             raise ValueError("El desplazamiento no puede ser negativo.")
         for rotulo, fecha in (("desde", desde), ("hasta", hasta)):
-            if fecha and not _ISO.fullmatch(fecha):
+            if fecha and not _es_iso(fecha):
                 # Medido el 25 de agosto de 2026: con `01/01/2024` la plataforma responde una
                 # excepción de Solr y ninguna sentencia, y con `2024-01-01` responde normal. Es
                 # el formato que emite su propio campo de fecha, que es un `input type="date"`.
                 # Se rechaza acá para que el error diga qué formato va, en vez de llegar como
                 # un cambio de estructura que no ocurrió.
                 raise ValueError(
-                    f"`{rotulo}` va en AAAA-MM-DD y llegó {fecha!r}. Medido: con otro formato "
-                    "el buscador responde un error de Solr y ninguna sentencia."
+                    f"`{rotulo}` va en AAAA-MM-DD y tiene que existir; llegó {fecha!r}. "
+                    "Medido: con otro formato el buscador responde un error de Solr y ninguna "
+                    "sentencia."
                 )
 
         # Sólo se envían las claves con valor. Medido: mandar el juego completo de claves
@@ -980,6 +1003,14 @@ class JurisClient(Transporte):
                 "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
         ).text
+        datos = json.loads(self._ultima_respuesta)
+        if "error" in datos and "response" not in datos:
+            # Antes que el desglose: con facetas puestas, exigirlo primero convertía un rechazo
+            # de la plataforma en "cambió la estructura", que es lo contrario de lo que pasó.
+            raise ValueError(
+                "El buscador rechazó la consulta: "
+                f"{str(datos['error'])[:300]}. No es que la respuesta haya cambiado de forma."
+            )
         if facetas:
             # El bloque de facetas viaja SIEMPRE, medido el 25 de agosto de 2026 incluso en una
             # consulta de cero resultados, donde llega con las diez claves declaradas y las
@@ -990,7 +1021,7 @@ class JurisClient(Transporte):
             # guardadas son copias podadas que no traen el bloque (ni `highlighting`), y
             # recapturarlas pide el mapeo de anonimización, que no se versiona a propósito.
             declara = set(BUSCADORES[buscador.lower()].facetas.values())
-            traidas = json.loads(self._ultima_respuesta).get("facet_counts", {})
+            traidas = datos.get("facet_counts", {})
             if not declara & set(traidas.get("facet_fields") or {}):
                 raise EstructuraInesperada(
                     "La respuesta no trae el desglose por facetas y se pidió filtrar por una. "

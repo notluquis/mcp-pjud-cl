@@ -1532,3 +1532,41 @@ def test_el_orden_de_las_sentencias_de_un_rol_no_es_estable():
         otra = texto.index("ACOGIDA CASACIÓN FONDO")
         assert posicion != otra, texto
         assert f"{PALABRAS_DE_LA_CASACION} palabras" in texto, texto
+
+
+def test_un_campo_de_firmantes_que_no_es_lista_se_levanta(monkeypatch):
+    """Partir una cadena por comas inventaría firmantes: un apellido compuesto lleva coma."""
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["gls_ministro_ss"] = "PEREZ ROJAS, JUAN"
+    with pytest.raises(EstructuraInesperada, match="no como lista"):
+        parse_sentencias(json.dumps(d), "suprema")
+
+    # Y que el campo no venga NO es un cambio de estructura: es que no hay firmantes publicados.
+    d["response"]["docs"][0].pop("gls_ministro_ss")
+    assert parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros is None
+
+
+def test_una_fecha_con_forma_de_iso_que_no_existe_tambien_se_rechaza():
+    """`2024-02-30` cumple la forma y no es una fecha. Sin esto la consulta salía igual y
+    volvía con el error genérico de Solr, o sea la garantía valía sólo para el otro formato."""
+    c = JurisClient("test@example.cl")
+    for fecha in ("2024-02-30", "2024-99-01"):
+        with pytest.raises(ValueError, match="tiene que existir"):
+            c.buscar(buscador="suprema", desde=fecha)
+
+
+def test_un_rechazo_se_clasifica_antes_de_exigir_el_desglose(monkeypatch):
+    """Con facetas puestas, exigir el desglose primero convertía un rechazo de la plataforma en
+    "cambió la estructura", que es lo contrario de lo que pasó."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(
+        json.dumps({"error": {"msg": "Invalid Date String"}, "condition_pub_sf": {}})
+    )
+    c._buscador_de_la_sesion = "apelaciones"
+    with pytest.raises(ValueError, match="rechazó la consulta"):
+        c.buscar(
+            rol=2476,
+            anio=2023,
+            buscador="apelaciones",
+            facetas={"corte_origen": ["C.A. de Santiago"]},
+        )

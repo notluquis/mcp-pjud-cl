@@ -1518,9 +1518,11 @@ def obtener_texto_sentencia(
             "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo "
             "que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa "
             "ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es "
-            "estable, en un rol la de reemplazo llega primera y en otro segunda. Lo que las "
-            f"separa es su resultado: la que dice {ROTULO_DE_LA_DE_REEMPLAZO} confirma en una "
-            "línea, y la otra trae el razonamiento que se fue a buscar.",
+            "estable, en un rol la de reemplazo llega primera y en otro segunda. En "
+            f"{_y(buscadores_que_publican('resultado_recurso'))}, que publican el resultado, "
+            f"la que dice {ROTULO_DE_LA_DE_REEMPLAZO} confirma en una línea y la otra trae el "
+            "razonamiento; en el resto la enumeración distingue por caratulado y fecha, que es "
+            "lo que esos buscadores publican.",
             ge=1,
         ),
     ] = None,

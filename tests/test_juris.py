@@ -655,16 +655,76 @@ def test_un_rol_con_dos_sentencias_no_se_resuelve_eligiendo_una(monkeypatch):
     assert "157 palabras" in dicho, f"el mensaje no dice la extensión de la segunda: {dicho}"
 
 
+def _paginando(cuerpo: str) -> JurisClient:
+    """Un cliente cuyo doble RESPETA `filas` y `offset_paginacion`.
+
+    Sin esto el doble devuelve la lista entera pase lo que pase, o sea se comporta como un
+    buscador que ignora la paginación, y un selector que pidiera la página equivocada saldría
+    verde igual.
+    """
+    d = json.loads(cuerpo)
+    todos = d["response"]["docs"]
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        crudo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        desde = re.search(r"offset_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {crudo[:200]}"
+        assert desde, f"el formulario dejó de declarar desde dónde: {crudo[:200]}"
+        inicio = int(desde.group(1))
+        d["response"]["docs"] = todos[inicio : inicio + int(cuantas.group(1))]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+    return c
+
+
 def test_con_cual_se_entrega_la_sentencia_que_se_pidio(monkeypatch):
     """Y la segunda no es la primera: si el índice se ignorara, las dos devolverían lo mismo."""
     monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
-    c = _con_respuesta(_con_dos_sentencias())
+    c = _paginando(_con_dos_sentencias())
 
     assert "Casación" in c.texto(rol=1933, anio=2025, cual=1).texto
     assert c.texto(rol=1933, anio=2025, cual=2).texto == "Se confirma."
 
     with pytest.raises(ValueError, match="entrega 2"):
         c.texto(rol=1933, anio=2025, cual=3)
+
+
+def test_elegir_una_sentencia_no_descarga_las_anteriores(monkeypatch):
+    """La herramienta existe para pedir fallos de a uno: una sentencia de trece páginas son
+    veinticinco mil caracteres.
+
+    Con `filas=cual`, pedir la número 250 descargaba también las 249 anteriores con su texto
+    completo, o sea megabytes para devolver uno, y el riesgo de timeout justo acá. Se pide UNA
+    fila desplazada hasta la elegida.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    formularios: list[str] = []
+    d = json.loads(_con_dos_sentencias())
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        formularios.append(peticion.content.decode(errors="replace"))
+        d["response"]["docs"] = d["response"]["docs"][:1]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    c.texto(rol=1933, anio=2025, cual=2)
+
+    (formulario,) = formularios
+    assert re.search(r"numero_filas_paginacion\"\r?\n\r?\n1\b", formulario), (
+        f"se pidió más de una fila para devolver una sola: {formulario[:400]}"
+    )
+    assert re.search(r"offset_paginacion\"\r?\n\r?\n1\b", formulario), (
+        f"no se desplazó hasta la sentencia elegida: {formulario[:400]}"
+    )
 
 
 def test_al_enumerar_no_falta_ninguna_ni_se_elige_a_ciegas(monkeypatch):

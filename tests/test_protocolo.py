@@ -1054,13 +1054,22 @@ def test_cual_llega_hasta_el_buscador_por_el_protocolo(monkeypatch: pytest.Monke
     segunda["texto_sentencia"] = "Se confirma."
     crudo["response"]["docs"] = [primera, segunda]
     crudo["response"]["numFound"] = 2
-    cuerpo = _json.dumps(crudo, ensure_ascii=False)
+
+    todos = crudo["response"]["docs"]
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        # El doble respeta la paginación: elegir una sentencia pide UNA fila desplazada hasta
+        # ella, y un doble que devuelva siempre las dos no distingue la primera de la segunda.
+        formulario = peticion.content.decode(errors="replace")
+        desde = re.search(r"offset_paginacion\"\r?\n\r?\n(\d+)", formulario)
+        assert desde, f"el formulario dejó de declarar desde dónde: {formulario[:200]}"
+        inicio = int(desde.group(1))
+        crudo["response"]["docs"] = todos[inicio : inicio + 1]
+        return httpx.Response(200, text=_json.dumps(crudo, ensure_ascii=False))
 
     def fabricar(contacto: str) -> juris_modulo.JurisClient:
         cliente = juris_modulo.JurisClient(contacto)
-        cliente._http = httpx.Client(
-            transport=httpx.MockTransport(lambda _: httpx.Response(200, text=cuerpo))
-        )
+        cliente._http = httpx.Client(transport=httpx.MockTransport(responder))
         cliente._token, cliente._id_buscador = "tok", "528"
         cliente._buscador_de_la_sesion = "suprema"
         return cliente

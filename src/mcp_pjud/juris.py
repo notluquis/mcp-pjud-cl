@@ -750,11 +750,24 @@ class JurisClient(Transporte):
             # volvía a elegir un fallo por su cuenta, que es lo que existe para no hacer.
             raise ValueError(f"`cual` empieza en 1 y se pidió {cual}.")
 
-        # Dos filas y no una: un mismo rol puede traer más de una sentencia, y con una sola el
-        # buscador elegía por nosotros. Dos alcanzan para DETECTAR que hay más sin arrastrar
-        # de más: cada documento trae el texto completo, y una sentencia de trece páginas son
-        # veinticinco mil caracteres.
-        r = self.buscar(rol=rol, anio=anio, filas=max(2, cual or 0), buscador=buscador)
+        # Con `cual`, se pide UNA fila desplazada hasta ella. Pedir `filas=cual` traería
+        # también todas las anteriores con su texto completo, y una sentencia de trece páginas
+        # son veinticinco mil caracteres: con un índice alto eso son megabytes descargados para
+        # devolver uno, justo en la herramienta que existe para pedirlos de a uno.
+        #
+        # Sin `cual`, dos filas: alcanzan para DETECTAR que hay más de una sin arrastrar de más.
+        if cual is None:
+            r = self.buscar(rol=rol, anio=anio, filas=2, buscador=buscador)
+        else:
+            r = self.buscar(rol=rol, anio=anio, filas=1, desplazamiento=cual - 1, buscador=buscador)
+            if not r.sentencias and r.visibles:
+                # La página vacía por pasarse del final NO es "la sentencia no existe": el rol
+                # está y el índice se fue de rango. Se separa antes de llegar a la rama de
+                # abajo, que diría que no aparece ninguna.
+                raise ValueError(
+                    f"Se pidió la sentencia número {cual} del rol {rol}-{anio} y el buscador "
+                    f"entrega {r.visibles}."
+                )
         if not r.sentencias:
             if r.ocultas:
                 raise PlataformaRechaza(
@@ -795,12 +808,9 @@ class JurisClient(Transporte):
                 "equivocada se ve igual de válida."
             )
 
-        indice = (cual or 1) - 1
-        if indice >= len(r.sentencias):
-            raise ValueError(
-                f"Se pidió la sentencia número {cual} del rol {rol}-{anio} y el buscador "
-                f"entrega {len(r.sentencias)}."
-            )
+        # Siempre la primera de la página: sin `cual` es la única que hay, y con `cual` la
+        # página ya viene desplazada hasta ella.
+        indice = 0
 
         # El texto viene en la misma respuesta del listado, así que no hace falta otra
         # petición: se relee el cuerpo que `buscar` acaba de traer. `Sentencia` no lo lleva a

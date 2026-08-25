@@ -1236,3 +1236,202 @@ def test_la_enumeracion_no_ofrece_una_extension_que_no_tiene():
 
     con_extension = _enumerar([sentencia(PALABRAS_DE_LA_CASACION)])
     assert f"{PALABRAS_DE_LA_CASACION} palabras" in con_extension
+
+
+#: Lo que la plataforma devolvió en `facet_counts.facet_fields` para el rol 2476-2023 en
+#: apelaciones, medido el 25 de agosto de 2026. Se copia con su ortografía a propósito: la
+#: corte sin tilde y el libro mutilado son la razón por la que un valor tecleado no calza.
+FACETAS_MEDIDAS = {
+    "gls_corte_s": [
+        "C.A. de Concepción",
+        1,
+        "C.A. de Iquique",
+        1,
+        "C.A. de Santiago",
+        7,
+        "C.A. de Talca",
+        1,
+        "C.A. de Valparaiso",
+        3,
+    ],
+    "gls_libro_sup_s": ["AMPARO", 2, "CIVIL", 3, "PROTECCIN", 3],
+    "gls_juez_ss": ["UN JUEZ", 4],
+    "enfermedad_ss": ["UNA ENFERMEDAD", 2],
+}
+
+
+def _con_facetas() -> str:
+    d = json.loads(CITA)
+    d["facet_counts"] = {"facet_fields": dict(FACETAS_MEDIDAS)}
+    return json.dumps(d)
+
+
+def test_solo_se_leen_las_facetas_que_el_buscador_declara():
+    """La respuesta trae todas y el mapa de cada buscador decide cuáles significan algo.
+
+    Apelaciones no declara `gls_juez_ss` y la respuesta puede traerlo igual. Leer lo que llega
+    en vez de lo que el buscador declara es el mismo error que `leer` hacía con los campos: la
+    forma es correcta y el contenido pertenece a otro buscador.
+    """
+    r = parse_sentencias(_con_facetas(), "apelaciones")
+    assert r.facetas is not None
+    assert set(r.facetas) == {"corte_origen", "libro"}, r.facetas
+    assert r.facetas["corte_origen"]["C.A. de Santiago"] == 7
+    assert "C.A. de Valparaiso" in r.facetas["corte_origen"], "la ortografía se copia tal cual"
+    assert "juez" not in r.facetas, "apelaciones no declara la faceta de juez"
+
+
+def test_ninguna_faceta_publica_datos_de_salud_de_quien_recurre():
+    """`enfermedad_ss` y `medicamento_ss` existen en el buscador de salud y NO se exponen.
+
+    Un desglose acotado a un rol tiene una sola sentencia por valor, así que publica de qué
+    está enferma y qué toma la persona que recurrió. Es el mismo criterio por el que este
+    servidor no ofrece los buscadores penales ni el compendio de extranjería.
+    """
+    expuestos = {solr for b in BUSCADORES.values() for solr in b.facetas.values()}
+    assert expuestos, "si no se expusiera ninguna faceta, este guardia sobraría"
+    for prohibido in ("enfermedad_ss", "medicamento_ss"):
+        assert prohibido not in expuestos, f"{prohibido} publica un dato de salud de un tercero"
+
+    # Y que llegue en la respuesta no alcanza para que salga: se lee el mapa, no lo que vino.
+    # Se comprueban las DOS grafías: con el mapa saltado, la clave que quedaría es la de Solr,
+    # y buscar sólo el nombre nuestro dejaba pasar justamente ese defecto.
+    for buscador in ("salud", "apelaciones"):
+        salieron = set(parse_sentencias(_con_facetas(), buscador).facetas or {})
+        assert salieron <= set(BUSCADORES[buscador].facetas), (
+            f"{buscador} devolvió {sorted(salieron - set(BUSCADORES[buscador].facetas))}, que "
+            "no declara: se está leyendo lo que llegó y no lo que el buscador publica"
+        )
+
+
+def test_filtrar_por_una_faceta_que_el_buscador_no_declara_falla_antes_de_consultar(monkeypatch):
+    """Pedirla no da error en la plataforma: devuelve cero resultados.
+
+    Medido el 25 de agosto de 2026 en apelaciones con `gls_inventado_s`: visibles 0, igual que
+    una cita que no existe. Por eso se rechaza acá, y el mensaje dice cuáles sí declara.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_facetas())
+    c._buscador_de_la_sesion = "apelaciones"
+    with pytest.raises(ValueError, match="no declara juez"):
+        c.buscar(rol=2476, anio=2023, buscador="apelaciones", facetas={"juez": ["X"]})
+
+
+def test_una_busqueda_con_facetas_que_vuelve_vacia_se_detiene(monkeypatch):
+    """La lista vacía acá no prueba que la sentencia no exista: prueba que el valor no calzó.
+
+    La plataforma publica `C.A. de Valparaiso` sin tilde y un libro como `PROTECCIN`, así que
+    el valor escrito de memoria devuelve cero. Devolverlo como lista vacía es exactamente el
+    falso negativo que la regla 4 existe para no producir.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(_con_facetas())
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    c = _con_respuesta(json.dumps(d))
+    c._buscador_de_la_sesion = "apelaciones"
+
+    with pytest.raises(ValueError, match="NO prueba que no exista"):
+        c.buscar(
+            rol=2476,
+            anio=2023,
+            buscador="apelaciones",
+            facetas={"corte_origen": ["C.A. de Valparaíso"]},
+        )
+
+    # Sin facetas, el mismo vacío SÍ es una respuesta: no hay valor que pueda no haber calzado.
+    assert c.buscar(rol=2476, anio=2023, buscador="apelaciones").visibles == 0
+
+
+def _filtros_enviados(contenido: bytes) -> dict:
+    """El `filtros` que viajó en el multipart, ya decodificado.
+
+    Falla con lo que se envió a la vista si el campo no está: sin eso, un cambio en el cuerpo
+    daría `AttributeError` sobre None y habría que ir a leer el multipart a mano.
+    """
+    cuerpo = contenido.decode("utf-8", "replace")
+    m = re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', cuerpo, re.S)
+    assert m, f"la petición no llevó `filtros`: {cuerpo[:400]}"
+    return json.loads(m.group(1))
+
+
+def test_una_faceta_valida_llega_a_la_peticion_con_su_campo_solr(monkeypatch):
+    """Lo que el cambio hace de verdad es traducir un nombre nuestro a un campo Solr y mandarlo.
+
+    Los otros guardias miran la faceta desconocida y la respuesta vacía, y ninguno de los dos
+    depende del cuerpo enviado: borrar el envío entero los dejaba verdes. Este decodifica
+    `filtros` de la petición real y comprueba el nombre y los valores.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    enviados = []
+
+    def espiar(peticion: httpx.Request) -> httpx.Response:
+        enviados.append(peticion.content)
+        return httpx.Response(200, text=_con_facetas())
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(espiar))
+    c._token, c._id_buscador = "tok", "168"
+    c._buscador_de_la_sesion = "apelaciones"
+    c.buscar(
+        rol=2476,
+        anio=2023,
+        buscador="apelaciones",
+        facetas={"corte_origen": ["C.A. de Santiago"], "libro": ["CIVIL"]},
+    )
+
+    assert enviados, "la petición no salió"
+    filtros = _filtros_enviados(enviados[0])
+    mandadas = {f["nombre"]: f["valores"] for f in filtros["facetas_seleccionadas"]}
+    assert mandadas == {"gls_corte_s": ["C.A. de Santiago"], "gls_libro_sup_s": ["CIVIL"]}, mandadas
+
+    # Y una faceta sin valores no viaja ni enciende la detención por valor mal copiado.
+    enviados.clear()
+    c.buscar(rol=2476, anio=2023, buscador="apelaciones", facetas={"corte_origen": []})
+    assert "facetas_seleccionadas" not in _filtros_enviados(enviados[0])
+
+
+def test_cero_visibles_con_reservadas_no_se_le_echa_la_culpa_a_la_faceta(monkeypatch):
+    """Donde `ocultas` trae número, cero visibles con reservadas dice que la cita SÍ existe.
+
+    Atribuirlo al valor de la faceta perdería el único dato que hay: que lo que coincide está
+    en el índice y no se publica a una consulta anónima.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(_con_facetas())
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 3
+    c = _con_respuesta(json.dumps(d))
+    c._buscador_de_la_sesion = "suprema"
+    with pytest.raises(PlataformaRechaza, match="no se publica"):
+        c.buscar(rol=1933, anio=2025, buscador="suprema", facetas={"sala": ["PRIMERA"]})
+
+
+def test_filtrar_sin_que_vuelva_el_desglose_no_se_da_por_acotado(monkeypatch):
+    """El bloque de facetas viaja siempre, medido incluso con cero resultados.
+
+    Si falta, la plataforma cambió, y ahí importa el doble: el filtro pudo no aplicarse y la
+    lista que vuelve pasaría por acotada. Sin esto, una búsqueda por un rol repetido devolvía
+    las trece de cinco cortes distintas como si fueran las de la corte pedida.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(CITA)  # el fixture guardado NO trae `facet_counts`
+    c._buscador_de_la_sesion = "apelaciones"
+    with pytest.raises(EstructuraInesperada, match="no se puede dar por acotado"):
+        c.buscar(
+            rol=2476,
+            anio=2023,
+            buscador="apelaciones",
+            facetas={"corte_origen": ["C.A. de Santiago"]},
+        )
+
+    # Con el bloque puesto, la misma búsqueda pasa: lo que se exige es el desglose, no un valor.
+    c2 = _con_respuesta(_con_facetas())
+    c2._buscador_de_la_sesion = "apelaciones"
+    assert c2.buscar(
+        rol=2476,
+        anio=2023,
+        buscador="apelaciones",
+        facetas={"corte_origen": ["C.A. de Santiago"]},
+    ).visibles

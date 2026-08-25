@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- `buscar_jurisprudencia` devuelve `facetas`: cómo se reparten las coincidencias por corte de
+  origen, libro o sala, según lo que cada buscador declare. Un rol de Corte de Apelaciones no es
+  único a nivel nacional, y esto lo dice antes de leer nada.
+- Y acepta `facetas` para acotar por esos valores. Los valores hay que copiarlos de una búsqueda
+  sin filtrar: uno que no calce exactamente devuelve cero resultados, y ahí la herramienta se
+  detiene en vez de entregar la lista vacía.
+
 ## [0.18.0] - 2026-08-25
 
 ### Corregido

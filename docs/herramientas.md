@@ -747,9 +747,46 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `filas` | int | Cuántas traer, de 1 a 250 |
 | `desplazamiento` | int | Desde qué coincidencia empezar. Cero es la primera; para la siguiente página, `desplazamiento + filas` |
 | `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
+| `facetas` | dict, opcional | Con qué acotar: nombre de faceta a los valores que se aceptan |
 
 Exige al menos un criterio: sin ninguno el buscador devuelve el índice entero, y eso no es una
 búsqueda.
+
+:::{warning}
+**Un valor de faceta que no calza no da error: devuelve cero resultados.**
+
+El rol de una Corte de Apelaciones no es único a nivel nacional. Medido el 25 de agosto de 2026,
+`2476-2023` devuelve 13 sentencias de cinco cortes distintas, y con `facetas={"corte_origen":
+["C.A. de Santiago"]}` quedan 7. Eso es lo que hace alcanzable una cita que de otro modo hay que
+buscar a mano entre decenas.
+
+Los valores hay que **copiarlos de `facetas` de una búsqueda sin filtrar**, porque la plataforma
+los publica con su propia ortografía: en esa misma respuesta conviven `C.A. de Valparaiso` sin
+tilde y un libro escrito `PROTECCIN`. Un valor tecleado de memoria devuelve la lista vacía, que
+se leería como que la sentencia no existe; por eso el cliente se detiene con un error cuando una
+búsqueda con facetas no devuelve nada.
+
+Cada buscador declara las suyas y pedir una que no declara falla antes de consultar. Salen de
+`campos_facetas`, que cada página del buscador publica:
+
+| Buscador | Facetas que se exponen |
+|---|---|
+| `suprema` | comuna, corte de origen, libro, ministros, norma, redactor, resultado, sala, tipo de recurso |
+| `apelaciones` | corte de origen, libro, materia, sala, tipo de recurso, tribunal |
+| `salud` | corte de origen, organismo, resultado, temática |
+| `civiles`, `familia`, `laborales` | juez, materia, tribunal |
+| `cobranza` | juez, tribunal |
+
+Dos que la plataforma declara y este servidor **no** expone: `enfermedad` y `medicamento`, del
+buscador de salud. Un desglose acotado a un rol publica de qué está enferma y qué toma la persona
+que recurrió, que es el mismo criterio por el que no se exponen los buscadores penales ni el
+compendio de extranjería. Tampoco se expone la de fecha: sus valores son marcas de tiempo y para
+eso están `desde` y `hasta`.
+
+Las cuentas son de la consulta, no del índice, **y no se suman**: una sentencia puede caer en más
+de un valor de la misma faceta. Medido en `laborales`, `materia` reparte **228** apariciones
+sobre **88** sentencias.
+:::
 
 :::{warning}
 **`ocultas` sólo tiene significado en `suprema`, y está medido.**
@@ -789,8 +826,9 @@ JavaScript, comentados.
 
 ### Campos de la respuesta
 
-`sentencias`, más seis campos de completitud: `visibles`, `coincidencias`, `ocultas`,
-`desplazamiento`, `no_entregadas` y `condiciones_de_publicacion`.
+`sentencias`, más seis campos de completitud (`visibles`, `coincidencias`, `ocultas`,
+`desplazamiento`, `no_entregadas` y `condiciones_de_publicacion`) y `facetas`, el desglose de
+esas mismas coincidencias por cada faceta que el buscador declara.
 
 **`ocultas` en cero no significa que la lista esté completa.** Son dos recortes distintos y
 hay que mirar los dos: `ocultas` son las coincidencias que la plataforma reserva a una consulta

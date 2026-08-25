@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.19.0] - 2026-08-25
+
 ### Agregado
 
 - `buscar_jurisprudencia` devuelve `facetas`: cómo se reparten las coincidencias por corte de
@@ -697,7 +699,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.18.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.0
 [0.18.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.18.0
 [0.17.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.17.0
 [0.16.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.16.0

@@ -1969,15 +1969,27 @@ def parse_georreferencia(html_modal: str) -> Georreferencia:
             "una fecha. Se levanta en vez de entregarla en nulo, porque un nulo se leería como "
             "que el sitio no la publica y esta es la única fecha con hora del proyecto."
         )
-    return Georreferencia(
-        existe=True,
-        latitud=float(valores["latitud"]),
-        longitud=float(valores["longitud"]),
-        precision_metros=float(precision.replace(",", ".")),
-        fecha_dispositivo=dia,
-        hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
-        intentos=int(intentos),
-    )
+    # Los números y la hora, traducidos a `EstructuraInesperada` como ya se hace tres líneas
+    # más arriba con la fecha. Sin esto salían crudos: `float` revienta con un separador de
+    # miles ('1.234,56' queda en '1.234.56') y `time` con una hora fuera de rango, y un
+    # `ValueError` desde acá no dice qué panel cambió ni que la lectura se abandonó.
+    try:
+        return Georreferencia(
+            existe=True,
+            latitud=float(valores["latitud"]),
+            longitud=float(valores["longitud"]),
+            precision_metros=float(precision.replace(",", ".")),
+            fecha_dispositivo=dia,
+            hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
+            intentos=int(intentos),
+        )
+    except ValueError as mal:
+        raise EstructuraInesperada(
+            f"El panel de georreferencia trae un valor que no se pudo leer ({mal}): "
+            f"latitud={valores['latitud']!r}, longitud={valores['longitud']!r}, "
+            f"precisión={precision!r}, hora={hora!r}, intentos={intentos!r}. Se levanta en "
+            "vez de entregar la ubicación a medias, que se leería como medida."
+        ) from mal
 
 
 class Anexo(BaseModel):
@@ -2981,8 +2993,17 @@ def leer_aviso(html_respuesta: str) -> str | None:
     m = _AVISO.search(html_respuesta)
     if not m:
         return None
-    # El aviso viene con las tildes escapadas al estilo de JavaScript.
-    return m.group(1).encode("utf-8").decode("unicode_escape")
+    # El aviso viene con las tildes escapadas al estilo de JavaScript. Se traducen SÓLO las
+    # secuencias bien formadas, en vez de pasar la cadena entera por `unicode_escape`, que
+    # tiene dos modos de falla medidos: con una tilde literal devuelve mojibake
+    # ('bÃºsqueda'), y con una secuencia truncada levanta `UnicodeDecodeError` crudo. Ese
+    # error saldría desde `_bloqueo_encubierto`, que mira TODAS las respuestas, así que un
+    # aviso mal formado tumbaría la petición sin clasificarse como nada.
+    return _ESCAPE_JS.sub(lambda e: chr(int(e.group(1), 16)), m.group(1))
+
+
+#: Una secuencia `\uXXXX` bien formada, que es como el sitio escapa las tildes de sus avisos.
+_ESCAPE_JS = re.compile(r"\\u([0-9a-fA-F]{4})")
 
 
 def es_aviso_de_captcha(mensaje: str) -> bool:

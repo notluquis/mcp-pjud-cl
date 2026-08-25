@@ -21,6 +21,7 @@ from mcp_pjud.parser import (
     actuaciones_receptor,
     audio_de_la_causa,
     causa_es_exhorto,
+    leer_aviso,
     parse_anexos,
     parse_audios,
     parse_causa_de_origen,
@@ -199,6 +200,43 @@ def test_fecha_imposible_no_revienta_la_fila():
 
 
 # --- fallo ruidoso: nunca devolver vacío ante estructura desconocida -------------
+
+
+def test_el_aviso_con_tilde_literal_no_se_degrada_ni_revienta():
+    """`unicode_escape` sobre la cadena entera tiene dos modos de falla medidos.
+
+    Con una tilde literal devolvía mojibake ('bÃºsqueda'), que es el texto que le llega a quien
+    lee el aviso. Con una secuencia truncada levantaba `UnicodeDecodeError` crudo, y eso sale
+    desde el camino que mira TODAS las respuestas: un aviso mal formado tumbaba la petición sin
+    clasificarse como nada.
+
+    Ahora se traducen sólo las secuencias bien formadas, que es lo que el sitio emite.
+    """
+    escapado = 'swal("","Corte para la b' + chr(92) + 'u00fasqueda","warning")'
+    literal = 'swal("","Corte para la búsqueda","warning")'
+    truncado = 'swal("","Rol invalido: C:' + chr(92) + 'u12 x","warning")'
+
+    assert leer_aviso(escapado) == "Corte para la búsqueda"
+    assert leer_aviso(literal) == "Corte para la búsqueda", (
+        "una tilde literal se degrada a mojibake antes de llegar a quien lee el aviso"
+    )
+    assert leer_aviso(truncado) is not None, (
+        "una secuencia truncada levanta desde el camino que mira todas las respuestas"
+    )
+
+
+def test_una_georreferencia_ilegible_se_levanta_clasificada():
+    """`float` y `time` salían crudos donde la fecha, tres líneas más arriba, sí se traducía.
+
+    Un `ValueError` desde acá no dice qué panel cambió ni que la lectura se abandonó, y este
+    módulo entero existe para que un cambio del sitio se note. El caso: una precisión sobre
+    mil metros con separador de miles, donde `float('1.234.56')` revienta.
+    """
+    with pytest.raises(EstructuraInesperada, match="no se pudo leer"):
+        parse_georreferencia(GEO.replace("26.68", "1.234,56", 1))
+
+    with pytest.raises(EstructuraInesperada, match="no se pudo leer"):
+        parse_georreferencia(GEO.replace("10:34", "25:99", 1))
 
 
 def test_la_historia_no_repite_el_mismo_tramite_dos_veces():

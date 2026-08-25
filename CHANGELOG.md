@@ -27,6 +27,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - La Historia de cobranza entregaba nueve filas de más: la plataforma repite algunos trámites
   con las columnas de etapa y trámite en blanco, y venían como actuaciones distintas. Una de
   ellas tampoco podía reconocerse como actuación del ministro de fe.
+- Un aviso de la plataforma con una tilde literal llegaba degradado, y uno con una secuencia
+  de escape a medias tumbaba la petición con un error sin clasificar.
+- Un valor ilegible en el panel de georreferencia salía como error crudo en vez de decir que
+  la estructura cambió.
+- Un PDF que sí se abrió se informaba como "no se pudo abrir" cuando ninguna de sus páginas
+  legibles traía texto y alguna no se dejó leer.
 
 ## [0.16.0] - 2026-08-24
 

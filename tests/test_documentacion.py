@@ -4063,13 +4063,19 @@ def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
         PALABRAS_DE_LA_CASACION,
         PALABRAS_DEL_REEMPLAZO,
         ROL_CON_DOS_SENTENCIAS,
+        ROL_CON_TRES_SENTENCIAS,
+        TOPE_AL_ENUMERAR,
     )
 
     referencia = " ".join(HERRAMIENTAS.split())
     for dicho in (
-        ROL_CON_DOS_SENTENCIAS.replace("-", "-"),
+        ROL_CON_DOS_SENTENCIAS,
         f"{PALABRAS_DE_LA_CASACION:,}".replace(",", "."),
         str(PALABRAS_DEL_REEMPLAZO),
+        # El caso de tres y el tope de la enumeración son afirmaciones verificables igual que
+        # las extensiones: corregir el caso medido o mover el tope dejaba la página vieja.
+        ROL_CON_TRES_SENTENCIAS,
+        f"**{TOPE_AL_ENUMERAR}**",
     ):
         assert dicho in referencia, (
             f"la referencia no cita {dicho!r}, que es lo medido y lo que justifica que esta "

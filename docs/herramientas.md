@@ -855,8 +855,8 @@ Medido en suprema, rol **1933-2025**: la de casación en el fondo son **3.646 pa
 el razonamiento; la de reemplazo son **157** y sólo confirma. Antes esta herramienta entregaba
 la que el buscador pusiera primero, y devolvió la de 157 sin decir que existía otra.
 
-Y no siempre son dos: el rol 1504-2019 de apelaciones trae **tres**, medido. Cuando pasan de
-diez, el mensaje enumera las primeras y dice cuántas quedan fuera.
+Y no siempre son dos: el rol **1504-2019** de apelaciones trae **tres**, medido. Cuando pasan
+de **10**, el mensaje enumera las primeras y dice cuántas quedan fuera.
 
 Ahora se detiene, las enumera con su resultado y su extensión, y hay que elegir con `cual`. Es
 la misma decisión que en el detalle de causa ante dos causas homónimas: entregar una se vería

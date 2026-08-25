@@ -812,6 +812,29 @@ def test_la_ambiguedad_se_decide_por_lo_que_la_plataforma_declara(monkeypatch):
         c.texto(rol=1933, anio=2025)
 
 
+def test_una_reservada_bajo_el_mismo_rol_tambien_detiene(monkeypatch):
+    """En suprema `ocultas` corresponde a la consulta, así que una visible más una reservada
+    da `visibles == 1`.
+
+    Entregar la visible la hace pasar por la única del rol, y si la cita que se fue a
+    verificar es la reservada, lo que vuelve es otro fallo del mismo rol: verosímil y
+    distinto. Es el mismo error que esta herramienta cerró para dos visibles.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "1933-2025"
+    # Una visible en la página, y el recuento por condición de publicación declara dos: la
+    # diferencia es la reservada, que es como la plataforma la publica.
+    d["condition_pub_sf"] = {
+        "numFound_sf": 2,
+        "counts": ["Con interes jurisprudencial, no anonimizable", 1, "Reservada", 1],
+    }
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(PlataformaRechaza, match="reservada"):
+        c.texto(rol=1933, anio=2025)
+
+
 def test_al_enumerar_va_la_fecha_de_cada_sentencia(monkeypatch):
     """En `familia` el caratulado llega como ANONIMIZADO y no hay tipo ni resultado.
 

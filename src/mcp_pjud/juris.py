@@ -563,6 +563,10 @@ TOPE_AL_ENUMERAR = 10
 #: herramienta se detenga en vez de elegir. Vive acá y no sólo en la prosa porque la
 #: referencia lo cita y `tests/test_documentacion.py` compara las dos.
 ROL_CON_DOS_SENTENCIAS = "1933-2025"
+
+#: Y el que trae TRES, medido el 17 de agosto de 2026 en el buscador de apelaciones. Que no
+#: siempre sean dos es lo que obliga a enumerar de verdad en vez de listar un par.
+ROL_CON_TRES_SENTENCIAS = "1504-2019"
 PALABRAS_DE_LA_CASACION = 3646
 PALABRAS_DEL_REEMPLAZO = 157
 
@@ -821,7 +825,19 @@ class JurisClient(Transporte):
         # que es lo que la plataforma DECLARA, y no por cuántas filas llegaron: una respuesta
         # que declare tres y traiga una (truncada, o el contrato cambió) dejaba pasar la misma
         # elección silenciosa que esto existe para cerrar.
-        if r.visibles > 1 and cual is None:
+        #
+        # Y una reservada cuenta: en suprema, donde `ocultas` corresponde a la consulta, una
+        # visible más una reservada da `visibles == 1` y entregarla la haría pasar por la
+        # única del rol. Si la cita que se fue a verificar es la reservada, se devuelve otro
+        # fallo del mismo rol, verosímil y distinto.
+        if cual is None and r.visibles + (r.ocultas or 0) > 1:
+            if r.ocultas:
+                raise PlataformaRechaza(
+                    f"El rol {rol}-{anio} tiene {r.visibles} sentencia(s) que se pueden ver y "
+                    f"{r.ocultas} reservada(s) a una consulta anónima. No se entrega ninguna "
+                    "sin decir cuál en `cual`: la que falta puede ser justamente la que se "
+                    f"busca, y las visibles son {_enumerar(r.sentencias)}."
+                )
             # Se vuelve a pedir con todas para poder ENUMERARLAS. Sin esto, un rol de tres
             # (medido: 1504-2019 en apelaciones) decía "tiene 3" y listaba dos, o sea el
             # selector obligaba a elegir a ciegas justo donde más falta hace. Es una petición

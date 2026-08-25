@@ -24,9 +24,6 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `tipo` no decía qué letras aceptan cobranza ni laboral, y las dos están medidas.
 - El detalle prometía "cuánto se debe y a qué fecha" en las liquidaciones de laboral, que no
   publican fecha: ahí no hay con qué saber cuál es la vigente.
-
-### Corregido
-
 - Las búsquedas por nombre, RUT y fecha mandaban el texto `None` en el campo del tribunal
   cuando la competencia no lo usa, en vez del cero que el sitio emite. La plataforma no da
   error con eso: devuelve un listado vacío, que se lee como que la causa no existe.

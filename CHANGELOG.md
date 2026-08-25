@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- Una búsqueda cuya segunda página repetía la primera se daba por completa: llegaba al total
+  que la plataforma declara y devolvía la mitad, sin pedir el resto. Va en la 0.16.0.
 - `documento_referencia` decía que su duración no se midió, y su token declara una hora, igual
   que la del cuaderno y el doble que la del listado.
 - `discrepancia_fechas` venía en falso donde no hay nada que comparar, y eso se lee como que

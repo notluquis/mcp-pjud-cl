@@ -1767,13 +1767,23 @@ def test_todas_las_salidas_del_recorrido_pasan_por_la_misma_entrega():
     from mcp_pjud.client import PjudClient
 
     arbol = ast.parse(inspect.getsource(PjudClient._paginado).lstrip())
+
+    # Los del ayudante no cuentan, y se excluyen por DÓNDE están y no por su forma: excluir
+    # los condicionales dejaba sin mirar una salida nueva escrita como expresión condicional,
+    # que es exactamente la forma que el código tenía un commit antes.
+    del_ayudante = {
+        id(n)
+        for f in ast.walk(arbol)
+        if isinstance(f, ast.FunctionDef) and f.name == "entregar"
+        for n in ast.walk(f)
+        if isinstance(n, ast.Return)
+    }
+    assert del_ayudante, "no se encontró `entregar`, así que este guardia no excluye nada"
+
     retornos = [
         n
         for n in ast.walk(arbol)
-        if isinstance(n, ast.Return)
-        and n.value is not None
-        # Los del ayudante mismo no cuentan: es él quien decide.
-        and not isinstance(n.value, ast.IfExp)
+        if isinstance(n, ast.Return) and n.value is not None and id(n) not in del_ayudante
     ]
     assert retornos, "`_paginado` dejó de tener retornos, así que este guardia no mira nada"
 
@@ -1812,6 +1822,37 @@ def test_una_pagina_repetida_no_pasa_por_recorrido_completo(monkeypatch):
 
     with pytest.raises(EstructuraInesperada, match="no está avanzando"):
         c.buscar_por_nombre(apellido_paterno="A", apellido_materno="B", tribunal=162, paginas=3)
+
+
+def test_la_busqueda_por_rut_tambien_junta_sus_repetidas(monkeypatch):
+    """La medición es de la búsqueda por nombre y ésta va por INFERENCIA, no por medición.
+
+    Es el mismo mecanismo: la plataforma une por litigante, y una empresa que sea parte varias
+    veces en la misma causa devuelve la misma fila repetida. Pero inferido no es medido, así
+    que el único sitio que se apoya en criterio es justamente el que necesita guardia: sin
+    esto, borrar su `por_parte=True` dejaba la suite entera verde.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    fila = (
+        "<tr><td></td><td>C-1-2020</td><td>01/01/2020</td><td>A / B</td><td>1er Juzgado</td>"
+        "<td><a onclick=\"detalleCausa('ref-%d')\">ver</a></td></tr>"
+    )
+    pagina = "".join(fila % i for i in (1, 2)) + (
+        "<tr><td colspan='5'><div>Total de registros: <b>2</b></div></td></tr>"
+    )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=pagina))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    causas = c.buscar_por_rut_juridica(76000000, "0", tribunal=162, paginas=2)
+
+    assert len(causas) == 1, (
+        f"dos filas de la misma causa salieron {len(causas)} veces: la búsqueda por RUT calza "
+        "por parte igual que la de nombre"
+    )
 
 
 def test_solo_se_juntan_las_busquedas_que_calzan_por_parte(monkeypatch):
@@ -2406,13 +2447,10 @@ def test_en_suprema_la_ambiguedad_no_nombra_un_parametro_que_no_existe(monkeypat
     completo = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
     inicio = completo.index("<tr")
     fila = completo[inicio : completo.index("</tr>") + len("</tr>")]
-    # La segunda causa se distingue por su caratulado, no sólo por la referencia: dos filas
-    # idénticas salvo el token son la MISMA causa repetida por litigante, y el listado ahora
-    # las junta. Lo que este test prueba es la ambigüedad entre dos causas distintas.
+    # Dos filas iguales salvo el token, que es la forma que `_causa_pedida` tiene que
+    # rechazar. La búsqueda por rol NO junta filas repetidas (eso se acota a las que calzan
+    # por parte), así que las dos llegan y la ambigüedad se levanta.
     otra = fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
-    caratulado = re.search(r"<td>([^<]*/[^<]*)</td>", fila)
-    assert caratulado, f"la fixture cambió de forma y no se ve el caratulado: {fila[:200]}"
-    otra = otra.replace(caratulado.group(1), "OTRA PARTE / OTRA CONTRAPARTE")
     listado = completo[:inicio] + fila + otra + completo[completo.index("</tr>") + 5 :]
 
     c, _ = _capturando(listado)

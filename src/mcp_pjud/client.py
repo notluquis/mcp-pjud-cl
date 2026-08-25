@@ -1344,7 +1344,7 @@ class PjudClient(Transporte):
         return aviso if aviso and es_aviso_de_captcha(aviso) else None
 
     def _primera_pagina(
-        self, ruta: str, data: dict[str, str], competencia: str, por_parte: bool = False
+        self, ruta: str, data: dict[str, str], competencia: str
     ) -> list[CausaEncontrada]:
         """Una sola página, sin comprobar completitud.
 
@@ -1353,8 +1353,11 @@ class PjudClient(Transporte):
         lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
         no detectarla.
         """
-        filas = parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia)
-        return una_por_causa(filas) if por_parte else filas
+        # Sin juntar filas repetidas, y no es un olvido: acá sólo entra la búsqueda por rol,
+        # que calza por la causa y no por sus partes. Si algún día se ofreciera `paginas=None`
+        # en una que calce por parte, hay que traerse la junta con ella: esta función no tiene
+        # la salida única que `_paginado` sí tiene, así que el olvido no se notaría.
+        return parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia)
 
     def _paginado(
         self,

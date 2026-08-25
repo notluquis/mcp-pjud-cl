@@ -644,6 +644,46 @@ mayúsculas, otro leía la descripción de una plantilla en vez del texto que de
 excluía por la forma del retorno y no por dónde estaba. Ninguno lo habría notado la suite: los
 encontró romper a propósito lo que cada uno decía cuidar.
 
+### 0.18: la prosa que más se cuidó era la única que no viajaba — hecho
+
+La 0.17 salió de que cuatro sesiones usaran el servidor de verdad. Ésta sale de la misma
+tanda, pero de una pregunta que sólo aparece cuando varias sesiones se equivocan igual: si la
+documentación está escrita y es correcta, por qué la ignoran las cuatro.
+
+**Porque no les llega.** El esquema de salida viaja sin las descripciones de campo, por una
+decisión medida y documentada: el catálogo pesaba 104.475 caracteres y el cliente difería las
+definiciones. La consecuencia no se había mirado. La descripción de `discrepancia_fechas`, que
+dice con todas sus letras que NO compara contra `fecha_registro`, no llegó nunca a ningún
+modelo: tres sesiones seguidas la adivinaron. Lo que sí llega es la descripción de la
+herramienta, así que ahí se mudó lo que carga peso.
+
+**Y dos defectos que no eran de prosa.** El lector de sentencias devolvía la cadena vacía por
+un campo que el buscador no publica, o sea la ausencia disfrazada de dato. El peor era
+`ministros`: llegaba como lista VACÍA, que en el contrato de este servidor significa que no
+firmó nadie. Arreglarlo por el mapa de cada buscador no bastó, y medirlo lo mostró: en suprema,
+que SÍ declara el campo, el rol 1933-2025 lo trae vacío con `redactor` y `sala` llenos. La
+cadena vacía no es respuesta por ninguna de las dos vías.
+
+| medición | resultado |
+|---|---|
+| el mismo apellido con y sin tilde, un tribunal | 5 causas contra 25, y mezclando las grafías cero |
+| `ministros` en el rol 1933-2025, suprema | vacío, con `redactor` y `sala` con dato |
+| el mensaje que pide elegir, en apelaciones | ofrecía "None palabras" |
+| el panel de notificaciones de C-1156-2026 | encabezados y `tbody` sin filas, con la demanda notificada |
+
+**El acento se midió porque la sesión que lo reportó cambió dos variables a la vez y lo dijo.**
+Aislada una sola, la conclusión salió al revés de la suya: la plataforma calza el acento
+literal y campo por campo, y guarda el mismo apellido de las dos formas. Ninguna de las dos
+grafías devuelve todo, así que acertarla tampoco da un total. No se corrige consultando las
+dos, y la razón no es la carga (la segunda petición pesa lo mismo la haga quien la haga) sino
+cuándo hace falta: en el cliente se gastaría siempre, incluso en un apellido sin una letra
+acentuable.
+
+Lo que este trabajo deja escrito para el próximo: **un guardia que existe para un defecto puede
+estar verde sobre él.** El aviso decía "los escritos no están medidos" mientras el parser los
+leía donde la plataforma los publica, y el guardia buscaba el identificador `escritos_pendientes` mientras
+la prosa nombraba el panel en palabras. Se encontró leyendo la prosa, no corriendo la suite.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

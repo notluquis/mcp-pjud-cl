@@ -1,6 +1,6 @@
 [project]
 name = "mcp-pjud"
-version = "0.17.0"
+version = "0.18.0"
 description = "Servidor MCP no oficial de solo lectura para la consulta pública de causas del Poder Judicial de Chile."
 readme = "README.md"
 requires-python = ">=3.13"

@@ -4094,7 +4094,9 @@ def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
         extensiones = [n.replace(".", "") for n in re.findall(r"([\d.]+) palabras", frase)]
         if not extensiones:
             continue
-        cual = [c for c in de_cada_una if c in frase]
+        # En minúscula: una frase que empiece por "Casación" no calzaba, y el guardia
+        # levantaba su propio error sobre prosa legítima.
+        cual = [c for c in de_cada_una if c in frase.lower()]
         assert len(cual) == 1, (
             f"esta frase cita una extensión y no se sabe de cuál de las dos sentencias habla, "
             f"así que no hay contra qué compararla: {frase!r}"

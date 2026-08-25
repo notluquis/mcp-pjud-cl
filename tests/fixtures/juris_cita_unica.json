@@ -1,30 +1,33 @@
 {
- "response": {
-  "numFound": 1,
-  "start": 0,
-  "docs": [
-   {
-    "rol_era_sup_s": "34546-2025",
-    "caratulado_s": "SOCIEDAD FICTICIA 1 LIMITADA CON EMPRESA FICTICIA 1 S.A.",
-    "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
-    "gls_sala_sup_s": "SEGUNDA, PENAL",
-    "gls_tip_recurso_sup_s": "(POLICIA LOCAL) QUEJA",
-    "resultado_recurso_sup_s": "ACOGIDO RECURSO DE QUEJA (M)",
-    "gls_corte_s": "C.A. de Santiago",
-    "rol_era_ape_s": "706-2023",
-    "gls_redactor_s": "Ministro no Identificado",
-    "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
-    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
-    "sit_fallo_anonimizado_i": 0,
-    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
-   }
-  ]
- },
- "condition_pub_sf": {
-  "numFound_sf": 1,
-  "counts": [
-   "Con interes jurisprudencial, no anonimizable",
-   1
-  ]
- }
+  "response": {
+    "numFound": 1,
+    "start": 0,
+    "docs": [
+      {
+        "rol_era_sup_s": "34546-2025",
+        "caratulado_s": "SOCIEDAD FICTICIA 1 LIMITADA CON EMPRESA FICTICIA 1 S.A.",
+        "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
+        "gls_sala_sup_s": "SEGUNDA, PENAL",
+        "gls_tip_recurso_sup_s": "(POLICIA LOCAL) QUEJA",
+        "resultado_recurso_sup_s": "ACOGIDO RECURSO DE QUEJA (M)",
+        "gls_corte_s": "C.A. de Santiago",
+        "rol_era_ape_s": "706-2023",
+        "gls_redactor_s": "Ministro no Identificado",
+        "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+        "sit_fallo_anonimizado_i": 0,
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
+      }
+    ]
+  },
+  "condition_pub_sf": {
+    "numFound_sf": 1,
+    "counts": [
+      "Con interes jurisprudencial, no anonimizable",
+      1
+    ]
+  }
 }

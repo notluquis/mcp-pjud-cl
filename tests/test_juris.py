@@ -14,7 +14,6 @@ from mcp_pjud.juris import (
     PALABRAS_DE_LA_CASACION,
     JurisClient,
     Sentencia,
-    _lista,
     buscadores_que_publican,
     parse_sentencias,
 )
@@ -1191,10 +1190,10 @@ def test_un_campo_que_el_buscador_no_declara_viene_en_nulo_y_no_vacio():
     # campo. Medido contra la plataforma, el rol 1933-2025 en suprema lo trae vacío.
     d = json.loads(CITA)
     docs = d["response"]["docs"]
-    assert _lista(docs[0]["sent__gls_int_firma_sup_s"]), "el fixture perdió los firmantes"
+    assert docs[0]["gls_ministro_ss"], "el fixture perdió los firmantes"
     assert parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros
 
-    docs[0]["sent__gls_int_firma_sup_s"] = ""
+    docs[0]["gls_ministro_ss"] = []
     assert parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros is None, (
         "una lista vacía diría que no firmó nadie, y eso no lo dice ninguna sentencia"
     )
@@ -1435,3 +1434,48 @@ def test_filtrar_sin_que_vuelva_el_desglose_no_se_da_por_acotado(monkeypatch):
         buscador="apelaciones",
         facetas={"corte_origen": ["C.A. de Santiago"]},
     ).visibles
+
+
+def test_los_firmantes_se_leen_del_campo_que_el_documento_trae():
+    """`sent__gls_int_firma_sup_s` no existe en el documento y era lo que este mapa declaraba.
+
+    Medido el 25 de agosto de 2026 sobre el rol 3292-2010 en suprema: sus 83 claves no la
+    traen, y los cinco firmantes vienen en `gls_ministro_ss` como LISTA. O sea `ministros`
+    leía un campo inexistente y llegaba vacío siempre, en el único buscador que dice
+    publicarlo. Lo delató que la faceta sí los listara.
+    """
+    assert BUSCADORES["suprema"].campos["ministros"] == "gls_ministro_ss"
+    s = parse_sentencias(CITA, "suprema").sentencias[0]
+    assert s.ministros is not None, "los firmantes vuelven a llegar en nulo"
+    assert len(s.ministros) > 1, s.ministros
+
+    # Y como lista, no como cadena partida por comas: un apellido compuesto lleva coma y
+    # partirlo cortaba nombres por la mitad.
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["gls_ministro_ss"] = ["PEREZ ROJAS, JUAN", "SOTO LIRA, ANA"]
+    firmantes = parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros
+    assert firmantes == ["PEREZ ROJAS, JUAN", "SOTO LIRA, ANA"], firmantes
+
+
+def test_una_fecha_que_el_buscador_no_acepta_falla_antes_de_consultar():
+    """Medido: con `01/01/2024` la plataforma responde una excepción de Solr y cero sentencias.
+
+    El formato que acepta es el que emite su propio campo, un `input type="date"`. Sin este
+    chequeo la consulta salía, volvía sin `response`, y el error decía que la estructura había
+    cambiado: mandaba a mirar el sitio en vez de mirar lo que se pidió.
+    """
+    c = JurisClient("test@example.cl")
+    with pytest.raises(ValueError, match="`desde` va en AAAA-MM-DD"):
+        c.buscar(buscador="suprema", desde="01/01/2024")
+    with pytest.raises(ValueError, match="`hasta` va en AAAA-MM-DD"):
+        c.buscar(buscador="suprema", desde="2024-01-01", hasta="31/01/2024")
+
+
+def test_un_rechazo_del_buscador_no_se_informa_como_cambio_de_estructura(monkeypatch):
+    """La plataforma dice por qué rechazó, y decir que cambió de forma manda a mirar el sitio."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(
+        json.dumps({"error": {"msg": "Invalid Date String"}, "condition_pub_sf": {}})
+    )
+    with pytest.raises(ValueError, match="rechazó la consulta"):
+        c.buscar(rol=1, anio=2025, buscador="suprema")

@@ -1414,8 +1414,8 @@ def listar_audios_audiencia(
     "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
     f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
     f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
-    "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
-    "que la sentencia no los tenga: "
+    "los que no declara vienen en NULO: ESE buscador no los publica, no que la sentencia no "
+    "los tenga. Los publican, y sólo ellos: "
     f"{_por_quien_los_publica(_OPCIONALES_DE_LA_SENTENCIA)}. "
     "La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se "
     "puede decidir por el tamaño si vale pedir el texto completo."
@@ -1438,8 +1438,14 @@ def buscar_jurisprudencia(
     ] = "",
     literal: Annotated[str, Field(description="Frase exacta.")] = "",
     excluir: Annotated[str, Field(description="Palabras que NO deben aparecer.")] = "",
-    desde: Annotated[str, Field(description="Fecha inicial, DD/MM/AAAA.")] = "",
-    hasta: Annotated[str, Field(description="Fecha final, DD/MM/AAAA.")] = "",
+    desde: Annotated[
+        str,
+        Field(
+            description="Fecha inicial, AAAA-MM-DD. Es el formato que el buscador acepta: "
+            "medido, con DD/MM/AAAA responde un error y ninguna sentencia."
+        ),
+    ] = "",
+    hasta: Annotated[str, Field(description="Fecha final, AAAA-MM-DD, igual que `desde`.")] = "",
     filas: Annotated[
         int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
     ] = 10,

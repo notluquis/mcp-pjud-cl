@@ -5997,3 +5997,22 @@ def test_la_referencia_cita_las_cifras_de_facetas_que_estan_medidas():
     for cifra in (APARICIONES_EN_LA_FACETA_DE_MATERIA, SENTENCIAS_DE_LA_MEDICION_DE_FACETAS):
         assert str(cifra) in contrato, f"el contrato de `facetas` no cita {cifra}"
         assert f"**{cifra}**" in referencia, f"la referencia no cita {cifra}"
+
+
+def test_la_referencia_pide_la_fecha_en_el_formato_que_el_buscador_acepta():
+    """Los dos sistemas usan formatos distintos y la página los tenía iguales.
+
+    La consulta de causas de la Oficina Judicial Virtual va en DD/MM/AAAA. El buscador de
+    fallos NO: medido el 25 de agosto de 2026, con ese formato responde una excepción de Solr y
+    cero sentencias, y acepta AAAA-MM-DD, que es lo que emite su propio campo de fecha. Una
+    página que diga DD/MM/AAAA para el buscador manda a una consulta que no devuelve nada.
+    """
+    texto = _texto(RAIZ / "docs" / "herramientas.md")
+    seccion = texto.split("## `buscar_jurisprudencia`", 1)
+    assert len(seccion) == 2, "la referencia ya no documenta el buscador de fallos"
+    tramo = seccion[1].split("\n## ", 1)[0]
+    assert "AAAA-MM-DD" in tramo, "la referencia no dice el formato que el buscador acepta"
+    assert "Rango de fechas, DD/MM/AAAA" not in tramo, (
+        "la referencia pide el rango en DD/MM/AAAA, que es el formato con que el buscador "
+        "responde un error"
+    )

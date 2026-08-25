@@ -117,7 +117,7 @@ BUSCADORES: Mapping[str, Buscador] = {
             "corte_origen": "gls_corte_s",
             "rol_corte_apelaciones": "rol_era_ape_s",
             "redactor": "gls_redactor_s",
-            "ministros": "sent__gls_int_firma_sup_s",
+            "ministros": "gls_ministro_ss",
             "condicion_publicacion": "gls_condicion_publicacion_s",
             "anonimizada": "sit_fallo_anonimizado_i",
             "url": "url_acceso_sentencia",
@@ -342,6 +342,10 @@ IDENTIFICADORES_MEDIDOS = {
     "compendio_extranjeria": 648,
 }
 
+#: El formato de fecha que el buscador acepta, que es el que emite su propio `input
+#: type="date"`. Cualquier otro le hace responder una excepción de Solr.
+_ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
+
 _TOKEN = re.compile(r'name="_token"\s+value="([^"]+)"')
 _ID_BUSCADOR = re.compile(r"id_buscador_activo\s*=\s*(\d+)")
 
@@ -531,6 +535,26 @@ def buscadores_que_publican(campo: str) -> list[str]:
     return sorted(n for n, b in BUSCADORES.items() if campo in b.campos)
 
 
+def _firmantes(d: dict, campos: Mapping[str, str]) -> list[str]:
+    """Los que firmaron, que el documento entrega como LISTA y no como cadena con comas.
+
+    `sent__gls_int_firma_sup_s`, que este mapa declaraba, NO existe en el documento: medido el
+    25 de agosto de 2026 sobre el rol 3292-2010 en suprema, cuyas 83 claves no la traen. O sea
+    `ministros` leía un campo inexistente y llegaba vacío SIEMPRE, en el único buscador que
+    dice publicarlo. Lo delató que la faceta sí listara los cinco.
+
+    Y se lee aparte porque un apellido compuesto lleva coma: pasar la lista por `str()` y
+    partirla por comas cortaba nombres por la mitad.
+    """
+    clave = campos.get("ministros")
+    if clave is None:
+        return []
+    valor = d.get(clave)
+    if isinstance(valor, list):
+        return [str(x).strip() for x in valor if str(x).strip()]
+    return _lista(str(valor or ""))
+
+
 def _lista(valor: str | None) -> list[str]:
     return [p.strip() for p in (valor or "").split(",") if p.strip()]
 
@@ -551,6 +575,13 @@ def parse_sentencias(
             f"El buscador de fallos no devolvió JSON: {cuerpo[:200]!r}"
         ) from e
 
+    if "error" in datos and "response" not in datos:
+        # La plataforma rechazó la consulta y lo dice. No es un cambio de estructura, así que
+        # decir que lo es manda a mirar el sitio en vez de mirar lo que se pidió.
+        raise ValueError(
+            "El buscador rechazó la consulta: "
+            f"{str(datos['error'])[:300]}. No es que la respuesta haya cambiado de forma."
+        )
     if "response" not in datos or "docs" not in datos.get("response", {}):
         raise EstructuraInesperada(
             "La respuesta del buscador de fallos no trae 'response.docs'. Cambió el "
@@ -638,7 +669,7 @@ def parse_sentencias(
             # sentencias del rol 1933-2025 lo traen vacío mientras el texto nombra a la sala.
             # O sea la lista vacía no era cosa de los buscadores que no lo declaran, y "no
             # firmó nadie" no es algo que diga ninguna sentencia.
-            ministros=_lista(leer(d, "ministros")) or None,
+            ministros=_firmantes(d, campos) or None,
             condicion_publicacion=leer(d, "condicion_publicacion"),
             anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
             url=leer(d, "url"),
@@ -863,6 +894,17 @@ class JurisClient(Transporte):
             raise ValueError(f"Las filas por página van de 1 a {FILAS_MAXIMAS}.")
         if desplazamiento < 0:
             raise ValueError("El desplazamiento no puede ser negativo.")
+        for rotulo, fecha in (("desde", desde), ("hasta", hasta)):
+            if fecha and not _ISO.fullmatch(fecha):
+                # Medido el 25 de agosto de 2026: con `01/01/2024` la plataforma responde una
+                # excepción de Solr y ninguna sentencia, y con `2024-01-01` responde normal. Es
+                # el formato que emite su propio campo de fecha, que es un `input type="date"`.
+                # Se rechaza acá para que el error diga qué formato va, en vez de llegar como
+                # un cambio de estructura que no ocurrió.
+                raise ValueError(
+                    f"`{rotulo}` va en AAAA-MM-DD y llegó {fecha!r}. Medido: con otro formato "
+                    "el buscador responde un error de Solr y ninguna sentencia."
+                )
 
         # Sólo se envían las claves con valor. Medido: mandar el juego completo de claves
         # vacías que arma su formulario hace que el servidor responda 500.

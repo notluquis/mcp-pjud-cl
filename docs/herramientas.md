@@ -743,7 +743,7 @@ su caratulado, sala, fecha, ministros y enlace permanente.
 | `todas` | str, opcional | Texto libre: deben aparecer todas estas palabras |
 | `literal` | str, opcional | Frase exacta |
 | `excluir` | str, opcional | Palabras que no deben aparecer |
-| `desde` / `hasta` | str, opcional | Rango de fechas, DD/MM/AAAA |
+| `desde` / `hasta` | str, opcional | Rango de fechas, **AAAA-MM-DD**. Es el formato que el buscador acepta: medido, con DD/MM/AAAA responde un error de Solr y ninguna sentencia |
 | `filas` | int | Cuántas traer, de 1 a 250 |
 | `desplazamiento` | int | Desde qué coincidencia empezar. Cero es la primera; para la siguiente página, `desplazamiento + filas` |
 | `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |

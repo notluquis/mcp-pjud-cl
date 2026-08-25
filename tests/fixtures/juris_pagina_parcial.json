@@ -13,10 +13,13 @@
         "gls_corte_s": "C.A. de Santiago",
         "rol_era_ape_s": "706-2023",
         "gls_redactor_s": "Ministro no Identificado",
-        "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
         "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
         "sit_fallo_anonimizado_i": 0,
-        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
       },
       {
         "rol_era_sup_s": "34547-2025",
@@ -28,10 +31,13 @@
         "gls_corte_s": "C.A. de Santiago",
         "rol_era_ape_s": "706-2023",
         "gls_redactor_s": "Ministro no Identificado",
-        "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
         "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
         "sit_fallo_anonimizado_i": 0,
-        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
       },
       {
         "rol_era_sup_s": "34548-2025",
@@ -43,10 +49,13 @@
         "gls_corte_s": "C.A. de Santiago",
         "rol_era_ape_s": "706-2023",
         "gls_redactor_s": "Ministro no Identificado",
-        "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
         "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
         "sit_fallo_anonimizado_i": 0,
-        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
       }
     ]
   },

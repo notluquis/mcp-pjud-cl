@@ -185,6 +185,18 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
 - Exige **acotar la búsqueda** según la competencia (ver el cuadro de arriba). Donde el
   tribunal es obligatorio eso limita la utilidad de la herramienta: hay que saber dónde está
   la causa antes de poder buscarla.
+- **La tilde calza literal, campo por campo.** El mismo apellido está guardado de las dos
+  formas en la misma base, así que ninguna de las dos grafías devuelve todo. Medido el 25 de
+  agosto de 2026 sobre un apellido en un solo tribunal:
+
+  | paterno | materno | causas |
+  |---|---|---|
+  | sin tilde | sin tilde | 5 |
+  | con tilde | con tilde | 25 |
+  | una con y otra sin | | 0 |
+
+  `MUÑOZ` contra `MUNOZ` da lo mismo. Un total sale de consultar las dos grafías; una sola
+  entrega la mitad y no lo dice.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
@@ -445,9 +457,12 @@ graph TD
 :::{warning} Al computar plazos
 `fecha_diligencia` de la historia trae dato **sólo en civil**. En cobranza la plataforma no
 publica cuándo se practicó la diligencia, así que ahí no hay de dónde leerla: computar desde
-`fecha_registro` sería computar desde cuándo el tribunal la asentó, que es otra fecha. Y las
-notificaciones incluyen las **no practicadas**, que se distinguen por su `estado`: una fila
-pendiente no hizo correr ningún plazo.
+`fecha_registro` sería computar desde cuándo el tribunal la asentó, que es otra fecha.
+
+El panel `notificaciones` incluye las **no practicadas**, que se distinguen por su `estado`:
+una fila pendiente no hizo correr ningún plazo. Y llega **vacío** en causas cuya demanda sí se
+notificó, medido en `C-1156-2026`: la pregunta de si se notificó se responde con las
+actuaciones del ministro de fe, no con este panel.
 
 Los litigantes traen **RUT de personas naturales**: son datos personales de terceros.
 

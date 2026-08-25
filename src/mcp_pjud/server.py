@@ -52,6 +52,8 @@ from pydantic import Field
 
 from .client import (
     ANEXOS,
+    CAUSAS_DEL_APELLIDO_CON_TILDE,
+    CAUSAS_DEL_APELLIDO_SIN_TILDE,
     CON_TRIBUNAL,
     DESCRIPCION,
     DOCUMENTOS,
@@ -74,6 +76,7 @@ from .client import (
 )
 from .juris import (
     BUSCADORES,
+    CUAL_DE_LA_CASACION_MEDIDO,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
@@ -81,6 +84,7 @@ from .juris import (
     JurisClient,
     ResultadoJurisprudencia,
     TextoSentencia,
+    buscadores_que_publican,
     miles,
 )
 from .parser import (
@@ -114,12 +118,54 @@ _CON_OCULTAS = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_co
 #: el modelo intente una llamada para la que nunca va a tener referencia.
 _CON_GEORREFERENCIA = sorted(n for n in MODULOS if n in GEORREFERENCIA)
 
+
 #: La misma regla dicha una vez, para las tres herramientas que la comparten.
+def _y(nombres: list[str]) -> str:
+    """Los nombres como los enumera una frase en español, con la `y` antes del último.
+
+    Con coma sola, "en apelaciones, penal va el LIBRO" se puede leer como una sola cosa
+    llamada "apelaciones penal", y una sesión de prueba dudó justo ahí.
+    """
+    if len(nombres) < 2:
+        return "".join(nombres)
+    return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
+
+
+#: Los campos de una sentencia que no todo buscador declara. Sale de comparar el modelo con el
+#: mapa de cada uno: los seis llegaban en cadena vacía donde nadie los publica.
+_OPCIONALES_DE_LA_SENTENCIA = [
+    "ministros",
+    "redactor",
+    "rol_corte_apelaciones",
+    "sala",
+    "tipo_recurso",
+    "resultado_recurso",
+]
+
+
+def _por_quien_los_publica(campos: list[str]) -> str:
+    """Los campos agrupados por qué buscadores los declaran, en una frase.
+
+    Cada campo se deriva por su cuenta y después se juntan los que coinciden. Nombrar uno y
+    colgarle otros dos ("`sala`, `tipo_recurso` y `resultado_recurso` en …") sale igual hoy y
+    afirma de más mañana: el día que un buscador declare `sala` sin `tipo_recurso`, el contrato
+    diría que lo publica y llegaría en nulo, que es el falso negativo que se vino a cerrar.
+    Y derivarlos de a uno sin agrupar repite la misma lista tres veces con una `y` en medio,
+    que se lee peor que lo que reemplaza.
+    """
+    grupos: dict[tuple[str, ...], list[str]] = {}
+    for campo in campos:
+        grupos.setdefault(tuple(buscadores_que_publican(campo)), []).append(campo)
+    return "; ".join(
+        f"{_y([f'`{c}`' for c in cs])} en {_y(list(quien))}" for quien, cs in grupos.items()
+    )
+
+
 ACOTACION = (
     "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
-    f"la competencia: {', '.join(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
-    f"{', '.join(_EXIGEN_CORTE)} exige `corte` y NO acepta tribunal; "
-    f"{', '.join(_SIN_ACOTAR)} no exige ninguna de las dos. La búsqueda por rol no exige "
+    f"la competencia: {_y(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
+    f"{_y(_EXIGEN_CORTE)} exige `corte` y NO acepta tribunal; "
+    f"{_y(_SIN_ACOTAR)} no exige ninguna de las dos. La búsqueda por rol no exige "
     "acotar en ninguna."
 )
 
@@ -143,7 +189,7 @@ Suelen diferir en varios días. Si `discrepancia_fechas` es verdadero, las dos f
 sitio no coinciden: informarlo en vez de elegir una.
 
 `georreferenciado: false` prueba que no hay registro SÓLO en
-{", ".join(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
+{_y(_CON_GEORREFERENCIA)}, que son las que publican esa columna; en el resto
 significa que no hay dónde mirar. Y `true` significa que el sitio lo ofrece, no que exista:
 está medido que una de seis abre un panel vacío, y saberlo cuesta pedir
 `obtener_georreferencia`.
@@ -392,17 +438,6 @@ def _cliente(ctx: Context | None = None) -> PjudClient:
     return c
 
 
-def _y(nombres: list[str]) -> str:
-    """Los nombres como los enumera una frase en español, con la `y` antes del último.
-
-    Con coma sola, "en apelaciones, penal va el LIBRO" se puede leer como una sola cosa
-    llamada "apelaciones penal", y una sesión de prueba dudó justo ahí.
-    """
-    if len(nombres) < 2:
-        return "".join(nombres)
-    return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
-
-
 #: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
 #: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
 _CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
@@ -457,17 +492,17 @@ TribunalQueAcota = Annotated[
     int | None,
     Field(
         description="Código del tribunal, para acotar la búsqueda. Obligatorio cuando la "
-        f"competencia es una de: {', '.join(_EXIGEN_TRIBUNAL)}. En "
-        f"{', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"competencia es una de: {_y(_EXIGEN_TRIBUNAL)}. En "
+        f"{_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 TribunalDelRol = Annotated[
     int | None,
     Field(
-        description=f"Código del tribunal. En {', '.join(_EXIGEN_TRIBUNAL)} la plataforma lo "
+        description=f"Código del tribunal. En {_y(_EXIGEN_TRIBUNAL)} la plataforma lo "
         f"acepta opcional, y {EL_ROL_NO_BASTA}: omitirlo no amplía la búsqueda, la hace barrer "
         "y devuelve una causa por juzgado, cada una con sus partes. Indicarlo salvo que se "
-        f"quiera justamente ese barrido. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la "
+        f"quiera justamente ese barrido. En {_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la "
         "plataforma no lo usa."
     ),
 ]
@@ -475,10 +510,10 @@ TribunalQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código del tribunal. Esta herramienta devuelve UNA causa, así que el "
-        f"tribunal no acota nada: la identifica. En {', '.join(_EXIGEN_TRIBUNAL)}, donde "
+        f"tribunal no acota nada: la identifica. En {_y(_EXIGEN_TRIBUNAL)}, donde "
         f"{EL_ROL_NO_BASTA}, sin él la llamada falla por ambigüedad en vez de abrir la causa "
-        f"de otra persona. En {', '.join(_EXIGEN_CORTE)} eso lo hace `corte`, y en "
-        f"{', '.join(_SIN_ACOTAR)} no hace falta ninguno de los dos."
+        f"de otra persona. En {_y(_EXIGEN_CORTE)} eso lo hace `corte`, y en "
+        f"{_y(_SIN_ACOTAR)} no hace falta ninguno de los dos."
     ),
 ]
 Paginas = Annotated[
@@ -582,7 +617,7 @@ CorteQueAcota = Annotated[
     int | None,
     Field(
         description="Código de la corte, para acotar la búsqueda. Obligatorio cuando la "
-        f"competencia es una de: {', '.join(_EXIGEN_CORTE)}, donde la plataforma responde "
+        f"competencia es una de: {_y(_EXIGEN_CORTE)}, donde la plataforma responde "
         f"'Por favor seleccione una Corte para la búsqueda'. {_CORTE_DE_MAS}"
     ),
 ]
@@ -590,7 +625,7 @@ CorteDelRol = Annotated[
     int | None,
     Field(
         description="Código de la corte. En "
-        f"{', '.join(_EXIGEN_CORTE)} el mismo número de rol existe en varias, así que "
+        f"{_y(_EXIGEN_CORTE)} el mismo número de rol existe en varias, así que "
         f"omitirla devuelve una causa por corte. {_CORTE_DE_MAS}"
     ),
 ]
@@ -598,7 +633,7 @@ CorteQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código de la corte. Esta herramienta devuelve UNA causa, así que la corte "
-        f"no acota nada: la identifica. En {', '.join(_EXIGEN_CORTE)} el mismo rol y el mismo "
+        f"no acota nada: la identifica. En {_y(_EXIGEN_CORTE)} el mismo rol y el mismo "
         "libro existen en varias cortes, y sin ella la llamada falla por ambigüedad. "
         f"{_CORTE_DE_MAS}"
     ),
@@ -678,9 +713,9 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     "la `corte`. Sin repetirlos abre el mismo rol de otra competencia o de otro juzgado, que "
     "existe y se ve bien. Si la búsqueda ya iba acotada se reusa ese mismo código; si no, la "
     "fila publica el NOMBRE del tribunal o de la corte y el código se resuelve con "
-    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_ACOTAR)} no hay ninguno de los "
+    f"`listar_tribunales` o `listar_cortes`. En {_y(_SIN_ACOTAR)} no hay ninguno de los "
     "dos que resolver ni que repetir, y la competencia se repite igual que en el resto. En "
-    f"{', '.join(_SIN_DETALLE)} no hay detalle: se rechaza por decisión, no por no estar "
+    f"{_y(_SIN_DETALLE)} no hay detalle: se rechaza por decisión, no por no estar "
     "medido."
 )
 
@@ -690,7 +725,7 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
 #: caía del otro lado del corte, y sin ella un falso de suprema se lee como ausencia probada.
 QUE_SIGNIFICA_EL_FALSO = (
     "`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado "
-    f"(art. 9 inc. 3 Ley 20.886) SÓLO en {', '.join(_CON_GEORREFERENCIA)}, que son las que "
+    f"(art. 9 inc. 3 Ley 20.886) SÓLO en {_y(_CON_GEORREFERENCIA)}, que son las que "
     "publican esa columna. En el resto, el falso significa que no hay dónde mirar. Y `true` "
     "significa que el sitio lo ofrece, no que exista: está medido que una de seis abre un "
     "panel vacío."
@@ -722,7 +757,14 @@ def buscar_causa_por_rit(
     title="Buscar causa por nombre",
     annotations=SOLO_LECTURA,
     description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
-    "campos de nombre. El año no cuenta para ese mínimo."
+    "campos de nombre. El año no cuenta para ese mínimo.\n\nLA TILDE IMPORTA, y es literal "
+    "campo por campo: la plataforma guarda el mismo apellido de las dos formas. Medido sobre "
+    f"un apellido en un solo tribunal: sin tilde salen {CAUSAS_DEL_APELLIDO_SIN_TILDE} causas, "
+    f"con tilde salen {CAUSAS_DEL_APELLIDO_CON_TILDE}, y escribir un campo con tilde y el otro "
+    "sin ella da CERO. Por eso una lista vacía acá NO significa que la persona no tenga causas, "
+    "y una lista con resultados TAMPOCO está completa: falta la mitad escrita de la otra forma. "
+    "Repetir con la otra grafía SÓLO antes de informar un total: para abrir una causa que "
+    "ya apareció no hace falta."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
     f"\n\n{ACOTACION}",
 )
@@ -802,6 +844,11 @@ def buscar_causa_por_fecha(
     "significa que la causa NO tiene actuaciones de receptor, y eso es una respuesta. Si la "
     "búsqueda no encuentra la causa, esto falla en vez de devolver la lista vacía: los dos "
     "casos daban el mismo valor y un rol mal escrito se leía como una causa sin diligencias."
+    "\n\n`discrepancia_fechas` compara las DOS fuentes de `fecha_diligencia` entre sí: la que "
+    "va entre paréntesis en la columna y la del texto 'Diligencia:'. NO compara "
+    "`fecha_diligencia` contra `fecha_registro`, y que esas dos difieran es lo normal y es "
+    "justamente el motivo de esta herramienta. En NULO falta una de las dos fuentes y no hay "
+    "nada que comparar."
     f"\n\n{QUE_SIGNIFICA_EL_FALSO}",
 )
 def obtener_actuaciones_receptor(
@@ -844,11 +891,10 @@ def obtener_detalle_causa(
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
     Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y en una
-    sola cadena. Preferirla antes que pedir paneles por separado: vienen juntos y separarlos
-    multiplica las consultas sin traer nada nuevo.
+    sola cadena. Preferirla antes que pedir paneles por separado: separarlos multiplica las
+    consultas sin traer nada nuevo.
 
-    NO es el expediente completo: publica más paneles de los que este servidor sabe leer, y los
-    escritos no están medidos: su ausencia acá NO significa que la causa no los tenga.
+    NO es el expediente completo: publica más paneles de los que este servidor sabe leer.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -863,8 +909,9 @@ def obtener_detalle_causa(
     pasa fuera de civil, la pregunta no está medida ahí.
 
     Al computar plazos: `fecha_diligencia` trae dato SÓLO en civil; en cobranza el sitio no
-    publica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su
-    `estado` distingue.
+    publica cuándo se practicó. `notificaciones` incluye las NO practicadas, que su `estado`
+    distingue, y llega VACÍO en causas cuya demanda sí se notificó: eso se responde con las
+    actuaciones del ministro de fe.
 
     Las liquidaciones NO se suman: en cobranza la más reciente es la vigente y las anteriores
     el historial. En laboral no traen fecha: ahí cuál es la vigente no se sabe.
@@ -1250,6 +1297,10 @@ def obtener_georreferencia(
     `existe: false` significa que la actuación la ofrecía y el panel respondió que no hay
     ninguna. Está medido: una de seis. No es lo mismo que no haber preguntado.
 
+    `intentos` cuenta cuántas veces el aparato trató de fijar la posición, según el sitio. Qué
+    significa un número alto NO está medido. Viene en nulo SÓLO cuando `existe` es falso, o
+    sea cuando no hay georreferencia que contar: si la hay y falta la cuenta, esto levanta.
+
     Informar SIEMPRE `precision_metros` junto con las coordenadas. Está medido que varía entre
     6 y 103 metros en una misma causa, y con 103 la coordenada dice el sector y no la puerta:
     presentarla como una dirección exacta es afirmar de más.
@@ -1351,18 +1402,27 @@ def listar_audios_audiencia(
     # los 2 KB. Ahora se dicen una vez, y acá, que es donde se leen.
     description="Busca sentencias en el Buscador Unificado de Fallos.\n\nSirve para "
     "verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve la sentencia "
-    "con su caratulado, sala, fecha y enlace permanente.\n\nEl resultado trae dos cuentas de "
+    "con su caratulado, su fecha y su enlace permanente.\n\nEl resultado trae dos cuentas de "
     "completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma "
     "reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo "
     "porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa "
     "que la lista es un subconjunto, y hay que decirlo.\n\n`ocultas` en cero no prueba que "
     "la lista esté completa, y en NULO tampoco: nulo no es cero, es que en ese buscador no se "
-    f"puede saber. Sólo {', '.join(_CON_OCULTAS)} la trae con número.\n\n`no_entregadas` "
+    f"puede saber. Sólo {_y(_CON_OCULTAS)} la trae con número.\n\n`no_entregadas` "
     "mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en "
     "`desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con "
     "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
     f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
-    f"{miles(INDEXADAS_MEDIDAS)} indexadas.",
+    f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
+    "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
+    "que la sentencia no los tenga: "
+    f"{_por_quien_los_publica(_OPCIONALES_DE_LA_SENTENCIA)}. "
+    "La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se "
+    "puede decidir por el tamaño si vale pedir el texto completo."
+    "\n\n`condiciones_de_publicacion` desglosa la "
+    "consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la "
+    "plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y "
+    "`ocultas`: no es que no haya condiciones.",
 )
 def buscar_jurisprudencia(
     rol: Annotated[
@@ -1433,8 +1493,15 @@ def obtener_texto_sentencia(
         int | None,
         Field(
             description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
-            "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con su "
-            "resultado y su extensión, y hay que elegir.",
+            "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo "
+            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número es la "
+            "POSICIÓN EN QUE "
+            "EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para "
+            "nombrarlas: en suprema está medido que la casación con el razonamiento es "
+            f"la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1. Elegir por el orden en que se leyó "
+            "una explicación entrega la de reemplazo, "
+            "que confirma en una línea. Hay que leer la enumeración de la detención y tomar el "
+            "número de ahí.",
             ge=1,
         ),
     ] = None,
@@ -1448,8 +1515,9 @@ def obtener_texto_sentencia(
     buscar.
 
     Se pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son
-    unos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en
-    palabras y páginas, que suele bastar para decidir si vale pedir el resto.
+    unos veinticinco mil caracteres. La búsqueda entrega `texto_preview`, y donde el buscador
+    publica la extensión también `palabras` y `paginas`, que suelen bastar para decidir si vale
+    pedir el resto. En NULO hay que decidir sin ese dato, no suponer que el fallo es breve.
 
     El texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado
     también sus cédulas. `anonimizada` y `fuente` dicen qué versión se entregó. No reproducir
@@ -1480,17 +1548,17 @@ TribunalDeLaPlantilla = Annotated[
     int | None,
     Field(
         description="Código del tribunal, si se sabe. En "
-        f"{', '.join(_EXIGEN_TRIBUNAL)} hace falta para abrir una causa concreta, porque "
+        f"{_y(_EXIGEN_TRIBUNAL)} hace falta para abrir una causa concreta, porque "
         f"{EL_ROL_NO_BASTA}. Cuando no se sabe, la plantilla dice cómo resolverlo en vez de "
-        f"exigirlo acá. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"exigirlo acá. En {_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 CorteDeLaPlantilla = Annotated[
     int | None,
     Field(
-        description=f"Código de la corte, si se sabe. En {', '.join(_EXIGEN_CORTE)} el mismo "
+        description=f"Código de la corte, si se sabe. En {_y(_EXIGEN_CORTE)} el mismo "
         "rol y el mismo libro existen en varias, así que hace falta para abrir una causa "
-        f"concreta. En {', '.join(_EXIGEN_TRIBUNAL + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"concreta. En {_y(_EXIGEN_TRIBUNAL + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 
@@ -1586,7 +1654,7 @@ Desde cuándo corre el plazo en esta causa.
 
 4. Decir qué NO cubre esta lectura, junto con el resultado y no después:
 
-   - Estas actuaciones sólo se publican en {", ".join(_CON_RECEPTOR)}.
+   - Estas actuaciones sólo se publican en {_y(_CON_RECEPTOR)}.
      Que no aparezca ninguna no prueba que no existan: prueba que ahí termina lo que ese
      panel publica.
    - Son las del ministro de fe, no la historia entera: las resoluciones y las notificaciones
@@ -1633,7 +1701,7 @@ En qué estado está esta causa.
 3. Enumerar panel por panel qué vino, distinguiendo tres estados que NO son lo mismo:
 
    - NULO: {competencia} no publica ese panel, y la pregunta no tiene respuesta acá.
-     Las competencias con al menos un panel medido son {", ".join(_CON_DETALLE)},
+     Las competencias con al menos un panel medido son {_y(_CON_DETALLE)},
      y cada una publica los suyos.
    - Lista vacía: el panel existe y no trae filas. Eso sí es una respuesta.
    - Con elementos: lo que hay.
@@ -1703,13 +1771,13 @@ def verificar_cita(
 Si el Buscador Unificado de Fallos publica la sentencia de esta cita.
 
 1. Pedir `buscar_jurisprudencia` con rol={rol}, anio={anio}, buscador={buscador!r}{frase}.
-   Los buscadores que este servidor acepta son {", ".join(sorted(BUSCADORES))}.
+   Los buscadores que este servidor acepta son {_y(sorted(BUSCADORES))}.
    Cada uno indexa lo suyo: preguntarle al que no es devuelve una lista sin la sentencia.
 
 2. Informar SIEMPRE las dos cuentas de completitud, las dos y no una:
 
    - `ocultas` son las coincidencias que la plataforma reserva a una consulta anónima.
-     Sólo {", ".join(_CON_OCULTAS)} la trae con número, y en NULO no es cero: es que ahí no
+     Sólo {_y(_CON_OCULTAS)} la trae con número, y en NULO no es cero: es que ahí no
      se puede saber.
    - `no_entregadas` son las visibles que esta llamada no trajo porque `filas` acota cuántas
      se piden. Mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en

@@ -116,6 +116,24 @@ INTERVALO_MINIMO = 5.0
 #: promedio sostenido es el mismo; lo que se permite es que las primeras salgan juntas.
 RAFAGA_MAXIMA = 4
 
+#: La búsqueda por nombre calza el acento LITERAL y campo por campo, y las dos grafías del
+#: mismo apellido conviven en los datos de la plataforma. Medido el 25 de agosto de 2026 sobre
+#: el mismo apellido, el mismo tribunal y la misma competencia: sin tilde en los dos campos
+#: salen unas causas, con tilde en los dos salen otras, y cualquiera de las dos mezclas da
+#: CERO. `MUÑOZ` contra `MUNOZ` también da cero.
+#:
+#: O sea acertar la grafía no da la respuesta completa: da la mitad que se escribió así. Y la
+#: mitad que falta llega como lista vacía, que es el falso negativo que la regla 4 existe para
+#: no producir.
+#:
+#: No se corrige acá consultando las dos grafías, y la razón no es la carga: la segunda
+#: petición pesa lo mismo la haga el cliente o la pida quien consulta. Es CUÁNDO hace falta.
+#: Hacerlo acá la gasta siempre, incluso en un apellido sin una sola letra acentuable y en las
+#: búsquedas donde no se va a informar un total. La descripción la pide donde sí cambia la
+#: respuesta: antes de decir cuántas causas tiene alguien.
+CAUSAS_DEL_APELLIDO_SIN_TILDE = 5
+CAUSAS_DEL_APELLIDO_CON_TILDE = 25
+
 #: Cuánto tarda de verdad el buscador de fallos, medido, y cuánto la página del mismo host.
 #: Son las cifras que justifican `ESPERA_MAXIMA`, y viven acá porque se citan en tres archivos:
 #: `tests/test_documentacion.py` verifica que ninguno quede con la vieja.

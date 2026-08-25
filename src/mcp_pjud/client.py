@@ -1379,6 +1379,15 @@ class PjudClient(Transporte):
             raise ValueError(f"El tope de páginas debe ser 1 o más, se recibió {paginas}.")
 
         acumuladas: list[CausaEncontrada] = []
+
+        def entregar(filas: list[CausaEncontrada]) -> list[CausaEncontrada]:
+            """Lo que sale por cualquiera de las salidas del recorrido.
+
+            Los tres retornos tienen que juntar o no juntar lo mismo, y una salida nueva que
+            se olvide de hacerlo devuelve duplicados sin que nada lo note.
+            """
+            return una_por_causa(filas) if por_parte else filas
+
         vistos: set[str] = set()
         token: str | None = None
         total: int | None = None
@@ -1412,7 +1421,7 @@ class PjudClient(Transporte):
                         "estructura. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return una_por_causa(acumuladas) if por_parte else acumuladas
+                return entregar(acumuladas)
 
             acumuladas.extend(parse_resultados(html_, competencia))
 
@@ -1459,7 +1468,7 @@ class PjudClient(Transporte):
                 #
                 # Civil no lo hace, y por eso el hueco sobrevivió hasta que entraron esas dos
                 # competencias.
-                return una_por_causa(acumuladas) if por_parte else acumuladas
+                return entregar(acumuladas)
 
             if token is None:
                 if len(acumuladas) != total:
@@ -1470,7 +1479,7 @@ class PjudClient(Transporte):
                         "cambió. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return una_por_causa(acumuladas) if por_parte else acumuladas
+                return entregar(acumuladas)
 
             vistos.add(token)
 

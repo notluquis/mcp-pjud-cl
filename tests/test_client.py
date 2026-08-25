@@ -1754,6 +1754,38 @@ def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
                 )
 
 
+def test_todas_las_salidas_del_recorrido_pasan_por_la_misma_entrega():
+    """Tres retornos tienen que juntar o no juntar lo mismo.
+
+    Una salida nueva que devuelva `acumuladas` directo entrega duplicados en las búsquedas que
+    calzan por parte, y nada lo nota: los tests miran los caminos que ya existen. Se comprueba
+    sobre el árbol, que es lo único que ve las salidas todas.
+    """
+    import ast
+    import inspect
+
+    from mcp_pjud.client import PjudClient
+
+    arbol = ast.parse(inspect.getsource(PjudClient._paginado).lstrip())
+    retornos = [
+        n
+        for n in ast.walk(arbol)
+        if isinstance(n, ast.Return)
+        and n.value is not None
+        # Los del ayudante mismo no cuentan: es él quien decide.
+        and not isinstance(n.value, ast.IfExp)
+    ]
+    assert retornos, "`_paginado` dejó de tener retornos, así que este guardia no mira nada"
+
+    for retorno in retornos:
+        llamada = retorno.value if isinstance(retorno.value, ast.Call) else None
+        por_donde = getattr(getattr(llamada, "func", None), "id", None)
+        assert por_donde == "entregar", (
+            f"la línea {retorno.lineno} de `_paginado` devuelve por {por_donde!r} y no por "
+            "`entregar`, así que esa salida no junta las filas repetidas"
+        )
+
+
 def test_una_pagina_repetida_no_pasa_por_recorrido_completo(monkeypatch):
     """El total declarado se alcanza igual si la plataforma re-sirve la página anterior.
 

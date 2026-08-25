@@ -1676,7 +1676,7 @@ def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
                 apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia=m, corte=k
             ),
             lambda c, m=competencia, k=corte: c.buscar_por_rut_juridica(
-                "76000000", "0", competencia=m, corte=k
+                76000000, "0", competencia=m, corte=k
             ),
             lambda c, m=competencia, k=corte: c.buscar_por_fecha(
                 "01/01/2026", "02/01/2026", competencia=m, corte=k

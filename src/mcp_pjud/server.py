@@ -76,10 +76,10 @@ from .client import (
 )
 from .juris import (
     BUSCADORES,
-    CUAL_DE_LA_CASACION_MEDIDO,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
+    ROTULO_DE_LA_DE_REEMPLAZO,
     VISIBLES_MEDIDAS,
     JurisClient,
     ResultadoJurisprudencia,
@@ -1414,8 +1414,8 @@ def listar_audios_audiencia(
     "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
     f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
     f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
-    "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
-    "que la sentencia no los tenga: "
+    "los que no declara vienen en NULO: ESE buscador no los publica, no que la sentencia no "
+    "los tenga. Los publican, y sólo ellos: "
     f"{_por_quien_los_publica(_OPCIONALES_DE_LA_SENTENCIA)}. "
     "La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se "
     "puede decidir por el tamaño si vale pedir el texto completo."
@@ -1438,8 +1438,14 @@ def buscar_jurisprudencia(
     ] = "",
     literal: Annotated[str, Field(description="Frase exacta.")] = "",
     excluir: Annotated[str, Field(description="Palabras que NO deben aparecer.")] = "",
-    desde: Annotated[str, Field(description="Fecha inicial, DD/MM/AAAA.")] = "",
-    hasta: Annotated[str, Field(description="Fecha final, DD/MM/AAAA.")] = "",
+    desde: Annotated[
+        str,
+        Field(
+            description="Fecha inicial, AAAA-MM-DD. Es el formato que el buscador acepta: "
+            "medido, con DD/MM/AAAA responde un error y ninguna sentencia."
+        ),
+    ] = "",
+    hasta: Annotated[str, Field(description="Fecha final, AAAA-MM-DD, igual que `desde`.")] = "",
     filas: Annotated[
         int, Field(description="Cuántas sentencias traer.", ge=1, le=FILAS_MAXIMAS)
     ] = 10,
@@ -1510,14 +1516,13 @@ def obtener_texto_sentencia(
         Field(
             description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
             "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo "
-            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número es la "
-            "POSICIÓN EN QUE "
-            "EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para "
-            "nombrarlas: en suprema está medido que la casación con el razonamiento es "
-            f"la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1. Elegir por el orden en que se leyó "
-            "una explicación entrega la de reemplazo, "
-            "que confirma en una línea. Hay que leer la enumeración de la detención y tomar el "
-            "número de ahí.",
+            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa "
+            "ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es "
+            "estable, en un rol la de reemplazo llega primera y en otro segunda. En "
+            f"{_y(buscadores_que_publican('resultado_recurso'))}, que publican el resultado, "
+            f"la que dice {ROTULO_DE_LA_DE_REEMPLAZO} confirma en una línea y la otra trae el "
+            "razonamiento; en el resto la enumeración distingue por caratulado y fecha, que es "
+            "lo que esos buscadores publican.",
             ge=1,
         ),
     ] = None,

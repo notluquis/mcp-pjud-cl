@@ -16,6 +16,20 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- `ministros` leía un campo Solr que el documento no trae, así que venía vacío siempre en
+  suprema, el único buscador que dice publicarlo. Ahora llega, y como lista.
+- El rango de fechas del buscador de fallos se pedía en DD/MM/AAAA y ese formato le hace
+  responder un error y ninguna sentencia. Va en AAAA-MM-DD, y se rechaza antes de consultar.
+- Una consulta que la plataforma rechaza se informaba como un cambio de estructura, que manda a
+  mirar el sitio en vez de mirar lo que se pidió.
+- La frase que dice qué buscador publica qué campo se podía leer al revés, como si los nombrados
+  fueran los que lo traen en nulo.
+- `cual` afirmaba que la sentencia con el razonamiento es la segunda del rol. Está medido que el
+  orden se invierte entre roles: se elige por el resultado que la enumeración muestra, y sólo
+  donde el buscador lo publica.
+
 ## [0.19.0] - 2026-08-25
 
 ### Agregado

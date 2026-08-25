@@ -5833,24 +5833,27 @@ def test_el_selector_de_sentencia_dice_de_donde_sale_su_numero(expuestas):
     Lo que el contrato tiene que decir es de dónde sale el número: de la enumeración con que la
     herramienta se detiene, no del orden en que una explicación las nombró.
     """
-    from mcp_pjud.juris import CUAL_DE_LA_CASACION_MEDIDO
+    from mcp_pjud.juris import ROTULO_DE_LA_DE_REEMPLAZO
 
-    assert CUAL_DE_LA_CASACION_MEDIDO != 1, (
-        "si la casación fuera la primera, este guardia y el aviso que exige sobrarían"
-    )
     esquema = expuestas["obtener_texto_sentencia"].input_schema
     prosa = (esquema["properties"]["cual"].get("description") or "").lower()
 
     assert prosa, "`cual` se quedó sin descripción, que es lo único que el modelo lee de él"
-    assert f"es la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1" in prosa, (
-        "la medición no aparece en la descripción, así que la constante no sostiene nada y "
-        "cambiarla no pondría nada en rojo"
+    assert ROTULO_DE_LA_DE_REEMPLAZO.lower() in prosa, (
+        "la descripción no nombra el resultado que separa a las dos, que es lo único estable"
     )
     for aviso, porque in [
-        ("y no la 1", "sin esto, el orden de la prosa se lee como el del índice"),
         ("enumeración", "el número sale de la detención y hay que decir de dónde"),
+        ("no es", "el orden NO es estable y afirmarlo estable ya entregó la equivocada"),
     ]:
         assert aviso in prosa, f"la descripción de `cual` no dice {aviso!r}: {porque}"
+
+    # Y que NO vuelva a afirmar una posición: es lo que la 0.18.0 publicó con un caso detrás.
+    for regla in ("es la 1", "es la 2", "y no la 1", "y no la 2"):
+        assert regla not in prosa, (
+            f"la descripción vuelve a fijar una posición ({regla!r}), y está medido que el "
+            "orden se invierte entre roles"
+        )
 
 
 def test_la_referencia_cita_las_cifras_del_acento_que_estan_medidas():
@@ -5997,3 +6000,22 @@ def test_la_referencia_cita_las_cifras_de_facetas_que_estan_medidas():
     for cifra in (APARICIONES_EN_LA_FACETA_DE_MATERIA, SENTENCIAS_DE_LA_MEDICION_DE_FACETAS):
         assert str(cifra) in contrato, f"el contrato de `facetas` no cita {cifra}"
         assert f"**{cifra}**" in referencia, f"la referencia no cita {cifra}"
+
+
+def test_la_referencia_pide_la_fecha_en_el_formato_que_el_buscador_acepta():
+    """Los dos sistemas usan formatos distintos y la página los tenía iguales.
+
+    La consulta de causas de la Oficina Judicial Virtual va en DD/MM/AAAA. El buscador de
+    fallos NO: medido el 25 de agosto de 2026, con ese formato responde una excepción de Solr y
+    cero sentencias, y acepta AAAA-MM-DD, que es lo que emite su propio campo de fecha. Una
+    página que diga DD/MM/AAAA para el buscador manda a una consulta que no devuelve nada.
+    """
+    texto = _texto(RAIZ / "docs" / "herramientas.md")
+    seccion = texto.split("## `buscar_jurisprudencia`", 1)
+    assert len(seccion) == 2, "la referencia ya no documenta el buscador de fallos"
+    tramo = seccion[1].split("\n## ", 1)[0]
+    assert "AAAA-MM-DD" in tramo, "la referencia no dice el formato que el buscador acepta"
+    assert "Rango de fechas, DD/MM/AAAA" not in tramo, (
+        "la referencia pide el rango en DD/MM/AAAA, que es el formato con que el buscador "
+        "responde un error"
+    )

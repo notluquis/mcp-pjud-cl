@@ -1,94 +1,103 @@
 {
- "response": {
-  "numFound": 300005,
-  "start": 0,
-  "docs": [
-   {
-    "rol_era_sup_s": "34546-2025",
-    "caratulado_s": "SOCIEDAD FICTICIA 1 LIMITADA CON EMPRESA FICTICIA 1 S.A.",
-    "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
-    "gls_sala_sup_s": "SEGUNDA, PENAL",
-    "gls_tip_recurso_sup_s": "(POLICIA LOCAL) QUEJA",
-    "resultado_recurso_sup_s": "ACOGIDO RECURSO DE QUEJA (M)",
-    "gls_corte_s": "C.A. de Santiago",
-    "rol_era_ape_s": "706-2023",
-    "gls_redactor_s": "Ministro no Identificado",
-    "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
-    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
-    "sit_fallo_anonimizado_i": 0,
-    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1"
-   },
-   {
-    "rol_era_sup_s": "35715-2025",
-    "caratulado_s": "SOCIEDAD FICTICIA 2 LIMITADA CON EMPRESA FICTICIA 2 S.A.",
-    "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
-    "gls_sala_sup_s": "PRIMERA, CIVIL",
-    "gls_tip_recurso_sup_s": "(CIVIL) CASACIÓN FONDO",
-    "resultado_recurso_sup_s": "RECHAZA CASACION EN EL FONDO (M)",
-    "gls_corte_s": "C.A. de Temuco",
-    "rol_era_ape_s": "1591-2024",
-    "gls_redactor_s": "Ministro no Identificado",
-    "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
-    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
-    "sit_fallo_anonimizado_i": 0,
-    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia2"
-   },
-   {
-    "rol_era_sup_s": "3569-2026",
-    "caratulado_s": "SOCIEDAD FICTICIA 3 LIMITADA CON EMPRESA FICTICIA 3 S.A.",
-    "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
-    "gls_sala_sup_s": "TERCERA, CONSTITUCIONAL",
-    "gls_tip_recurso_sup_s": "(CIVIL) APELACIÓN PROTECCIÓN",
-    "resultado_recurso_sup_s": "CONFIRMA SENTENCIA APELADA",
-    "gls_corte_s": "C.A. de Santiago",
-    "rol_era_ape_s": "26562-2024",
-    "gls_redactor_s": "Ministro no Identificado",
-    "sent__gls_int_firma_sup_s": "MINISTRA FICTICIA UNO,MINISTRO FICTICIO DOS",
-    "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
-    "sit_fallo_anonimizado_i": 0,
-    "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia3"
-   }
-  ]
- },
- "condition_pub_sf": {
-  "numFound_sf": 1223925,
-  "counts": [
-   "Excluido salud",
-   829079,
-   "Publicable",
-   232021,
-   "Con interes jurisprudencial, no anonimizable",
-   41838,
-   "Sin interes jurisprudencial, no anonimizable",
-   31285,
-   "Sin marca publicidad",
-   30724,
-   "Anonimizadas",
-   20924,
-   "Excluido",
-   9960,
-   "Excluido anonimizable",
-   8672,
-   "Reservado restringido",
-   6677,
-   "Sin interes jurisprudencial, anonimizable",
-   4094,
-   "Reservado anonimizado",
-   3577,
-   "Masiva salud anonimizable",
-   2649,
-   "Con interes jurisprudencial, anonimizada",
-   1645,
-   "En proceso anonimizacion",
-   464,
-   "Reservado no anonimizable",
-   208,
-   "Con interes jurisprudencial, en proceso anonimización",
-   50,
-   "Reservado no anonimizado",
-   35,
-   "Reservadas por motivos distintos a protección datos personales",
-   23
-  ]
- }
+  "response": {
+    "numFound": 300005,
+    "start": 0,
+    "docs": [
+      {
+        "rol_era_sup_s": "34546-2025",
+        "caratulado_s": "SOCIEDAD FICTICIA 1 LIMITADA CON EMPRESA FICTICIA 1 S.A.",
+        "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
+        "gls_sala_sup_s": "SEGUNDA, PENAL",
+        "gls_tip_recurso_sup_s": "(POLICIA LOCAL) QUEJA",
+        "resultado_recurso_sup_s": "ACOGIDO RECURSO DE QUEJA (M)",
+        "gls_corte_s": "C.A. de Santiago",
+        "rol_era_ape_s": "706-2023",
+        "gls_redactor_s": "Ministro no Identificado",
+        "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+        "sit_fallo_anonimizado_i": 0,
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia1",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
+      },
+      {
+        "rol_era_sup_s": "35715-2025",
+        "caratulado_s": "SOCIEDAD FICTICIA 2 LIMITADA CON EMPRESA FICTICIA 2 S.A.",
+        "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
+        "gls_sala_sup_s": "PRIMERA, CIVIL",
+        "gls_tip_recurso_sup_s": "(CIVIL) CASACIÓN FONDO",
+        "resultado_recurso_sup_s": "RECHAZA CASACION EN EL FONDO (M)",
+        "gls_corte_s": "C.A. de Temuco",
+        "rol_era_ape_s": "1591-2024",
+        "gls_redactor_s": "Ministro no Identificado",
+        "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+        "sit_fallo_anonimizado_i": 0,
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia2",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
+      },
+      {
+        "rol_era_sup_s": "3569-2026",
+        "caratulado_s": "SOCIEDAD FICTICIA 3 LIMITADA CON EMPRESA FICTICIA 3 S.A.",
+        "fec_sentencia_sup_dt": "2026-08-14T00:00:00Z",
+        "gls_sala_sup_s": "TERCERA, CONSTITUCIONAL",
+        "gls_tip_recurso_sup_s": "(CIVIL) APELACIÓN PROTECCIÓN",
+        "resultado_recurso_sup_s": "CONFIRMA SENTENCIA APELADA",
+        "gls_corte_s": "C.A. de Santiago",
+        "rol_era_ape_s": "26562-2024",
+        "gls_redactor_s": "Ministro no Identificado",
+        "gls_condicion_publicacion_s": "Con interes jurisprudencial, no anonimizable",
+        "sit_fallo_anonimizado_i": 0,
+        "url_acceso_sentencia": "https://juris.pjud.cl/busqueda/pagina_detalle_sentencia/?k=ficticia3",
+        "gls_ministro_ss": [
+          "MINISTRA FICTICIA UNO",
+          "MINISTRO FICTICIO DOS"
+        ]
+      }
+    ]
+  },
+  "condition_pub_sf": {
+    "numFound_sf": 1223925,
+    "counts": [
+      "Excluido salud",
+      829079,
+      "Publicable",
+      232021,
+      "Con interes jurisprudencial, no anonimizable",
+      41838,
+      "Sin interes jurisprudencial, no anonimizable",
+      31285,
+      "Sin marca publicidad",
+      30724,
+      "Anonimizadas",
+      20924,
+      "Excluido",
+      9960,
+      "Excluido anonimizable",
+      8672,
+      "Reservado restringido",
+      6677,
+      "Sin interes jurisprudencial, anonimizable",
+      4094,
+      "Reservado anonimizado",
+      3577,
+      "Masiva salud anonimizable",
+      2649,
+      "Con interes jurisprudencial, anonimizada",
+      1645,
+      "En proceso anonimizacion",
+      464,
+      "Reservado no anonimizable",
+      208,
+      "Con interes jurisprudencial, en proceso anonimización",
+      50,
+      "Reservado no anonimizado",
+      35,
+      "Reservadas por motivos distintos a protección datos personales",
+      23
+    ]
+  }
 }

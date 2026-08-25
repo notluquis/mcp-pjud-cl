@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-08-24. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-08-25. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 303 | 18 | 3600 | 747 |
-| Todo lo registrado, desde el 2026-08-17 | 303 | 18 | 3600 | 747 |
+| Últimos 14 días | 320 | 21 | 4331 | 888 |
+| Todo lo registrado, desde el 2026-08-17 | 320 | 21 | 4331 | 888 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-08-25 | 1 | 0 | 0 | 6 |
 | 2026-08-24 | 1 | 0 | 0 | 0 |
 | 2026-08-23 | 1 | 0 | 0 | 0 |
 | 2026-08-22 | 1 | 0 | 0 | 5 |
@@ -72,6 +73,18 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 | v0.2.0 | `sbom.spdx.json` | 0 |
 | v0.2.0 | `mcp_pjud-0.2.0.tar.gz` | 0 |
 | v0.2.0 | `mcp_pjud-0.2.0-py3-none-any.whl` | 0 |
+| v0.16.0 | `sbom.spdx.json` | 0 |
+| v0.16.0 | `mcp_pjud-0.16.0.tar.gz` | 0 |
+| v0.16.0 | `mcp_pjud-0.16.0-py3-none-any.whl` | 0 |
+| v0.15.1 | `sbom.spdx.json` | 0 |
+| v0.15.1 | `mcp_pjud-0.15.1.tar.gz` | 0 |
+| v0.15.1 | `mcp_pjud-0.15.1-py3-none-any.whl` | 0 |
+| v0.15.0 | `sbom.spdx.json` | 0 |
+| v0.15.0 | `mcp_pjud-0.15.0.tar.gz` | 0 |
+| v0.15.0 | `mcp_pjud-0.15.0-py3-none-any.whl` | 0 |
+| v0.14.0 | `sbom.spdx.json` | 0 |
+| v0.14.0 | `mcp_pjud-0.14.0.tar.gz` | 0 |
+| v0.14.0 | `mcp_pjud-0.14.0-py3-none-any.whl` | 0 |
 | v0.13.1 | `sbom.spdx.json` | 0 |
 | v0.13.1 | `mcp_pjud-0.13.1.tar.gz` | 0 |
 | v0.13.1 | `mcp_pjud-0.13.1-py3-none-any.whl` | 0 |
@@ -90,25 +103,25 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-08-24. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-08-25. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
-| `github.com` | 98 | 6 |
+| `github.com` | 102 | 7 |
 | `mcp-pjud-cl.readthedocs.io` | 28 | 2 |
-| `Google` | 9 | 3 |
+| `Google` | 10 | 4 |
 | `app.readthedocs.org` | 8 | 1 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-08-24. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-08-25. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 88 | 9 |
-| `/notluquis/mcp-pjud-cl/pulls` | 31 | 1 |
+| `/notluquis/mcp-pjud-cl` | 93 | 10 |
+| `/notluquis/mcp-pjud-cl/pulls` | 35 | 1 |
 | `/notluquis/mcp-pjud-cl/issues` | 12 | 1 |
 | `/notluquis/mcp-pjud-cl/security` | 11 | 1 |
 | `/notluquis/mcp-pjud-cl/security/code-scanning` | 10 | 1 |
@@ -116,12 +129,13 @@ que restar dos fotos para inferirlo daría un número inventado.
 | `/notluquis/mcp-pjud-cl/releases` | 6 | 1 |
 | `/notluquis/mcp-pjud-cl/commits/main` | 5 | 1 |
 | `/notluquis/mcp-pjud-cl/blob/main/docs/index.md` | 4 | 2 |
-| `/notluquis/mcp-pjud-cl/security/code-scanning/8` | 4 | 1 |
+| `/notluquis/mcp-pjud-cl/issues/34` | 4 | 2 |
 
 ## La serie completa
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-08-23 | 17 | 3 | 731 | 141 |
 | 2026-08-22 | 43 | 1 | 828 | 160 |
 | 2026-08-21 | 54 | 5 | 718 | 159 |
 | 2026-08-20 | 52 | 4 | 850 | 169 |

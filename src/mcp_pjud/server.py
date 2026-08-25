@@ -65,6 +65,7 @@ from .client import (
     RAFAGA_MAXIMA,
     TIPO_PENAL_MEDIDO,
     TIPOS_MEDIDOS_EN_COBRANZA,
+    TIPOS_MEDIDOS_EN_LABORAL,
     VERSION,
     Corte,
     Documento,
@@ -424,7 +425,8 @@ Tipo = Annotated[
     str,
     Field(
         description=f"Letra del rol en {_y(_CON_LETRA)}; en civil son C, V, E, A, F o I y en "
-        f"cobranza {TIPOS_MEDIDOS_EN_COBRANZA}, medidas. "
+        f"cobranza {TIPOS_MEDIDOS_EN_COBRANZA} y en laboral {TIPOS_MEDIDOS_EN_LABORAL}, "
+        "medidas. "
         f"En {_y(_CON_LIBRO_POR_NOMBRE)} va el LIBRO en vez de una letra (por ejemplo "
         "'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin "
         "él la consulta es ambigua y la herramienta falla en vez de abrir la causa "

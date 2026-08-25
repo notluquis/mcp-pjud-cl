@@ -239,6 +239,35 @@ def test_una_georreferencia_ilegible_se_levanta_clasificada():
         parse_georreferencia(GEO.replace("10:34", "25:99", 1))
 
 
+def test_sin_las_dos_fuentes_la_discrepancia_va_en_nulo():
+    """ "No hay discrepancia" es trivialmente cierto cuando falta un término.
+
+    En las filas sin fecha de diligencia el campo venía en `false`, y leído rápido eso dice
+    que las dos fuentes concuerdan. Una sesión de uso real lo leyó así. Nulo es la respuesta
+    honesta: no hay nada que comparar.
+
+    Y donde SÍ hay las dos, sigue siendo un booleano: si todo se fuera a nulo, el campo dejaría
+    de responder la pregunta para la que existe.
+    """
+    historia = parse_historia(
+        (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8"), "P", "civil"
+    )
+
+    for actuacion in historia:
+        if actuacion.fecha_diligencia is None:
+            assert actuacion.discrepancia_fechas is None, (
+                f"el folio {actuacion.folio} no tiene fecha de diligencia y declara "
+                f"{actuacion.discrepancia_fechas} como discrepancia: eso se lee como que las "
+                "dos fuentes concuerdan"
+            )
+
+    comparadas = [a for a in historia if a.discrepancia_fechas is not None]
+    assert len(comparadas) == 3, (
+        f"quedaron {len(comparadas)} filas con las dos fuentes y las medidas son tres: si el "
+        "campo se fue todo a nulo, dejó de responder para lo que existe"
+    )
+
+
 def test_la_historia_no_repite_el_mismo_tramite_dos_veces():
     """En cobranza el sitio emite algunas filas dos veces, con etapa y trámite en blanco.
 

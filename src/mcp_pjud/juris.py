@@ -840,20 +840,23 @@ class JurisClient(Transporte):
                 r = self.buscar(
                     rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
                 )
+            if len(r.sentencias) < min(r.visibles, TOPE_AL_ENUMERAR):
+                # Se pidieron y no llegaron. Va ANTES de decidir por qué se detiene: el
+                # relleno también puede volver truncado, y entonces cualquiera de los dos
+                # mensajes de abajo enumeraría una página parcial, o sea volvería a obligar a
+                # elegir sin ver todas las alternativas.
+                raise EstructuraInesperada(
+                    f"El rol {rol}-{anio} declara {r.visibles} sentencias en {buscador} y la "
+                    f"respuesta trajo {len(r.sentencias)}: no se pueden enumerar para que se "
+                    "elija una, y devolver la que llegó la haría pasar por la única."
+                )
             if r.ocultas:
                 raise PlataformaRechaza(
                     f"El rol {rol}-{anio} tiene {r.visibles} sentencia(s) que se pueden ver y "
                     f"{r.ocultas} reservada(s) a una consulta anónima. No se entrega ninguna "
                     "sin decir cuál en `cual`: la que falta puede ser justamente la que se "
-                    f"busca, y las visibles son {_enumerar(r.sentencias)}."
-                )
-            if len(r.sentencias) < min(r.visibles, TOPE_AL_ENUMERAR):
-                # Se pidieron y no llegaron: enumerar a medias haría elegir a ciegas entre
-                # opciones que no se ven, y seguir devolvería una sola como si fuera la única.
-                raise EstructuraInesperada(
-                    f"El rol {rol}-{anio} declara {r.visibles} sentencias en {buscador} y la "
-                    f"respuesta trajo {len(r.sentencias)}: no se pueden enumerar para que se "
-                    "elija una, y devolver la que llegó la haría pasar por la única."
+                    "busca, y las visibles son "
+                    f"{_enumerar(r.sentencias)}."
                 )
             faltan = max(0, r.visibles - len(r.sentencias))
             raise ValueError(

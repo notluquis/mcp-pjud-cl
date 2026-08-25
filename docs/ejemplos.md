@@ -118,7 +118,11 @@ parámetro no tiene valor por defecto.
 
 ## Cuando las dos fechas se contradicen
 
-Si `discrepancia_fechas` viene en `true`, la fecha del paréntesis de `Fec. Trámite` y la del
+`discrepancia_fechas` compara las dos fuentes de **la misma fecha**, la de diligencia, y no
+la diligencia contra el registro: que esas dos difieran es lo normal y es justamente lo que
+hay que mirar. Viene en **nulo** cuando falta una de las dos fuentes.
+
+Si viene en `true`, la fecha del paréntesis de `Fec. Trámite` y la del
 `Diligencia:` de la descripción **no coinciden en la propia plataforma**.
 
 La herramienta no elige por ti. Informa las dos y marca el conflicto:

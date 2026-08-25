@@ -286,6 +286,11 @@ TIPO_PENAL_MEDIDO = "1"
 #: una letra equivocada devuelve un listado vacío, o sea una causa que existe informada como
 #: inexistente.
 TIPOS_MEDIDOS_EN_COBRANZA = "A C D E J L P R"
+
+#: Y la de laboral, medida sobre la causa que la fixture guarda (`O-9999-2018`). Es UNA, no la
+#: lista de lo que la competencia acepta: decirlo así evita prometer un catálogo que no se
+#: midió, y a la vez saca a quien busca de tener que adivinar la primera letra.
+TIPOS_MEDIDOS_EN_LABORAL = "O"
 LIBRO_DEL_TIPO_PENAL_MEDIDO = "Ordinaria"
 #: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
 #: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.

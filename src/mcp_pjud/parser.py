@@ -641,10 +641,12 @@ class Actuacion(BaseModel):
         description="Fecha en que el trámite se registró en el sistema, en ISO 8601. "
         "NO es la que corre los plazos.",
     )
-    discrepancia_fechas: bool = Field(
-        default=False,
-        description="True si la fecha entre paréntesis de 'Fec. Trámite' y la de "
-        "'Diligencia:' en la descripción no coinciden. Revisar a mano.",
+    discrepancia_fechas: bool | None = Field(
+        default=None,
+        description="Si las DOS fuentes de `fecha_diligencia` discrepan: la que va entre "
+        "paréntesis en 'Fec. Trámite' y la del texto 'Diligencia:'. NO compara contra "
+        "`fecha_registro`; que esas dos difieran es lo normal. NULO cuando falta una de las "
+        "dos fuentes: ahí no hay nada que comparar, y un falso diría que concuerdan.",
     )
 
     cuaderno: str = Field(
@@ -1034,8 +1036,11 @@ def _fila_a_actuacion(
             except ValueError:
                 hora = None
 
-    # Las dos fuentes deben coincidir. Si no, se reporta en vez de elegir en silencio.
-    discrepancia = bool(diligencia and desde_desc and diligencia != desde_desc)
+    # Las dos fuentes deben coincidir. Si no, se reporta en vez de elegir en silencio. Y si
+    # falta una, va NULO y no falso: "no hay discrepancia" es trivialmente cierto cuando falta
+    # un término, y leído rápido dice que las dos fuentes concuerdan, que es otra cosa. Una
+    # sesión de prueba lo leyó así en una fila sin fecha de diligencia.
+    discrepancia = bool(diligencia != desde_desc) if diligencia and desde_desc else None
     if diligencia is None:
         diligencia = desde_desc
 
@@ -1197,7 +1202,8 @@ class Liquidacion(BaseModel):
     fecha: date | None = Field(
         default=None,
         description="Fecha de la liquidación, en ISO 8601. Ordena el historial: la más reciente "
-        "es la vigente y las anteriores NO se suman a ella.",
+        "es la vigente y las anteriores NO se suman a ella. NULA en laboral, que no publica la "
+        "columna: ahí no hay con qué ordenarlas, así que cuál es la vigente no se sabe.",
     )
     cuaderno: str = Field(default="", description="Cuaderno al que corresponde.")
     estado: str = Field(default="", description="Estado de la liquidación. Ej: 'Firmado'.")
@@ -2480,7 +2486,9 @@ class DetalleCausa(BaseModel):
     )
     liquidaciones: list[Liquidacion] | None = Field(
         default=None,
-        description="Cuánto se debe y a qué fecha. Lo publican cobranza y laboral.",
+        description="Lo publican cobranza y laboral, y NO es la misma pregunta: cobranza "
+        "liquida el crédito por documento y fecha, y laboral publica a quién se le paga, sin "
+        "fecha. Que la más reciente sea la vigente vale donde hay fecha con qué ordenarlas.",
     )
     diligencias: list[Diligencia] | None = Field(
         default=None,

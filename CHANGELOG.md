@@ -26,6 +26,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   mirar el sitio en vez de mirar lo que se pidió.
 - La frase que dice qué buscador publica qué campo se podía leer al revés, como si los nombrados
   fueran los que lo traen en nulo.
+- `cual` afirmaba que la sentencia con el razonamiento es la segunda del rol. Está medido que el
+  orden se invierte entre roles: se elige por el resultado que la enumeración muestra.
 
 ## [0.19.0] - 2026-08-25
 

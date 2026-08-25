@@ -746,17 +746,22 @@ ROL_CON_TRES_SENTENCIAS = "1504-2019"
 PALABRAS_DE_LA_CASACION = 3646
 PALABRAS_DEL_REEMPLAZO = 157
 
-#: Y en qué POSICIÓN las devuelve el buscador, medido sobre `ROL_CON_DOS_SENTENCIAS`: la de
-#: casación, que es la que trae el razonamiento, no es la primera.
+#: EL ORDEN NO ES ESTABLE, y esto lo dice porque una versión anterior afirmó lo contrario
+#: desde una sola muestra.
 #:
-#: Importa porque la prosa las nombra en el orden contrario ("la de casación con el
-#: razonamiento y la de reemplazo, que confirma en una línea"), y quien elige por el orden en
-#: que lo leyó pide `cual=1` y se lleva las `PALABRAS_DEL_REEMPLAZO`: una línea que confirma,
-#: sin la doctrina que se fue a buscar, y con cara de ser la sentencia del rol. Pasó.
+#: Medido el 25 de agosto de 2026 sobre dos roles de suprema: en `ROL_CON_DOS_SENTENCIAS` la de
+#: reemplazo es la 1 y la que acoge es la 2; en `ROL_DONDE_EL_ORDEN_SE_INVIERTE` es al revés. O
+#: sea no hay posición que valga, y la 0.18.0 publicó "la casación es la 2 y no la 1" con un
+#: solo caso detrás. Una sesión siguió esa frase y se habría llevado la breve.
 #:
-#: Es UNA medición sobre un rol, así que lo que se afirma es que la casación no es la 1, no
-#: que siempre sea la 2. El número que vale es el de la enumeración de la detención.
-CUAL_DE_LA_CASACION_MEDIDO = 2
+#: Lo que SÍ distingue a las dos en los dos roles es `resultado_recurso`: la que dice
+#: "SENTENCIA DE REEMPLAZO" es la que confirma en una línea, y la otra trae el razonamiento.
+#: Por eso la enumeración lo incluye, y por eso el número se saca de ahí y no de una regla.
+ROL_DONDE_EL_ORDEN_SE_INVIERTE = "51630-2024"
+
+#: Cómo se llama en `resultado_recurso` la que confirma en una línea. Es lo único estable que
+#: separa a las dos, así que es lo que hay que mirar en la enumeración.
+ROTULO_DE_LA_DE_REEMPLAZO = "SENTENCIA DE REEMPLAZO"
 
 
 def _es_del_rol(sentencia: Sentencia, rol: int, anio: int) -> bool:

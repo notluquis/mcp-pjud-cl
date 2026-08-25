@@ -76,10 +76,10 @@ from .client import (
 )
 from .juris import (
     BUSCADORES,
-    CUAL_DE_LA_CASACION_MEDIDO,
     FECHA_MEDICION,
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
+    ROTULO_DE_LA_DE_REEMPLAZO,
     VISIBLES_MEDIDAS,
     JurisClient,
     ResultadoJurisprudencia,
@@ -1516,14 +1516,11 @@ def obtener_texto_sentencia(
         Field(
             description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
             "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo "
-            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número es la "
-            "POSICIÓN EN QUE "
-            "EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para "
-            "nombrarlas: en suprema está medido que la casación con el razonamiento es "
-            f"la {CUAL_DE_LA_CASACION_MEDIDO} y no la 1. Elegir por el orden en que se leyó "
-            "una explicación entrega la de reemplazo, "
-            "que confirma en una línea. Hay que leer la enumeración de la detención y tomar el "
-            "número de ahí.",
+            "que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa "
+            "ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es "
+            "estable, en un rol la de reemplazo llega primera y en otro segunda. Lo que las "
+            f"separa es su resultado: la que dice {ROTULO_DE_LA_DE_REEMPLAZO} confirma en una "
+            "línea, y la otra trae el razonamiento que se fue a buscar.",
             ge=1,
         ),
     ] = None,

@@ -12,6 +12,7 @@ from mcp_pjud.juris import (
     BUSCADORES,
     INDISPENSABLES,
     PALABRAS_DE_LA_CASACION,
+    PALABRAS_DEL_REEMPLAZO,
     JurisClient,
     Sentencia,
     buscadores_que_publican,
@@ -1479,3 +1480,55 @@ def test_un_rechazo_del_buscador_no_se_informa_como_cambio_de_estructura(monkeyp
     )
     with pytest.raises(ValueError, match="rechazó la consulta"):
         c.buscar(rol=1, anio=2025, buscador="suprema")
+
+
+def test_el_orden_de_las_sentencias_de_un_rol_no_es_estable():
+    """La 0.18.0 publicó "la casación es la 2 y no la 1" con UNA medición detrás.
+
+    Medido el 25 de agosto de 2026 sobre dos roles de suprema, el orden se invierte: en
+    `ROL_CON_DOS_SENTENCIAS` la de reemplazo llega primera, y en
+    `ROL_DONDE_EL_ORDEN_SE_INVIERTE` llega segunda. Una sesión siguió aquella frase y se habría
+    llevado la breve.
+
+    Lo que separa a las dos en los dos casos es `resultado_recurso`, y por eso la enumeración
+    lo lleva: el número se lee de ahí, no de una regla.
+    """
+    from mcp_pjud.juris import (
+        ROL_CON_DOS_SENTENCIAS,
+        ROL_DONDE_EL_ORDEN_SE_INVIERTE,
+        ROTULO_DE_LA_DE_REEMPLAZO,
+        _enumerar,
+    )
+
+    assert ROL_CON_DOS_SENTENCIAS != ROL_DONDE_EL_ORDEN_SE_INVIERTE, (
+        "los dos roles medidos son el mismo, así que no muestran ninguna inversión"
+    )
+
+    def sentencia(resultado, palabras):
+        return Sentencia(
+            rol=ROL_CON_DOS_SENTENCIAS,
+            caratulado="UNA PARTE / OTRA",
+            fecha_sentencia=date(2025, 2, 17),
+            sala=None,
+            tipo_recurso="(CIVIL) CASACIÓN FONDO",
+            resultado_recurso=resultado,
+            corte_origen="c",
+            rol_corte_apelaciones=None,
+            redactor=None,
+            ministros=None,
+            condicion_publicacion="x",
+            anonimizada=False,
+            url="u",
+            palabras=palabras,
+        )
+
+    # La enumeración tiene que dejar ver CUÁL es cuál sin depender de la posición: se arman las
+    # dos ordenaciones y en las dos el rótulo separa a la de reemplazo de la que razona.
+    breve = sentencia(ROTULO_DE_LA_DE_REEMPLAZO, PALABRAS_DEL_REEMPLAZO)
+    larga = sentencia("ACOGIDA CASACIÓN FONDO", PALABRAS_DE_LA_CASACION)
+    for orden in ([breve, larga], [larga, breve]):
+        texto = _enumerar(orden)
+        posicion = texto.index(ROTULO_DE_LA_DE_REEMPLAZO)
+        otra = texto.index("ACOGIDA CASACIÓN FONDO")
+        assert posicion != otra, texto
+        assert f"{PALABRAS_DE_LA_CASACION} palabras" in texto, texto

@@ -2033,7 +2033,7 @@
               }
             ],
             "default": null,
-            "description": "Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo que ese buscador publique de cada una, y hay que elegir.\n\nEl número es la POSICIÓN EN QUE EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para nombrarlas: en suprema está medido que la casación con el razonamiento es la 2 y no la 1. Elegir por el orden en que se leyó una explicación entrega la de reemplazo, que confirma en una línea. Hay que leer la enumeración de la detención y tomar el número de ahí.",
+            "description": "Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con lo que ese buscador publique de cada una, y hay que elegir.\n\nEl número sale de esa ENUMERACIÓN y NO de una regla sobre el orden: está medido que el orden NO es estable, en un rol la de reemplazo llega primera y en otro segunda. Lo que las separa es su resultado: la que dice SENTENCIA DE REEMPLAZO confirma en una línea, y la otra trae el razonamiento que se fue a buscar.",
             "title": "Cual"
           },
           "rol": {

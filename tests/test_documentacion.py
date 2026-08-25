@@ -4362,6 +4362,8 @@ def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
                     "concluir que en su causa ese panel no existe, y quien litigue en las que "
                     "sobran va a buscar algo que no está"
                 )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

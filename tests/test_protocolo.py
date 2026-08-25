@@ -1126,6 +1126,7 @@ def test_un_pdf_que_si_se_abrio_no_dice_que_no_se_pudo_abrir():
     assert "no se sabe" in dicho, f"y tiene que seguir diciendo que no se sabe: {dicho}"
     assert "ESCANEO" not in dicho, f"tampoco puede afirmar que sea un escaneo: {dicho}"
 
+
 def test_un_escaneo_se_declara_en_palabras_y_no_se_transcribe(monkeypatch: pytest.MonkeyPatch):
     """Lo que el modelo lee del sobre es el bloque de texto, así que el veredicto tiene que
     estar ahí y no sólo en un campo.

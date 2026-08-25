@@ -24,6 +24,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - Si la plataforma respondía "no hay resultados" a mitad de un recorrido de páginas, la
   búsqueda devolvía lo acumulado sin avisar, y esa lista parcial se leía como completa. Ahora
   se levanta, salvo en la primera página, donde no encontrar nada sigue siendo una respuesta.
+- La Historia de cobranza entregaba nueve filas de más: la plataforma repite algunos trámites
+  con las columnas de etapa y trámite en blanco, y venían como actuaciones distintas. Una de
+  ellas tampoco podía reconocerse como actuación del ministro de fe.
 
 ## [0.16.0] - 2026-08-24
 

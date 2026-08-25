@@ -945,6 +945,35 @@ def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _no_agrega_nada_a_la_anterior(fila: Actuacion, anterior: Actuacion) -> bool:
+    """Si esta fila es la anterior otra vez, sin nada propio que la anterior no tenga ya.
+
+    En cobranza la plataforma repite algunas filas de la Historia. Medido campo por campo
+    sobre la respuesta real, la repetición del folio 68 contra su original:
+
+        etapa:       'Excepciones / Objeta Liquidación'  ->  ''
+        tramite:     'Resolución'                        ->  ''
+        documento:   sí, con ruta y referencia           ->  ninguno
+
+    O sea no es una copia idéntica: es una versión empobrecida. De 80 filas, 9 son esto, y el
+    folio 5 aparece tres veces. Entregarlas como actuaciones distintas infla el panel del que
+    cuelgan los plazos, y una fila con el trámite en blanco tampoco puede reconocerse como
+    actuación de receptor: ese filtro la pierde.
+
+    Por eso la regla no es "se parece" sino "no agrega nada": mismo folio y misma descripción,
+    y CADA uno de sus campos o está vacío o vale lo mismo que en la anterior. Una fila que
+    difiera en la fecha, el estado o el documento trae algo propio y se conserva, aunque
+    comparta folio y descripción.
+
+    La condición floja tampoco sirve: en civil hay cinco filas legítimas sin trámite, medidas
+    en tres fixtures, y mirar sólo eso las habría borrado.
+    """
+    if fila.folio != anterior.folio or fila.desc_tramite != anterior.desc_tramite:
+        return False
+    previos = anterior.model_dump()
+    return all(not valor or valor == previos[campo] for campo, valor in fila.model_dump().items())
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -956,10 +985,12 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    actuaciones = [
-        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
-        for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
-    ]
+    actuaciones: list[Actuacion] = []
+    for celdas, _ in _filas_del_panel(html_detalle, spec.historia):
+        fila = _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        if actuaciones and _no_agrega_nada_a_la_anterior(fila, actuaciones[-1]):
+            continue
+        actuaciones.append(fila)
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el

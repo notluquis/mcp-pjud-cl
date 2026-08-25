@@ -33,6 +33,7 @@ import json
 import re
 from collections.abc import Mapping
 from datetime import date
+from types import MappingProxyType
 from typing import NamedTuple
 
 import httpx
@@ -78,6 +79,21 @@ class Buscador(NamedTuple):
     #: Cuando es falso, `ocultas` viene en nulo en vez de traer un número sin significado. Un
     #: campo que miente es peor que un campo ausente.
     coincidencias_por_consulta: bool
+    #: Las facetas que ESTE buscador declara, de nombre nuestro a campo Solr.
+    #:
+    #: Salen de `campos_facetas` en el `parametros_buscador` de su propia página, medido el 25
+    #: de agosto de 2026 en los siete. Difieren mucho: cobranza declara tres y suprema diez, y
+    #: sólo apelaciones, salud y suprema declaran la corte de origen. Adivinar una faceta no da
+    #: error: la búsqueda vuelve con cero resultados, indistinguible de que la cita no exista.
+    #:
+    #: Dos que la plataforma declara y este servidor NO expone: `enfermedad_ss` y
+    #: `medicamento_ss`, del buscador de salud. Un desglose acotado a un rol publica de qué
+    #: está enferma y qué toma la persona que recurrió, y ese es el mismo criterio por el que
+    #: no se exponen los buscadores penales ni el compendio de extranjería.
+    #:
+    #: Tampoco se expone la faceta de fecha: sus valores son marcas de tiempo ISO y filtrar por
+    #: fecha ya lo hacen `desde` y `hasta`, así que sólo agregaría ruido a cada respuesta.
+    facetas: Mapping[str, str] = MappingProxyType({})
 
 
 #: Campos que toda sentencia tiene que traer: son los que identifican la cita. Sin ellos se
@@ -110,6 +126,17 @@ BUSCADORES: Mapping[str, Buscador] = {
             "texto_anonimizado": "texto_sentencia_anon",
         },
         coincidencias_por_consulta=True,
+        facetas={
+            "sala": "gls_sala_sup_s",
+            "libro": "gls_libro_sup_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+            "redactor": "gls_redactor_s",
+            "ministros": "gls_ministro_ss",
+            "norma": "norma_articulo_ss",
+            "corte_origen": "gls_corte_s",
+            "comuna": "display_name_ss",
+        },
     ),
     "apelaciones": Buscador(
         "Corte_de_Apelaciones",
@@ -142,6 +169,14 @@ BUSCADORES: Mapping[str, Buscador] = {
         # medidos, `laborales` incluido: medirlo daría 18 contra 0 y haría concluir "es por
         # consulta" justo donde no lo es.
         coincidencias_por_consulta=False,
+        facetas={
+            "corte_origen": "gls_corte_s",
+            "sala": "gls_sala_sup_s",
+            "libro": "gls_libro_sup_s",
+            "materia": "gls_materia_s",
+            "tipo_recurso": "gls_tip_recurso_sup_s",
+            "tribunal": "gls_juz_s",
+        },
     ),
     "laborales": Buscador(
         "Laborales",
@@ -167,6 +202,11 @@ BUSCADORES: Mapping[str, Buscador] = {
         # Medido: 269.264 tanto para un rol que existe como para uno imposible, o sea es el
         # corpus y no la consulta.
         coincidencias_por_consulta=False,
+        facetas={
+            "materia": "gls_materia_s",
+            "juez": "gls_juez_ss",
+            "tribunal": "gls_juz_s",
+        },
     ),
     "civiles": Buscador(
         "Civiles",
@@ -189,6 +229,11 @@ BUSCADORES: Mapping[str, Buscador] = {
         # Medido el 23 de agosto de 2026: 954.129 tanto para una búsqueda de texto con 38.757
         # coincidencias como para un rol imposible con cero. Es el corpus, no la consulta.
         coincidencias_por_consulta=False,
+        facetas={
+            "materia": "gls_materia_s",
+            "tribunal": "gls_juz_s",
+            "juez": "gls_juez_ss",
+        },
     ),
     "cobranza": Buscador(
         "Cobranza",
@@ -208,6 +253,10 @@ BUSCADORES: Mapping[str, Buscador] = {
         # Medido el 23 de agosto de 2026: 28.368 para una búsqueda con 1.865 coincidencias y el
         # mismo número para un rol imposible.
         coincidencias_por_consulta=False,
+        facetas={
+            "tribunal": "gls_juz_s",
+            "juez": "gls_juez_ss",
+        },
     ),
     "familia": Buscador(
         "Familia",
@@ -230,6 +279,11 @@ BUSCADORES: Mapping[str, Buscador] = {
         # Medido el 23 de agosto de 2026: 3.722.878 para una búsqueda con 8.524 coincidencias y
         # el mismo número para un rol imposible.
         coincidencias_por_consulta=False,
+        facetas={
+            "tribunal": "gls_juz_s",
+            "materia": "cod_materia_s",
+            "juez": "gls_juez_ss",
+        },
     ),
     "salud": Buscador(
         "Salud_CS",
@@ -255,6 +309,12 @@ BUSCADORES: Mapping[str, Buscador] = {
         # Medido el 23 de agosto de 2026: 303 para una búsqueda con 262 coincidencias, el mismo
         # número para un rol imposible. Es el corpus, y acá el corpus entero son 303 sentencias.
         coincidencias_por_consulta=False,
+        facetas={
+            "tematica": "tematica_ss",
+            "organismo": "isapre_ss",
+            "corte_origen": "gls_corte_s",
+            "resultado_recurso": "resultado_recurso_sup_s",
+        },
     ),
 }
 
@@ -429,6 +489,15 @@ class ResultadoJurisprudencia(BaseModel):
         "no la consulta, que son los mismos buscadores en que `coincidencias` viene en nulo: "
         "ahí sumaría millones para una búsqueda de decenas."
     )
+    facetas: dict[str, dict[str, int]] | None = Field(
+        default=None,
+        description="Cómo se reparten ESTAS coincidencias, por cada faceta que el buscador "
+        "declara. Sirve para dos cosas: ver si un rol se repite entre cortes o libros antes de "
+        "leer nada, y sacar el valor EXACTO con que filtrar en `facetas`, que hay que copiar "
+        "tal cual.\n\nLas cuentas son de la consulta, no del índice. NO se suman: una "
+        "sentencia puede aparecer en más de un valor de la misma faceta, y está medido que "
+        "`materia` suma 228 sobre 88 sentencias.",
+    )
 
 
 def _fecha(valor: str | None) -> date | None:
@@ -579,6 +648,19 @@ def parse_sentencias(
             "que la respuesta dejó de cumplir el contrato, no que no falte nada."
         )
 
+    # Lo que Solr devuelve es una lista plana [valor, cuenta, valor, cuenta, ...], y sólo se
+    # leen las facetas que ESTE buscador declara: el resto llega igual y las dos de salud que
+    # no se exponen publican de qué está enferma la persona que recurrió.
+    planas = datos.get("facet_counts", {}).get("facet_fields", {}) or {}
+    facetas = {}
+    for nuestro, solr in BUSCADORES[buscador.lower()].facetas.items():
+        plana = planas.get(solr) or []
+        cuentas = {
+            str(plana[i]): int(plana[i + 1]) for i in range(0, len(plana) - 1, 2) if plana[i + 1]
+        }
+        if cuentas:
+            facetas[nuestro] = cuentas
+
     return ResultadoJurisprudencia(
         sentencias=sentencias,
         visibles=visibles,
@@ -598,6 +680,7 @@ def parse_sentencias(
         # una consulta de 2, y en apelaciones suma 5.295.308 con 28 visibles. Entregarlo ahí
         # con la descripción que tiene diría que la consulta coincidió con cinco millones.
         condiciones_de_publicacion=condiciones if por_consulta else None,
+        facetas=facetas or None,
     )
 
 
@@ -749,6 +832,7 @@ class JurisClient(Transporte):
         orden: str = "recientes",
         buscador: str = "suprema",
         desplazamiento: int = 0,
+        facetas: Mapping[str, list[str]] | None = None,
     ) -> ResultadoJurisprudencia:
         """Busca sentencias. Sin ningún criterio devolvería el índice entero, y eso no es
         una búsqueda: es un volcado.
@@ -767,7 +851,7 @@ class JurisClient(Transporte):
 
         # Sólo se envían las claves con valor. Medido: mandar el juego completo de claves
         # vacías que arma su formulario hace que el servidor responda 500.
-        filtros = {
+        filtros: dict[str, object] = {
             k: v
             for k, v in {
                 "rol": str(rol) if rol else "",
@@ -784,6 +868,23 @@ class JurisClient(Transporte):
             raise ValueError(
                 "Hay que dar al menos un criterio: rol y año, texto, o un rango de fechas."
             )
+
+        declaradas = BUSCADORES[buscador.lower()].facetas if buscador.lower() in BUSCADORES else {}
+        if facetas:
+            desconocidas = sorted(set(facetas) - set(declaradas))
+            if desconocidas:
+                # Una faceta que este buscador no declara NO da error en la plataforma: la
+                # búsqueda vuelve con cero resultados, que acá se leería como que la cita no
+                # existe. Medido el 25 de agosto de 2026 con `gls_inventado_s` en apelaciones.
+                raise ValueError(
+                    f"El buscador de {buscador} no declara {', '.join(desconocidas)}. "
+                    f"Declara: {', '.join(sorted(declaradas)) or 'ninguna'}. Filtrar por una "
+                    "que no declara no da error: devuelve cero resultados, que se lee como "
+                    "que la sentencia no existe."
+                )
+            filtros["facetas_seleccionadas"] = [
+                {"nombre": declaradas[n], "valores": list(v)} for n, v in facetas.items() if v
+            ]
 
         if buscador.lower() not in BUSCADORES:
             raise ValueError(
@@ -813,7 +914,21 @@ class JurisClient(Transporte):
                 "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
         ).text
-        return parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
+        resultado = parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
+        if facetas and not resultado.visibles:
+            # Sin esto, un valor mal copiado devuelve la lista vacía y se lee como que la
+            # sentencia no existe. Y mal copiado es lo normal: la plataforma publica
+            # "C.A. de Valparaiso" sin tilde y un libro como "PROTECCIN", así que el valor
+            # escrito de memoria no calza. Los valores exactos salen de `facetas` de una
+            # búsqueda sin filtrar.
+            pedidos = "; ".join(f"{n}={', '.join(v)}" for n, v in facetas.items() if v)
+            raise EstructuraInesperada(
+                f"La búsqueda con {pedidos} no devolvió ninguna sentencia, y eso NO prueba que "
+                "no exista: un valor de faceta que no calza exactamente da el mismo resultado "
+                "vacío. Los valores hay que copiarlos de `facetas` de la misma búsqueda sin "
+                "filtrar, porque la plataforma los publica con su propia ortografía."
+            )
+        return resultado
 
     def texto(
         self, *, rol: int, anio: int, buscador: str = "suprema", cual: int | None = None

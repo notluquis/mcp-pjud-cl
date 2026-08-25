@@ -5922,3 +5922,40 @@ def test_la_frase_de_campos_opcionales_los_nombra_a_todos():
         f"la frase enumera {sorted(_OPCIONALES_DE_LA_SENTENCIA)} y los campos que unos "
         f"buscadores declaran y otros no son {sorted(desiguales)}"
     )
+
+
+def test_la_referencia_no_promete_una_faceta_que_el_buscador_no_declara():
+    """La tabla de facetas se escribe a mano y los mapas se miden.
+
+    Prometer una que no está declarada manda a filtrar por algo que la plataforma no acepta, y
+    eso no da error: devuelve cero resultados, indistinguible de que la cita no exista. Y al
+    revés, una faceta expuesta que la tabla no nombra queda invisible para quien lee.
+
+    El guardia compara los ROTULOS de la tabla contra los nombres de los mapas, así que
+    reescribir la prosa alrededor no lo rompe y agregar o quitar una faceta sí.
+    """
+    from mcp_pjud.juris import BUSCADORES
+
+    texto = _texto(RAIZ / "docs" / "herramientas.md")
+    tramo = texto.split("Cada buscador declara las suyas", 1)
+    assert len(tramo) == 2, "la referencia dejó de explicar las facetas"
+    # Sólo la TABLA, y no el párrafo de abajo: ahí se nombran `enfermedad` y `medicamento`
+    # justamente para decir que NO se exponen, así que buscarlas en el tramo entero daba verde
+    # con la faceta prohibida puesta. Se vio.
+    tabla = tramo[1].split("Dos que la plataforma declara", 1)[0]
+    assert "|" in tabla, "la tabla de facetas por buscador ya no está donde este guardia mira"
+
+    # Los rótulos con que la tabla las nombra, para no exigirle el identificador en la prosa.
+    rotulos = {
+        "corte_origen": "corte de origen",
+        "tipo_recurso": "tipo de recurso",
+        "resultado_recurso": "resultado",
+        "tematica": "temática",
+        "ministros": "ministros",
+    }
+    for nombre, buscador in sorted(BUSCADORES.items()):
+        assert nombre in tabla, f"la tabla no nombra el buscador {nombre}"
+        for faceta in buscador.facetas:
+            assert rotulos.get(faceta, faceta) in tabla, (
+                f"{nombre} expone la faceta {faceta!r} y la referencia no la nombra"
+            )

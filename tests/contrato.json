@@ -1645,7 +1645,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Busca sentencias en el Buscador Unificado de Fallos.\n\nSirve para verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve la sentencia con su caratulado, su fecha y su enlace permanente.\n\nEl resultado trae dos cuentas de completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa que la lista es un subconjunto, y hay que decirlo.\n\n`ocultas` en cero no prueba que la lista esté completa, y en NULO tampoco: nulo no es cero, es que en ese buscador no se puede saber. Sólo suprema la trae con número.\n\n`no_entregadas` mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en `desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el 16 de agosto de 2026 sin filtros: 300.005 visibles de 1.223.925 indexadas.\n\nCada buscador declara sus propios campos y los que no declara vienen en NULO, que significa que ESE buscador no los publica y no que la sentencia no los tenga: `ministros` y `redactor` en suprema; `rol_corte_apelaciones` en salud y suprema; `sala`, `tipo_recurso` y `resultado_recurso` en apelaciones, salud y suprema. La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se puede decidir por el tamaño si vale pedir el texto completo.\n\n`condiciones_de_publicacion` desglosa la consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y `ocultas`: no es que no haya condiciones.",
+      "description": "Busca sentencias en el Buscador Unificado de Fallos.\n\nVerifica que una cita existe antes de usarla: con `rol` y `anio` devuelve caratulado, fecha y enlace.\n\nEl resultado trae dos cuentas de completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa que la lista es un subconjunto, y hay que decirlo.\n\n`ocultas` en cero no prueba que la lista esté completa, y en NULO tampoco: nulo no es cero, es que en ese buscador no se puede saber. Sólo suprema la trae con número.\n\n`no_entregadas` mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en `desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el 16 de agosto de 2026 sin filtros: 300.005 visibles de 1.223.925 indexadas.\n\nCada buscador declara sus propios campos y los que no declara vienen en NULO, que significa que ESE buscador no los publica y no que la sentencia no los tenga: `ministros` y `redactor` en suprema; `rol_corte_apelaciones` en salud y suprema; `sala`, `tipo_recurso` y `resultado_recurso` en apelaciones, salud y suprema. La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se puede decidir por el tamaño si vale pedir el texto completo.\n\n`facetas` reparte ESTAS coincidencias por corte de origen, libro o sala, según lo que el buscador declare: dice si un rol se repite entre cortes antes de leer nada, y de ahí salen los valores exactos con que filtrar. NO se suman: una sentencia puede caer en más de un valor.\n\n`condiciones_de_publicacion` desglosa la consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y `ocultas`: no es que no haya condiciones.",
       "inputSchema": {
         "properties": {
           "anio": {
@@ -1687,6 +1687,25 @@
             "description": "Palabras que NO deben aparecer.",
             "title": "Excluir",
             "type": "string"
+          },
+          "facetas": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Con qué acotar, de nombre de faceta a los valores que se aceptan. Los valores hay que COPIARLOS de `facetas` de una búsqueda sin filtrar: la plataforma los publica con su propia ortografía ('C.A. de Valparaiso' sin tilde, un libro como 'PROTECCIN'), y uno que no calce exactamente devuelve cero resultados en vez de un error. Cada buscador declara las suyas y pedir una que no declara falla en vez de buscar.",
+            "title": "Facetas"
           },
           "filas": {
             "default": 10,
@@ -1921,6 +1940,24 @@
             "default": 0,
             "title": "Desplazamiento",
             "type": "integer"
+          },
+          "facetas": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Facetas"
           },
           "no_entregadas": {
             "title": "No Entregadas",

@@ -1400,9 +1400,9 @@ def listar_audios_audiencia(
     # Las dos cuentas de completitud vivían acá y en la directiva, y la directiva las decía
     # mejor: sólo ella distinguía el nulo del cero, y era justo lo que el cliente cortaba a
     # los 2 KB. Ahora se dicen una vez, y acá, que es donde se leen.
-    description="Busca sentencias en el Buscador Unificado de Fallos.\n\nSirve para "
-    "verificar que una cita existe antes de usarla: dar `rol` y `anio` devuelve la sentencia "
-    "con su caratulado, su fecha y su enlace permanente.\n\nEl resultado trae dos cuentas de "
+    description="Busca sentencias en el Buscador Unificado de Fallos.\n\nVerifica que una "
+    "cita existe antes de usarla: con `rol` y `anio` devuelve caratulado, fecha y enlace."
+    "\n\nEl resultado trae dos cuentas de "
     "completitud y hay que mirar las dos. `ocultas` son las coincidencias que la plataforma "
     "reserva a una consulta anónima; `no_entregadas`, las visibles que esta llamada no trajo "
     "porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa "
@@ -1419,6 +1419,10 @@ def listar_audios_audiencia(
     f"{_por_quien_los_publica(_OPCIONALES_DE_LA_SENTENCIA)}. "
     "La extensión en `palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se "
     "puede decidir por el tamaño si vale pedir el texto completo."
+    "\n\n`facetas` reparte ESTAS coincidencias por corte de origen, libro o sala, "
+    "según lo que el buscador declare: dice si un rol se repite entre cortes antes de "
+    "leer nada, y de ahí salen los valores exactos con que filtrar. NO se suman: una "
+    "sentencia puede caer en más de un valor."
     "\n\n`condiciones_de_publicacion` desglosa la "
     "consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la "
     "plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y "
@@ -1449,6 +1453,17 @@ def buscar_jurisprudencia(
             ge=0,
         ),
     ] = 0,
+    facetas: Annotated[
+        dict[str, list[str]] | None,
+        Field(
+            description="Con qué acotar, de nombre de faceta a los valores que se aceptan. "
+            "Los valores hay que COPIARLOS de `facetas` de una búsqueda sin filtrar: la "
+            "plataforma los publica con su propia ortografía ('C.A. de Valparaiso' sin tilde, "
+            "un libro como 'PROTECCIN'), y uno que no calce exactamente devuelve cero "
+            "resultados en vez de un error. Cada buscador declara las suyas y pedir una que no "
+            "declara falla en vez de buscar."
+        ),
+    ] = None,
     buscador: Annotated[
         str,
         Field(
@@ -1475,6 +1490,7 @@ def buscar_jurisprudencia(
             filas=filas,
             buscador=buscador,
             desplazamiento=desplazamiento,
+            facetas=facetas,
         )
 
 

@@ -16,6 +16,24 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Seis campos de una sentencia venían en cadena vacía, y `ministros` en lista vacía, donde el
+  buscador consultado no publica ese campo. La lista vacía decía que no firmó nadie.
+- El mensaje que pide elegir entre varias sentencias de un rol ofrecía "None palabras" donde el
+  buscador no publica la extensión, que es justo el que más roles repetidos tiene.
+- `cual` no decía de dónde sale su número. El buscador no las devuelve en el orden en que la
+  prosa las nombra, así que elegir por ese orden entrega la sentencia que confirma en una línea.
+- La búsqueda por nombre calza la tilde literal y campo por campo, y la plataforma guarda el
+  mismo apellido de las dos formas: ninguna de las dos grafías devuelve todas las causas.
+- `discrepancia_fechas` explicaba qué compara sólo en la descripción del campo, y el esquema de
+  salida viaja sin prosa a propósito. Ahora lo dice el contrato de la herramienta.
+- `condiciones_de_publicacion` no decía qué significa su nulo, que es lo mismo que en
+  `coincidencias` y `ocultas`: ahí la plataforma cuenta el índice y no la consulta.
+- `intentos` de la georreferencia no estaba documentado en ninguna parte que el modelo lea.
+- El detalle decía que los escritos pendientes de proveer no están medidos, y se leen donde la
+  plataforma los publica.
+
 ## [0.17.0] - 2026-08-25
 
 ### Corregido

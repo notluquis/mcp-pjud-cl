@@ -52,6 +52,8 @@ from pydantic import Field
 
 from .client import (
     ANEXOS,
+    CAUSAS_DEL_APELLIDO_CON_TILDE,
+    CAUSAS_DEL_APELLIDO_SIN_TILDE,
     CON_TRIBUNAL,
     DESCRIPCION,
     DOCUMENTOS,
@@ -81,6 +83,7 @@ from .juris import (
     JurisClient,
     ResultadoJurisprudencia,
     TextoSentencia,
+    buscadores_que_publican,
     miles,
 )
 from .parser import (
@@ -722,7 +725,13 @@ def buscar_causa_por_rit(
     title="Buscar causa por nombre",
     annotations=SOLO_LECTURA,
     description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
-    "campos de nombre. El año no cuenta para ese mínimo."
+    "campos de nombre. El año no cuenta para ese mínimo.\n\nLA TILDE IMPORTA, y es literal "
+    "campo por campo: la plataforma guarda el mismo apellido de las dos formas. Medido sobre "
+    f"un apellido en un solo tribunal: sin tilde salen {CAUSAS_DEL_APELLIDO_SIN_TILDE} causas, "
+    f"con tilde salen {CAUSAS_DEL_APELLIDO_CON_TILDE}, y escribir un campo con tilde y el otro "
+    "sin ella da CERO. Por eso una lista vacía acá NO significa que la persona no tenga causas, "
+    "y una lista con resultados TAMPOCO está completa: falta la mitad escrita de la otra forma. "
+    "Repetir con la otra grafía antes de informar un total."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
     f"\n\n{ACOTACION}",
 )
@@ -802,6 +811,11 @@ def buscar_causa_por_fecha(
     "significa que la causa NO tiene actuaciones de receptor, y eso es una respuesta. Si la "
     "búsqueda no encuentra la causa, esto falla en vez de devolver la lista vacía: los dos "
     "casos daban el mismo valor y un rol mal escrito se leía como una causa sin diligencias."
+    "\n\n`discrepancia_fechas` compara las DOS fuentes de `fecha_diligencia` entre sí: la que "
+    "va entre paréntesis en la columna y la del texto 'Diligencia:'. NO compara "
+    "`fecha_diligencia` contra `fecha_registro`, y que esas dos difieran es lo normal y es "
+    "justamente el motivo de esta herramienta. En NULO falta una de las dos fuentes y no hay "
+    "nada que comparar."
     f"\n\n{QUE_SIGNIFICA_EL_FALSO}",
 )
 def obtener_actuaciones_receptor(
@@ -847,8 +861,8 @@ def obtener_detalle_causa(
     sola cadena. Preferirla antes que pedir paneles por separado: vienen juntos y separarlos
     multiplica las consultas sin traer nada nuevo.
 
-    NO es el expediente completo: publica más paneles de los que este servidor sabe leer, y los
-    escritos no están medidos: su ausencia acá NO significa que la causa no los tenga.
+    NO es el expediente completo: la plataforma publica más paneles de los que este servidor
+    sabe leer.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -1250,6 +1264,9 @@ def obtener_georreferencia(
     `existe: false` significa que la actuación la ofrecía y el panel respondió que no hay
     ninguna. Está medido: una de seis. No es lo mismo que no haber preguntado.
 
+    `intentos` cuenta cuántas veces el aparato trató de fijar la posición, según el sitio. Qué
+    significa un número alto NO está medido, y en nulo el panel no publicó esa columna.
+
     Informar SIEMPRE `precision_metros` junto con las coordenadas. Está medido que varía entre
     6 y 103 metros en una misma causa, y con 103 la coordenada dice el sector y no la puerta:
     presentarla como una dirección exacta es afirmar de más.
@@ -1362,7 +1379,17 @@ def listar_audios_audiencia(
     "`desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con "
     "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
     f"{FECHA_MEDICION} sin filtros: {miles(VISIBLES_MEDIDAS)} visibles de "
-    f"{miles(INDEXADAS_MEDIDAS)} indexadas.",
+    f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
+    "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
+    f"que la sentencia no los tenga: `ministros` y `redactor` sólo en "
+    f"{', '.join(buscadores_que_publican('ministros'))}, `rol_corte_apelaciones` en "
+    f"{', '.join(buscadores_que_publican('rol_corte_apelaciones'))}, y `sala`, `tipo_recurso` "
+    f"y `resultado_recurso` en {', '.join(buscadores_que_publican('sala'))}. La extensión en "
+    "`palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se puede decidir por "
+    "el tamaño si vale pedir el texto completo.\n\n`condiciones_de_publicacion` desglosa la "
+    "consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la "
+    "plataforma cuenta el índice entero y no lo que se pidió, igual que `coincidencias` y "
+    "`ocultas`: no es que no haya condiciones.",
 )
 def buscar_jurisprudencia(
     rol: Annotated[
@@ -1434,7 +1461,12 @@ def obtener_texto_sentencia(
         Field(
             description="Cuál de las sentencias del rol, empezando en 1. Sólo hace falta "
             "cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con su "
-            "resultado y su extensión, y hay que elegir.",
+            "resultado y su extensión, y hay que elegir.\n\nEl número es la POSICIÓN EN QUE "
+            "EL BUSCADOR LAS DEVUELVE, y ese orden no es el que esta prosa usa para "
+            "nombrarlas: en suprema está medido que la casación con el razonamiento no es la "
+            "1. Elegir por el orden en que se leyó una explicación entrega la de reemplazo, "
+            "que confirma en una línea. Hay que leer la enumeración de la detención y tomar el "
+            "número de ahí.",
             ge=1,
         ),
     ] = None,

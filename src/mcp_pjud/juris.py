@@ -320,13 +320,27 @@ class Sentencia(BaseModel):
     rol: str = Field(description="Rol y año en el buscador consultado. Ej: 34546-2025.")
     caratulado: str
     fecha_sentencia: date | None = Field(description="Fecha de la sentencia, ISO 8601.")
-    sala: str = Field(description="Sala que la dictó.")
-    tipo_recurso: str
-    resultado_recurso: str
+    sala: str | None = Field(
+        description="Sala que la dictó. NULO: este buscador no publica el campo."
+    )
+    tipo_recurso: str | None = Field(
+        description="Tipo de recurso. NULO: este buscador no publica el campo."
+    )
+    resultado_recurso: str | None = Field(
+        description="Cómo se resolvió. NULO: este buscador no publica el campo."
+    )
     corte_origen: str = Field(description="Corte de Apelaciones de origen.")
-    rol_corte_apelaciones: str = Field(description="Rol ante la corte de origen, si consta.")
-    redactor: str
-    ministros: list[str] = Field(description="Quienes firmaron.")
+    rol_corte_apelaciones: str | None = Field(
+        description="Rol ante la corte de origen. NULO: este buscador no publica el campo; "
+        "vacío: lo publica y esta sentencia no lo trae."
+    )
+    redactor: str | None = Field(
+        description="Quien redactó. NULO: este buscador no publica el campo."
+    )
+    ministros: list[str] | None = Field(
+        description="Quienes firmaron. NULO: este buscador no publica el campo. Una lista "
+        "VACÍA diría que no firmó nadie, y eso no lo dice ningún buscador."
+    )
     condicion_publicacion: str = Field(
         description="Cómo está publicada. Determina si el texto se ve completo, "
         "anonimizado o no se ve."
@@ -428,6 +442,15 @@ def _fecha(valor: str | None) -> date | None:
         return None
 
 
+def buscadores_que_publican(campo: str) -> list[str]:
+    """Quiénes declaran ese campo Solr, leído del mapa de cada buscador.
+
+    Única fuente de qué publica cada uno: la prosa que lo repita se compara contra esto en vez
+    de escribirse a mano, porque un buscador nuevo la dejaría vieja sin que nada avise.
+    """
+    return sorted(n for n, b in BUSCADORES.items() if campo in b.campos)
+
+
 def _lista(valor: str | None) -> list[str]:
     return [p.strip() for p in (valor or "").split(",") if p.strip()]
 
@@ -506,18 +529,29 @@ def parse_sentencias(
     def leer(d: dict, nombre: str) -> str:
         return str(d.get(campos.get(nombre, ""), "") or "")
 
+    def leer_si_lo_declara(d: dict, nombre: str) -> str | None:
+        """Nulo cuando ESTE buscador no publica el campo, cadena cuando lo publica.
+
+        `leer` colapsaba las dos cosas: sin entrada en `campos` hacía `d.get("", "")` y
+        devolvía la cadena vacía, que se lee como "consta que está vacío". Medido: seis de los
+        siete buscadores no declaran `ministros` y llegaba como lista vacía mientras el texto
+        del fallo nombraba a los cinco de la sala. El mapa del buscador es la única fuente de
+        qué publica cada uno, y es la que decide.
+        """
+        return leer(d, nombre) if nombre in campos else None
+
     sentencias = [
         Sentencia(
             rol=leer(d, "rol"),
             caratulado=leer(d, "caratulado"),
             fecha_sentencia=_fecha(leer(d, "fecha_sentencia")),
-            sala=leer(d, "sala"),
-            tipo_recurso=leer(d, "tipo_recurso"),
-            resultado_recurso=leer(d, "resultado_recurso"),
+            sala=leer_si_lo_declara(d, "sala"),
+            tipo_recurso=leer_si_lo_declara(d, "tipo_recurso"),
+            resultado_recurso=leer_si_lo_declara(d, "resultado_recurso"),
             corte_origen=leer(d, "corte_origen"),
-            rol_corte_apelaciones=leer(d, "rol_corte_apelaciones"),
-            redactor=leer(d, "redactor"),
-            ministros=_lista(leer(d, "ministros")),
+            rol_corte_apelaciones=leer_si_lo_declara(d, "rol_corte_apelaciones"),
+            redactor=leer_si_lo_declara(d, "redactor"),
+            ministros=_lista(leer(d, "ministros")) if "ministros" in campos else None,
             condicion_publicacion=leer(d, "condicion_publicacion"),
             anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
             url=leer(d, "url"),
@@ -576,6 +610,18 @@ ROL_CON_TRES_SENTENCIAS = "1504-2019"
 PALABRAS_DE_LA_CASACION = 3646
 PALABRAS_DEL_REEMPLAZO = 157
 
+#: Y en qué POSICIÓN las devuelve el buscador, medido sobre `ROL_CON_DOS_SENTENCIAS`: la de
+#: casación, que es la que trae el razonamiento, no es la primera.
+#:
+#: Importa porque la prosa las nombra en el orden contrario ("la de casación con el
+#: razonamiento y la de reemplazo, que confirma en una línea"), y quien elige por el orden en
+#: que lo leyó pide `cual=1` y se lleva las `PALABRAS_DEL_REEMPLAZO`: una línea que confirma,
+#: sin la doctrina que se fue a buscar, y con cara de ser la sentencia del rol. Pasó.
+#:
+#: Es UNA medición sobre un rol, así que lo que se afirma es que la casación no es la 1, no
+#: que siempre sea la 2. El número que vale es el de la enumeración de la detención.
+CUAL_DE_LA_CASACION_MEDIDO = 2
+
 
 def _es_del_rol(sentencia: Sentencia, rol: int, anio: int) -> bool:
     """Si la sentencia que llegó corresponde al rol que se pidió.
@@ -602,10 +648,15 @@ def _enumerar(sentencias: list[Sentencia]) -> str:
     opciones quedaban en el mismo rol, el mismo caratulado y un número de palabras. El rol y
     la fecha son lo que identifica una cita, que es lo que se vino a verificar.
     """
+    # La extensión sólo entra si la hay: sin ella el rótulo decía "None palabras", y decía
+    # eso justamente en apelaciones, que no publica la extensión y es donde más sentencias
+    # comparten rol (medido: trece bajo 2476-2023). O sea el mensaje que existe para que se
+    # elija entre varias salía roto en el buscador donde más se usa.
     return "; ".join(
         f"{i}: {s.rol or 'sin rol'} del {s.fecha_sentencia or 'sin fecha'},"
         f" {s.caratulado or 'sin caratulado'}"
-        f" [{s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}, {s.palabras} palabras]"
+        f" [{s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}"
+        + (f", {s.palabras} palabras]" if s.palabras is not None else "]")
         for i, s in enumerate(sentencias, 1)
     )
 

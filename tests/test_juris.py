@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import date
 from pathlib import Path
 
 import httpx
@@ -10,7 +11,10 @@ import pytest
 from mcp_pjud.juris import (
     BUSCADORES,
     INDISPENSABLES,
+    PALABRAS_DE_LA_CASACION,
     JurisClient,
+    Sentencia,
+    buscadores_que_publican,
     parse_sentencias,
 )
 from mcp_pjud.parser import EstructuraInesperada, PlataformaRechaza
@@ -1148,3 +1152,75 @@ def test_las_visibles_salen_de_response_y_las_coincidencias_del_desglose():
     assert r.visibles == 7, "las visibles salen de response.numFound"
     assert r.coincidencias == 31, "las coincidencias salen de condition_pub_sf.numFound_sf"
     assert r.ocultas == 24
+
+
+def test_un_campo_que_el_buscador_no_declara_viene_en_nulo_y_no_vacio():
+    """El mapa de cada buscador es lo que dice qué publica, y el lector lo ignoraba.
+
+    `leer` hacía `d.get(campos.get(nombre, ""), "")`: sin entrada en el mapa consultaba la
+    clave vacía y devolvía la cadena vacía. O sea "este buscador no publica el campo" y "lo
+    publica y esta sentencia no lo trae" llegaban idénticos, que es el falso negativo de la
+    regla 4 puesto en un campo en vez de en una lista.
+
+    El que más duele es `ministros`: seis de los siete buscadores no lo declaran y llegaba
+    como lista VACÍA, que según el contrato de este servidor significa "consta que no hay
+    ninguno". Una sesión lo leyó así con el texto del fallo nombrando a los cinco de la sala.
+    """
+    cuerpo = json.dumps(json.loads(CITA))
+
+    for campo in ("sala", "tipo_recurso", "resultado_recurso", "rol_corte_apelaciones", "redactor"):
+        publican = set(buscadores_que_publican(campo))
+        assert publican, f"si nadie declarara {campo}, el campo sobraría en el modelo"
+        assert publican != set(BUSCADORES), f"{campo} ya no distingue nada: lo declaran todos"
+        for nombre in BUSCADORES:
+            valor = getattr(parse_sentencias(cuerpo, nombre).sentencias[0], campo)
+            if nombre in publican:
+                assert valor is not None, f"{nombre} declara {campo} y llegó en nulo"
+            else:
+                assert valor is None, (
+                    f"{nombre} no declara {campo} y llegó {valor!r}: la cadena vacía se lee "
+                    "como que consta que está vacío"
+                )
+
+    for nombre in BUSCADORES:
+        ministros = parse_sentencias(cuerpo, nombre).sentencias[0].ministros
+        if nombre in buscadores_que_publican("ministros"):
+            assert ministros is not None
+        else:
+            assert ministros is None, "una lista vacía diría que no firmó nadie"
+
+
+def test_la_enumeracion_no_ofrece_una_extension_que_no_tiene():
+    """El mensaje que existe para que se elija salía roto donde más se usa.
+
+    `palabras` viene en nulo en los buscadores que no publican la extensión, y el rótulo lo
+    interpolaba igual: "None palabras". Y eso ocurría justamente en apelaciones, que es donde
+    más sentencias comparten rol (medido: trece bajo 2476-2023), o sea el buscador donde la
+    detención se dispara más seguido.
+    """
+    from mcp_pjud.juris import _enumerar
+
+    def sentencia(palabras):
+        return Sentencia(
+            rol="2476-2023",
+            caratulado="UNA PARTE / OTRA",
+            fecha_sentencia=date(2024, 12, 26),
+            sala=None,
+            tipo_recurso=None,
+            resultado_recurso="REVOCADA",
+            corte_origen="C.A. de Concepción",
+            rol_corte_apelaciones=None,
+            redactor=None,
+            ministros=None,
+            condicion_publicacion="Con interes jurisprudencial",
+            anonimizada=False,
+            url="https://example.invalid/x",
+            palabras=palabras,
+        )
+
+    sin_extension = _enumerar([sentencia(None)])
+    assert "None" not in sin_extension, sin_extension
+    assert "palabras" not in sin_extension, "sin extensión no se nombra la extensión"
+
+    con_extension = _enumerar([sentencia(PALABRAS_DE_LA_CASACION)])
+    assert f"{PALABRAS_DE_LA_CASACION} palabras" in con_extension

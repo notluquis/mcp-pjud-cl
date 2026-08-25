@@ -392,8 +392,6 @@ def _cliente(ctx: Context | None = None) -> PjudClient:
     return c
 
 
-#: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
-#: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
 def _y(nombres: list[str]) -> str:
     """Los nombres como los enumera una frase en español, con la `y` antes del último.
 
@@ -405,6 +403,8 @@ def _y(nombres: list[str]) -> str:
     return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
 
 
+#: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
+#: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
 _CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
 
 #: Y donde no lleva nada. Son tres formas y el esquema nombraba dos: pedirle una letra a

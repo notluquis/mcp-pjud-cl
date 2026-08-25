@@ -3118,6 +3118,12 @@ def una_por_causa(causas: list[CausaEncontrada]) -> list[CausaEncontrada]:
 
     Por eso también recibe la lista ENTERA y no cada página: las filas de una causa pueden
     quedar partidas entre dos páginas.
+
+    Y sólo la llaman las búsquedas que calzan por PARTE, que son las de nombre y las de RUT:
+    ahí es donde la plataforma une por litigante y donde está medida la repetición. Las de rol
+    y de fecha calzan por la causa, así que dos filas iguales no se han observado y juntarlas
+    sería generalizar la medición de una búsqueda a otra. Importa además porque `_causa_pedida`
+    se apoya en cuántas filas calzan para negarse a elegir entre homónimas.
     """
     vistas: set[tuple] = set()
     unicas = []

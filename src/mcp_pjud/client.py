@@ -1353,10 +1353,19 @@ class PjudClient(Transporte):
         lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
         no detectarla.
         """
-        return una_por_causa(parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia))
+        # Sin juntar filas repetidas, y no es un olvido: acá sólo entra la búsqueda por rol,
+        # que calza por la causa y no por sus partes. Si algún día se ofreciera `paginas=None`
+        # en una que calce por parte, hay que traerse la junta con ella: esta función no tiene
+        # la salida única que `_paginado` sí tiene, así que el olvido no se notaría.
+        return parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia)
 
     def _paginado(
-        self, ruta: str, data: dict[str, str], paginas: int, competencia: str
+        self,
+        ruta: str,
+        data: dict[str, str],
+        paginas: int,
+        competencia: str,
+        por_parte: bool = False,
     ) -> list[CausaEncontrada]:
         """Recorre las páginas de un listado hasta agotarlo o hasta el tope.
 
@@ -1373,6 +1382,15 @@ class PjudClient(Transporte):
             raise ValueError(f"El tope de páginas debe ser 1 o más, se recibió {paginas}.")
 
         acumuladas: list[CausaEncontrada] = []
+
+        def entregar(filas: list[CausaEncontrada]) -> list[CausaEncontrada]:
+            """Lo que sale por cualquiera de las salidas del recorrido.
+
+            Los tres retornos tienen que juntar o no juntar lo mismo, y una salida nueva que
+            se olvide de hacerlo devuelve duplicados sin que nada lo note.
+            """
+            return una_por_causa(filas) if por_parte else filas
+
         vistos: set[str] = set()
         token: str | None = None
         total: int | None = None
@@ -1394,6 +1412,10 @@ class PjudClient(Transporte):
                 # ninguna, así que lo acumulado está incompleto. Devolverlo callando es lo
                 # mismo que el resto de esta función existe para impedir: una lista parcial
                 # que se lee como completa.
+                # `total is not None` es lo que discrimina: en la primera página no hay
+                # total con qué comparar. La otra mitad no puede ser falsa acá, porque el
+                # retorno de más arriba ya se llevó el caso de igualdad; se deja escrita para
+                # que la comparación quede atada al dato que usa y no al lugar del bucle.
                 if total is not None and len(acumuladas) != total:
                     raise EstructuraInesperada(
                         f"La plataforma declaró {total} resultados y en la página {numero} "
@@ -1402,7 +1424,7 @@ class PjudClient(Transporte):
                         "estructura. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return una_por_causa(acumuladas)
+                return entregar(acumuladas)
 
             acumuladas.extend(parse_resultados(html_, competencia))
 
@@ -1425,6 +1447,20 @@ class PjudClient(Transporte):
                     f"{total}. La paginación no está avanzando."
                 )
 
+            # Que la página AVANZÓ se comprueba antes de dar el recorrido por completo: el
+            # mismo identificador dos veces significa que la plataforma re-sirvió la anterior,
+            # y con eso lo acumulado llega justo al total declarado siendo la mitad repetida.
+            # Reproducido: dos páginas de 15 sobre un total de 30, la segunda repitiendo la
+            # primera, devolvía 15 causas presentadas como las 30. Comprobarlo después del
+            # retorno lo dejaba fuera del camino que más importa.
+            token = siguiente_pagina(html_)
+            if token is not None and token in vistos:
+                raise EstructuraInesperada(
+                    f"La paginación devolvió el mismo identificador de página en la vuelta "
+                    f"{numero}: no está avanzando, así que lo acumulado repite la página "
+                    "anterior y no se puede dar por completo."
+                )
+
             if len(acumuladas) == total:
                 # El total declarado manda por sobre la navegación, y no es una optimización:
                 # en suprema y en apelaciones el listado ofrece "siguiente" AUNQUE esté
@@ -1435,9 +1471,7 @@ class PjudClient(Transporte):
                 #
                 # Civil no lo hace, y por eso el hueco sobrevivió hasta que entraron esas dos
                 # competencias.
-                return una_por_causa(acumuladas)
-
-            token = siguiente_pagina(html_)
+                return entregar(acumuladas)
 
             if token is None:
                 if len(acumuladas) != total:
@@ -1448,16 +1482,8 @@ class PjudClient(Transporte):
                         "cambió. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return una_por_causa(acumuladas)
+                return entregar(acumuladas)
 
-            if token in vistos:
-                # El mismo token dos veces significa que la página no avanza. Sin esto se
-                # gastaban las diez páginas del tope acumulando duplicados, y el mensaje
-                # final culpaba al usuario por hacer una búsqueda amplia.
-                raise EstructuraInesperada(
-                    f"La paginación devolvió el mismo identificador de página en la vuelta "
-                    f"{numero}: no está avanzando."
-                )
             vistos.add(token)
 
         raise ResultadosTruncados(
@@ -1895,6 +1921,7 @@ class PjudClient(Transporte):
             },
             paginas,
             competencia,
+            por_parte=True,
         )
 
     def buscar_por_rut_juridica(
@@ -1928,6 +1955,7 @@ class PjudClient(Transporte):
             },
             paginas,
             competencia,
+            por_parte=True,
         )
 
     def buscar_por_fecha(

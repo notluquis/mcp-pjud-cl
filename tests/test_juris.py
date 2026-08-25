@@ -1343,6 +1343,18 @@ def test_una_busqueda_con_facetas_que_vuelve_vacia_se_detiene(monkeypatch):
     assert c.buscar(rol=2476, anio=2023, buscador="apelaciones").visibles == 0
 
 
+def _filtros_enviados(contenido: bytes) -> dict:
+    """El `filtros` que viajó en el multipart, ya decodificado.
+
+    Falla con lo que se envió a la vista si el campo no está: sin eso, un cambio en el cuerpo
+    daría `AttributeError` sobre None y habría que ir a leer el multipart a mano.
+    """
+    cuerpo = contenido.decode("utf-8", "replace")
+    m = re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', cuerpo, re.S)
+    assert m, f"la petición no llevó `filtros`: {cuerpo[:400]}"
+    return json.loads(m.group(1))
+
+
 def test_una_faceta_valida_llega_a_la_peticion_con_su_campo_solr(monkeypatch):
     """Lo que el cambio hace de verdad es traducir un nombre nuestro a un campo Solr y mandarlo.
 
@@ -1369,20 +1381,14 @@ def test_una_faceta_valida_llega_a_la_peticion_con_su_campo_solr(monkeypatch):
     )
 
     assert enviados, "la petición no salió"
-    cuerpo = enviados[0].decode("utf-8", "replace")
-    filtros = json.loads(
-        re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', cuerpo, re.S).group(1)
-    )
+    filtros = _filtros_enviados(enviados[0])
     mandadas = {f["nombre"]: f["valores"] for f in filtros["facetas_seleccionadas"]}
     assert mandadas == {"gls_corte_s": ["C.A. de Santiago"], "gls_libro_sup_s": ["CIVIL"]}, mandadas
 
     # Y una faceta sin valores no viaja ni enciende la detención por valor mal copiado.
     enviados.clear()
     c.buscar(rol=2476, anio=2023, buscador="apelaciones", facetas={"corte_origen": []})
-    filtros = json.loads(
-        re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', enviados[0].decode(), re.S).group(1)
-    )
-    assert "facetas_seleccionadas" not in filtros, filtros
+    assert "facetas_seleccionadas" not in _filtros_enviados(enviados[0])
 
 
 def test_cero_visibles_con_reservadas_no_se_le_echa_la_culpa_a_la_faceta(monkeypatch):

@@ -854,8 +854,9 @@ El texto completo de una sentencia, de una en una.
 **Un rol puede tener más de una sentencia, y la equivocada se ve igual de válida.**
 
 Medido en suprema, rol **1933-2025**: la de casación en el fondo son **3.646 palabras** y trae
-el razonamiento; la de reemplazo son **157** y sólo confirma. Antes esta herramienta entregaba
-la que el buscador pusiera primero, y devolvió la de 157 sin decir que existía otra.
+el razonamiento; la de reemplazo son **157 palabras** y sólo confirma. Antes esta herramienta
+entregaba la que el buscador pusiera primero, y devolvió la de 157 palabras sin decir que
+existía otra.
 
 Y no siempre son dos: el rol **1504-2019** de apelaciones trae **tres**, medido. Cuando pasan
 de **10**, el mensaje enumera las primeras y dice cuántas quedan fuera.

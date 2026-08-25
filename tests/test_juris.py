@@ -835,6 +835,41 @@ def test_una_reservada_bajo_el_mismo_rol_tambien_detiene(monkeypatch):
         c.texto(rol=1933, anio=2025)
 
 
+def test_con_reservadas_tambien_se_enumeran_todas_las_visibles(monkeypatch):
+    """La rama de reservadas corría ANTES de volver a pedirlas, así que listaba las dos filas
+    que se habían traído para detectar la ambigüedad.
+
+    Con tres visibles y una reservada, quien necesita la tercera seguía eligiendo a ciegas,
+    justo cuando además hay una opción que no se ve.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    base["rol_era_sup_s"] = "1933-2025"
+    todos = [{**base, "sent__word_count_i": n} for n in (900, 500, 100)]
+    d["response"]["numFound"] = 3
+    d["condition_pub_sf"] = {"numFound_sf": 4, "counts": ["Publicable", 3, "Reservada", 1]}
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        crudo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", crudo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {crudo[:200]}"
+        d["response"]["docs"] = todos[: int(cuantas.group(1))]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    with pytest.raises(PlataformaRechaza, match="reservada") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    dicho = str(caida.value)
+    for palabras in ("900 palabras", "500 palabras", "100 palabras"):
+        assert palabras in dicho, f"no enumera las tres visibles: {dicho}"
+
+
 def test_al_enumerar_va_la_fecha_de_cada_sentencia(monkeypatch):
     """En `familia` el caratulado llega como ANONIMIZADO y no hay tipo ni resultado.
 

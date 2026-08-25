@@ -4070,8 +4070,8 @@ def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
     referencia = " ".join(HERRAMIENTAS.split())
     for dicho in (
         ROL_CON_DOS_SENTENCIAS,
-        f"{PALABRAS_DE_LA_CASACION:,}".replace(",", "."),
-        str(PALABRAS_DEL_REEMPLAZO),
+        f"{PALABRAS_DE_LA_CASACION:,}".replace(",", ".") + " palabras",
+        f"{PALABRAS_DEL_REEMPLAZO} palabras",
         # El caso de tres y el tope de la enumeración son afirmaciones verificables igual que
         # las extensiones: corregir el caso medido o mover el tope dejaba la página vieja.
         ROL_CON_TRES_SENTENCIAS,
@@ -4081,6 +4081,16 @@ def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
             f"la referencia no cita {dicho!r}, que es lo medido y lo que justifica que esta "
             "herramienta se detenga en vez de elegir"
         )
+
+    # Y TODAS las apariciones, no que el valor esté en alguna parte: `157` sale dos veces en
+    # esa advertencia, así que cambiar una y dejar la otra vieja pasaba igual. Se compara el
+    # conjunto entero de extensiones que la página cita contra las dos medidas.
+    medidas = {str(PALABRAS_DE_LA_CASACION), str(PALABRAS_DEL_REEMPLAZO)}
+    citadas = {n.replace(".", "") for n in re.findall(r"([\d.]+) palabras", referencia)}
+    assert citadas == medidas, (
+        f"la referencia cita las extensiones {sorted(citadas)} y las medidas son "
+        f"{sorted(medidas)}: una copia vieja se esconde detrás de la otra"
+    )
 
 
 def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():

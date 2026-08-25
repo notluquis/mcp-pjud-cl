@@ -831,20 +831,21 @@ class JurisClient(Transporte):
         # única del rol. Si la cita que se fue a verificar es la reservada, se devuelve otro
         # fallo del mismo rol, verosímil y distinto.
         if cual is None and r.visibles + (r.ocultas or 0) > 1:
+            # Se vuelve a pedir con todas para poder ENUMERARLAS, y ANTES de decidir por qué
+            # se detiene: con reservadas el mensaje también las enumera, y hacerlo después
+            # dejaba ese camino listando las dos filas que se habían traído para detectar la
+            # ambigüedad. Sin esto, un rol de tres (medido: 1504-2019 en apelaciones) decía
+            # "tiene 3" y listaba dos. Es una petición más y sólo ocurre en el caso ambiguo.
+            if r.visibles > len(r.sentencias):
+                r = self.buscar(
+                    rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
+                )
             if r.ocultas:
                 raise PlataformaRechaza(
                     f"El rol {rol}-{anio} tiene {r.visibles} sentencia(s) que se pueden ver y "
                     f"{r.ocultas} reservada(s) a una consulta anónima. No se entrega ninguna "
                     "sin decir cuál en `cual`: la que falta puede ser justamente la que se "
                     f"busca, y las visibles son {_enumerar(r.sentencias)}."
-                )
-            # Se vuelve a pedir con todas para poder ENUMERARLAS. Sin esto, un rol de tres
-            # (medido: 1504-2019 en apelaciones) decía "tiene 3" y listaba dos, o sea el
-            # selector obligaba a elegir a ciegas justo donde más falta hace. Es una petición
-            # más contra la plataforma y sólo ocurre en el caso ambiguo.
-            if r.visibles > len(r.sentencias):
-                r = self.buscar(
-                    rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
                 )
             if len(r.sentencias) < min(r.visibles, TOPE_AL_ENUMERAR):
                 # Se pidieron y no llegaron: enumerar a medias haría elegir a ciegas entre

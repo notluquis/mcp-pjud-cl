@@ -45,6 +45,7 @@ from mcp_pjud.client import (
 )
 from mcp_pjud.parser import (
     COMPETENCIAS,
+    SIN_RESULTADOS,
     EstructuraInesperada,
     parse_anexos,
     parse_diligencias,
@@ -1649,6 +1650,64 @@ def test_lo_que_identifica_la_causa_viaja_con_su_valor(monkeypatch):
     c.buscar_por_rit("A", 1, 2026, competencia="suprema")
     assert enviados[0]["conTribunal"] == "0"
     assert enviados[0]["conCorte"] == "0"
+
+
+def test_si_el_paginado_muere_a_mitad_no_devuelve_la_lista_parcial(monkeypatch):
+    """ "No hay resultados" en la primera página es una respuesta; en la tercera es otra cosa.
+
+    La plataforma ya declaró cuántas hay, así que contestar de golpe que no hay ninguna deja lo
+    acumulado incompleto. Devolverlo callando es exactamente lo que el resto de `_paginado`
+    existe para impedir, y el mismo camino que ya está cubierto cuando desaparece el control de
+    página siguiente.
+
+    Escenario real: un identificador de página vencido, o un hipo de la plataforma a mitad del
+    recorrido.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    paginas = [
+        _pagina(range(1, 101), total=250, ultima=False, token="p2"),
+        _pagina(range(101, 201), total=250, ultima=False, token="p3"),
+        f"<html><body>{SIN_RESULTADOS}</body></html>",
+    ]
+    servidas: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        servidas.append(str(peticion.url))
+        # Índice directo y no acotado con `min`: si el recorrido pidiera una página de más,
+        # el doble tiene que reventar en vez de servirle otra vez la última.
+        return httpx.Response(200, text=paginas[len(servidas) - 1])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="respondió que no hay ninguno"):
+        c.buscar_por_rit("C", 1156, 2026, tribunal=162)
+
+    assert len(servidas) == 3, (
+        "el recorrido no llegó a la tercera página, así que la excepción no la levantó lo que "
+        f"este test dice medir: {len(servidas)} peticiones"
+    )
+
+
+def test_una_busqueda_sin_ninguna_coincidencia_sigue_siendo_una_respuesta(monkeypatch):
+    """Y no se puede romper al arreglar lo de arriba.
+
+    En la PRIMERA página no hay total declarado con qué comparar, y una búsqueda legítima que
+    no encuentra nada tiene que devolver la lista vacía en vez de levantar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(_peticion: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=f"<html><body>{SIN_RESULTADOS}</body></html>")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    assert c.buscar_por_rit("C", 1, 2026, tribunal=162) == [], (
+        "una búsqueda sin coincidencias dejó de ser una respuesta y ahora levanta"
+    )
 
 
 def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):

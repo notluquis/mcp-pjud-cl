@@ -554,6 +554,35 @@ def parse_sentencias(
     )
 
 
+#: Cuántas sentencias se enumeran como mucho al pedir que se elija una. Es un tope de
+#: mensaje, no de la plataforma: cada documento que se trae para enumerar arrastra su texto
+#: completo, y lo que falta se dice en vez de callarse.
+TOPE_AL_ENUMERAR = 10
+
+#: El caso medido de un rol con más de una sentencia, que es lo que justifica que esta
+#: herramienta se detenga en vez de elegir. Vive acá y no sólo en la prosa porque la
+#: referencia lo cita y `tests/test_documentacion.py` compara las dos.
+ROL_CON_DOS_SENTENCIAS = "1933-2025"
+PALABRAS_DE_LA_CASACION = 3646
+PALABRAS_DEL_REEMPLAZO = 157
+
+
+def _enumerar(sentencias: list[Sentencia]) -> str:
+    """Las opciones como las lee quien tiene que elegir una.
+
+    Va el rol y el caratulado además del rótulo: en `laborales` el mapeo no declara
+    `resultado_recurso` ni `tipo_recurso`, así que sin ellos las opciones salían todas como
+    "sin rótulo" y sólo se distinguían por el largo. Y ahí el propio buscador mezcla causas
+    distintas con el mismo número (`T-364-2020` contra `O-364-2020`), que es justo lo que el
+    caratulado separa.
+    """
+    return "; ".join(
+        f"{i}: {s.rol or 'sin rol'}, {s.caratulado or 'sin caratulado'}"
+        f" [{s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}, {s.palabras} palabras]"
+        for i, s in enumerate(sentencias, 1)
+    )
+
+
 class JurisClient(Transporte):
     """Buscador Unificado de Fallos.
 
@@ -714,11 +743,17 @@ class JurisClient(Transporte):
         personas naturales suprimidos por el propio tribunal, y se dice cuál de los dos
         campos se entregó.
         """
-        # Dos filas y no una: un mismo rol puede traer más de una sentencia (en suprema, la
-        # de casación y la de reemplazo), y con una sola el buscador elegía por nosotros. Se
-        # piden dos para poder DETECTAR que hay más, no para traerlas todas: cada documento
-        # arrastra el texto completo, y una sentencia de trece páginas son veinticinco mil
-        # caracteres.
+        if cual is not None and cual < 1:
+            # `JurisClient` se usa también sin pasar por el protocolo, donde el esquema ya
+            # exige `ge=1`. Sin esta comprobación, `cual=0` entregaba en silencio la primera
+            # (el `or` lo convertía en 1) y `cual=-1` indexaba desde el final: el selector
+            # volvía a elegir un fallo por su cuenta, que es lo que existe para no hacer.
+            raise ValueError(f"`cual` empieza en 1 y se pidió {cual}.")
+
+        # Dos filas y no una: un mismo rol puede traer más de una sentencia, y con una sola el
+        # buscador elegía por nosotros. Dos alcanzan para DETECTAR que hay más sin arrastrar
+        # de más: cada documento trae el texto completo, y una sentencia de trece páginas son
+        # veinticinco mil caracteres.
         r = self.buscar(rol=rol, anio=anio, filas=max(2, cual or 0), buscador=buscador)
         if not r.sentencias:
             if r.ocultas:
@@ -739,21 +774,25 @@ class JurisClient(Transporte):
                 "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
             )
 
-        # Más de una bajo el mismo rol: NO se elige. Medido en suprema, rol 1933-2025, que
-        # trae la casación de 3.646 palabras con la doctrina y la de reemplazo de 157 que sólo
-        # confirma. Entregar la segunda como si fuera "la sentencia" devuelve un documento que
-        # se ve correcto y no contiene el razonamiento que se fue a buscar.
+        # Más de una bajo el mismo rol: NO se elige.
         if len(r.sentencias) > 1 and cual is None:
-            cuales = "; ".join(
-                f"{i}: {s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}"
-                f" ({s.palabras} palabras)"
-                for i, s in enumerate(r.sentencias, 1)
-            )
+            # Se vuelve a pedir con todas para poder ENUMERARLAS. Sin esto, un rol de tres
+            # (medido: 1504-2019 en apelaciones) decía "tiene 3" y listaba dos, o sea el
+            # selector obligaba a elegir a ciegas justo donde más falta hace. Es una petición
+            # más contra la plataforma y sólo ocurre en el caso ambiguo.
+            if r.visibles > len(r.sentencias):
+                r = self.buscar(
+                    rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
+                )
+            faltan = max(0, r.visibles - len(r.sentencias))
             raise ValueError(
                 f"El rol {rol}-{anio} tiene {r.visibles} sentencias en {buscador} y esta "
-                f"herramienta entrega una: hay que decir cuál en `cual`. Son: {cuales}. No se "
-                "elige por ti: la de reemplazo confirma en una línea y la de casación trae el "
-                "razonamiento, y la equivocada se ve igual de válida."
+                f"herramienta entrega una: hay que decir cuál en `cual`. Son: "
+                f"{_enumerar(r.sentencias)}"
+                + (f" (y {faltan} más, que no caben en este mensaje)" if faltan else "")
+                + ". No se elige por ti: en suprema está medido que un rol trae la casación "
+                "con el razonamiento y la de reemplazo que confirma en una línea, y la "
+                "equivocada se ve igual de válida."
             )
 
         indice = (cual or 1) - 1

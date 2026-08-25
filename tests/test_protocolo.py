@@ -1032,6 +1032,55 @@ def test_un_pdf_ilegible_no_se_describe_como_escaneo(monkeypatch: pytest.MonkeyP
     )
 
 
+def test_cual_llega_hasta_el_buscador_por_el_protocolo(monkeypatch: pytest.MonkeyPatch):
+    """El parámetro se anuncia en el contrato y podía no estar cableado.
+
+    Los otros guardias llaman a `JurisClient.texto` directo, así que borrar el `cual=cual` de
+    la herramienta los dejaba a todos verdes: el contrato seguiría prometiendo el selector y
+    quien lo usara recibiría siempre la misma sentencia, que es exactamente el defecto que
+    este parámetro existe para cerrar.
+    """
+    import json as _json
+
+    from mcp_pjud import juris as juris_modulo
+
+    monkeypatch.setattr(servidor, "_CONTACTO", "test@example.cl")
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    crudo = _json.loads((FIXTURES / "juris_cita_unica.json").read_text(encoding="utf-8"))
+    primera = crudo["response"]["docs"][0]
+    primera["texto_sentencia"] = "Casación: considerando primero."
+    segunda = dict(primera)
+    segunda["texto_sentencia"] = "Se confirma."
+    crudo["response"]["docs"] = [primera, segunda]
+    crudo["response"]["numFound"] = 2
+    cuerpo = _json.dumps(crudo, ensure_ascii=False)
+
+    def fabricar(contacto: str) -> juris_modulo.JurisClient:
+        cliente = juris_modulo.JurisClient(contacto)
+        cliente._http = httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, text=cuerpo))
+        )
+        cliente._token, cliente._id_buscador = "tok", "528"
+        cliente._buscador_de_la_sesion = "suprema"
+        return cliente
+
+    monkeypatch.setattr(servidor, "JurisClient", fabricar)
+
+    async def pedir(cual: int) -> CallToolResult:
+        async with Client(servidor.mcp) as cliente:
+            return await cliente.call_tool(
+                "obtener_texto_sentencia", {"rol": 1933, "anio": 2025, "cual": cual}
+            )
+
+    assert "Se confirma." in _texto(asyncio.run(pedir(2))), (
+        "pedir la segunda sentencia por el protocolo devolvió otra cosa: `cual` no llega"
+    )
+    assert "Casación" in _texto(asyncio.run(pedir(1))), (
+        "y la primera tiene que seguir siendo la primera"
+    )
+
+
 def test_un_escaneo_se_declara_en_palabras_y_no_se_transcribe(monkeypatch: pytest.MonkeyPatch):
     """Lo que el modelo lee del sobre es el bloque de texto, así que el veredicto tiene que
     estar ahí y no sólo en un campo.

@@ -4051,6 +4051,32 @@ def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
     )
 
 
+def test_las_cifras_del_rol_con_dos_sentencias_son_las_medidas():
+    """La referencia cita un rol y dos extensiones para justificar que la herramienta se
+    detenga en vez de elegir, y esas cifras estaban repetidas en tres lugares sin fuente.
+
+    Cambiar una copia dejaba las otras viejas con la suite en verde, y es el dato que sostiene
+    la advertencia entera: si las dos sentencias midieran lo mismo, la advertencia no diría
+    nada.
+    """
+    from mcp_pjud.juris import (
+        PALABRAS_DE_LA_CASACION,
+        PALABRAS_DEL_REEMPLAZO,
+        ROL_CON_DOS_SENTENCIAS,
+    )
+
+    referencia = " ".join(HERRAMIENTAS.split())
+    for dicho in (
+        ROL_CON_DOS_SENTENCIAS.replace("-", "-"),
+        f"{PALABRAS_DE_LA_CASACION:,}".replace(",", "."),
+        str(PALABRAS_DEL_REEMPLAZO),
+    ):
+        assert dicho in referencia, (
+            f"la referencia no cita {dicho!r}, que es lo medido y lo que justifica que esta "
+            "herramienta se detenga en vez de elegir"
+        )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

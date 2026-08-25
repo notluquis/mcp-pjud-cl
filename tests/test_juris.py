@@ -1,6 +1,7 @@
 """Tests del buscador de fallos. Sin red: las fixtures son respuestas reales anonimizadas."""
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -664,6 +665,84 @@ def test_con_cual_se_entrega_la_sentencia_que_se_pidio(monkeypatch):
 
     with pytest.raises(ValueError, match="entrega 2"):
         c.texto(rol=1933, anio=2025, cual=3)
+
+
+def test_al_enumerar_no_falta_ninguna_ni_se_elige_a_ciegas(monkeypatch):
+    """Un rol con TRES: el mensaje decía "tiene 3" y listaba dos.
+
+    Medido en el repo: el rol 1504-2019 de apelaciones devuelve tres. Con el listado a medias,
+    quien necesita la tercera no tiene su rótulo ni su extensión, o sea el selector obliga a
+    elegir a ciegas justo donde más falta hace.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    d["response"]["docs"] = [
+        {**base, "rol_era_sup_s": "1504-2019", "sent__word_count_i": n} for n in (900, 500, 100)
+    ]
+    d["response"]["numFound"] = 3
+    todos = d["response"]["docs"]
+
+    # El doble RESPETA `numero_filas_paginacion`: si sirviera siempre las tres, la primera
+    # consulta ya traería todo y la segunda no se ejercitaría, que es justo lo que se prueba.
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        cuerpo = peticion.content.decode(errors="replace")
+        cuantas = re.search(r"numero_filas_paginacion\"\r?\n\r?\n(\d+)", cuerpo)
+        assert cuantas, f"el formulario dejó de declarar cuántas filas pide: {cuerpo[:200]}"
+        pedidas = int(cuantas.group(1))
+        d["response"]["docs"] = todos[:pedidas]
+        return httpx.Response(200, text=json.dumps(d, ensure_ascii=False))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(responder))
+    c._token, c._id_buscador = "tok", "528"
+    c._buscador_de_la_sesion = "suprema"
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1504, anio=2019)
+
+    dicho = str(caida.value)
+    for palabras in ("900 palabras", "500 palabras", "100 palabras"):
+        assert palabras in dicho, f"el mensaje no enumera las tres opciones: {dicho}"
+
+
+def test_al_enumerar_va_el_caratulado_y_no_solo_el_rotulo(monkeypatch):
+    """En `laborales` el mapeo no declara `resultado_recurso` ni `tipo_recurso`.
+
+    Sin el caratulado las opciones salían todas como "sin rótulo" y se distinguían sólo por el
+    largo, y ahí el propio buscador mezcla causas distintas con el mismo número (`T-364-2020`
+    contra `O-364-2020`): lo que las separa es justamente el caratulado.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    d["response"]["docs"] = [
+        {**base, "caratulado_s": "PEREZ / EMPRESA UNO"},
+        {**base, "caratulado_s": "SOTO / EMPRESA DOS"},
+    ]
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=364, anio=2020)
+
+    dicho = str(caida.value)
+    assert "PEREZ / EMPRESA UNO" in dicho, f"falta el caratulado de la primera: {dicho}"
+    assert "SOTO / EMPRESA DOS" in dicho, f"falta el caratulado de la segunda: {dicho}"
+
+
+def test_un_indice_menor_que_uno_se_rechaza(monkeypatch):
+    """`JurisClient` se usa también sin pasar por el protocolo, donde el esquema exige `ge=1`.
+
+    Con `cual=0` el `or` lo convertía en 1 y entregaba la primera en silencio; con `cual=-1`
+    indexaba desde el final y devolvía otra. El selector volvía a elegir por su cuenta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_dos_sentencias())
+
+    for malo in (0, -1):
+        with pytest.raises(ValueError, match="empieza en 1"):
+            c.texto(rol=1933, anio=2025, cual=malo)
 
 
 def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):

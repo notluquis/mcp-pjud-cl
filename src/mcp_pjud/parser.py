@@ -1196,6 +1196,19 @@ class Liquidacion(BaseModel):
     )
 
 
+def _las_que_publican(panel: str) -> str:
+    """Qué competencias publican un panel, sacado de `COMPETENCIAS` y no escrito al lado.
+
+    Los mensajes de "esta competencia no lo publica" enumeraban a mano quién sí, y uno de
+    ellos ya se había separado de su fuente: decía "sólo cobranza" de un panel que laboral
+    también publica, mientras la docstring de la misma función ya nombraba a las dos.
+    """
+    publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
+    if len(publican) < 2:
+        return f"sólo {''.join(publican)}"
+    return f"{', '.join(publican[:-1])} y {publican[-1]}"
+
+
 def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> list[Liquidacion]:
     """Las liquidaciones del crédito. Las publican cobranza y laboral.
 
@@ -1309,10 +1322,14 @@ def parse_diligencias(html_detalle: str, competencia: str = "cobranza") -> list[
     """
     spec = COMPETENCIAS[competencia.lower()]
     if spec.diligencias is None:
+        # Quiénes lo publican sale de `COMPETENCIAS` y no escrito acá: este mensaje decía
+        # "sólo cobranza" mientras la docstring de arriba ya nombraba a las dos, o sea el
+        # error contradecía a la función que lo levanta.
         raise EstructuraInesperada(
             f"La competencia {competencia!r} no publica el panel de diligencias del ministro "
-            "de fe: sólo cobranza lo tiene medido. Leerlo en otra devolvería una lista vacía, "
-            "que se leería como que no se practicó ninguna diligencia."
+            f"de fe: lo tienen medido {_las_que_publican('diligencias')}. Leerlo en otra "
+            "devolvería una lista vacía, que se leería como que no se practicó ninguna "
+            "diligencia."
         )
 
     columnas = spec.diligencias.columnas
@@ -2258,9 +2275,9 @@ def parse_causas_agregadas(html_detalle: str, competencia: str = "suprema") -> l
     spec = COMPETENCIAS[competencia.lower()]
     if spec.causas_agregadas is None:
         raise EstructuraInesperada(
-            f"La competencia {competencia!r} no publica el panel de causas agregadas: sólo "
-            "suprema lo tiene. Leerlo en otra devolvería una lista vacía, que se leería como "
-            "que esta causa no tiene ninguna agregada."
+            f"La competencia {competencia!r} no publica el panel de causas agregadas: lo "
+            f"tiene {_las_que_publican('causas_agregadas')}. Leerlo en otra devolvería una "
+            "lista vacía, que se leería como que esta causa no tiene ninguna agregada."
         )
     columnas = spec.causas_agregadas.columnas
     agregadas = []
@@ -2324,9 +2341,9 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
     spec = COMPETENCIAS[competencia.lower()]
     if spec.materias is None:
         raise EstructuraInesperada(
-            f"La competencia {competencia!r} no publica materias: sólo laboral tiene el panel. "
-            "Leerlo en otra devolvería una lista vacía, que se leería como que la causa no "
-            "tiene materias."
+            f"La competencia {competencia!r} no publica materias: tiene el panel "
+            f"{_las_que_publican('materias')}. Leerlo en otra devolvería una lista vacía, que "
+            "se leería como que la causa no tiene materias."
         )
     materias = [
         Materia(

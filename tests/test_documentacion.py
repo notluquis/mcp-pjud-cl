@@ -4094,6 +4094,73 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
     )
 
 
+def test_la_referencia_no_manda_a_buscar_penal_por_el_nombre_del_libro():
+    """El esquema quedó bien y la página publicada seguía diciendo lo contrario, en cuatro
+    tablas.
+
+    Quien arme la llamada leyendo la referencia manda `Ordinaria`, recibe un listado vacío
+    para una causa que existe, y lo lee como que no existe. Que el parámetro esté bien no
+    sirve si la página que se consulta para usarlo dice otra cosa.
+    """
+    from mcp_pjud.client import LIBRO_DEL_TIPO_PENAL_MEDIDO, TIPO_PENAL_MEDIDO
+
+    referencia = " ".join(HERRAMIENTAS.split())
+
+    assert "el libro en apelaciones y penal" not in referencia, (
+        "la referencia vuelve a mandar el nombre del libro en penal, donde la plataforma "
+        "exige el código y con el nombre devuelve un listado vacío"
+    )
+    assert "En apelaciones y penal va el libro" not in referencia, (
+        "ídem, en la otra forma en que la tabla lo decía"
+    )
+    assert f"`{TIPO_PENAL_MEDIDO}` es {LIBRO_DEL_TIPO_PENAL_MEDIDO}" in referencia, (
+        f"la referencia no dice cuál es el código que penal acepta ({TIPO_PENAL_MEDIDO} para "
+        f"{LIBRO_DEL_TIPO_PENAL_MEDIDO})"
+    )
+
+
+def test_la_referencia_no_promete_la_fecha_de_diligencia_en_cobranza():
+    """La advertencia de plazos seguía diciendo "salvo en civil y cobranza".
+
+    Es la misma promesa que el esquema corrigió, y la que orienta el cómputo hacia un dato que
+    en cobranza no llega nunca. Se ata a `receptor_en_historia`, que es de dónde sale.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+
+    con_fecha = sorted(n for n in COMPETENCIAS if COMPETENCIAS[n].receptor_en_historia)
+    referencia = " ".join(HERRAMIENTAS.split())
+
+    assert "salvo en civil y cobranza" not in referencia, (
+        "la referencia vuelve a prometer `fecha_diligencia` en cobranza, donde la plataforma "
+        "no publica cuándo se practicó la diligencia"
+    )
+    assert f"trae dato **sólo en {con_fecha[0]}**" in referencia or (
+        f"sólo en {con_fecha[0]}" in referencia
+    ), (
+        f"la referencia no dice que `fecha_diligencia` sólo trae dato en {con_fecha}: es lo "
+        "que decide desde cuándo se cuenta un plazo"
+    )
+
+
+def _mensaje_al_leer(lector, competencia: str) -> str:
+    """Lo que un lector de panel dice al pedírselo a una competencia que no lo publica.
+
+    Ese mensaje es prosa igual que una descripción, y ya se había separado de su fuente: uno
+    decía "sólo cobranza" de un panel que laboral también publica, contradiciendo a la
+    docstring de la función que lo levanta.
+    """
+    from mcp_pjud.parser import EstructuraInesperada
+
+    try:
+        lector("<html></html>", competencia)
+    except EstructuraInesperada as dicho:
+        return str(dicho)
+    except Exception:
+        # Otros lectores piden otros argumentos; lo que interesa es el mensaje del panel.
+        return ""
+    return ""
+
+
 def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
     """Cuatro frases afirmaban "sólo cobranza" de paneles que laboral también publica.
 
@@ -4121,10 +4188,22 @@ def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
 
     for panel in paneles:
         publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
+        parser = __import__("mcp_pjud.parser", fromlist=["x"])
         prosa = [DetalleCausa.model_fields[panel].description or ""]
-        lector = getattr(__import__("mcp_pjud.parser", fromlist=["x"]), f"parse_{panel}", None)
+        lector = getattr(parser, f"parse_{panel}", None)
         if lector is not None and lector.__doc__:
             prosa.append(lector.__doc__)
+        # Y el MENSAJE de error de ese lector, que es prosa igual y ya se había separado de su
+        # fuente: decía "sólo cobranza" de un panel que laboral también publica, contradiciendo
+        # a la docstring de la función que lo levanta. Se provoca pidiéndoselo a una
+        # competencia que no lo tiene.
+        sin_el_panel = next(
+            (n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is None), None
+        )
+        if lector is not None and sin_el_panel is not None:
+            # Sin el nombre de la competencia a la que se le preguntó: ése no es una
+            # afirmación sobre quién publica el panel, es a quién se le pidió.
+            prosa.append(_mensaje_al_leer(lector, sin_el_panel).replace(sin_el_panel, ""))
 
         # Se compara la LISTA COMPLETA que la prosa nombra, no sólo las frases con "sólo".
         # Mirando nada más el "sólo", la frase corregida ("las publican cobranza y laboral")

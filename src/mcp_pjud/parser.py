@@ -945,6 +945,26 @@ def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _es_la_misma_fila_otra_vez(fila: Actuacion, anterior: Actuacion) -> bool:
+    """Si esta fila es el mismo trámite que la anterior, emitido dos veces por el sitio.
+
+    En cobranza la plataforma repite algunas filas de la Historia con las columnas de etapa y
+    trámite en blanco y el resto idéntico. Medido sobre la respuesta real: de 80 filas, 9 son
+    esta repetición, y el folio 5 aparece tres veces. Entregarlas como actuaciones distintas
+    infla la historia justo en el panel del que cuelgan los plazos, y una fila sin trámite
+    tampoco puede reconocerse como actuación de receptor: el filtro la pierde.
+
+    Las tres condiciones juntas, y no sólo el trámite vacío: en civil hay cinco filas
+    legítimas sin trámite, medidas en tres fixtures, y ninguna repite el folio ni la
+    descripción de la anterior. Con la regla floja se habrían borrado.
+    """
+    return (
+        not fila.tramite.strip()
+        and fila.folio == anterior.folio
+        and fila.desc_tramite == anterior.desc_tramite
+    )
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -956,10 +976,12 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    actuaciones = [
-        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
-        for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
-    ]
+    actuaciones: list[Actuacion] = []
+    for celdas, _ in _filas_del_panel(html_detalle, spec.historia):
+        fila = _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        if actuaciones and _es_la_misma_fila_otra_vez(fila, actuaciones[-1]):
+            continue
+        actuaciones.append(fila)
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el

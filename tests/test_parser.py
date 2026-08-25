@@ -201,6 +201,53 @@ def test_fecha_imposible_no_revienta_la_fila():
 # --- fallo ruidoso: nunca devolver vacío ante estructura desconocida -------------
 
 
+def test_la_historia_no_repite_el_mismo_tramite_dos_veces():
+    """En cobranza el sitio emite algunas filas dos veces, con etapa y trámite en blanco.
+
+    Medido sobre la respuesta real: la tabla trae 80 filas para 71 folios, y el folio 5 aparece
+    tres veces. Cada repetición traía el mismo `desc_tramite`, el mismo estado y la misma
+    fecha, o sea es el mismo trámite y no uno nuevo.
+
+    Entregarlas como actuaciones distintas infla el panel del que cuelgan los plazos. Y una
+    fila con el trámite en blanco tampoco puede reconocerse como actuación de receptor, así
+    que ese filtro la pierde en silencio.
+    """
+    from collections import Counter
+
+    historia = parse_historia(
+        (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), "Principal", "cobranza"
+    )
+
+    repetidos = {f: n for f, n in Counter(a.folio for a in historia).items() if n > 1}
+    assert not repetidos, f"la historia entrega el mismo folio más de una vez: {repetidos}"
+    assert len(historia) == 71, (
+        f"la historia trae {len(historia)} filas y los folios de esta causa llegan hasta 71: "
+        "sobra o falta alguna"
+    )
+
+
+def test_una_fila_sin_tramite_que_no_repite_la_anterior_se_conserva():
+    """Y no se puede borrar al arreglar lo de arriba.
+
+    En civil hay cinco filas legítimas con el trámite en blanco, repartidas en tres fixtures, y
+    ninguna repite el folio ni la descripción de la de más arriba. Una regla que sólo mirara el
+    trámite vacío las habría borrado: son actuaciones reales de la causa.
+    """
+    sin_tramite = 0
+    for nombre in (
+        "c1156_principal.html",
+        "c1156_apremio.html",
+        "detalle_civil_notificaciones.html",
+    ):
+        historia = parse_historia((FIXTURES / nombre).read_text(encoding="utf-8"), "X", "civil")
+        sin_tramite += sum(1 for a in historia if not a.tramite.strip())
+
+    assert sin_tramite == 5, (
+        f"se conservan {sin_tramite} filas civiles sin trámite y las medidas son cinco: si "
+        "bajó, el filtro de repetidas se está llevando actuaciones legítimas"
+    )
+
+
 def test_sin_panel_historia_levanta_excepcion():
     with pytest.raises(EstructuraInesperada, match="historiaCiv"):
         parse_historia("<html><body><p>Sesión expirada</p></body></html>")

@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- La Historia de cobranza entregaba nueve filas de más: la plataforma repite algunos trámites
+  con las columnas de etapa y trámite en blanco, y venían como actuaciones distintas. Una de
+  ellas tampoco podía reconocerse como actuación del ministro de fe.
+
 ## [0.16.0] - 2026-08-24
 
 ### Agregado

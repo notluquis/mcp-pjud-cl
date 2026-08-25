@@ -18,6 +18,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
+- `documento_referencia` decía que su duración no se midió, y su token declara una hora, igual
+  que la del cuaderno y el doble que la del listado.
 - `discrepancia_fechas` venía en falso donde no hay nada que comparar, y eso se lee como que
   las dos fuentes de la fecha concuerdan. Ahora va en nulo, y su descripción dice que NO
   compara contra `fecha_registro`.

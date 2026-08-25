@@ -2736,13 +2736,15 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
 #: haría la documentación más falsa mientras se siente limpieza.
 SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA = 1800
 
-#: Y la del CUADERNO, que es otro token y dura otra cosa: medido el 25 de agosto de 2026
-#: decodificando su JWT, `exp - iat` da 3.600 exactos, el doble que la del listado. Importa
-#: porque la del cuaderno se usa a mitad de la cadena más larga del cliente.
+#: Y la del DETALLE, que es otro token y dura otra cosa: medido el 25 de agosto de 2026
+#: decodificando su JWT, `exp - iat` da 3.600 exactos, el doble que la del listado. La usan
+#: tanto `Cuaderno.referencia`, que va a mitad de la cadena más larga del cliente, como
+#: `documento_referencia` y `anexo_referencia`, que la actuación emite para pedir su archivo:
+#: las nueve actuaciones con documento de la causa medida declaran lo mismo.
 #:
 #: Lo medido es lo que el token DECLARA, no lo que la plataforma hace: que rechace justo ahí
-#: no se probó. Y sigue sin medirse `documento_referencia`, que es un tercer token.
-SEGUNDOS_DECLARADOS_POR_EL_CUADERNO = 3600
+#: no se probó.
+SEGUNDOS_DECLARADOS_POR_EL_DETALLE = 3600
 
 
 class CausaEncontrada(BaseModel):

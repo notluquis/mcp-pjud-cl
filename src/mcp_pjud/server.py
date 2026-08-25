@@ -85,6 +85,7 @@ from .juris import (
 )
 from .parser import (
     COMPETENCIAS,
+    SEGUNDOS_DECLARADOS_POR_EL_DETALLE,
     Actuacion,
     Anexo,
     AudioAudiencia,
@@ -912,10 +913,11 @@ RutaDeDocumento = Annotated[
 ReferenciaDeDocumento = Annotated[
     str,
     Field(
-        description="El campo `documento_referencia` de la actuación, tal cual. CADUCA: la "
-        "plataforma la emite al dibujar el detalle y es un token firmado, no un identificador "
-        "de sesión: está medido que sirve desde otra sesión. Cuánto dura no se midió, "
-        "así que una guardada de antes no devuelve 'no existe', devuelve otra cosa. Si la "
+        description="El campo `documento_referencia` de la actuación, tal cual. CADUCA: su JWT "
+        f"declara durar {SEGUNDOS_DECLARADOS_POR_EL_DETALLE // 60} minutos. La plataforma la "
+        "emite al dibujar el detalle y es un token firmado, no un identificador de sesión: "
+        "está medido que sirve desde otra sesión. "
+        "Una guardada de antes no devuelve 'no existe', devuelve otra cosa. Si la "
         "herramienta responde que lo recibido no es un PDF, volver a pedir el detalle de la "
         "causa y usar la referencia nueva."
     ),

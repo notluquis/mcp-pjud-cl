@@ -142,7 +142,7 @@ Busca causas por rol en la consulta pública.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `tipo` | str | Letra del rol. En civil: `C`, `V`, `E`, `A`, `F` o `I`. En apelaciones el libro por su nombre, en penal el **código** del libro (`1` es Ordinaria), y en suprema VACÍO |
+| `tipo` | str | Letra del rol en civil, cobranza y laboral; en civil son `C`, `V`, `E`, `A`, `F` o `I`. En apelaciones el libro por su nombre, en penal el **código** del libro (`1` es Ordinaria), y en suprema VACÍO |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
 | `competencia` | str | Verificadas: `civil`, `laboral`, `cobranza`, `penal`, `suprema`, `apelaciones` |
@@ -458,7 +458,7 @@ no están acá. Un plazo que corre por una diligencia exhortada no se computa de
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
-| `tipo` | str | Letra del rol, el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
+| `tipo` | str | Letra del rol en civil, cobranza y laboral; el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
 | `rol` | int | Número, sin la letra ni el año |
 | `anio` | int | Año, cuatro dígitos |
 | `competencia` | str | Las verificadas. `penal` se rechaza por decisión, no por falta de medición: su detalle se lee y no se expone |
@@ -897,7 +897,7 @@ días hábiles: entrega la fecha desde la que se cuenta.
 
 | Argumento | Obligatorio | Qué es |
 |---|---|---|
-| `tipo` | sí | Letra del rol, el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
+| `tipo` | sí | Letra del rol en civil, cobranza y laboral; el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
 | `rol` | sí | Número del rol, sin la letra ni el año |
 | `anio` | sí | Año del rol |
 | `competencia` | no | Sólo las que publican al ministro de fe en la Historia. Por defecto `civil` |
@@ -912,7 +912,7 @@ parte de la tramitación ocurre en otro expediente.
 
 | Argumento | Obligatorio | Qué es |
 |---|---|---|
-| `tipo` | sí | Letra del rol, el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
+| `tipo` | sí | Letra del rol en civil, cobranza y laboral; el libro en apelaciones, el **código** del libro en penal, o VACÍO en suprema |
 | `rol` | sí | Número del rol, sin la letra ni el año |
 | `anio` | sí | Año del rol |
 | `competencia` | no | Sólo las que tienen al menos un panel del detalle medido. Por defecto `civil` |

@@ -1154,7 +1154,7 @@ def _monto(txt: str) -> int | None:
 
 
 class Liquidacion(BaseModel):
-    """Una liquidación del crédito en un juicio de cobranza.
+    """Una liquidación del crédito. La publican cobranza y laboral.
 
     Una causa acumula liquidaciones sucesivas: la MÁS RECIENTE es la vigente y las anteriores
     son el historial. NO se suman. La causa medida fue de $4.481.885 en 2019 a $24.563.365 en
@@ -1242,11 +1242,11 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
 
 
 class Diligencia(BaseModel):
-    """Una diligencia del ministro de fe en un juicio de cobranza.
+    """Una diligencia del ministro de fe. La publican cobranza y laboral.
 
-    Es el panel donde cobranza las guarda de verdad. Su tabla de Historia nombra algunas como
-    `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha de diligencia: leerlas
-    de ahí daría una lista parcial y sin el dato que se busca.
+    En cobranza es el panel donde se guardan de verdad: su tabla de Historia nombra algunas
+    como `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha de diligencia,
+    así que leerlas de ahí daría una lista parcial y sin el dato que se busca.
 
     No es una `Actuacion` y no se puede tratar como tal. Una actuación de civil trae la fecha
     doble que corre los plazos; acá el sitio publica una sola columna de fecha, y en la fila

@@ -4113,6 +4113,24 @@ def test_la_referencia_no_manda_a_buscar_penal_por_el_nombre_del_libro():
     assert "En apelaciones y penal va el libro" not in referencia, (
         "ídem, en la otra forma en que la tabla lo decía"
     )
+    # Y que las tablas nombren TODAS las competencias, no sólo las cuatro que el esquema ya
+    # distinguía: cobranza y laboral aceptan la herramienta, `tipo` es obligatorio, y quien
+    # use la referencia para una de ellas tenía que adivinar la letra.
+    from mcp_pjud.server import MODULOS
+
+    # "Letra del rol" distingue las filas del PARÁMETRO de las de otros campos que se llaman
+    # igual: el anexo publica un `tipo` que es cómo el sitio clasifica el documento.
+    filas = [
+        f for f in HERRAMIENTAS.splitlines() if f.startswith("| `tipo` |") and "Letra del rol" in f
+    ]
+    assert filas, "la referencia dejó de documentar el parámetro `tipo` en ninguna tabla"
+    for fila in filas:
+        faltan = sorted(c for c in MODULOS if c not in fila)
+        assert not faltan, (
+            f"esta fila de `tipo` no dice qué va en {faltan}: quien use la referencia para "
+            f"esas competencias tiene que adivinar. Dice: {fila}"
+        )
+
     assert f"`{TIPO_PENAL_MEDIDO}` es {LIBRO_DEL_TIPO_PENAL_MEDIDO}" in referencia, (
         f"la referencia no dice cuál es el código que penal acepta ({TIPO_PENAL_MEDIDO} para "
         f"{LIBRO_DEL_TIPO_PENAL_MEDIDO})"
@@ -4134,11 +4152,26 @@ def test_la_referencia_no_promete_la_fecha_de_diligencia_en_cobranza():
         "la referencia vuelve a prometer `fecha_diligencia` en cobranza, donde la plataforma "
         "no publica cuándo se practicó la diligencia"
     )
-    assert f"trae dato **sólo en {con_fecha[0]}**" in referencia or (
-        f"sólo en {con_fecha[0]}" in referencia
-    ), (
-        f"la referencia no dice que `fecha_diligencia` sólo trae dato en {con_fecha}: es lo "
-        "que decide desde cuándo se cuenta un plazo"
+
+    # La lista COMPLETA y no sólo la primera: si otra competencia pasara a publicar la fecha,
+    # la página seguiría diciendo "sólo en civil" y con interpolar `con_fecha[0]` el guardia
+    # pasaba igual. Se compara qué competencias nombra la advertencia contra la fuente.
+    # Las que tienen actuaciones de receptor pero NO su fecha: son las que la advertencia
+    # tiene que nombrar además, justamente para decir que ahí el dato no está. Sale de
+    # `COMPETENCIAS` y no escrito acá, que es lo que se le pide a la página.
+    sin_la_fecha = sorted(
+        n
+        for n in COMPETENCIAS
+        if COMPETENCIAS[n].receptor and not COMPETENCIAS[n].receptor_en_historia
+    )
+    aviso = referencia[referencia.index("Al computar plazos") :]
+    aviso = aviso[: aviso.index("Y las notificaciones")]
+    nombradas = sorted({c for c in COMPETENCIAS if c in aviso})
+
+    assert nombradas == sorted(con_fecha + sin_la_fecha), (
+        f"la advertencia de plazos nombra {nombradas}; la fecha de diligencia la traen "
+        f"{con_fecha} y {sin_la_fecha} tienen receptor sin ella, así que son las que hay que "
+        "nombrar: es lo que decide desde cuándo se cuenta un plazo"
     )
 
 
@@ -4189,7 +4222,26 @@ def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
     for panel in paneles:
         publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
         parser = __import__("mcp_pjud.parser", fromlist=["x"])
+        # `prosa` se filtra por verbo; `afirmaciones` se compara siempre, porque son frases
+        # que acotan el panel aunque no usen uno.
+        afirmaciones: list[str] = []
         prosa = [DetalleCausa.model_fields[panel].description or ""]
+        # Y el docstring del MODELO de las filas, que también se publica: `docs/conf.py` arma
+        # la referencia del detalle con `DetalleCausa.model_json_schema()`, así que
+        # `Diligencia.__doc__` viaja igual que la descripción del campo. Decía "en un juicio
+        # de cobranza" de un panel que laboral también publica.
+        # `list[Diligencia] | None`: hay que bajar por la unión Y por la lista. Con un solo
+        # nivel el modelo nunca entraba y el guardia se quedaba mirando lo de siempre.
+        por_ver = [DetalleCausa.model_fields[panel].annotation]
+        while por_ver:
+            anotacion = por_ver.pop()
+            por_ver.extend(getattr(anotacion, "__args__", ()))
+            if hasattr(anotacion, "model_fields"):
+                # La PRIMERA línea, que es lo que el esquema publica como descripción del
+                # elemento, y se compara aunque no traiga verbo: "una diligencia del ministro
+                # de fe en un juicio de cobranza" acota sin decir "publica", y acotaba mal.
+                resumen = (anotacion.__doc__ or "").strip().splitlines()[:1]
+                afirmaciones.extend(resumen)
         lector = getattr(parser, f"parse_{panel}", None)
         if lector is not None and lector.__doc__:
             prosa.append(lector.__doc__)
@@ -4209,18 +4261,27 @@ def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
         # Mirando nada más el "sólo", la frase corregida ("las publican cobranza y laboral")
         # podía quedarse vieja sin que nada se cayera: bastaba que una competencia perdiera el
         # panel para que la enumeración mintiera al revés.
+        # Se mira la FRASE que afirma quién lo publica, no el texto entero: una prosa puede
+        # nombrar otra competencia para contrastar ("una actuación de civil trae la fecha
+        # doble") sin estar diciendo que publica el panel. Lo que discrimina es el verbo, que
+        # es la misma lección que ya costó una vez en las cuentas de buscadores.
+        verbos = ("publica", "publican", "tienen medido", "tiene el panel", "lo tiene", "liquida")
+        prosa.extend(afirmaciones)
         for texto in prosa:
-            plano = " ".join(texto.split())
-            nombradas = sorted({c for c in COMPETENCIAS if re.search(rf"\b{c}\b", plano)})
-            if not nombradas:
-                # No enumerar es legítimo: `historia` y `litigantes` no nombran ninguna, y
-                # obligarlas a hacerlo engordaría el catálogo por nada.
-                continue
-            assert nombradas == publican, (
-                f"la prosa de `{panel}` nombra {nombradas} y `COMPETENCIAS` dice {publican}. "
-                "Quien litigue en las que faltan va a concluir que en su causa ese panel no "
-                "existe, y quien litigue en las que sobran va a buscar algo que no está"
-            )
+            for frase in re.split(r"(?<=[.;:])\s+", " ".join(texto.split())):
+                if not any(v in frase for v in verbos) and frase not in afirmaciones:
+                    continue
+                nombradas = sorted({c for c in COMPETENCIAS if re.search(rf"\b{c}\b", frase)})
+                if not nombradas:
+                    # Afirmar sin nombrar a nadie es legítimo: "sólo esas publican..." se apoya
+                    # en una lista interpolada más arriba.
+                    continue
+                assert nombradas == publican, (
+                    f"la prosa de `{panel}` dice {frase!r}, o sea nombra {nombradas}, y "
+                    f"`COMPETENCIAS` dice {publican}. Quien litigue en las que faltan va a "
+                    "concluir que en su causa ese panel no existe, y quien litigue en las que "
+                    "sobran va a buscar algo que no está"
+                )
 
 
 def test_el_codigo_no_importa_nada_que_no_este_declarado():

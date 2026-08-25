@@ -443,6 +443,16 @@ class TextoSentencia(BaseModel):
     texto: str
 
 
+#: Por qué las cuentas de faceta NO se suman, con la medición que lo muestra: en laborales, una
+#: consulta de SENTENCIAS_DE_LA_MEDICION_DE_FACETAS sentencias reparte
+#: APARICIONES_EN_LA_FACETA_DE_MATERIA apariciones en la faceta de materia, porque una sentencia
+#: cae en más de un valor. Sumarlas daría dos veces y media el total.
+#:
+#: Viven acá porque la referencia las repite y `tests/test_documentacion.py` compara las dos.
+SENTENCIAS_DE_LA_MEDICION_DE_FACETAS = 88
+APARICIONES_EN_LA_FACETA_DE_MATERIA = 228
+
+
 class ResultadoJurisprudencia(BaseModel):
     """Resultado de una búsqueda, con lo que quedó fuera declarado.
 
@@ -496,7 +506,8 @@ class ResultadoJurisprudencia(BaseModel):
         "leer nada, y sacar el valor EXACTO con que filtrar en `facetas`, que hay que copiar "
         "tal cual.\n\nLas cuentas son de la consulta, no del índice. NO se suman: una "
         "sentencia puede aparecer en más de un valor de la misma faceta, y está medido que "
-        "`materia` suma 228 sobre 88 sentencias.",
+        f"`materia` suma {APARICIONES_EN_LA_FACETA_DE_MATERIA} sobre "
+        f"{SENTENCIAS_DE_LA_MEDICION_DE_FACETAS} sentencias.",
     )
 
 
@@ -874,6 +885,10 @@ class JurisClient(Transporte):
             )
 
         declaradas = BUSCADORES[buscador.lower()].facetas if buscador.lower() in BUSCADORES else {}
+        # Una faceta sin valores no acota nada, así que se descarta ANTES de las dos ramas de
+        # abajo. Sin esto, `{"corte_origen": []}` no mandaba filtro y sí encendía la detención
+        # por valor mal copiado, culpando a un valor que nunca se envió.
+        facetas = {n: list(v) for n, v in (facetas or {}).items() if v} or None
         if facetas:
             desconocidas = sorted(set(facetas) - set(declaradas))
             if desconocidas:
@@ -918,7 +933,33 @@ class JurisClient(Transporte):
                 "Referer": f"{BASE}/busqueda?{BUSCADORES[buscador.lower()].ruta}",
             },
         ).text
+        if facetas:
+            # El bloque de facetas viaja SIEMPRE, medido el 25 de agosto de 2026 incluso en una
+            # consulta de cero resultados, donde llega con las diez claves declaradas y las
+            # listas vacías. Si no está, la plataforma cambió, y acá eso importa el doble: el
+            # filtro pudo no haberse aplicado y la lista que vuelve pasaría por acotada.
+            #
+            # Se comprueba sólo cuando se pidió filtrar, y el límite es de las fixtures: las
+            # guardadas son copias podadas que no traen el bloque (ni `highlighting`), y
+            # recapturarlas pide el mapeo de anonimización, que no se versiona a propósito.
+            declara = set(BUSCADORES[buscador.lower()].facetas.values())
+            traidas = json.loads(self._ultima_respuesta).get("facet_counts", {})
+            if not declara & set(traidas.get("facet_fields") or {}):
+                raise EstructuraInesperada(
+                    "La respuesta no trae el desglose por facetas y se pidió filtrar por una. "
+                    "El buscador lo entrega siempre, así que su ausencia dice que cambió, y "
+                    "el resultado no se puede dar por acotado."
+                )
         resultado = parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
+        if facetas and not resultado.visibles and resultado.ocultas:
+            # Antes de culpar a la faceta: donde `ocultas` tiene número, cero visibles con
+            # reservadas significa que la sentencia SÍ está en el índice y no se entrega a una
+            # consulta anónima. Atribuirlo al valor mal copiado perdería justamente eso.
+            raise PlataformaRechaza(
+                f"La búsqueda acotada no entrega ninguna sentencia y el buscador declara "
+                f"{resultado.ocultas} reservada(s) a una consulta anónima. No es que el valor "
+                "de la faceta no calce: es que lo que coincide no se publica."
+            )
         if facetas and not resultado.visibles:
             # Sin esto, un valor mal copiado devuelve la lista vacía y se lee como que la
             # sentencia no existe. Y mal copiado es lo normal: la plataforma publica

@@ -5953,9 +5953,47 @@ def test_la_referencia_no_promete_una_faceta_que_el_buscador_no_declara():
         "tematica": "temática",
         "ministros": "ministros",
     }
+    # Fila por fila, no la tabla entera: buscar el rótulo en todo el bloque dejaba verde mover
+    # una faceta de un buscador a otro, que es justo el falso negativo que esto dice impedir.
+    # Una fila puede nombrar varios buscadores ("`civiles`, `familia`, `laborales`").
+    filas = [f for f in tabla.splitlines() if f.startswith("|") and "---" not in f][1:]
+    assert filas, "la tabla de facetas se quedó sin filas"
+
     for nombre, buscador in sorted(BUSCADORES.items()):
-        assert nombre in tabla, f"la tabla no nombra el buscador {nombre}"
+        suyas = [f for f in filas if f"`{nombre}`" in f.split("|")[1]]
+        assert len(suyas) == 1, f"{nombre} aparece en {len(suyas)} filas de la tabla"
+        prometidas = suyas[0].split("|")[2]
         for faceta in buscador.facetas:
-            assert rotulos.get(faceta, faceta) in tabla, (
-                f"{nombre} expone la faceta {faceta!r} y la referencia no la nombra"
+            assert rotulos.get(faceta, faceta) in prometidas, (
+                f"{nombre} expone la faceta {faceta!r} y su fila de la referencia no la nombra"
             )
+        # Y al revés: una fila que promete de más manda a filtrar por algo que no se acepta.
+        sobran = [
+            r
+            for f, r in rotulos.items()
+            if r in prometidas and f not in buscador.facetas and r not in {"resultado"}
+        ]
+        assert not sobran, f"la fila de {nombre} promete {sobran} y el buscador no las declara"
+
+
+def test_la_referencia_cita_las_cifras_de_facetas_que_estan_medidas():
+    """El contrato y la referencia repiten los mismos dos números y se escriben aparte.
+
+    Son los que sostienen el aviso de que las cuentas NO se suman. Una corrección que toque una
+    copia y no la otra deja la página contradiciendo lo que el servidor publica, que es lo que
+    esta regla del repositorio existe para evitar.
+    """
+    from mcp_pjud.juris import (
+        APARICIONES_EN_LA_FACETA_DE_MATERIA,
+        SENTENCIAS_DE_LA_MEDICION_DE_FACETAS,
+        ResultadoJurisprudencia,
+    )
+
+    assert APARICIONES_EN_LA_FACETA_DE_MATERIA > SENTENCIAS_DE_LA_MEDICION_DE_FACETAS, (
+        "si no hubiera más apariciones que sentencias, el aviso de que no se suman sobraría"
+    )
+    contrato = ResultadoJurisprudencia.model_fields["facetas"].description or ""
+    referencia = _texto(RAIZ / "docs" / "herramientas.md")
+    for cifra in (APARICIONES_EN_LA_FACETA_DE_MATERIA, SENTENCIAS_DE_LA_MEDICION_DE_FACETAS):
+        assert str(cifra) in contrato, f"el contrato de `facetas` no cita {cifra}"
+        assert f"**{cifra}**" in referencia, f"la referencia no cita {cifra}"

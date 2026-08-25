@@ -1341,3 +1341,91 @@ def test_una_busqueda_con_facetas_que_vuelve_vacia_se_detiene(monkeypatch):
 
     # Sin facetas, el mismo vacío SÍ es una respuesta: no hay valor que pueda no haber calzado.
     assert c.buscar(rol=2476, anio=2023, buscador="apelaciones").visibles == 0
+
+
+def test_una_faceta_valida_llega_a_la_peticion_con_su_campo_solr(monkeypatch):
+    """Lo que el cambio hace de verdad es traducir un nombre nuestro a un campo Solr y mandarlo.
+
+    Los otros guardias miran la faceta desconocida y la respuesta vacía, y ninguno de los dos
+    depende del cuerpo enviado: borrar el envío entero los dejaba verdes. Este decodifica
+    `filtros` de la petición real y comprueba el nombre y los valores.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    enviados = []
+
+    def espiar(peticion: httpx.Request) -> httpx.Response:
+        enviados.append(peticion.content)
+        return httpx.Response(200, text=_con_facetas())
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(espiar))
+    c._token, c._id_buscador = "tok", "168"
+    c._buscador_de_la_sesion = "apelaciones"
+    c.buscar(
+        rol=2476,
+        anio=2023,
+        buscador="apelaciones",
+        facetas={"corte_origen": ["C.A. de Santiago"], "libro": ["CIVIL"]},
+    )
+
+    assert enviados, "la petición no salió"
+    cuerpo = enviados[0].decode("utf-8", "replace")
+    filtros = json.loads(
+        re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', cuerpo, re.S).group(1)
+    )
+    mandadas = {f["nombre"]: f["valores"] for f in filtros["facetas_seleccionadas"]}
+    assert mandadas == {"gls_corte_s": ["C.A. de Santiago"], "gls_libro_sup_s": ["CIVIL"]}, mandadas
+
+    # Y una faceta sin valores no viaja ni enciende la detención por valor mal copiado.
+    enviados.clear()
+    c.buscar(rol=2476, anio=2023, buscador="apelaciones", facetas={"corte_origen": []})
+    filtros = json.loads(
+        re.search(r'name="filtros"\r?\n\r?\n(\{.*?\})\r?\n--', enviados[0].decode(), re.S).group(1)
+    )
+    assert "facetas_seleccionadas" not in filtros, filtros
+
+
+def test_cero_visibles_con_reservadas_no_se_le_echa_la_culpa_a_la_faceta(monkeypatch):
+    """Donde `ocultas` trae número, cero visibles con reservadas dice que la cita SÍ existe.
+
+    Atribuirlo al valor de la faceta perdería el único dato que hay: que lo que coincide está
+    en el índice y no se publica a una consulta anónima.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(_con_facetas())
+    d["response"]["docs"] = []
+    d["response"]["numFound"] = 0
+    d["condition_pub_sf"]["numFound_sf"] = 3
+    c = _con_respuesta(json.dumps(d))
+    c._buscador_de_la_sesion = "suprema"
+    with pytest.raises(PlataformaRechaza, match="no se publica"):
+        c.buscar(rol=1933, anio=2025, buscador="suprema", facetas={"sala": ["PRIMERA"]})
+
+
+def test_filtrar_sin_que_vuelva_el_desglose_no_se_da_por_acotado(monkeypatch):
+    """El bloque de facetas viaja siempre, medido incluso con cero resultados.
+
+    Si falta, la plataforma cambió, y ahí importa el doble: el filtro pudo no aplicarse y la
+    lista que vuelve pasaría por acotada. Sin esto, una búsqueda por un rol repetido devolvía
+    las trece de cinco cortes distintas como si fueran las de la corte pedida.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(CITA)  # el fixture guardado NO trae `facet_counts`
+    c._buscador_de_la_sesion = "apelaciones"
+    with pytest.raises(EstructuraInesperada, match="no se puede dar por acotado"):
+        c.buscar(
+            rol=2476,
+            anio=2023,
+            buscador="apelaciones",
+            facetas={"corte_origen": ["C.A. de Santiago"]},
+        )
+
+    # Con el bloque puesto, la misma búsqueda pasa: lo que se exige es el desglose, no un valor.
+    c2 = _con_respuesta(_con_facetas())
+    c2._buscador_de_la_sesion = "apelaciones"
+    assert c2.buscar(
+        rol=2476,
+        anio=2023,
+        buscador="apelaciones",
+        facetas={"corte_origen": ["C.A. de Santiago"]},
+    ).visibles

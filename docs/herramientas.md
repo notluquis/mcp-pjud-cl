@@ -784,7 +784,8 @@ compendio de extranjería. Tampoco se expone la de fecha: sus valores son marcas
 eso están `desde` y `hasta`.
 
 Las cuentas son de la consulta, no del índice, **y no se suman**: una sentencia puede caer en más
-de un valor de la misma faceta. Medido, `materia` suma 228 sobre 88 sentencias.
+de un valor de la misma faceta. Medido en `laborales`, `materia` reparte **228** apariciones
+sobre **88** sentencias.
 :::
 
 :::{warning}
@@ -825,8 +826,9 @@ JavaScript, comentados.
 
 ### Campos de la respuesta
 
-`sentencias`, más seis campos de completitud: `visibles`, `coincidencias`, `ocultas`,
-`desplazamiento`, `no_entregadas` y `condiciones_de_publicacion`.
+`sentencias`, más seis campos de completitud (`visibles`, `coincidencias`, `ocultas`,
+`desplazamiento`, `no_entregadas` y `condiciones_de_publicacion`) y `facetas`, el desglose de
+esas mismas coincidencias por cada faceta que el buscador declara.
 
 **`ocultas` en cero no significa que la lista esté completa.** Son dos recortes distintos y
 hay que mirar los dos: `ocultas` son las coincidencias que la plataforma reserva a una consulta

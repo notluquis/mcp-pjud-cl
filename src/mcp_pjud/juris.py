@@ -655,6 +655,10 @@ def parse_sentencias(
     facetas = {}
     for nuestro, solr in BUSCADORES[buscador.lower()].facetas.items():
         plana = planas.get(solr) or []
+        # Solr entrega [valor, cuenta, valor, cuenta, ...]. Se recorre por índice a propósito:
+        # `zip(it, it)` sobre un mismo iterador hace lo mismo en menos caracteres y depende de
+        # que zip tire alternadamente del iterador compartido, que es lo que hay que decodificar
+        # a las tres de la mañana.
         cuentas = {
             str(plana[i]): int(plana[i + 1]) for i in range(0, len(plana) - 1, 2) if plana[i + 1]
         }
@@ -922,7 +926,10 @@ class JurisClient(Transporte):
             # escrito de memoria no calza. Los valores exactos salen de `facetas` de una
             # búsqueda sin filtrar.
             pedidos = "; ".join(f"{n}={', '.join(v)}" for n, v in facetas.items() if v)
-            raise EstructuraInesperada(
+            # `ValueError` y no `EstructuraInesperada`: acá el sitio no cambió nada. La que se
+            # puede haber equivocado es la llamada, y confundirlas manda a investigar un cambio
+            # de estructura que no ocurrió.
+            raise ValueError(
                 f"La búsqueda con {pedidos} no devolvió ninguna sentencia, y eso NO prueba que "
                 "no exista: un valor de faceta que no calza exactamente da el mismo resultado "
                 "vacío. Los valores hay que copiarlos de `facetas` de la misma búsqueda sin "

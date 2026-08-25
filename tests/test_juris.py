@@ -1331,7 +1331,7 @@ def test_una_busqueda_con_facetas_que_vuelve_vacia_se_detiene(monkeypatch):
     c = _con_respuesta(json.dumps(d))
     c._buscador_de_la_sesion = "apelaciones"
 
-    with pytest.raises(EstructuraInesperada, match="NO prueba que no exista"):
+    with pytest.raises(ValueError, match="NO prueba que no exista"):
         c.buscar(
             rol=2476,
             anio=2023,

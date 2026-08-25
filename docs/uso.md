@@ -178,6 +178,26 @@ Qué esperar de eso:
   un total. Anunciar el tope sería una barra que se queda pegada cerca del principio.
 - **Un aviso no es un resultado.** Que la barra avance dice que la plataforma sigue
   contestando, no que la causa exista ni que se haya podido leer.
+- **Y hay un tramo donde el aviso no alcanza**, medido: cuatro sesiones de prueba con tres
+  clientes distintos no recibieron ninguno, porque ninguno pide el testigo de progreso que el
+  protocolo define. Ahí el silencio de minutos sigue siendo el que era.
+
+### El techo de espera es más alto que el del cliente
+
+Este servidor espera hasta **360** segundos por una respuesta del Poder Judicial. Claude
+Desktop corta a los **240** con "no result received", y ahí muestra tres hipótesis sin
+distinguirlas: que el servidor no responda, que se haya caído, o que no esté corriendo.
+
+O sea entre 240 y 360 segundos la paciencia de este servidor **no la escucha nadie**: la
+consulta muere por el reloj del cliente mientras acá se sigue esperando.
+
+Se deja así a propósito, y la razón es de qué se mide: el peor caso medido son 177 segundos
+(el buscador de Cortes de Apelaciones), y en ese tramo de 240 a 360 no se ha observado
+ninguna consulta. Bajar el techo a 240 mataría antes consultas legítimamente lentas que
+nadie ha visto, cambiando un error del cliente por uno nuestro; y en este proyecto un falso
+"no se encontró" cuesta más que una espera larga.
+
+Lo que sí conviene saber: si tu cliente corta antes, subir el techo de acá no te compra nada.
 
 ## Por qué la bitácora separa los dos tiempos
 

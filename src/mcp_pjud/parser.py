@@ -2680,7 +2680,11 @@ class Cuaderno(BaseModel):
     """Un cuaderno de la causa. El detalle muestra uno solo a la vez."""
 
     nombre: str
-    referencia: str = Field(description="Identificador opaco para pedir ese cuaderno.")
+    referencia: str = Field(
+        description="Identificador opaco para pedir ese cuaderno. Declara durar una hora, "
+        "medido sobre su JWT: el doble que la del listado, y se usa a mitad de la cadena más "
+        "larga del cliente."
+    )
     mostrado: bool = Field(
         description="Si es el que ESTA respuesta ya trae desplegado, o sea el que no hace "
         "falta volver a pedir."
@@ -2731,6 +2735,14 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
 #: verdad que cuánto dura no se midió, así que su prosa no se deriva de acá: aplanar las dos
 #: haría la documentación más falsa mientras se siente limpieza.
 SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA = 1800
+
+#: Y la del CUADERNO, que es otro token y dura otra cosa: medido el 25 de agosto de 2026
+#: decodificando su JWT, `exp - iat` da 3.600 exactos, el doble que la del listado. Importa
+#: porque la del cuaderno se usa a mitad de la cadena más larga del cliente.
+#:
+#: Lo medido es lo que el token DECLARA, no lo que la plataforma hace: que rechace justo ahí
+#: no se probó. Y sigue sin medirse `documento_referencia`, que es un tercer token.
+SEGUNDOS_DECLARADOS_POR_EL_CUADERNO = 3600
 
 
 class CausaEncontrada(BaseModel):
@@ -3086,6 +3098,36 @@ def total_declarado(html_busqueda: str) -> int | None:
     if not m:
         return None
     return int(m.group(1).replace(".", "").replace(",", ""))
+
+
+def una_por_causa(causas: list[CausaEncontrada]) -> list[CausaEncontrada]:
+    """El listado con una fila por causa, conservando el orden.
+
+    La búsqueda por nombre devuelve UNA FILA POR LITIGANTE que coincide, y esas filas salen
+    idénticas en todo lo que se ve. Medido el 25 de agosto de 2026 contra el tribunal 162:
+    tres filas para una sola causa, con las cinco celdas iguales y sólo la referencia distinta,
+    que es un token de render y no identifica la causa. Entregarlas todas multiplica la cuenta:
+    quien mida la cartera de un abogado se equivoca por el número de partes que calzan.
+
+    Se junta ACÁ y no al parsear, y eso importa: la plataforma declara cuántas FILAS hay, y el
+    recorrido de páginas compara ese total contra lo que lleva acumulado. Juntándolas antes,
+    ese control veía siempre menos de lo declarado y levantaba "se recuperaron N de M" en toda
+    búsqueda con partes repetidas, que son casi todas las de nombre.
+
+    Por eso también recibe la lista ENTERA y no cada página: las filas de una causa pueden
+    quedar partidas entre dos páginas.
+    """
+    vistas: set[tuple] = set()
+    unicas = []
+    for causa in causas:
+        # Los campos que el sitio MUESTRA. `referencia` queda fuera a propósito: es lo único
+        # que cambia entre las repetidas, así que incluirla no encontraría ningún duplicado.
+        identidad = tuple(sorted(causa.model_dump(exclude={"referencia"}).items()))
+        if identidad in vistas:
+            continue
+        vistas.add(identidad)
+        unicas.append(causa)
+    return unicas
 
 
 def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[CausaEncontrada]:

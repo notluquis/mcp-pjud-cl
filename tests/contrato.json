@@ -1862,11 +1862,18 @@
             "title": "Coincidencias"
           },
           "condiciones_de_publicacion": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Condiciones De Publicacion",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condiciones De Publicacion"
           },
           "desplazamiento": {
             "default": 0,

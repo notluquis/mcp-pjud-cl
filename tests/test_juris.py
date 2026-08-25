@@ -37,6 +37,32 @@ def test_declara_cuantas_coincidencias_quedaron_ocultas():
     assert r.ocultas == 923920, "la diferencia tiene que llegar al modelo, no quedarse en el JSON"
 
 
+def test_el_desglose_va_en_nulo_donde_cuenta_el_indice_entero():
+    """El mismo campo decía dos cosas distintas según el buscador.
+
+    Medido el 25 de agosto de 2026: en suprema, una consulta de 2 coincidencias desglosa 2. En
+    apelaciones, una de 28 visibles desglosa 5.295.308, o sea el índice completo. La
+    descripción del campo dice "todas las COINCIDENCIAS", así que ahí estaría diciendo que la
+    búsqueda coincidió con cinco millones.
+
+    Es la misma decisión que ya rige para `coincidencias` y `ocultas`: donde el número cuenta
+    el corpus, va en nulo.
+    """
+    from mcp_pjud.juris import BUSCADORES
+
+    por_consulta = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_consulta)
+    del_corpus = sorted(n for n, b in BUSCADORES.items() if not b.coincidencias_por_consulta)
+    assert por_consulta, "ningún buscador cuenta por consulta"
+    assert del_corpus, "ninguno cuenta el corpus, así que este guardia no distingue nada"
+
+    r = parse_sentencias(AMPLIA, buscador=del_corpus[0])
+    assert r.condiciones_de_publicacion is None, (
+        f"en {del_corpus[0]} el desglose cuenta el índice entero y se entrega igual: "
+        f"{r.condiciones_de_publicacion}"
+    )
+    assert r.coincidencias is None, "y su cuenta de coincidencias ya iba en nulo por lo mismo"
+
+
 def test_desglosa_todas_las_coincidencias_por_condicion_de_publicacion():
     """El desglose es la partición COMPLETA: suma `coincidencias`, no `ocultas`.
 
@@ -44,6 +70,9 @@ def test_desglosa_todas_las_coincidencias_por_condicion_de_publicacion():
     retenidas, que es exactamente lo contrario de lo que son.
     """
     r = parse_sentencias(AMPLIA)
+    assert r.condiciones_de_publicacion is not None, (
+        "el desglose vino en nulo en un buscador donde la cuenta SÍ es de la consulta"
+    )
     assert r.condiciones_de_publicacion["Reservado restringido"] == 6677
     assert r.condiciones_de_publicacion["Anonimizadas"] == 20924
 
@@ -75,6 +104,7 @@ def test_el_desglose_es_la_particion_entera_y_no_le_falta_el_ultimo_tramo():
     medio. Con un tramo menos el desglose sigue pareciendo razonable y ya no suma.
     """
     r = parse_sentencias(AMPLIA)
+    assert r.condiciones_de_publicacion is not None, "el desglose vino en nulo"
     assert sum(r.condiciones_de_publicacion.values()) == r.coincidencias
     assert "Reservadas por motivos distintos a protección datos personales" in (
         r.condiciones_de_publicacion
@@ -97,6 +127,7 @@ def test_una_condicion_en_cero_no_entra_al_desglose():
     datos["condition_pub_sf"]["counts"].extend(["Categoría que esta consulta no toca", 0])
 
     condiciones = parse_sentencias(json.dumps(datos)).condiciones_de_publicacion
+    assert condiciones is not None, "el desglose vino en nulo"
     assert "Categoría que esta consulta no toca" not in condiciones
     assert 0 not in condiciones.values()
 

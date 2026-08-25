@@ -1754,6 +1754,68 @@ def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
                 )
 
 
+def test_juntar_las_filas_repetidas_no_rompe_la_cuenta_de_la_plataforma(monkeypatch):
+    """La plataforma declara cuántas FILAS hay, no cuántas causas.
+
+    Juntando las repetidas al parsear, el control de completitud veía siempre menos de lo
+    declarado y levantaba "se recuperaron N de M" en toda búsqueda con partes repetidas, que
+    son casi todas las de nombre. Por eso se juntan DESPUÉS de esa cuenta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    fila = (
+        "<tr><td></td><td>C-1-2020</td><td>01/01/2020</td><td>A / B</td><td>1er Juzgado</td>"
+        "<td><a onclick=\"detalleCausa('ref-%d')\">ver</a></td></tr>"
+    )
+    pagina = "".join(fila % i for i in (1, 2, 3)) + (
+        "<tr><td colspan='5'><div>Total de registros: <b>3</b></div></td></tr>"
+    )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=pagina))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    causas = c.buscar_por_rit("C", 1, 2020, tribunal=162, paginas=2)
+
+    assert len(causas) == 1, (
+        f"tres filas de la misma causa tienen que salir como una, y salieron {len(causas)}"
+    )
+
+
+def test_las_filas_de_una_causa_partidas_entre_paginas_tambien_se_juntan(monkeypatch):
+    """Una causa con muchas partes puede quedar cortada por el borde de la página.
+
+    Juntar por página dejaría pasar el duplicado, y el borde no lo decide la causa.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    fila = (
+        "<tr><td></td><td>C-1-2020</td><td>01/01/2020</td><td>A / B</td><td>1er Juzgado</td>"
+        "<td><a onclick=\"detalleCausa('ref-%d')\">ver</a></td></tr>"
+    )
+    nav = "<a href='#' onclick=\"paginaSig('p2')\">Siguiente</a>"
+    paginas = [
+        fila % 1 + f"<tr><td colspan='5'><div>Total de registros: <b>2</b></div>{nav}</td></tr>",
+        fila % 2 + "<tr><td colspan='5'><div>Total de registros: <b>2</b></div></td></tr>",
+    ]
+    servidas: list[str] = []
+
+    def transporte(_peticion: httpx.Request) -> httpx.Response:
+        servidas.append("x")
+        return httpx.Response(200, text=paginas[min(len(servidas), len(paginas)) - 1])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    causas = c.buscar_por_rit("C", 1, 2020, tribunal=162, paginas=3)
+
+    assert len(causas) == 1, (
+        f"la misma causa vino en dos páginas y salió {len(causas)} veces: juntar por página "
+        "no alcanza"
+    )
+
+
 #: Los nombres EXACTOS de cada formulario, medidos contra el sitio. Van escritos porque no
 #: salen de ninguna constante: son el contrato de la plataforma, no una decisión de este
 #: cliente. Cambiar uno no da error, da un campo que el PHP ignora.
@@ -2252,12 +2314,14 @@ def test_en_suprema_la_ambiguedad_no_nombra_un_parametro_que_no_existe(monkeypat
     completo = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
     inicio = completo.index("<tr")
     fila = completo[inicio : completo.index("</tr>") + len("</tr>")]
-    listado = (
-        completo[:inicio]
-        + fila
-        + fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
-        + completo[completo.index("</tr>") + 5 :]
-    )
+    # La segunda causa se distingue por su caratulado, no sólo por la referencia: dos filas
+    # idénticas salvo el token son la MISMA causa repetida por litigante, y el listado ahora
+    # las junta. Lo que este test prueba es la ambigüedad entre dos causas distintas.
+    otra = fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
+    caratulado = re.search(r"<td>([^<]*/[^<]*)</td>", fila)
+    assert caratulado, f"la fixture cambió de forma y no se ve el caratulado: {fila[:200]}"
+    otra = otra.replace(caratulado.group(1), "OTRA PARTE / OTRA CONTRAPARTE")
+    listado = completo[:inicio] + fila + otra + completo[completo.index("</tr>") + 5 :]
 
     c, _ = _capturando(listado)
     with pytest.raises(ValueError, match="no hay parámetro con que elegir") as fallo:

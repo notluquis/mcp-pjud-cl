@@ -23,6 +23,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   compara contra `fecha_registro`.
 - El detalle prometía "cuánto se debe y a qué fecha" en las liquidaciones de laboral, que no
   publican fecha: ahí no hay con qué saber cuál es la vigente.
+- El listado de una búsqueda por nombre devolvía una fila por litigante que coincide, todas
+  idénticas: quien contara filas se equivocaba por el número de partes que calzan. Ahora se
+  entrega una por causa.
+- `condiciones_de_publicacion` viene en nulo donde su desglose cuenta el índice completo y no
+  la consulta, igual que `coincidencias` y `ocultas`.
 - Las búsquedas por nombre, RUT y fecha mandaban el texto `None` en el campo del tribunal
   cuando la competencia no lo usa, en vez del cero que el sitio emite. La plataforma no da
   error con eso: devuelve un listado vacío, que se lee como que la causa no existe.

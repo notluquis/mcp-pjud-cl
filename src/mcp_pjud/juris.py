@@ -405,13 +405,15 @@ class ResultadoJurisprudencia(BaseModel):
         "plataforma reserva, `no_entregadas` son las que sí se podrían ver y no se pidieron. "
         "Un resultado con `ocultas` en cero puede igual estar recortado."
     )
-    condiciones_de_publicacion: dict[str, int] = Field(
+    condiciones_de_publicacion: dict[str, int] | None = Field(
         description="Desglose de TODAS las coincidencias por condición de publicación, "
         "visibles incluidas. Suma `coincidencias`, no `ocultas`: la categoría 'Publicable' "
         "son justamente las que sí se entregan. Sirve para ver de qué está hecho el universo "
         "(anonimizadas, reservadas, excluidas de salud), no para saber cuáles faltan: el "
         "buscador no publica la regla de visibilidad, así que no se puede decir qué "
-        "categorías componen `ocultas`."
+        "categorías componen `ocultas`.\n\nNULO donde ese desglose cuenta el índice completo y "
+        "no la consulta, que son los mismos buscadores en que `coincidencias` viene en nulo: "
+        "ahí sumaría millones para una búsqueda de decenas."
     )
 
 
@@ -550,7 +552,11 @@ def parse_sentencias(
         # segunda página de una búsqueda de 59.819 declararía casi todas las visibles como no
         # entregadas, o sea diría que falta lo que ya se entregó en la página anterior.
         no_entregadas=max(0, visibles - desplazamiento - len(sentencias)),
-        condiciones_de_publicacion=condiciones,
+        # NULO donde el desglose cuenta el índice entero y no la consulta, por lo mismo que
+        # `ocultas` y `coincidencias`: medido el 25 de agosto de 2026, en suprema suma 2 para
+        # una consulta de 2, y en apelaciones suma 5.295.308 con 28 visibles. Entregarlo ahí
+        # con la descripción que tiene diría que la consulta coincidió con cinco millones.
+        condiciones_de_publicacion=condiciones if por_consulta else None,
     )
 
 

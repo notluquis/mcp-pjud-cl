@@ -2672,7 +2672,11 @@ class Cuaderno(BaseModel):
     """Un cuaderno de la causa. El detalle muestra uno solo a la vez."""
 
     nombre: str
-    referencia: str = Field(description="Identificador opaco para pedir ese cuaderno.")
+    referencia: str = Field(
+        description="Identificador opaco para pedir ese cuaderno. Declara durar una hora, "
+        "medido sobre su JWT: el doble que la del listado, y se usa a mitad de la cadena más "
+        "larga del cliente."
+    )
     mostrado: bool = Field(
         description="Si es el que ESTA respuesta ya trae desplegado, o sea el que no hace "
         "falta volver a pedir."
@@ -2723,6 +2727,14 @@ def parse_cuadernos(html_detalle: str) -> list[Cuaderno]:
 #: verdad que cuánto dura no se midió, así que su prosa no se deriva de acá: aplanar las dos
 #: haría la documentación más falsa mientras se siente limpieza.
 SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA = 1800
+
+#: Y la del CUADERNO, que es otro token y dura otra cosa: medido el 25 de agosto de 2026
+#: decodificando su JWT, `exp - iat` da 3.600 exactos, el doble que la del listado. Importa
+#: porque la del cuaderno se usa a mitad de la cadena más larga del cliente.
+#:
+#: Lo medido es lo que el token DECLARA, no lo que la plataforma hace: que rechace justo ahí
+#: no se probó. Y sigue sin medirse `documento_referencia`, que es un tercer token.
+SEGUNDOS_DECLARADOS_POR_EL_CUADERNO = 3600
 
 
 class CausaEncontrada(BaseModel):
@@ -3080,6 +3092,17 @@ def total_declarado(html_busqueda: str) -> int | None:
     return int(m.group(1).replace(".", "").replace(",", ""))
 
 
+def _es_la_misma_causa(una: CausaEncontrada, otra: CausaEncontrada) -> bool:
+    """Si las dos filas del listado son la misma causa.
+
+    Se comparan los campos que el sitio MUESTRA. `referencia` queda fuera a propósito: es un
+    token de render y en las filas repetidas es lo único que cambia, así que incluirla haría
+    que la comparación no encontrara nunca un duplicado.
+    """
+    fuera = {"referencia"}
+    return una.model_dump(exclude=fuera) == otra.model_dump(exclude=fuera)
+
+
 def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[CausaEncontrada]:
     """Extrae las filas del listado de una búsqueda de causas.
 
@@ -3118,13 +3141,23 @@ def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[Cau
                 f"competencia declara columnas hasta la {max(spec.columnas.values())}. "
                 "La estructura de la búsqueda cambió."
             )
-        causas.append(
-            CausaEncontrada(
-                referencia=ref.group(1),
-                competencia=competencia.lower(),
-                **{campo: celdas[i] for campo, i in spec.columnas.items()},
-            )
+        causa = CausaEncontrada(
+            referencia=ref.group(1),
+            competencia=competencia.lower(),
+            **{campo: celdas[i] for campo, i in spec.columnas.items()},
         )
+        # La búsqueda por nombre devuelve UNA FILA POR LITIGANTE que coincide, y las filas
+        # salen idénticas en todo lo que se ve. Medido el 25 de agosto de 2026 contra el
+        # tribunal 162: tres filas para una sola causa, con las cinco celdas iguales
+        # (`C-7135-2008`, misma fecha, mismo caratulado, mismo tribunal) y sólo la referencia
+        # distinta, que es un token de render y no identifica la causa.
+        #
+        # Entregarlas todas multiplica la cuenta: quien mida la cartera de un abogado se
+        # equivoca por el número de partes que calzan. Se comparan los campos VISIBLES y no
+        # el objeto entero, justamente porque la referencia siempre difiere.
+        if any(_es_la_misma_causa(causa, vista) for vista in causas):
+            continue
+        causas.append(causa)
 
     if not causas and not es_sin_resultados(html_busqueda):
         raise EstructuraInesperada(

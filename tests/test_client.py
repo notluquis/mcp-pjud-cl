@@ -2252,12 +2252,14 @@ def test_en_suprema_la_ambiguedad_no_nombra_un_parametro_que_no_existe(monkeypat
     completo = (FIXTURES / "busqueda_rit_suprema.html").read_text(encoding="utf-8")
     inicio = completo.index("<tr")
     fila = completo[inicio : completo.index("</tr>") + len("</tr>")]
-    listado = (
-        completo[:inicio]
-        + fila
-        + fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
-        + completo[completo.index("</tr>") + 5 :]
-    )
+    # La segunda causa se distingue por su caratulado, no sólo por la referencia: dos filas
+    # idénticas salvo el token son la MISMA causa repetida por litigante, y el listado ahora
+    # las junta. Lo que este test prueba es la ambigüedad entre dos causas distintas.
+    otra = fila.replace("referencia-ficticia-001", "referencia-ficticia-701")
+    caratulado = re.search(r"<td>([^<]*/[^<]*)</td>", fila)
+    assert caratulado, f"la fixture cambió de forma y no se ve el caratulado: {fila[:200]}"
+    otra = otra.replace(caratulado.group(1), "OTRA PARTE / OTRA CONTRAPARTE")
+    listado = completo[:inicio] + fila + otra + completo[completo.index("</tr>") + 5 :]
 
     c, _ = _capturando(listado)
     with pytest.raises(ValueError, match="no hay parámetro con que elegir") as fallo:

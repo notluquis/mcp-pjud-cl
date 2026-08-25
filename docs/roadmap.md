@@ -604,6 +604,46 @@ los clientes de verdad. Todo lo demás de la revisión vigente que quedaba sin a
 invisible para cualquier cliente que hoy se conecte, y qué es y por qué no se adopta está más
 abajo, con guardias que lo atan a sus fuentes.
 
+### 0.17: lo que cuatro sesiones de uso real encontraron — hecho
+
+La 0.16 arregló lo que el proyecto daba por hecho y estaba a medias. Ésta sale de que el
+servidor se usara de verdad: cuatro sesiones lo probaron contra causas reales y reportaron qué
+entendieron con lo que recibieron. Casi todo lo de acá lo encontraron ellas o el repaso que
+dispararon.
+
+**Tres cosas devolvían menos de lo que decían.** Una búsqueda cuya segunda página repetía la
+primera llegaba al total que la plataforma declara y se daba por completa, con la mitad de las
+filas sin pedir. Una que respondía "no hay resultados" a mitad del recorrido devolvía lo
+acumulado callando. Y el listado por nombre entregaba una fila por litigante que coincide,
+todas idénticas: quien contara filas se equivocaba por el número de partes que calzan.
+
+**El tribunal ausente viajaba como el texto `None`** en tres de las cuatro búsquedas, donde el
+sitio manda un cero. La plataforma no da error con eso: devuelve un listado vacío, que se lee
+como que la causa no existe.
+
+**Y la prosa afirmaba lo contrario que su fuente**, en varios sitios a la vez: que sólo
+cobranza publica las liquidaciones y las diligencias cuando laboral también, que en cobranza
+hay `fecha_diligencia` cuando la plataforma no la publica, y que en penal se busca por el
+nombre del libro cuando exige el código. Cada una mandaba a concluir que algo no existe.
+
+| | antes | ahora |
+|---|---|---|
+| una sentencia con dos versiones | se entregaba una en silencio | se enumeran y hay que elegir con `cual` |
+| `discrepancia_fechas` sin nada que comparar | `false`, que se lee como "concuerdan" | nulo |
+| el desglose por condición de publicación | contaba el corpus en cinco buscadores | nulo donde no es de la consulta |
+| la Historia de cobranza | 80 filas para 71 folios | una por folio |
+
+**Lo que hizo posible encontrarlo** fue medir contra la plataforma en vez de razonar: los
+duplicados, el desglose, las letras de rol de cobranza y laboral, y la duración de los tres
+tokens (media hora la del listado, una hora las del detalle) salieron de peticiones reales.
+Con eso la hoja de ruta se queda sin ninguna fila esperando medición nuestra.
+
+Y una lección del proceso, porque se repitió más de lo cómodo: **varios guardias escritos en
+esta versión empezaron verdes**. Uno buscaba una letra suelta en una descripción llena de
+mayúsculas, otro leía la descripción de una plantilla en vez del texto que devuelve, otro
+excluía por la forma del retorno y no por dónde estaba. Ninguno lo habría notado la suite: los
+encontró romper a propósito lo que cada uno decía cuidar.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

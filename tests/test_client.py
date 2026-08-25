@@ -1651,6 +1651,50 @@ def test_lo_que_identifica_la_causa_viaja_con_su_valor(monkeypatch):
     assert enviados[0]["conCorte"] == "0"
 
 
+def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
+    """`str(None)` es `'None'`, y contra la plataforma eso no da error: da un listado sin
+    coincidencias, que se lee como que la causa no existe.
+
+    Se comprueba el formulario ENTERO y no campo por campo, en las cuatro búsquedas y en las
+    competencias donde el acotamiento es opcional. Tres sitios mandaban `str(tribunal)` con la
+    línea de al lado haciendo `str(corte or 0)`, o sea el arreglo se aplicó a un campo y se
+    olvidó en su hermano, tres veces. Un guardia por sitio habría dejado pasar el cuarto.
+
+    El valor de "sin tribunal" es CERO y está medido: el sitio emite `<option value='0'>`.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    # Sólo apelaciones y suprema: en las otras cuatro `_acotacion` exige el tribunal y levanta
+    # antes de armar el formulario, así que el nulo no llega nunca.
+    for competencia, corte in (("suprema", None), ("apelaciones", 90)):
+        for llamar in (
+            lambda c, m=competencia, k=corte: c.buscar_por_rit("A", 1, 2026, m, corte=k),
+            # Dos apellidos: con uno solo la búsqueda se rechaza antes de armar el
+            # formulario, y el guardia se quedaba sin nada que mirar justo en el campo que
+            # este arreglo tocó.
+            lambda c, m=competencia, k=corte: c.buscar_por_nombre(
+                apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia=m, corte=k
+            ),
+            lambda c, m=competencia, k=corte: c.buscar_por_rut_juridica(
+                "76000000", "0", competencia=m, corte=k
+            ),
+            lambda c, m=competencia, k=corte: c.buscar_por_fecha(
+                "01/01/2026", "02/01/2026", competencia=m, corte=k
+            ),
+        ):
+            cliente, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+            # Lo que se mide es el formulario, no que la búsqueda termine bien.
+            with contextlib.suppress(ValueError, EstructuraInesperada):
+                llamar(cliente)
+            for formulario in enviados:
+                repr_de_python = {k: v for k, v in formulario.items() if v in ("None", "0.0")}
+                assert not repr_de_python, (
+                    f"en {competencia} viaja la repr de Python de un nulo: {repr_de_python}. "
+                    "La plataforma no da error con eso: devuelve un listado vacío, que se lee "
+                    "como que la causa no existe"
+                )
+
+
 #: Los nombres EXACTOS de cada formulario, medidos contra el sitio. Van escritos porque no
 #: salen de ninguna constante: son el contrato de la plataforma, no una decisión de este
 #: cliente. Cambiar uno no da error, da un campo que el PHP ignora.

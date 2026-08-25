@@ -4134,11 +4134,14 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
     # existe informada como inexistente.
     from mcp_pjud.client import TIPOS_MEDIDOS_EN_COBRANZA, TIPOS_MEDIDOS_EN_LABORAL
 
+    # Las letras JUNTO a su competencia, no sueltas: la de laboral es una sola `O` y la
+    # descripción está llena de oes mayúsculas (LIBRO, CÓDIGO, VACÍO), así que buscarla por su
+    # cuenta pasaba sin que la frase existiera. Ese guardia no podía fallar.
     for competencia, letras in (
         ("cobranza", TIPOS_MEDIDOS_EN_COBRANZA),
         ("laboral", TIPOS_MEDIDOS_EN_LABORAL),
     ):
-        assert letras in dice, (
+        assert f"en {competencia} {letras}" in dice, (
             f"`tipo` no dice qué letras acepta {competencia}, y están medidas: {letras}. "
             f"Dice: {dice!r}"
         )

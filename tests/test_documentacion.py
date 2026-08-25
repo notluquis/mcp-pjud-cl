@@ -906,6 +906,25 @@ def test_ninguna_descripcion_de_herramienta_pasa_del_tope_del_cliente():
     )
 
 
+def test_la_guia_cita_el_techo_de_espera_que_el_codigo_fija():
+    """La página explica que el techo de acá es más alto que el del cliente, y con qué números.
+
+    Es la clase de dato que envejece en silencio: si `ESPERA_MAXIMA` se mueve y la explicación
+    no, la página estaría razonando sobre un tramo que ya no existe.
+    """
+    from mcp_pjud.client import ESPERA_MAXIMA, SEGUNDOS_BUSQUEDA_PEOR_MEDIDO
+
+    uso = " ".join(_texto(RAIZ / "docs" / "uso.md").split())
+    for dicho in (
+        f"**{int(ESPERA_MAXIMA)}** segundos",
+        f"{int(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)} segundos",
+    ):
+        assert dicho in uso, (
+            f"la guía no cita {dicho!r}, que es lo que el código fija y sobre lo que esa "
+            "explicación razona"
+        )
+
+
 def test_los_cuelgues_que_subieron_el_techo_salen_de_su_constante():
     """La medición que justifica el techo de espera se cita en prosa, y era libre.
 

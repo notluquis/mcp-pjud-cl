@@ -117,12 +117,24 @@ _CON_OCULTAS = sorted(n for n, b in BUSCADORES.items() if b.coincidencias_por_co
 #: el modelo intente una llamada para la que nunca va a tener referencia.
 _CON_GEORREFERENCIA = sorted(n for n in MODULOS if n in GEORREFERENCIA)
 
+
 #: La misma regla dicha una vez, para las tres herramientas que la comparten.
+def _y(nombres: list[str]) -> str:
+    """Los nombres como los enumera una frase en español, con la `y` antes del último.
+
+    Con coma sola, "en apelaciones, penal va el LIBRO" se puede leer como una sola cosa
+    llamada "apelaciones penal", y una sesión de prueba dudó justo ahí.
+    """
+    if len(nombres) < 2:
+        return "".join(nombres)
+    return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
+
+
 ACOTACION = (
     "Las búsquedas por nombre, por RUT y por fecha hay que acotarlas, y con qué depende de "
-    f"la competencia: {', '.join(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
-    f"{', '.join(_EXIGEN_CORTE)} exige `corte` y NO acepta tribunal; "
-    f"{', '.join(_SIN_ACOTAR)} no exige ninguna de las dos. La búsqueda por rol no exige "
+    f"la competencia: {_y(_EXIGEN_TRIBUNAL)} exigen `tribunal`; "
+    f"{_y(_EXIGEN_CORTE)} exige `corte` y NO acepta tribunal; "
+    f"{_y(_SIN_ACOTAR)} no exige ninguna de las dos. La búsqueda por rol no exige "
     "acotar en ninguna."
 )
 
@@ -395,17 +407,6 @@ def _cliente(ctx: Context | None = None) -> PjudClient:
     return c
 
 
-def _y(nombres: list[str]) -> str:
-    """Los nombres como los enumera una frase en español, con la `y` antes del último.
-
-    Con coma sola, "en apelaciones, penal va el LIBRO" se puede leer como una sola cosa
-    llamada "apelaciones penal", y una sesión de prueba dudó justo ahí.
-    """
-    if len(nombres) < 2:
-        return "".join(nombres)
-    return f"{', '.join(nombres[:-1])} y {nombres[-1]}"
-
-
 #: Competencias donde el rol publicado lleva el libro adelante. Sale de la tabla: la referencia
 #: lo explicaba y el esquema seguía diciendo "Letra del rol", y lo que el modelo lee es esto.
 _CON_LIBRO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_con_libro)
@@ -460,17 +461,17 @@ TribunalQueAcota = Annotated[
     int | None,
     Field(
         description="Código del tribunal, para acotar la búsqueda. Obligatorio cuando la "
-        f"competencia es una de: {', '.join(_EXIGEN_TRIBUNAL)}. En "
-        f"{', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"competencia es una de: {_y(_EXIGEN_TRIBUNAL)}. En "
+        f"{_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 TribunalDelRol = Annotated[
     int | None,
     Field(
-        description=f"Código del tribunal. En {', '.join(_EXIGEN_TRIBUNAL)} la plataforma lo "
+        description=f"Código del tribunal. En {_y(_EXIGEN_TRIBUNAL)} la plataforma lo "
         f"acepta opcional, y {EL_ROL_NO_BASTA}: omitirlo no amplía la búsqueda, la hace barrer "
         "y devuelve una causa por juzgado, cada una con sus partes. Indicarlo salvo que se "
-        f"quiera justamente ese barrido. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la "
+        f"quiera justamente ese barrido. En {_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la "
         "plataforma no lo usa."
     ),
 ]
@@ -478,10 +479,10 @@ TribunalQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código del tribunal. Esta herramienta devuelve UNA causa, así que el "
-        f"tribunal no acota nada: la identifica. En {', '.join(_EXIGEN_TRIBUNAL)}, donde "
+        f"tribunal no acota nada: la identifica. En {_y(_EXIGEN_TRIBUNAL)}, donde "
         f"{EL_ROL_NO_BASTA}, sin él la llamada falla por ambigüedad en vez de abrir la causa "
-        f"de otra persona. En {', '.join(_EXIGEN_CORTE)} eso lo hace `corte`, y en "
-        f"{', '.join(_SIN_ACOTAR)} no hace falta ninguno de los dos."
+        f"de otra persona. En {_y(_EXIGEN_CORTE)} eso lo hace `corte`, y en "
+        f"{_y(_SIN_ACOTAR)} no hace falta ninguno de los dos."
     ),
 ]
 Paginas = Annotated[
@@ -585,7 +586,7 @@ CorteQueAcota = Annotated[
     int | None,
     Field(
         description="Código de la corte, para acotar la búsqueda. Obligatorio cuando la "
-        f"competencia es una de: {', '.join(_EXIGEN_CORTE)}, donde la plataforma responde "
+        f"competencia es una de: {_y(_EXIGEN_CORTE)}, donde la plataforma responde "
         f"'Por favor seleccione una Corte para la búsqueda'. {_CORTE_DE_MAS}"
     ),
 ]
@@ -593,7 +594,7 @@ CorteDelRol = Annotated[
     int | None,
     Field(
         description="Código de la corte. En "
-        f"{', '.join(_EXIGEN_CORTE)} el mismo número de rol existe en varias, así que "
+        f"{_y(_EXIGEN_CORTE)} el mismo número de rol existe en varias, así que "
         f"omitirla devuelve una causa por corte. {_CORTE_DE_MAS}"
     ),
 ]
@@ -601,7 +602,7 @@ CorteQueDesambigua = Annotated[
     int | None,
     Field(
         description="Código de la corte. Esta herramienta devuelve UNA causa, así que la corte "
-        f"no acota nada: la identifica. En {', '.join(_EXIGEN_CORTE)} el mismo rol y el mismo "
+        f"no acota nada: la identifica. En {_y(_EXIGEN_CORTE)} el mismo rol y el mismo "
         "libro existen en varias cortes, y sin ella la llamada falla por ambigüedad. "
         f"{_CORTE_DE_MAS}"
     ),
@@ -681,9 +682,9 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
     "la `corte`. Sin repetirlos abre el mismo rol de otra competencia o de otro juzgado, que "
     "existe y se ve bien. Si la búsqueda ya iba acotada se reusa ese mismo código; si no, la "
     "fila publica el NOMBRE del tribunal o de la corte y el código se resuelve con "
-    f"`listar_tribunales` o `listar_cortes`. En {', '.join(_SIN_ACOTAR)} no hay ninguno de los "
+    f"`listar_tribunales` o `listar_cortes`. En {_y(_SIN_ACOTAR)} no hay ninguno de los "
     "dos que resolver ni que repetir, y la competencia se repite igual que en el resto. En "
-    f"{', '.join(_SIN_DETALLE)} no hay detalle: se rechaza por decisión, no por no estar "
+    f"{_y(_SIN_DETALLE)} no hay detalle: se rechaza por decisión, no por no estar "
     "medido."
 )
 
@@ -693,7 +694,7 @@ LO_QUE_EL_LISTADO_NO_TRAE = (
 #: caía del otro lado del corte, y sin ella un falso de suprema se lee como ausencia probada.
 QUE_SIGNIFICA_EL_FALSO = (
     "`georreferenciado: false` significa que la actuación NO tiene registro georreferenciado "
-    f"(art. 9 inc. 3 Ley 20.886) SÓLO en {', '.join(_CON_GEORREFERENCIA)}, que son las que "
+    f"(art. 9 inc. 3 Ley 20.886) SÓLO en {_y(_CON_GEORREFERENCIA)}, que son las que "
     "publican esa columna. En el resto, el falso significa que no hay dónde mirar. Y `true` "
     "significa que el sitio lo ofrece, no que exista: está medido que una de seis abre un "
     "panel vacío."
@@ -1374,7 +1375,7 @@ def listar_audios_audiencia(
     "porque `filas` acota cuántas se piden. Cualquiera de las dos mayor que cero significa "
     "que la lista es un subconjunto, y hay que decirlo.\n\n`ocultas` en cero no prueba que "
     "la lista esté completa, y en NULO tampoco: nulo no es cero, es que en ese buscador no se "
-    f"puede saber. Sólo {', '.join(_CON_OCULTAS)} la trae con número.\n\n`no_entregadas` "
+    f"puede saber. Sólo {_y(_CON_OCULTAS)} la trae con número.\n\n`no_entregadas` "
     "mayor que cero se resuelve pidiendo la página siguiente con `desplazamiento` en "
     "`desplazamiento + filas`, hasta que llegue a cero. Cada página cuesta una petición con "
     "su intervalo, así que se recorre lo que hace falta y no el índice entero.\n\nMedido el "
@@ -1382,9 +1383,9 @@ def listar_audios_audiencia(
     f"{miles(INDEXADAS_MEDIDAS)} indexadas.\n\nCada buscador declara sus propios campos y "
     "los que no declara vienen en NULO, que significa que ESE buscador no los publica y no "
     f"que la sentencia no los tenga: `ministros` y `redactor` sólo en "
-    f"{', '.join(buscadores_que_publican('ministros'))}, `rol_corte_apelaciones` en "
-    f"{', '.join(buscadores_que_publican('rol_corte_apelaciones'))}, y `sala`, `tipo_recurso` "
-    f"y `resultado_recurso` en {', '.join(buscadores_que_publican('sala'))}. La extensión en "
+    f"{_y(buscadores_que_publican('ministros'))}, `rol_corte_apelaciones` en "
+    f"{_y(buscadores_que_publican('rol_corte_apelaciones'))}, y `sala`, `tipo_recurso` "
+    f"y `resultado_recurso` en {_y(buscadores_que_publican('sala'))}. La extensión en "
     "`palabras` y `paginas` tampoco la trae todo buscador, y sin ella no se puede decidir por "
     "el tamaño si vale pedir el texto completo.\n\n`condiciones_de_publicacion` desglosa la "
     "consulta sólo donde el desglose es de la consulta. En NULO significa que ahí la "
@@ -1513,17 +1514,17 @@ TribunalDeLaPlantilla = Annotated[
     int | None,
     Field(
         description="Código del tribunal, si se sabe. En "
-        f"{', '.join(_EXIGEN_TRIBUNAL)} hace falta para abrir una causa concreta, porque "
+        f"{_y(_EXIGEN_TRIBUNAL)} hace falta para abrir una causa concreta, porque "
         f"{EL_ROL_NO_BASTA}. Cuando no se sabe, la plantilla dice cómo resolverlo en vez de "
-        f"exigirlo acá. En {', '.join(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"exigirlo acá. En {_y(_EXIGEN_CORTE + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 CorteDeLaPlantilla = Annotated[
     int | None,
     Field(
-        description=f"Código de la corte, si se sabe. En {', '.join(_EXIGEN_CORTE)} el mismo "
+        description=f"Código de la corte, si se sabe. En {_y(_EXIGEN_CORTE)} el mismo "
         "rol y el mismo libro existen en varias, así que hace falta para abrir una causa "
-        f"concreta. En {', '.join(_EXIGEN_TRIBUNAL + _SIN_ACOTAR)} la plataforma no lo usa."
+        f"concreta. En {_y(_EXIGEN_TRIBUNAL + _SIN_ACOTAR)} la plataforma no lo usa."
     ),
 ]
 

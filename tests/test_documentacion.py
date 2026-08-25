@@ -60,6 +60,7 @@ from mcp_pjud.juris import (
 from mcp_pjud.parser import (
     _PANELES_ANEXO,
     COMPETENCIAS,
+    SEGUNDOS_DECLARADOS_POR_EL_DETALLE,
     SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA,
     SIN_FILAS_OBSERVADAS,
     CausaEncontrada,
@@ -2398,13 +2399,21 @@ def test_las_busquedas_dicen_que_campos_son_de_una_sola_competencia(expuestas):
 #: Los otros dos identificadores opacos que la plataforma emite, y de los que sólo se sabe que
 #: existen. Se nombran acá para que el guardia pueda distinguir a cuál se le atribuye una
 #: duración: dárselas por iguales es lo que haría publicar una cifra que nadie midió.
-TOKENS_SIN_MEDIR = ("documento_referencia", "Cuaderno.referencia")
+#: Ya no queda ninguno sin medir: los tres se leyeron de su propio JWT. Lo que separa a los
+#: tokens sigue siendo cuánto declaran, y son DOS cifras distintas, así que aplanarlas
+#: seguiría siendo una afirmación inventada aunque ahora las tres estén medidas.
+TOKENS_SIN_MEDIR: tuple[str, ...] = ()
 
 #: Cómo se nombra en la prosa el token que SÍ se midió. Sólo el nombre del campo: "del
 #: listado" es una frase suelta que puede venir DESPUÉS de nombrar otro token
 #: ("`documento_referencia` se obtiene del listado y dura 30 minutos"), y ahí quedaba haciendo
 #: pasar por medido justamente al que no lo está.
 TOKEN_MEDIDO = ("CausaEncontrada.referencia",)
+
+#: Los del DETALLE, que declaran el doble que el del listado. Se nombran aparte porque la
+#: comprobación de abajo compara cada duración contra la del token al que se la atribuyen: con
+#: una sola cifra, documentar bien uno pondría la suite en rojo contra la constante del otro.
+TOKENS_DEL_DETALLE = ("documento_referencia", "anexo_referencia", "Cuaderno.referencia")
 
 #: Cuántos caracteres cuentan como "al lado" al atribuirle una duración a un token. En la
 #: tabla de `verificacion.md` los tres caben en menos que esto, y ahí lo que decide es cuál
@@ -2424,6 +2433,21 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
     medido está lo que el token DICE, y las dos cosas se separan por una petición que nadie
     hizo.
     """
+    # Las dos constantes contra lo MEDIDO, que se anota en `verificacion.md` en segundos. Sin
+    # esto el guardia comparaba prosa derivada de la constante contra la constante misma, así
+    # que moverla movía los dos lados: una cifra equivocada pasaba entera.
+    verificacion = " ".join(_texto(RAIZ / "docs" / "verificacion.md").split())
+    # Cada cifra junto a QUÉ token se midió, no suelta: las dos aparecen en la misma fila, así
+    # que buscar el número por su cuenta deja pasar cambiar una por la otra.
+    for dicho in (
+        f"listado de búsqueda declara **{SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA}**",
+        f"`anexo_referencia`) **{SEGUNDOS_DECLARADOS_POR_EL_DETALLE}**",
+    ):
+        assert dicho in verificacion, (
+            f"`verificacion.md` no registra {dicho!r}: lo que sostiene la constante es la "
+            "medición anotada, no la constante misma"
+        )
+
     minutos = SEGUNDOS_DECLARADOS_POR_LA_REFERENCIA // 60
     fuentes = [*PROSA, *(RAIZ / "src" / "mcp_pjud").glob("*.py")]
 
@@ -2450,7 +2474,7 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
         """
         candidatos = [
             (texto.rfind(nombre, max(0, posicion - CERCA), posicion), nombre)
-            for nombre in (*TOKENS_SIN_MEDIR, *TOKEN_MEDIDO)
+            for nombre in (*TOKENS_SIN_MEDIR, *TOKEN_MEDIDO, *TOKENS_DEL_DETALLE)
         ]
         encontrados = [(donde, nombre) for donde, nombre in candidatos if donde != -1]
         return max(encontrados)[1] if encontrados else None
@@ -2467,9 +2491,17 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
             contexto = texto[max(0, mencion.start() - CERCA) : mencion.end() + CERCA].lower()
             if "referencia" not in contexto:
                 continue
-            assert int(mencion.group(1)) == minutos, (
-                f"{fuente.relative_to(RAIZ)} dice que una referencia dura "
-                f"{mencion.group(1)} minutos y el token declara {minutos}"
+            # Contra la constante del token al que se la atribuye, no contra una sola: los del
+            # detalle declaran el doble que el del listado, y con una cifra única documentar
+            # bien uno dejaría la suite en rojo contra la del otro.
+            esperados = (
+                SEGUNDOS_DECLARADOS_POR_EL_DETALLE // 60
+                if de_quien in TOKENS_DEL_DETALLE
+                else minutos
+            )
+            assert int(mencion.group(1)) == esperados, (
+                f"{fuente.relative_to(RAIZ)} dice que `{de_quien or 'una referencia'}` dura "
+                f"{mencion.group(1)} minutos y su token declara {esperados}"
             )
 
     afirman_de_mas = [
@@ -2480,11 +2512,17 @@ def test_la_duracion_de_la_referencia_es_la_que_el_token_declara():
         "Medido está lo que el token declara; que la plataforma lo rechace ahí no se probó"
     )
 
-    # El de los documentos, con la salvedad que lo distingue.
-    sin_medir = RAIZ / "src" / "mcp_pjud" / "server.py"
-    assert "Cuánto dura no se midió" in _texto(sin_medir), (
-        "`documento_referencia` dejó de decir que su duración no se midió, y es el único aviso "
-        "que impide leerle la del listado"
+    # El de los documentos ya no dice "no se midió" porque se midió, y lo que ahora hay que
+    # cuidar es que diga LA SUYA: la del detalle, que es el doble de la del listado.
+    del_detalle = SEGUNDOS_DECLARADOS_POR_EL_DETALLE // 60
+    servidor = _legible(RAIZ / "src" / "mcp_pjud" / "server.py")
+    assert "Cuánto dura no se midió" not in servidor, (
+        f"`documento_referencia` sigue diciendo que no se midió, y su JWT declara {del_detalle} "
+        "minutos"
+    )
+    assert "documento_referencia" in servidor, (
+        "el esquema dejó de nombrar `documento_referencia`, que es la mitad de lo que hace "
+        "falta para pedir un documento"
     )
 
 

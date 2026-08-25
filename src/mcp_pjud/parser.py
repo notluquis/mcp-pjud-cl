@@ -3092,15 +3092,34 @@ def total_declarado(html_busqueda: str) -> int | None:
     return int(m.group(1).replace(".", "").replace(",", ""))
 
 
-def _es_la_misma_causa(una: CausaEncontrada, otra: CausaEncontrada) -> bool:
-    """Si las dos filas del listado son la misma causa.
+def una_por_causa(causas: list[CausaEncontrada]) -> list[CausaEncontrada]:
+    """El listado con una fila por causa, conservando el orden.
 
-    Se comparan los campos que el sitio MUESTRA. `referencia` queda fuera a propósito: es un
-    token de render y en las filas repetidas es lo único que cambia, así que incluirla haría
-    que la comparación no encontrara nunca un duplicado.
+    La búsqueda por nombre devuelve UNA FILA POR LITIGANTE que coincide, y esas filas salen
+    idénticas en todo lo que se ve. Medido el 25 de agosto de 2026 contra el tribunal 162:
+    tres filas para una sola causa, con las cinco celdas iguales y sólo la referencia distinta,
+    que es un token de render y no identifica la causa. Entregarlas todas multiplica la cuenta:
+    quien mida la cartera de un abogado se equivoca por el número de partes que calzan.
+
+    Se junta ACÁ y no al parsear, y eso importa: la plataforma declara cuántas FILAS hay, y el
+    recorrido de páginas compara ese total contra lo que lleva acumulado. Juntándolas antes,
+    ese control veía siempre menos de lo declarado y levantaba "se recuperaron N de M" en toda
+    búsqueda con partes repetidas, que son casi todas las de nombre.
+
+    Por eso también recibe la lista ENTERA y no cada página: las filas de una causa pueden
+    quedar partidas entre dos páginas.
     """
-    fuera = {"referencia"}
-    return una.model_dump(exclude=fuera) == otra.model_dump(exclude=fuera)
+    vistas: set[tuple] = set()
+    unicas = []
+    for causa in causas:
+        # Los campos que el sitio MUESTRA. `referencia` queda fuera a propósito: es lo único
+        # que cambia entre las repetidas, así que incluirla no encontraría ningún duplicado.
+        identidad = tuple(sorted(causa.model_dump(exclude={"referencia"}).items()))
+        if identidad in vistas:
+            continue
+        vistas.add(identidad)
+        unicas.append(causa)
+    return unicas
 
 
 def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[CausaEncontrada]:
@@ -3141,23 +3160,13 @@ def parse_resultados(html_busqueda: str, competencia: str = "civil") -> list[Cau
                 f"competencia declara columnas hasta la {max(spec.columnas.values())}. "
                 "La estructura de la búsqueda cambió."
             )
-        causa = CausaEncontrada(
-            referencia=ref.group(1),
-            competencia=competencia.lower(),
-            **{campo: celdas[i] for campo, i in spec.columnas.items()},
+        causas.append(
+            CausaEncontrada(
+                referencia=ref.group(1),
+                competencia=competencia.lower(),
+                **{campo: celdas[i] for campo, i in spec.columnas.items()},
+            )
         )
-        # La búsqueda por nombre devuelve UNA FILA POR LITIGANTE que coincide, y las filas
-        # salen idénticas en todo lo que se ve. Medido el 25 de agosto de 2026 contra el
-        # tribunal 162: tres filas para una sola causa, con las cinco celdas iguales
-        # (`C-7135-2008`, misma fecha, mismo caratulado, mismo tribunal) y sólo la referencia
-        # distinta, que es un token de render y no identifica la causa.
-        #
-        # Entregarlas todas multiplica la cuenta: quien mida la cartera de un abogado se
-        # equivoca por el número de partes que calzan. Se comparan los campos VISIBLES y no
-        # el objeto entero, justamente porque la referencia siempre difiere.
-        if any(_es_la_misma_causa(causa, vista) for vista in causas):
-            continue
-        causas.append(causa)
 
     if not causas and not es_sin_resultados(html_busqueda):
         raise EstructuraInesperada(

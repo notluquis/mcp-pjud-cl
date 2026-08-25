@@ -66,6 +66,7 @@ from .parser import (
     parse_resultados,
     siguiente_pagina,
     total_declarado,
+    una_por_causa,
 )
 
 #: La versión que se identifica ante el Poder Judicial, leída del paquete instalado.
@@ -1347,7 +1348,7 @@ class PjudClient(Transporte):
         lo esperado, y confundir ese caso con una truncación silenciosa sería tan malo como
         no detectarla.
         """
-        return parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia)
+        return una_por_causa(parse_resultados(self._ajax(ruta, data, PASO_BUSQUEDA), competencia))
 
     def _paginado(
         self, ruta: str, data: dict[str, str], paginas: int, competencia: str
@@ -1396,7 +1397,7 @@ class PjudClient(Transporte):
                         "estructura. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return acumuladas
+                return una_por_causa(acumuladas)
 
             acumuladas.extend(parse_resultados(html_, competencia))
 
@@ -1429,7 +1430,7 @@ class PjudClient(Transporte):
                 #
                 # Civil no lo hace, y por eso el hueco sobrevivió hasta que entraron esas dos
                 # competencias.
-                return acumuladas
+                return una_por_causa(acumuladas)
 
             token = siguiente_pagina(html_)
 
@@ -1442,7 +1443,7 @@ class PjudClient(Transporte):
                         "cambió. No se devuelve la lista parcial porque se leería como "
                         "completa."
                     )
-                return acumuladas
+                return una_por_causa(acumuladas)
 
             if token in vistos:
                 # El mismo token dos veces significa que la página no avanza. Sin esto se

@@ -567,6 +567,17 @@ PALABRAS_DE_LA_CASACION = 3646
 PALABRAS_DEL_REEMPLAZO = 157
 
 
+def _es_del_rol(sentencia: Sentencia, rol: int, anio: int) -> bool:
+    """Si la sentencia que llegó corresponde al rol que se pidió.
+
+    El buscador publica el rol como texto y no siempre con el mismo formato, así que se
+    comparan sus dígitos: lo que se quiere descartar es haber recibido OTRA causa, no una
+    diferencia de puntuación.
+    """
+    digitos = re.sub(r"\D", "", sentencia.rol or "")
+    return digitos == f"{rol}{anio}"
+
+
 def _enumerar(sentencias: list[Sentencia]) -> str:
     """Las opciones como las lee quien tiene que elegir una.
 
@@ -575,9 +586,15 @@ def _enumerar(sentencias: list[Sentencia]) -> str:
     "sin rótulo" y sólo se distinguían por el largo. Y ahí el propio buscador mezcla causas
     distintas con el mismo número (`T-364-2020` contra `O-364-2020`), que es justo lo que el
     caratulado separa.
+
+    Y la FECHA, porque el caratulado tampoco siempre distingue: en `familia` llega como
+    `ANONIMIZADO` y ese buscador tampoco declara tipo ni resultado, así que sin la fecha las
+    opciones quedaban en el mismo rol, el mismo caratulado y un número de palabras. El rol y
+    la fecha son lo que identifica una cita, que es lo que se vino a verificar.
     """
     return "; ".join(
-        f"{i}: {s.rol or 'sin rol'}, {s.caratulado or 'sin caratulado'}"
+        f"{i}: {s.rol or 'sin rol'} del {s.fecha_sentencia or 'sin fecha'},"
+        f" {s.caratulado or 'sin caratulado'}"
         f" [{s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}, {s.palabras} palabras]"
         for i, s in enumerate(sentencias, 1)
     )
@@ -760,6 +777,19 @@ class JurisClient(Transporte):
             r = self.buscar(rol=rol, anio=anio, filas=2, buscador=buscador)
         else:
             r = self.buscar(rol=rol, anio=anio, filas=1, desplazamiento=cual - 1, buscador=buscador)
+            # `cual` es una POSICIÓN dentro del orden que la búsqueda devuelve, y entre la
+            # enumeración y esta llamada ese orden podría cambiar (una sentencia nueva del
+            # mismo rol, o dos empatadas por fecha que se ordenen al revés). Lo que sí se
+            # comprueba es que lo que llegó siga siendo del rol pedido: sin identificador
+            # estable medido en este buscador, no hay con qué comprobar más, y construir la
+            # selección sobre la clave del `url` sería suponer que dura, que no está medido.
+            if r.sentencias and not _es_del_rol(r.sentencias[0], rol, anio):
+                raise EstructuraInesperada(
+                    f"Se pidió la sentencia {cual} del rol {rol}-{anio} y llegó "
+                    f"{r.sentencias[0].rol!r}: el listado cambió entre una consulta y otra, o "
+                    "el buscador dejó de ordenarlas igual. No se entrega, porque una sentencia "
+                    "de otro rol se lee como la que se fue a verificar."
+                )
             if not r.sentencias and r.visibles:
                 # La página vacía por pasarse del final NO es "la sentencia no existe": el rol
                 # está y el índice se fue de rango. Se separa antes de llegar a la rama de
@@ -787,8 +817,11 @@ class JurisClient(Transporte):
                 "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
             )
 
-        # Más de una bajo el mismo rol: NO se elige.
-        if len(r.sentencias) > 1 and cual is None:
+        # Más de una bajo el mismo rol: NO se elige. La ambigüedad se decide por `visibles`,
+        # que es lo que la plataforma DECLARA, y no por cuántas filas llegaron: una respuesta
+        # que declare tres y traiga una (truncada, o el contrato cambió) dejaba pasar la misma
+        # elección silenciosa que esto existe para cerrar.
+        if r.visibles > 1 and cual is None:
             # Se vuelve a pedir con todas para poder ENUMERARLAS. Sin esto, un rol de tres
             # (medido: 1504-2019 en apelaciones) decía "tiene 3" y listaba dos, o sea el
             # selector obligaba a elegir a ciegas justo donde más falta hace. Es una petición
@@ -796,6 +829,14 @@ class JurisClient(Transporte):
             if r.visibles > len(r.sentencias):
                 r = self.buscar(
                     rol=rol, anio=anio, filas=min(r.visibles, TOPE_AL_ENUMERAR), buscador=buscador
+                )
+            if len(r.sentencias) < min(r.visibles, TOPE_AL_ENUMERAR):
+                # Se pidieron y no llegaron: enumerar a medias haría elegir a ciegas entre
+                # opciones que no se ven, y seguir devolvería una sola como si fuera la única.
+                raise EstructuraInesperada(
+                    f"El rol {rol}-{anio} declara {r.visibles} sentencias en {buscador} y la "
+                    f"respuesta trajo {len(r.sentencias)}: no se pueden enumerar para que se "
+                    "elija una, y devolver la que llegó la haría pasar por la única."
                 )
             faltan = max(0, r.visibles - len(r.sentencias))
             raise ValueError(

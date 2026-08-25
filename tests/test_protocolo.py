@@ -1049,6 +1049,8 @@ def test_cual_llega_hasta_el_buscador_por_el_protocolo(monkeypatch: pytest.Monke
 
     crudo = _json.loads((FIXTURES / "juris_cita_unica.json").read_text(encoding="utf-8"))
     primera = crudo["response"]["docs"][0]
+    # Del rol que se va a pedir: la selección comprueba que lo que llega sea de ese rol.
+    primera["rol_era_sup_s"] = "1933-2025"
     primera["texto_sentencia"] = "Casación: considerando primero."
     segunda = dict(primera)
     segunda["texto_sentencia"] = "Se confirma."

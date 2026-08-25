@@ -624,6 +624,9 @@ def _con_dos_sentencias() -> str:
     """
     d = json.loads(CITA)
     primera = d["response"]["docs"][0]
+    # El rol de la fixture es otro, y la selección comprueba que lo que llega sea del rol
+    # pedido: sin esto el doble sirve una causa distinta y el guardia mide esa otra cosa.
+    primera["rol_era_sup_s"] = "1933-2025"
     primera["texto_sentencia"] = "Casación: considerando primero."
     primera["sent__word_count_i"] = 3646
     segunda = dict(primera)
@@ -789,6 +792,66 @@ def test_al_enumerar_va_el_caratulado_y_no_solo_el_rotulo(monkeypatch):
     dicho = str(caida.value)
     assert "PEREZ / EMPRESA UNO" in dicho, f"falta el caratulado de la primera: {dicho}"
     assert "SOTO / EMPRESA DOS" in dicho, f"falta el caratulado de la segunda: {dicho}"
+
+
+def test_la_ambiguedad_se_decide_por_lo_que_la_plataforma_declara(monkeypatch):
+    """Una respuesta que declara tres y trae una es la misma elección silenciosa, disfrazada.
+
+    Con la ambigüedad decidida por cuántas filas llegaron, un truncamiento o un cambio de
+    contrato devolvía esa única como si fuera la única que hay. Se decide por `visibles`, y si
+    las filas no alcanzan para enumerar se levanta en vez de elegir.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "1933-2025"
+    d["response"]["numFound"] = 3  # la plataforma declara tres y manda una
+
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(EstructuraInesperada, match="no se pueden enumerar"):
+        c.texto(rol=1933, anio=2025)
+
+
+def test_al_enumerar_va_la_fecha_de_cada_sentencia(monkeypatch):
+    """En `familia` el caratulado llega como ANONIMIZADO y no hay tipo ni resultado.
+
+    Sin la fecha, las opciones quedaban en el mismo rol, el mismo caratulado y un número de
+    palabras: elegir por extensión en vez de por lo que identifica una cita.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    base = d["response"]["docs"][0]
+    base["rol_era_sup_s"] = "1933-2025"
+    d["response"]["docs"] = [
+        {**base, "fec_sentencia_sup_dt": "2025-03-25T00:00:00Z"},
+        {**base, "fec_sentencia_sup_dt": "2025-04-10T00:00:00Z"},
+    ]
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    dicho = str(caida.value)
+    assert "2025-03-25" in dicho, f"falta la fecha de la primera: {dicho}"
+    assert "2025-04-10" in dicho, f"falta la fecha de la segunda: {dicho}"
+
+
+def test_si_llega_otra_causa_en_la_posicion_pedida_no_se_entrega(monkeypatch):
+    """`cual` es una posición, y entre la enumeración y la selección el orden puede cambiar.
+
+    No hay identificador estable medido en estos buscadores, así que lo que se puede
+    comprobar es que lo que llegó siga siendo del rol pedido. Una sentencia de otra causa se
+    lee como la que se fue a verificar, que es el peor resultado de esta herramienta.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    d = json.loads(CITA)
+    d["response"]["docs"][0]["rol_era_sup_s"] = "9999-2025"
+    d["response"]["numFound"] = 2
+    c = _con_respuesta(json.dumps(d, ensure_ascii=False))
+
+    with pytest.raises(EstructuraInesperada, match="el listado cambió"):
+        c.texto(rol=1933, anio=2025, cual=2)
 
 
 def test_un_indice_menor_que_uno_se_rechaza(monkeypatch):

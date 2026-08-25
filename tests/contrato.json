@@ -171,7 +171,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol. En civil: C, V, E, A, F o I. En apelaciones, penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I y en cobranza A C D E J L P R, medidas. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },
@@ -879,7 +879,7 @@
           },
           "competencia": {
             "default": "civil",
-            "description": "Una de: civil. Sólo esas publican las actuaciones del ministro de fe en la tabla de Historia. En cobranza viven en `diligenciaCob`, que `obtener_detalle_causa` entrega en `diligencias`: ahí no vienen como actuaciones porque ese panel no publica la fecha en que se practicaron. En las demás no existen.",
+            "description": "Una de: civil. Sólo esas publican las actuaciones del ministro de fe en la tabla de Historia. En cobranza el sitio las rotula en la Historia pero SIN la fecha en que se practicaron, así que no sirven para computar un plazo y esta herramienta no las ofrece; el panel `diligencias` de `obtener_detalle_causa` es otra cosa y puede venir vacío en una causa que sí tuvo diligencias. En las demás no existen.",
             "title": "Competencia",
             "type": "string"
           },
@@ -903,7 +903,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol. En civil: C, V, E, A, F o I. En apelaciones, penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I y en cobranza A C D E J L P R, medidas. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },
@@ -1181,7 +1181,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.\n\nRecorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y con una\nsola cadena de peticiones. Preferirla antes que pedir paneles por separado: vienen todos\njuntos y separarlos multiplica las consultas sin traer nada nuevo.\n\nNO es el expediente completo: publica más paneles de los que este servidor sabe leer. Los\nescritos no están medidos, así que su ausencia acá NO significa que la causa no los tenga.\n\nCada campo distingue tres estados y hay que respetarlos al informar:\n\n- NULO: esta competencia no publica ese panel. La pregunta no tiene respuesta acá.\n- Lista vacía: el panel existe y no trae filas. Es una respuesta. `litigantes` y `materias`\n  nunca vienen así: una causa sin partes, o laboral sin materia, no existe, y ahí se\n  levanta un error.\n- Con elementos: lo que hay.\n\n`piezas_exhorto` no se rige por eso: su panel sólo existe en las causas que SON un exhorto,\nasí que en nulo hay que mirar `causa_es_exhorto` para saber si es porque la causa no lo es\no porque la competencia no tiene medida la pregunta.\n\nAl computar plazos: `fecha_diligencia` de la historia viene en nulo salvo en civil y\ncobranza, y las notificaciones incluyen las NO practicadas, distinguibles por su `estado`.\n\nLas liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el\nhistorial. Sumarlas informa una deuda inflada varias veces.\n\nTrae datos personales de terceros: RUT de los litigantes, el nombre de quien figura a cargo\nde las diligencias de cobranza, y el RUT y el nombre de a quién se le paga en la\nliquidación laboral.\n\nY si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente y sus\nactuaciones NO están acá. `causa_de_origen` es la misma arista hacia abajo: la causa de la\nCorte desde la que subió el recurso, y sólo suprema la publica. Las dos nombran el tribunal\no la corte en palabras, así que hay que resolver el código con `listar_tribunales` o\n`listar_cortes`.\n",
+      "description": "Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.\n\nRecorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y con una\nsola cadena de peticiones. Preferirla antes que pedir paneles por separado: vienen todos\njuntos y separarlos multiplica las consultas sin traer nada nuevo.\n\nNO es el expediente completo: publica más paneles de los que este servidor sabe leer. Los\nescritos no están medidos, así que su ausencia acá NO significa que la causa no los tenga.\n\nCada campo distingue tres estados y hay que respetarlos al informar:\n\n- NULO: esta competencia no publica ese panel. La pregunta no tiene respuesta acá.\n- Lista vacía: el panel existe y no trae filas. Es una respuesta. `litigantes` y `materias`\n  nunca vienen así: una causa sin partes, o laboral sin materia, no existe, y ahí se\n  levanta un error.\n- Con elementos: lo que hay.\n\n`piezas_exhorto` no se rige por eso: su panel sólo existe en las causas que SON un exhorto,\nasí que en nulo hay que mirar `causa_es_exhorto`. Y si ÉSE también viene nulo, cosa que\npasa fuera de civil, la pregunta no está medida ahí.\n\nAl computar plazos: `fecha_diligencia` trae dato SÓLO en civil; en cobranza el sitio no\npublica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su\n`estado` distingue.\n\nLas liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el\nhistorial. Sumarlas informa una deuda inflada.\n\nTrae datos personales de terceros: el RUT y el nombre de los litigantes y de a quién se le\npaga una liquidación laboral, y SÓLO el nombre de quien figura a cargo de una diligencia.\n\nY si `exhortos` trae algo, parte de la tramitación ocurre en OTRO expediente y sus\nactuaciones NO están acá. `causa_de_origen` es la misma arista hacia abajo: la causa de la\nCorte desde la que subió el recurso, y sólo suprema la publica. Las dos nombran el tribunal\no la corte en palabras, así que hay que resolver el código con `listar_tribunales` o\n`listar_cortes`.\n",
       "inputSchema": {
         "properties": {
           "anio": {
@@ -1217,7 +1217,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol. En civil: C, V, E, A, F o I. En apelaciones, penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I y en cobranza A C D E J L P R, medidas. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },

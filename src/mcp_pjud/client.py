@@ -273,6 +273,19 @@ _VOLATILES = {"referencia", "documento_referencia"}
 #: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
 #: actuaciones no vivían donde el código creía.
 MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
+
+#: El único valor de `tipo` medido en penal, y su significado. La descripción del parámetro lo
+#: cita: el comentario de arriba dice que con el NOMBRE del libro el listado vuelve vacío, así
+#: que decirle a alguien que mande "Ordinaria" convierte una causa que existe en un falso
+#: negativo. Vive acá para que la prosa salga de la medición y no al revés.
+TIPO_PENAL_MEDIDO = "1"
+
+#: Las letras de rol medidas en cobranza, sobre el tribunal 1332 el 20 de agosto de 2026. La
+#: descripción del parámetro las cita: decir "una letra" sin decir cuáles obliga a adivinar, y
+#: una letra equivocada devuelve un listado vacío, o sea una causa que existe informada como
+#: inexistente.
+TIPOS_MEDIDOS_EN_COBRANZA = "A C D E J L P R"
+LIBRO_DEL_TIPO_PENAL_MEDIDO = "Ordinaria"
 #: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
 #: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.
 CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")
@@ -1369,6 +1382,20 @@ class PjudClient(Transporte):
                 # Esa respuesta viene sin navegación y sin total, así que hay que
                 # reconocerla antes de exigir esos datos. Una búsqueda legítima sin
                 # coincidencias no es un cambio de estructura.
+                #
+                # Pero eso vale en la PRIMERA página. A mitad del recorrido significa otra
+                # cosa: la plataforma ya declaró cuántas hay y de golpe contesta que no hay
+                # ninguna, así que lo acumulado está incompleto. Devolverlo callando es lo
+                # mismo que el resto de esta función existe para impedir: una lista parcial
+                # que se lee como completa.
+                if total is not None and len(acumuladas) != total:
+                    raise EstructuraInesperada(
+                        f"La plataforma declaró {total} resultados y en la página {numero} "
+                        f"respondió que no hay ninguno, con {len(acumuladas)} recuperados. "
+                        "Puede ser un identificador de página vencido o un cambio de "
+                        "estructura. No se devuelve la lista parcial porque se leería como "
+                        "completa."
+                    )
                 return acumuladas
 
             acumuladas.extend(parse_resultados(html_, competencia))
@@ -1857,7 +1884,7 @@ class PjudClient(Transporte):
                 "nomNombreJur": "",
                 "nomEraJur": "",
                 "nomCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
-                "nomTribunal": str(tribunal),
+                "nomTribunal": str(tribunal or 0),
                 "corteNom": str(corte or 0),
             },
             paginas,
@@ -1890,7 +1917,7 @@ class PjudClient(Transporte):
                 "dvJur": str(digito_verificador).upper(),
                 "eraJur": str(anio) if anio else "",
                 "jurCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
-                "jurTribunal": str(tribunal),
+                "jurTribunal": str(tribunal or 0),
                 "corteJur": str(corte or 0),
             },
             paginas,
@@ -1921,7 +1948,7 @@ class PjudClient(Transporte):
                 "fecDesde": desde,
                 "fecHasta": hasta,
                 "fecCompetencia": str(COMPETENCIAS[competencia.lower()].codigo),
-                "fecTribunal": str(tribunal),
+                "fecTribunal": str(tribunal or 0),
                 "corteFec": str(corte or 0),
             },
             paginas,

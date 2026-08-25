@@ -155,7 +155,8 @@ NOTIFICACIONES_LABORAL = Notificaciones(
 )
 
 
-#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#: La de cobranza, medida sobre `C-208-2019`. Laboral publica el mismo panel con su
+#: propio mapa: éste NO se lee en otra competencia.
 #:
 #: Responde la pregunta que da sentido a un juicio de cobro y que hasta ahora no se contestaba:
 #: cuánto se debe y a qué fecha. La causa medida trae tres liquidaciones sucesivas, de
@@ -173,7 +174,8 @@ LIQUIDACIONES_COBRANZA = Liquidaciones(
 )
 
 
-#: La de cobranza, medida sobre `C-208-2019`. Es la única competencia que la publica.
+#: La de cobranza, medida sobre `C-208-2019`. Laboral publica el mismo panel con su
+#: propio mapa: éste NO se lee en otra competencia.
 #:
 #: Es donde cobranza guarda de verdad las diligencias del ministro de fe: su Historia nombra
 #: tres filas `Actuacion - Receptor` y ninguna trae fecha de diligencia, así que leerlas de ahí
@@ -945,6 +947,35 @@ def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _no_agrega_nada_a_la_anterior(fila: Actuacion, anterior: Actuacion) -> bool:
+    """Si esta fila es la anterior otra vez, sin nada propio que la anterior no tenga ya.
+
+    En cobranza la plataforma repite algunas filas de la Historia. Medido campo por campo
+    sobre la respuesta real, la repetición del folio 68 contra su original:
+
+        etapa:       'Excepciones / Objeta Liquidación'  ->  ''
+        tramite:     'Resolución'                        ->  ''
+        documento:   sí, con ruta y referencia           ->  ninguno
+
+    O sea no es una copia idéntica: es una versión empobrecida. De 80 filas, 9 son esto, y el
+    folio 5 aparece tres veces. Entregarlas como actuaciones distintas infla el panel del que
+    cuelgan los plazos, y una fila con el trámite en blanco tampoco puede reconocerse como
+    actuación de receptor: ese filtro la pierde.
+
+    Por eso la regla no es "se parece" sino "no agrega nada": mismo folio y misma descripción,
+    y CADA uno de sus campos o está vacío o vale lo mismo que en la anterior. Una fila que
+    difiera en la fecha, el estado o el documento trae algo propio y se conserva, aunque
+    comparta folio y descripción.
+
+    La condición floja tampoco sirve: en civil hay cinco filas legítimas sin trámite, medidas
+    en tres fixtures, y mirar sólo eso las habría borrado.
+    """
+    if fila.folio != anterior.folio or fila.desc_tramite != anterior.desc_tramite:
+        return False
+    previos = anterior.model_dump()
+    return all(not valor or valor == previos[campo] for campo, valor in fila.model_dump().items())
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -956,10 +987,12 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    actuaciones = [
-        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
-        for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
-    ]
+    actuaciones: list[Actuacion] = []
+    for celdas, _ in _filas_del_panel(html_detalle, spec.historia):
+        fila = _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        if actuaciones and _no_agrega_nada_a_la_anterior(fila, actuaciones[-1]):
+            continue
+        actuaciones.append(fila)
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el
@@ -1154,7 +1187,7 @@ def _monto(txt: str) -> int | None:
 
 
 class Liquidacion(BaseModel):
-    """Una liquidación del crédito en un juicio de cobranza.
+    """Una liquidación del crédito. La publican cobranza y laboral.
 
     Una causa acumula liquidaciones sucesivas: la MÁS RECIENTE es la vigente y las anteriores
     son el historial. NO se suman. La causa medida fue de $4.481.885 en 2019 a $24.563.365 en
@@ -1196,8 +1229,21 @@ class Liquidacion(BaseModel):
     )
 
 
+def _las_que_publican(panel: str) -> str:
+    """Qué competencias publican un panel, sacado de `COMPETENCIAS` y no escrito al lado.
+
+    Los mensajes de "esta competencia no lo publica" enumeraban a mano quién sí, y uno de
+    ellos ya se había separado de su fuente: decía "sólo cobranza" de un panel que laboral
+    también publica, mientras la docstring de la misma función ya nombraba a las dos.
+    """
+    publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
+    if len(publican) < 2:
+        return f"sólo {''.join(publican)}"
+    return f"{', '.join(publican[:-1])} y {publican[-1]}"
+
+
 def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> list[Liquidacion]:
-    """Las liquidaciones del crédito. Sólo cobranza las publica.
+    """Las liquidaciones del crédito. Las publican cobranza y laboral.
 
     Una causa puede no tener ninguna liquidada todavía, así que la lista vacía es una respuesta
     legítima y no un fallo.
@@ -1229,11 +1275,11 @@ def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> lis
 
 
 class Diligencia(BaseModel):
-    """Una diligencia del ministro de fe en un juicio de cobranza.
+    """Una diligencia del ministro de fe. La publican cobranza y laboral.
 
-    Es el panel donde cobranza las guarda de verdad. Su tabla de Historia nombra algunas como
-    `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha de diligencia: leerlas
-    de ahí daría una lista parcial y sin el dato que se busca.
+    En cobranza es el panel donde se guardan de verdad: su tabla de Historia nombra algunas
+    como `Actuacion - Receptor`, sin tilde y con guion, y ninguna trae fecha de diligencia,
+    así que leerlas de ahí daría una lista parcial y sin el dato que se busca.
 
     No es una `Actuacion` y no se puede tratar como tal. Una actuación de civil trae la fecha
     doble que corre los plazos; acá el sitio publica una sola columna de fecha, y en la fila
@@ -1302,17 +1348,21 @@ class Diligencia(BaseModel):
 
 
 def parse_diligencias(html_detalle: str, competencia: str = "cobranza") -> list[Diligencia]:
-    """Las diligencias del ministro de fe. Sólo cobranza las publica en un panel propio.
+    """Las diligencias del ministro de fe. Las publican cobranza y laboral en un panel propio.
 
     Una causa puede no tener ninguna, así que la lista vacía es una respuesta legítima y no un
     fallo: de cinco causas de cobranza medidas, sólo una trae filas acá.
     """
     spec = COMPETENCIAS[competencia.lower()]
     if spec.diligencias is None:
+        # Quiénes lo publican sale de `COMPETENCIAS` y no escrito acá: este mensaje decía
+        # "sólo cobranza" mientras la docstring de arriba ya nombraba a las dos, o sea el
+        # error contradecía a la función que lo levanta.
         raise EstructuraInesperada(
             f"La competencia {competencia!r} no publica el panel de diligencias del ministro "
-            "de fe: sólo cobranza lo tiene medido. Leerlo en otra devolvería una lista vacía, "
-            "que se leería como que no se practicó ninguna diligencia."
+            f"de fe: lo tienen medido {_las_que_publican('diligencias')}. Leerlo en otra "
+            "devolvería una lista vacía, que se leería como que no se practicó ninguna "
+            "diligencia."
         )
 
     columnas = spec.diligencias.columnas
@@ -1938,15 +1988,27 @@ def parse_georreferencia(html_modal: str) -> Georreferencia:
             "una fecha. Se levanta en vez de entregarla en nulo, porque un nulo se leería como "
             "que el sitio no la publica y esta es la única fecha con hora del proyecto."
         )
-    return Georreferencia(
-        existe=True,
-        latitud=float(valores["latitud"]),
-        longitud=float(valores["longitud"]),
-        precision_metros=float(precision.replace(",", ".")),
-        fecha_dispositivo=dia,
-        hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
-        intentos=int(intentos),
-    )
+    # Los números y la hora, traducidos a `EstructuraInesperada` como ya se hace tres líneas
+    # más arriba con la fecha. Sin esto salían crudos: `float` revienta con un separador de
+    # miles ('1.234,56' queda en '1.234.56') y `time` con una hora fuera de rango, y un
+    # `ValueError` desde acá no dice qué panel cambió ni que la lectura se abandonó.
+    try:
+        return Georreferencia(
+            existe=True,
+            latitud=float(valores["latitud"]),
+            longitud=float(valores["longitud"]),
+            precision_metros=float(precision.replace(",", ".")),
+            fecha_dispositivo=dia,
+            hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
+            intentos=int(intentos),
+        )
+    except ValueError as mal:
+        raise EstructuraInesperada(
+            f"El panel de georreferencia trae un valor que no se pudo leer ({mal}): "
+            f"latitud={valores['latitud']!r}, longitud={valores['longitud']!r}, "
+            f"precisión={precision!r}, hora={hora!r}, intentos={intentos!r}. Se levanta en "
+            "vez de entregar la ubicación a medias, que se leería como medida."
+        ) from mal
 
 
 class Anexo(BaseModel):
@@ -2258,9 +2320,9 @@ def parse_causas_agregadas(html_detalle: str, competencia: str = "suprema") -> l
     spec = COMPETENCIAS[competencia.lower()]
     if spec.causas_agregadas is None:
         raise EstructuraInesperada(
-            f"La competencia {competencia!r} no publica el panel de causas agregadas: sólo "
-            "suprema lo tiene. Leerlo en otra devolvería una lista vacía, que se leería como "
-            "que esta causa no tiene ninguna agregada."
+            f"La competencia {competencia!r} no publica el panel de causas agregadas: lo "
+            f"tiene {_las_que_publican('causas_agregadas')}. Leerlo en otra devolvería una "
+            "lista vacía, que se leería como que esta causa no tiene ninguna agregada."
         )
     columnas = spec.causas_agregadas.columnas
     agregadas = []
@@ -2324,9 +2386,9 @@ def parse_materias(html_detalle: str, competencia: str = "laboral") -> list[Mate
     spec = COMPETENCIAS[competencia.lower()]
     if spec.materias is None:
         raise EstructuraInesperada(
-            f"La competencia {competencia!r} no publica materias: sólo laboral tiene el panel. "
-            "Leerlo en otra devolvería una lista vacía, que se leería como que la causa no "
-            "tiene materias."
+            f"La competencia {competencia!r} no publica materias: tiene el panel "
+            f"{_las_que_publican('materias')}. Leerlo en otra devolvería una lista vacía, que "
+            "se leería como que la causa no tiene materias."
         )
     materias = [
         Materia(
@@ -2418,13 +2480,14 @@ class DetalleCausa(BaseModel):
     )
     liquidaciones: list[Liquidacion] | None = Field(
         default=None,
-        description="Cuánto se debe y a qué fecha. Sólo cobranza liquida el crédito.",
+        description="Cuánto se debe y a qué fecha. Lo publican cobranza y laboral.",
     )
     diligencias: list[Diligencia] | None = Field(
         default=None,
         description="Diligencias del ministro de fe, con su estado y quién figura a cargo. "
-        "Sólo cobranza publica el panel, y su fecha NO es la que corre los plazos: en la fila "
-        "medida el sitio imprime el valor cero, que se entrega en nulo.",
+        "Lo publican cobranza y laboral. En la fila de cobranza medida su fecha NO es la que "
+        "corre los plazos: el sitio imprime el valor cero y se entrega en nulo. En laboral no "
+        "está medida.",
     )
     materias: list[Materia] | None = Field(
         default=None, description="Qué se litiga. Sólo laboral publica el panel."
@@ -2950,8 +3013,17 @@ def leer_aviso(html_respuesta: str) -> str | None:
     m = _AVISO.search(html_respuesta)
     if not m:
         return None
-    # El aviso viene con las tildes escapadas al estilo de JavaScript.
-    return m.group(1).encode("utf-8").decode("unicode_escape")
+    # El aviso viene con las tildes escapadas al estilo de JavaScript. Se traducen SÓLO las
+    # secuencias bien formadas, en vez de pasar la cadena entera por `unicode_escape`, que
+    # tiene dos modos de falla medidos: con una tilde literal devuelve mojibake
+    # ('bÃºsqueda'), y con una secuencia truncada levanta `UnicodeDecodeError` crudo. Ese
+    # error saldría desde `_bloqueo_encubierto`, que mira TODAS las respuestas, así que un
+    # aviso mal formado tumbaría la petición sin clasificarse como nada.
+    return _ESCAPE_JS.sub(lambda e: chr(int(e.group(1), 16)), m.group(1))
+
+
+#: Una secuencia `\uXXXX` bien formada, que es como el sitio escapa las tildes de sus avisos.
+_ESCAPE_JS = re.compile(r"\\u([0-9a-fA-F]{4})")
 
 
 def es_aviso_de_captcha(mensaje: str) -> bool:

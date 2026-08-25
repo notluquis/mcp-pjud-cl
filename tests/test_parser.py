@@ -21,6 +21,7 @@ from mcp_pjud.parser import (
     actuaciones_receptor,
     audio_de_la_causa,
     causa_es_exhorto,
+    leer_aviso,
     parse_anexos,
     parse_audios,
     parse_causa_de_origen,
@@ -199,6 +200,145 @@ def test_fecha_imposible_no_revienta_la_fila():
 
 
 # --- fallo ruidoso: nunca devolver vacío ante estructura desconocida -------------
+
+
+def test_el_aviso_con_tilde_literal_no_se_degrada_ni_revienta():
+    """`unicode_escape` sobre la cadena entera tiene dos modos de falla medidos.
+
+    Con una tilde literal devolvía mojibake ('bÃºsqueda'), que es el texto que le llega a quien
+    lee el aviso. Con una secuencia truncada levantaba `UnicodeDecodeError` crudo, y eso sale
+    desde el camino que mira TODAS las respuestas: un aviso mal formado tumbaba la petición sin
+    clasificarse como nada.
+
+    Ahora se traducen sólo las secuencias bien formadas, que es lo que el sitio emite.
+    """
+    escapado = 'swal("","Corte para la b' + chr(92) + 'u00fasqueda","warning")'
+    literal = 'swal("","Corte para la búsqueda","warning")'
+    truncado = 'swal("","Rol invalido: C:' + chr(92) + 'u12 x","warning")'
+
+    assert leer_aviso(escapado) == "Corte para la búsqueda"
+    assert leer_aviso(literal) == "Corte para la búsqueda", (
+        "una tilde literal se degrada a mojibake antes de llegar a quien lee el aviso"
+    )
+    assert leer_aviso(truncado) is not None, (
+        "una secuencia truncada levanta desde el camino que mira todas las respuestas"
+    )
+
+
+def test_una_georreferencia_ilegible_se_levanta_clasificada():
+    """`float` y `time` salían crudos donde la fecha, tres líneas más arriba, sí se traducía.
+
+    Un `ValueError` desde acá no dice qué panel cambió ni que la lectura se abandonó, y este
+    módulo entero existe para que un cambio del sitio se note. El caso: una precisión sobre
+    mil metros con separador de miles, donde `float('1.234.56')` revienta.
+    """
+    with pytest.raises(EstructuraInesperada, match="no se pudo leer"):
+        parse_georreferencia(GEO.replace("26.68", "1.234,56", 1))
+
+    with pytest.raises(EstructuraInesperada, match="no se pudo leer"):
+        parse_georreferencia(GEO.replace("10:34", "25:99", 1))
+
+
+def test_la_historia_no_repite_el_mismo_tramite_dos_veces():
+    """En cobranza el sitio emite algunas filas dos veces, con etapa y trámite en blanco.
+
+    Medido sobre la respuesta real: la tabla trae 80 filas para 71 folios, y el folio 5 aparece
+    tres veces. Cada repetición traía el mismo `desc_tramite`, el mismo estado y la misma
+    fecha, o sea es el mismo trámite y no uno nuevo.
+
+    Entregarlas como actuaciones distintas infla el panel del que cuelgan los plazos. Y una
+    fila con el trámite en blanco tampoco puede reconocerse como actuación de receptor, así
+    que ese filtro la pierde en silencio.
+    """
+    from collections import Counter
+
+    historia = parse_historia(
+        (FIXTURES / "detalle_cobranza.html").read_text(encoding="utf-8"), "Principal", "cobranza"
+    )
+
+    repetidos = {f: n for f, n in Counter(a.folio for a in historia).items() if n > 1}
+    assert not repetidos, f"la historia entrega el mismo folio más de una vez: {repetidos}"
+    assert len(historia) == 71, (
+        f"la historia trae {len(historia)} filas y los folios de esta causa llegan hasta 71: "
+        "sobra o falta alguna"
+    )
+
+
+def test_con_el_mismo_folio_y_la_misma_descripcion_basta_un_dato_propio_para_conservarla():
+    """La condición que ninguna fixture ejercita, probada sobre el predicado.
+
+    Las repeticiones medidas vienen empobrecidas: pierden etapa, trámite y documento. Pero la
+    regla tiene que sostenerse también si el sitio emitiera dos filas con el mismo folio y la
+    misma descripción donde la segunda trae algo propio: ahí no es una repetición y borrarla
+    perdería una actuación. Sin este test esa mitad de la regla no la mira nadie.
+    """
+    from datetime import date
+
+    from mcp_pjud.parser import Actuacion, _no_agrega_nada_a_la_anterior
+
+    def fila(**cambios) -> Actuacion:
+        base = {
+            "folio": "12",
+            "etapa": "",
+            "tramite": "",
+            "desc_tramite": "Téngase presente",
+            "georreferenciado": False,
+            "tiene_documento": False,
+        }
+        return Actuacion(**{**base, **cambios})
+
+    primera = fila(etapa="Cumplimiento", tramite="Resolución", fecha_registro=date(2026, 3, 31))
+    vacia = fila()
+    con_fecha_propia = fila(fecha_registro=date(2026, 4, 1))
+    con_documento = fila(fecha_registro=date(2026, 3, 31), tiene_documento=True)
+
+    assert _no_agrega_nada_a_la_anterior(vacia, primera), (
+        "la fila empobrecida es la repetición medida y tiene que descartarse"
+    )
+    assert not _no_agrega_nada_a_la_anterior(con_fecha_propia, primera), (
+        "una fila con OTRA fecha de registro trae algo propio: descartarla pierde una actuación"
+    )
+    assert not _no_agrega_nada_a_la_anterior(con_documento, primera), (
+        "una fila que sí ofrece documento trae algo propio"
+    )
+
+
+def test_una_fila_que_trae_algo_propio_se_conserva_aunque_repita_el_folio():
+    """El riesgo del arreglo de arriba es borrar una actuación legítima, y la fixture lo tiene.
+
+    En `c1156_principal` el folio 6 aparece dos veces y la segunda TAMBIÉN viene con etapa y
+    trámite en blanco y sin documento. No es una repetición: su `desc_tramite` es otro
+    ("Ordena despachar mandamiento" contra "Exhórtese"), o sea son dos trámites distintos bajo
+    el mismo folio. Borrarla perdería una actuación de la causa.
+
+    Por eso la regla no es "se parece a la anterior" sino "no agrega nada": mismo folio, misma
+    descripción, y cada campo o vacío o igual al de arriba.
+    """
+    historia = parse_historia(
+        (FIXTURES / "c1156_principal.html").read_text(encoding="utf-8"), "P", "civil"
+    )
+
+    seis = [a for a in historia if a.folio == "6"]
+    assert len(seis) == 2, (
+        f"el folio 6 de esta causa son dos trámites distintos y quedaron {len(seis)}"
+    )
+    assert {a.desc_tramite for a in seis} == {"Exhórtese", "Ordena despachar mandamiento"}, (
+        f"se perdió uno de los dos trámites del folio 6: {[a.desc_tramite for a in seis]}"
+    )
+
+    sin_tramite = 0
+    for nombre in (
+        "c1156_principal.html",
+        "c1156_apremio.html",
+        "detalle_civil_notificaciones.html",
+    ):
+        filas = parse_historia((FIXTURES / nombre).read_text(encoding="utf-8"), "X", "civil")
+        sin_tramite += sum(1 for a in filas if not a.tramite.strip())
+
+    assert sin_tramite == 5, (
+        f"se conservan {sin_tramite} filas civiles sin trámite y las medidas son cinco: si "
+        "bajó, el filtro de repetidas se está llevando actuaciones legítimas"
+    )
 
 
 def test_sin_panel_historia_levanta_excepcion():

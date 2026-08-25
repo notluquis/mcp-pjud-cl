@@ -1092,6 +1092,40 @@ def test_cual_llega_hasta_el_buscador_por_el_protocolo(monkeypatch: pytest.Monke
     )
 
 
+def test_un_pdf_que_si_se_abrio_no_dice_que_no_se_pudo_abrir():
+    """Hay DOS caminos al nulo de `capa_de_texto` y el resumen contemplaba uno.
+
+    El otro: el archivo se abrió (se contaron sus páginas), ninguna de las legibles trajo
+    texto y al menos una no se dejó leer. Ahí decir "NO se pudo abrir (None)" es falso sobre
+    lo que pasó, y el paréntesis imprimía literalmente `None` porque no hay problema al leer
+    que nombrar.
+
+    Caso típico: un escaneo de doscientas páginas con una fuente rota en la quinta.
+    """
+    from mcp_pjud.client import Documento
+    from mcp_pjud.server import _resumen
+
+    doc = Documento(
+        competencia="civil",
+        ruta="documentos",
+        tipo_mime="application/pdf",
+        tamano_bytes=1024,
+        paginas=200,
+        paginas_con_texto=0,
+        paginas_ilegibles=1,
+        capa_de_texto=None,
+        problema_al_leer=None,
+    )
+
+    dicho = _resumen(doc, embebido=True)
+
+    assert "None" not in dicho, f"el resumen imprime la repr de un nulo: {dicho}"
+    assert "no se pudo abrir" not in dicho.lower(), (
+        f"dice que no se pudo abrir un archivo del que se contaron 200 páginas: {dicho}"
+    )
+    assert "no se sabe" in dicho, f"y tiene que seguir diciendo que no se sabe: {dicho}"
+    assert "ESCANEO" not in dicho, f"tampoco puede afirmar que sea un escaneo: {dicho}"
+
 def test_un_escaneo_se_declara_en_palabras_y_no_se_transcribe(monkeypatch: pytest.MonkeyPatch):
     """Lo que el modelo lee del sobre es el bloque de texto, así que el veredicto tiene que
     estar ahí y no sólo en un campo.

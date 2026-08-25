@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- `obtener_texto_sentencia` elegía en silencio cuando un rol trae más de una sentencia, y
+  podía devolver la de reemplazo (que confirma en una línea) en vez de la de casación (que
+  trae el razonamiento). Ahora se detiene, las enumera y hay que elegir con `cual`.
+
 ## [0.16.0] - 2026-08-24
 
 ### Agregado

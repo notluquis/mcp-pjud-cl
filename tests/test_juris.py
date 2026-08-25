@@ -614,6 +614,58 @@ def test_el_texto_no_viaja_en_la_busqueda(monkeypatch):
     assert s.paginas == 13
 
 
+def _con_dos_sentencias() -> str:
+    """La misma respuesta con DOS documentos bajo el mismo rol.
+
+    Sintético y dicho: las fixtures guardadas traen una sola. Lo que se sintetiza es la
+    segunda fila, copiada de la primera con su resultado y su extensión cambiados, que es la
+    forma medida en suprema: la casación de 3.646 palabras y la de reemplazo de 157.
+    """
+    d = json.loads(CITA)
+    primera = d["response"]["docs"][0]
+    primera["texto_sentencia"] = "Casación: considerando primero."
+    primera["sent__word_count_i"] = 3646
+    segunda = dict(primera)
+    segunda["resultado_recurso_sup_s"] = "Sentencia de reemplazo"
+    segunda["texto_sentencia"] = "Se confirma."
+    segunda["sent__word_count_i"] = 157
+    d["response"]["docs"] = [primera, segunda]
+    d["response"]["numFound"] = 2
+    return json.dumps(d, ensure_ascii=False)
+
+
+def test_un_rol_con_dos_sentencias_no_se_resuelve_eligiendo_una(monkeypatch):
+    """Medido en suprema, rol 1933-2025: la casación trae 3.646 palabras con el razonamiento y
+    la de reemplazo 157 que sólo confirman.
+
+    Con `filas=1` el buscador elegía, y devolvió la de 157 sin decir que existía otra. Quien
+    verifique una cita se lleva un documento que se ve correcto y no contiene la doctrina.
+    Es la misma decisión que ante dos causas homónimas: no se elige.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_dos_sentencias())
+
+    with pytest.raises(ValueError, match="hay que decir cuál") as caida:
+        c.texto(rol=1933, anio=2025)
+
+    # Y el mensaje enumera con qué elegir, no sólo avisa que hay dos.
+    dicho = str(caida.value)
+    assert "3646 palabras" in dicho, f"el mensaje no dice la extensión de la primera: {dicho}"
+    assert "157 palabras" in dicho, f"el mensaje no dice la extensión de la segunda: {dicho}"
+
+
+def test_con_cual_se_entrega_la_sentencia_que_se_pidio(monkeypatch):
+    """Y la segunda no es la primera: si el índice se ignorara, las dos devolverían lo mismo."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c = _con_respuesta(_con_dos_sentencias())
+
+    assert "Casación" in c.texto(rol=1933, anio=2025, cual=1).texto
+    assert c.texto(rol=1933, anio=2025, cual=2).texto == "Se confirma."
+
+    with pytest.raises(ValueError, match="entrega 2"):
+        c.texto(rol=1933, anio=2025, cual=3)
+
+
 def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):
     """`texto` resuelve con una búsqueda, y el rol o el año se podían perder en el camino.
 
@@ -638,7 +690,9 @@ def test_el_texto_se_pide_por_el_rol_y_el_anio_que_se_dieron(monkeypatch):
     # El diccionario entero y no campo por campo: así también cae un argumento de más, y el
     # buscador, que es el otro camino por el que la respuesta puede venir de otro corpus.
     assert len(pedidos) == 1, "una sola búsqueda: el texto viene en la misma respuesta"
-    assert pedidos[0] == {"rol": 34546, "anio": 2025, "filas": 1, "buscador": "suprema"}
+    # `filas: 2` y no 1: con una sola, un rol con dos sentencias dejaba que el buscador
+    # eligiera cuál. Lo que este test cuida sigue siendo que el rol y el año viajen.
+    assert pedidos[0] == {"rol": 34546, "anio": 2025, "filas": 2, "buscador": "suprema"}
 
     # Y con otro buscador, para que fijar el nombre en el código no pase por bueno: con la
     # sesión en suprema, un `buscador` perdido acá devuelve el texto del corpus equivocado.

@@ -701,7 +701,9 @@ class JurisClient(Transporte):
         ).text
         return parse_sentencias(self._ultima_respuesta, buscador, desplazamiento)
 
-    def texto(self, *, rol: int, anio: int, buscador: str = "suprema") -> TextoSentencia:
+    def texto(
+        self, *, rol: int, anio: int, buscador: str = "suprema", cual: int | None = None
+    ) -> TextoSentencia:
         """El texto completo de una sentencia, de una en una.
 
         Se resuelve con la misma búsqueda por rol y año: el buscador ya devuelve el texto en
@@ -712,7 +714,12 @@ class JurisClient(Transporte):
         personas naturales suprimidos por el propio tribunal, y se dice cuál de los dos
         campos se entregó.
         """
-        r = self.buscar(rol=rol, anio=anio, filas=1, buscador=buscador)
+        # Dos filas y no una: un mismo rol puede traer más de una sentencia (en suprema, la
+        # de casación y la de reemplazo), y con una sola el buscador elegía por nosotros. Se
+        # piden dos para poder DETECTAR que hay más, no para traerlas todas: cada documento
+        # arrastra el texto completo, y una sentencia de trece páginas son veinticinco mil
+        # caracteres.
+        r = self.buscar(rol=rol, anio=anio, filas=max(2, cual or 0), buscador=buscador)
         if not r.sentencias:
             if r.ocultas:
                 raise PlataformaRechaza(
@@ -732,13 +739,37 @@ class JurisClient(Transporte):
                 "reservada. El rol puede estar equivocado o pertenecer a otro buscador."
             )
 
+        # Más de una bajo el mismo rol: NO se elige. Medido en suprema, rol 1933-2025, que
+        # trae la casación de 3.646 palabras con la doctrina y la de reemplazo de 157 que sólo
+        # confirma. Entregar la segunda como si fuera "la sentencia" devuelve un documento que
+        # se ve correcto y no contiene el razonamiento que se fue a buscar.
+        if len(r.sentencias) > 1 and cual is None:
+            cuales = "; ".join(
+                f"{i}: {s.resultado_recurso or s.tipo_recurso or 'sin rótulo'}"
+                f" ({s.palabras} palabras)"
+                for i, s in enumerate(r.sentencias, 1)
+            )
+            raise ValueError(
+                f"El rol {rol}-{anio} tiene {r.visibles} sentencias en {buscador} y esta "
+                f"herramienta entrega una: hay que decir cuál en `cual`. Son: {cuales}. No se "
+                "elige por ti: la de reemplazo confirma en una línea y la de casación trae el "
+                "razonamiento, y la equivocada se ve igual de válida."
+            )
+
+        indice = (cual or 1) - 1
+        if indice >= len(r.sentencias):
+            raise ValueError(
+                f"Se pidió la sentencia número {cual} del rol {rol}-{anio} y el buscador "
+                f"entrega {len(r.sentencias)}."
+            )
+
         # El texto viene en la misma respuesta del listado, así que no hace falta otra
         # petición: se relee el cuerpo que `buscar` acaba de traer. `Sentencia` no lo lleva a
         # propósito, para que una búsqueda no arrastre veinticinco mil caracteres por fila.
         campos = BUSCADORES[buscador.lower()].campos
         docs = json.loads(self._ultima_respuesta or "{}").get("response", {}).get("docs", [])
-        crudo = docs[0] if docs else {}
-        s = r.sentencias[0]
+        crudo = docs[indice] if len(docs) > indice else {}
+        s = r.sentencias[indice]
         anon = s.anonimizada
         clave = campos["texto_anonimizado"] if anon else campos["texto"]
         texto = str(crudo.get(clave, "") or "")

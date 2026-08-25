@@ -1913,7 +1913,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "El texto completo de una sentencia, de una en una.\n\nSe pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son\nunos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en\npalabras y páginas, que suele bastar para decidir si vale pedir el resto.\n\nEl texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado\ntambién sus cédulas. `anonimizada` y `fuente` dicen qué versión se entregó. No reproducir\ndatos de personas naturales más allá de lo que la respuesta al usuario necesite.\n",
+      "description": "El texto completo de una sentencia, de una en una.\n\nUn mismo rol puede traer MÁS DE UNA sentencia: en suprema, la de casación con el\nrazonamiento y la de reemplazo, que confirma en una línea. Ahí esto se detiene en vez de\nelegir, porque la equivocada se ve igual de válida y no contiene la doctrina que se fue a\nbuscar.\n\nSe pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son\nunos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en\npalabras y páginas, que suele bastar para decidir si vale pedir el resto.\n\nEl texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado\ntambién sus cédulas. `anonimizada` y `fuente` dicen qué versión se entregó. No reproducir\ndatos de personas naturales más allá de lo que la respuesta al usuario necesite.\n",
       "inputSchema": {
         "properties": {
           "anio": {
@@ -1928,6 +1928,20 @@
             "description": "Uno de: apelaciones, civiles, cobranza, familia, laborales, salud, suprema.",
             "title": "Buscador",
             "type": "string"
+          },
+          "cual": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una: ahí la herramienta se detiene, las enumera con su resultado y su extensión, y hay que elegir.",
+            "title": "Cual"
           },
           "rol": {
             "description": "Rol de la sentencia, sin el año.",

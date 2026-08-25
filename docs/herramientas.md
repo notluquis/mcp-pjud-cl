@@ -846,6 +846,19 @@ El texto completo de una sentencia, de una en una.
 | `rol` | int | Rol de la sentencia, sin el año |
 | `anio` | int | Año del rol |
 | `buscador` | str | `suprema`, `apelaciones`, `laborales`, `civiles`, `cobranza`, `familia` o `salud` |
+| `cual` | int, opcional | Cuál de las sentencias del rol, empezando en 1. Sólo hace falta cuando el rol trae más de una |
+
+:::{warning}
+**Un rol puede tener más de una sentencia, y la equivocada se ve igual de válida.**
+
+Medido en suprema, rol 1933-2025: la de casación en el fondo son 3.646 palabras y trae el
+razonamiento; la de reemplazo son 157 y sólo confirma. Antes esta herramienta entregaba la que
+el buscador pusiera primero, y devolvió la de 157 sin decir que existía otra.
+
+Ahora se detiene, las enumera con su resultado y su extensión, y hay que elegir con `cual`. Es
+la misma decisión que en el detalle de causa ante dos causas homónimas: entregar una se vería
+perfectamente bien.
+:::
 
 Está separado de la búsqueda a propósito, y la razón es de tamaño: **una sentencia de trece
 páginas son unos 25.000 caracteres**, medido. Devolver diez con cada búsqueda serían 250.000.

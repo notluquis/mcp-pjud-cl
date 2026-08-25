@@ -1754,6 +1754,62 @@ def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
                 )
 
 
+def test_una_pagina_repetida_no_pasa_por_recorrido_completo(monkeypatch):
+    """El total declarado se alcanza igual si la plataforma re-sirve la página anterior.
+
+    Reproducido: dos páginas de 15 sobre un total de 30, la segunda repitiendo la primera. Lo
+    acumulado llega justo a 30 y el recorrido daba por completo un listado al que le faltan
+    las filas 16 a 30. La comprobación de que la página avanzó estaba DESPUÉS de ese retorno,
+    así que no llegaba a correr.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    fila = (
+        "<tr><td></td><td>C-%d-2020</td><td>01/01/2020</td><td>A / B</td><td>1er Juzgado</td>"
+        "<td><a onclick=\"detalleCausa('r%d')\">v</a></td></tr>"
+    )
+    nav = "<a href='#' onclick=\"paginaSig('p2')\">Siguiente</a>"
+    pagina = "".join(fila % (i, i) for i in range(1, 16)) + (
+        f"<tr><td colspan='5'><div>Total de registros: <b>30</b></div>{nav}</td></tr>"
+    )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=pagina))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="no está avanzando"):
+        c.buscar_por_nombre(apellido_paterno="A", apellido_materno="B", tribunal=162, paginas=3)
+
+
+def test_solo_se_juntan_las_busquedas_que_calzan_por_parte(monkeypatch):
+    """La repetición está medida en la búsqueda por nombre, que une por litigante.
+
+    Aplicarla a la de rol generaliza esa medición a otra búsqueda, y ahí tiene consecuencia:
+    `_causa_pedida` se niega a elegir contando cuántas filas calzan con el rol pedido, así que
+    juntarlas antes le sacaría el sustento y abriría una causa sin preguntar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    fila = (
+        "<tr><td></td><td>C-1-2020</td><td>01/01/2020</td><td>A / B</td><td>1er Juzgado</td>"
+        "<td><a onclick=\"detalleCausa('ref-%d')\">ver</a></td></tr>"
+    )
+    pagina = "".join(fila % i for i in (1, 2)) + (
+        "<tr><td colspan='5'><div>Total de registros: <b>2</b></div></td></tr>"
+    )
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=pagina))
+    )
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    assert len(c.buscar_por_rit("C", 1, 2020, tribunal=162, paginas=2)) == 2, (
+        "la búsqueda por rol juntó dos filas, y ahí la repetición no está medida: lo que se "
+        "pierde es con qué `_causa_pedida` se niega a elegir entre homónimas"
+    )
+
+
 def test_juntar_las_filas_repetidas_no_rompe_la_cuenta_de_la_plataforma(monkeypatch):
     """La plataforma declara cuántas FILAS hay, no cuántas causas.
 
@@ -1776,7 +1832,9 @@ def test_juntar_las_filas_repetidas_no_rompe_la_cuenta_de_la_plataforma(monkeypa
     )
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    causas = c.buscar_por_rit("C", 1, 2020, tribunal=162, paginas=2)
+    causas = c.buscar_por_nombre(
+        apellido_paterno="A", apellido_materno="B", tribunal=162, paginas=2
+    )
 
     assert len(causas) == 1, (
         f"tres filas de la misma causa tienen que salir como una, y salieron {len(causas)}"
@@ -1808,7 +1866,9 @@ def test_las_filas_de_una_causa_partidas_entre_paginas_tambien_se_juntan(monkeyp
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
 
-    causas = c.buscar_por_rit("C", 1, 2020, tribunal=162, paginas=3)
+    causas = c.buscar_por_nombre(
+        apellido_paterno="A", apellido_materno="B", tribunal=162, paginas=3
+    )
 
     assert len(causas) == 1, (
         f"la misma causa vino en dos páginas y salió {len(causas)} veces: juntar por página "

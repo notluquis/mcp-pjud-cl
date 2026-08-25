@@ -4068,6 +4068,31 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
             f"use tiene que adivinar. Dice: {dice!r}"
         )
 
+    # Y en penal, QUÉ va: `rol_con_libro` dice cómo se MUESTRA el rol y no qué se escribe para
+    # buscarlo. Está medido que con el nombre del libro el listado vuelve vacío, o sea decir
+    # "manda 'Ordinaria'" convierte una causa que existe en un falso negativo.
+    from mcp_pjud.client import LIBRO_DEL_TIPO_PENAL_MEDIDO, TIPO_PENAL_MEDIDO
+
+    assert "En penal" in dice, (
+        f"`tipo` dejó de decir aparte qué va en penal, así que vuelve a caer en la frase del "
+        f"libro por nombre, que ahí devuelve un listado vacío: {dice!r}"
+    )
+    penal = dice[dice.index("En penal") :]
+    assert TIPO_PENAL_MEDIDO in penal, (
+        f"`tipo` no dice cuál es el código que penal acepta, que es {TIPO_PENAL_MEDIDO!r}: "
+        f"{penal!r}"
+    )
+    assert "CÓDIGO" in penal, (
+        f"`tipo` no dice que en penal va un código y no el nombre del libro: {penal!r}"
+    )
+    assert "'Protección' o 'Exhorto'" not in penal, (
+        "los ejemplos de libro por nombre quedaron dentro de la frase de penal, donde el "
+        f"nombre devuelve un listado vacío: {penal!r}"
+    )
+    assert LIBRO_DEL_TIPO_PENAL_MEDIDO in penal, (
+        f"`tipo` no dice a qué libro corresponde ese código: {penal!r}"
+    )
+
 
 def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
     """Cuatro frases afirmaban "sólo cobranza" de paneles que laboral también publica.

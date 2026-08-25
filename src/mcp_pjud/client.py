@@ -273,6 +273,13 @@ _VOLATILES = {"referencia", "documento_referencia"}
 #: Es la misma separación que hizo falta en cobranza, donde la búsqueda andaba y las
 #: actuaciones no vivían donde el código creía.
 MODULOS: set[str] = {"civil", "laboral", "cobranza", "penal", "suprema", "apelaciones"}
+
+#: El único valor de `tipo` medido en penal, y su significado. La descripción del parámetro lo
+#: cita: el comentario de arriba dice que con el NOMBRE del libro el listado vuelve vacío, así
+#: que decirle a alguien que mande "Ordinaria" convierte una causa que existe en un falso
+#: negativo. Vive acá para que la prosa salga de la medición y no al revés.
+TIPO_PENAL_MEDIDO = "1"
+LIBRO_DEL_TIPO_PENAL_MEDIDO = "Ordinaria"
 #: Competencias cuyo parámetro de acotación ES el tribunal, o sea aquellas donde un listado de
 #: tribunales sirve para algo. Sale de la tabla y no de una lista escrita a mano.
 CON_TRIBUNAL = frozenset(n for n in MODULOS if COMPETENCIAS[n].acota_por == "tribunal")

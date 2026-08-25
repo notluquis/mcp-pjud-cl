@@ -24,7 +24,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - El detalle prometía `fecha_diligencia` en cobranza y ahí la plataforma no la publica: la
   frase mandaba a computar un plazo con un dato que nunca está.
 - `tipo` no decía qué va en cobranza ni en laboral, que son competencias aceptadas, y su
-  enumeración de las de libro se podía leer como una sola competencia.
+  enumeración de las de libro se podía leer como una sola competencia. Y mandaba a buscar en
+  penal con el nombre del libro, donde la plataforma exige el código y con el nombre devuelve
+  un listado vacío.
 - Cuando `piezas_exhorto` y `causa_es_exhorto` vienen los dos en nulo, la descripción ahora
   dice qué significa en vez de mandar a mirar un campo igual de nulo.
 

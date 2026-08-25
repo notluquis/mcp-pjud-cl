@@ -58,10 +58,12 @@ from .client import (
     EL_ROL_NO_BASTA,
     GEORREFERENCIA,
     INTERVALO_MINIMO,
+    LIBRO_DEL_TIPO_PENAL_MEDIDO,
     LIMITE_EMBEBIDO,
     MODULOS,
     PAGINAS_MAXIMAS,
     RAFAGA_MAXIMA,
+    TIPO_PENAL_MEDIDO,
     VERSION,
     Corte,
     Documento,
@@ -412,15 +414,22 @@ _SIN_TIPO = sorted(n for n in MODULOS if COMPETENCIAS[n].rol_sin_prefijo)
 #: y laboral, que son competencias aceptadas, y una sesión de prueba puso 'C' en cobranza
 #: adivinando. Acertó, que es el peor resultado: se repite hasta que falla.
 _CON_LETRA = sorted(set(MODULOS) - set(_CON_LIBRO) - set(_SIN_TIPO))
+
+#: Las que se buscan escribiendo el NOMBRE del libro. `rol_con_libro` dice cómo se MUESTRA el
+#: rol, no qué se escribe para buscarlo, y confundir las dos cosas mandaba a poner "Ordinaria"
+#: en penal, donde el listado vuelve vacío: una causa que existe informada como inexistente.
+_CON_LIBRO_POR_NOMBRE = sorted(set(_CON_LIBRO) - {"penal"})
 Tipo = Annotated[
     str,
     Field(
         description=f"Letra del rol en {_y(_CON_LETRA)}; en civil son C, V, E, A, F "
-        f"o I. En {_y(_CON_LIBRO)} va el LIBRO en vez de una letra (por ejemplo "
+        f"o I. En {_y(_CON_LIBRO_POR_NOMBRE)} va el LIBRO en vez de una letra (por ejemplo "
         "'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin "
-        f"él la consulta es ambigua y la herramienta falla en vez de abrir la causa "
-        f"equivocada. En "
-        f"{_y(_SIN_TIPO)} el rol no lleva nada adelante y este campo va VACÍO."
+        "él la consulta es ambigua y la herramienta falla en vez de abrir la causa "
+        f"equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, "
+        f"{TIPO_PENAL_MEDIDO!r} es {LIBRO_DEL_TIPO_PENAL_MEDIDO}, y con el nombre el listado "
+        f"vuelve vacío. En {_y(_SIN_TIPO)} el rol no lleva nada adelante y este campo va "
+        "VACÍO."
     ),
 ]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]

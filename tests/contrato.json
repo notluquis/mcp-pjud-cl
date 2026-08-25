@@ -171,7 +171,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones y penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },
@@ -903,7 +903,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones y penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },
@@ -1217,7 +1217,7 @@
             "type": "integer"
           },
           "tipo": {
-            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones y penal va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
+            "description": "Letra del rol en civil, cobranza y laboral; en civil son C, V, E, A, F o I. En apelaciones va el LIBRO en vez de una letra (por ejemplo 'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin él la consulta es ambigua y la herramienta falla en vez de abrir la causa equivocada. En penal el rol también lleva libro pero se busca por su CÓDIGO: medido, '1' es Ordinaria, y con el nombre el listado vuelve vacío. En suprema el rol no lleva nada adelante y este campo va VACÍO.",
             "title": "Tipo",
             "type": "string"
           },

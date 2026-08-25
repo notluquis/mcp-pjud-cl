@@ -420,7 +420,7 @@ Tipo = Annotated[
         "'Protección' o 'Exhorto'): ahí el número de rol se repite entre libros, así que sin "
         f"él la consulta es ambigua y la herramienta falla en vez de abrir la causa "
         f"equivocada. En "
-        f"{', '.join(_SIN_TIPO)} el rol no lleva nada adelante y este campo va VACÍO."
+        f"{_y(_SIN_TIPO)} el rol no lleva nada adelante y este campo va VACÍO."
     ),
 ]
 Rol = Annotated[int, Field(description="Número del rol, sin la letra ni el año.", ge=1)]

@@ -4069,7 +4069,7 @@ def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
         )
 
 
-def test_ninguna_prosa_dice_solo_una_competencia_donde_hay_dos():
+def test_la_prosa_nombra_exactamente_las_competencias_que_publican_el_panel():
     """Cuatro frases afirmaban "sólo cobranza" de paneles que laboral también publica.
 
     Y el código se contradecía a sí mismo cien líneas más abajo: mientras `parse_liquidaciones`
@@ -4101,15 +4101,22 @@ def test_ninguna_prosa_dice_solo_una_competencia_donde_hay_dos():
         if lector is not None and lector.__doc__:
             prosa.append(lector.__doc__)
 
+        # Se compara la LISTA COMPLETA que la prosa nombra, no sólo las frases con "sólo".
+        # Mirando nada más el "sólo", la frase corregida ("las publican cobranza y laboral")
+        # podía quedarse vieja sin que nada se cayera: bastaba que una competencia perdiera el
+        # panel para que la enumeración mintiera al revés.
         for texto in prosa:
-            for exclusiva in re.findall(
-                rf"[Ss][óo]lo\s+({'|'.join(COMPETENCIAS)})\b", " ".join(texto.split())
-            ):
-                assert publican == [exclusiva], (
-                    f"la prosa de `{panel}` dice que sólo {exclusiva} lo publica, y "
-                    f"`COMPETENCIAS` dice {publican}. Quien litigue en las otras va a concluir "
-                    f"que en su causa ese panel no existe"
-                )
+            plano = " ".join(texto.split())
+            nombradas = sorted({c for c in COMPETENCIAS if re.search(rf"\b{c}\b", plano)})
+            if not nombradas:
+                # No enumerar es legítimo: `historia` y `litigantes` no nombran ninguna, y
+                # obligarlas a hacerlo engordaría el catálogo por nada.
+                continue
+            assert nombradas == publican, (
+                f"la prosa de `{panel}` nombra {nombradas} y `COMPETENCIAS` dice {publican}. "
+                "Quien litigue en las que faltan va a concluir que en su causa ese panel no "
+                "existe, y quien litigue en las que sobran va a buscar algo que no está"
+            )
 
 
 def test_el_codigo_no_importa_nada_que_no_este_declarado():

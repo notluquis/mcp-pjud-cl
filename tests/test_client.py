@@ -45,6 +45,7 @@ from mcp_pjud.client import (
 )
 from mcp_pjud.parser import (
     COMPETENCIAS,
+    SIN_RESULTADOS,
     EstructuraInesperada,
     parse_anexos,
     parse_diligencias,
@@ -1649,6 +1650,108 @@ def test_lo_que_identifica_la_causa_viaja_con_su_valor(monkeypatch):
     c.buscar_por_rit("A", 1, 2026, competencia="suprema")
     assert enviados[0]["conTribunal"] == "0"
     assert enviados[0]["conCorte"] == "0"
+
+
+def test_si_el_paginado_muere_a_mitad_no_devuelve_la_lista_parcial(monkeypatch):
+    """ "No hay resultados" en la primera página es una respuesta; en la tercera es otra cosa.
+
+    La plataforma ya declaró cuántas hay, así que contestar de golpe que no hay ninguna deja lo
+    acumulado incompleto. Devolverlo callando es exactamente lo que el resto de `_paginado`
+    existe para impedir, y el mismo camino que ya está cubierto cuando desaparece el control de
+    página siguiente.
+
+    Escenario real: un identificador de página vencido, o un hipo de la plataforma a mitad del
+    recorrido.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    paginas = [
+        _pagina(range(1, 101), total=250, ultima=False, token="p2"),
+        _pagina(range(101, 201), total=250, ultima=False, token="p3"),
+        f"<html><body>{SIN_RESULTADOS}</body></html>",
+    ]
+    servidas: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        servidas.append(str(peticion.url))
+        # Índice directo y no acotado con `min`: si el recorrido pidiera una página de más,
+        # el doble tiene que reventar en vez de servirle otra vez la última.
+        return httpx.Response(200, text=paginas[len(servidas) - 1])
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    with pytest.raises(EstructuraInesperada, match="respondió que no hay ninguno"):
+        c.buscar_por_rit("C", 1156, 2026, tribunal=162)
+
+    assert len(servidas) == 3, (
+        "el recorrido no llegó a la tercera página, así que la excepción no la levantó lo que "
+        f"este test dice medir: {len(servidas)} peticiones"
+    )
+
+
+def test_una_busqueda_sin_ninguna_coincidencia_sigue_siendo_una_respuesta(monkeypatch):
+    """Y no se puede romper al arreglar lo de arriba.
+
+    En la PRIMERA página no hay total declarado con qué comparar, y una búsqueda legítima que
+    no encuentra nada tiene que devolver la lista vacía en vez de levantar.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    def transporte(_peticion: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=f"<html><body>{SIN_RESULTADOS}</body></html>")
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    assert c.buscar_por_rit("C", 1, 2026, tribunal=162) == [], (
+        "una búsqueda sin coincidencias dejó de ser una respuesta y ahora levanta"
+    )
+
+
+def test_ningun_formulario_viaja_con_la_repr_de_python(monkeypatch):
+    """`str(None)` es `'None'`, y contra la plataforma eso no da error: da un listado sin
+    coincidencias, que se lee como que la causa no existe.
+
+    Se comprueba el formulario ENTERO y no campo por campo, en las cuatro búsquedas y en las
+    competencias donde el acotamiento es opcional. Tres sitios mandaban `str(tribunal)` con la
+    línea de al lado haciendo `str(corte or 0)`, o sea el arreglo se aplicó a un campo y se
+    olvidó en su hermano, tres veces. Un guardia por sitio habría dejado pasar el cuarto.
+
+    El valor de "sin tribunal" es CERO y está medido: el sitio emite `<option value='0'>`.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+
+    # Sólo apelaciones y suprema: en las otras cuatro `_acotacion` exige el tribunal y levanta
+    # antes de armar el formulario, así que el nulo no llega nunca.
+    for competencia, corte in (("suprema", None), ("apelaciones", 90)):
+        for llamar in (
+            lambda c, m=competencia, k=corte: c.buscar_por_rit("A", 1, 2026, m, corte=k),
+            # Dos apellidos: con uno solo la búsqueda se rechaza antes de armar el
+            # formulario, y el guardia se quedaba sin nada que mirar justo en el campo que
+            # este arreglo tocó.
+            lambda c, m=competencia, k=corte: c.buscar_por_nombre(
+                apellido_paterno="GONZALEZ", apellido_materno="PEREZ", competencia=m, corte=k
+            ),
+            lambda c, m=competencia, k=corte: c.buscar_por_rut_juridica(
+                76000000, "0", competencia=m, corte=k
+            ),
+            lambda c, m=competencia, k=corte: c.buscar_por_fecha(
+                "01/01/2026", "02/01/2026", competencia=m, corte=k
+            ),
+        ):
+            cliente, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+            # Lo que se mide es el formulario, no que la búsqueda termine bien.
+            with contextlib.suppress(ValueError, EstructuraInesperada):
+                llamar(cliente)
+            for formulario in enviados:
+                repr_de_python = {k: v for k, v in formulario.items() if v in ("None", "0.0")}
+                assert not repr_de_python, (
+                    f"en {competencia} viaja la repr de Python de un nulo: {repr_de_python}. "
+                    "La plataforma no da error con eso: devuelve un listado vacío, que se lee "
+                    "como que la causa no existe"
+                )
 
 
 #: Los nombres EXACTOS de cada formulario, medidos contra el sitio. Van escritos porque no

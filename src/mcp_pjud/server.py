@@ -997,10 +997,21 @@ def _indice_del_documento(doc: Documento) -> str:
 def _resumen(doc: Documento, embebido: bool) -> str:
     """Lo que se dice del documento en palabras, que es lo único que el modelo lee sin gastar
     el contexto entero."""
-    if doc.capa_de_texto is None:
+    if doc.capa_de_texto is None and doc.problema_al_leer is not None:
         veredicto = (
             f"NO se pudo abrir para saber si trae texto ({doc.problema_al_leer}). Eso NO "
             "significa que sea un escaneo: significa que no se sabe."
+        )
+    elif doc.capa_de_texto is None:
+        # El otro camino al nulo, que decía "no se pudo abrir (None)" de un archivo que SÍ se
+        # abrió: se contaron sus páginas y se leyeron sus marcadores. Ninguna de las páginas
+        # legibles trajo texto y al menos una no se dejó leer, así que "es un escaneo" sería
+        # una afirmación sobre páginas que nadie miró.
+        ilegibles = doc.paginas_ilegibles or 0
+        veredicto = (
+            f"No se puede decir si trae texto: de sus {doc.paginas} páginas, {ilegibles} no "
+            "se dejaron leer y ninguna de las demás trajo texto. Eso NO significa que sea un "
+            "escaneo: significa que no se sabe."
         )
     elif (
         doc.paginas_con_texto is not None

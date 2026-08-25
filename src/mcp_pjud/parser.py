@@ -945,6 +945,35 @@ def _documento_de_la_celda(celda) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _no_agrega_nada_a_la_anterior(fila: Actuacion, anterior: Actuacion) -> bool:
+    """Si esta fila es la anterior otra vez, sin nada propio que la anterior no tenga ya.
+
+    En cobranza la plataforma repite algunas filas de la Historia. Medido campo por campo
+    sobre la respuesta real, la repetición del folio 68 contra su original:
+
+        etapa:       'Excepciones / Objeta Liquidación'  ->  ''
+        tramite:     'Resolución'                        ->  ''
+        documento:   sí, con ruta y referencia           ->  ninguno
+
+    O sea no es una copia idéntica: es una versión empobrecida. De 80 filas, 9 son esto, y el
+    folio 5 aparece tres veces. Entregarlas como actuaciones distintas infla el panel del que
+    cuelgan los plazos, y una fila con el trámite en blanco tampoco puede reconocerse como
+    actuación de receptor: ese filtro la pierde.
+
+    Por eso la regla no es "se parece" sino "no agrega nada": mismo folio y misma descripción,
+    y CADA uno de sus campos o está vacío o vale lo mismo que en la anterior. Una fila que
+    difiera en la fecha, el estado o el documento trae algo propio y se conserva, aunque
+    comparta folio y descripción.
+
+    La condición floja tampoco sirve: en civil hay cinco filas legítimas sin trámite, medidas
+    en tres fixtures, y mirar sólo eso las habría borrado.
+    """
+    if fila.folio != anterior.folio or fila.desc_tramite != anterior.desc_tramite:
+        return False
+    previos = anterior.model_dump()
+    return all(not valor or valor == previos[campo] for campo, valor in fila.model_dump().items())
+
+
 def parse_historia(
     html_detalle: str, cuaderno: str = "", competencia: str = "civil"
 ) -> list[Actuacion]:
@@ -956,10 +985,12 @@ def parse_historia(
             "Leerlo con el nombre de otra competencia devolvería vacío, que se lee como "
             "'no hubo actuaciones'."
         )
-    actuaciones = [
-        _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
-        for celdas, _ in _filas_del_panel(html_detalle, spec.historia)
-    ]
+    actuaciones: list[Actuacion] = []
+    for celdas, _ in _filas_del_panel(html_detalle, spec.historia):
+        fila = _fila_a_actuacion(celdas, cuaderno, spec.historia.columnas)
+        if actuaciones and _no_agrega_nada_a_la_anterior(fila, actuaciones[-1]):
+            continue
+        actuaciones.append(fila)
 
     if not actuaciones:
         # Encabezados presentes y cero filas es anómalo: toda causa tiene al menos el
@@ -1955,15 +1986,27 @@ def parse_georreferencia(html_modal: str) -> Georreferencia:
             "una fecha. Se levanta en vez de entregarla en nulo, porque un nulo se leería como "
             "que el sitio no la publica y esta es la única fecha con hora del proyecto."
         )
-    return Georreferencia(
-        existe=True,
-        latitud=float(valores["latitud"]),
-        longitud=float(valores["longitud"]),
-        precision_metros=float(precision.replace(",", ".")),
-        fecha_dispositivo=dia,
-        hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
-        intentos=int(intentos),
-    )
+    # Los números y la hora, traducidos a `EstructuraInesperada` como ya se hace tres líneas
+    # más arriba con la fecha. Sin esto salían crudos: `float` revienta con un separador de
+    # miles ('1.234,56' queda en '1.234.56') y `time` con una hora fuera de rango, y un
+    # `ValueError` desde acá no dice qué panel cambió ni que la lectura se abandonó.
+    try:
+        return Georreferencia(
+            existe=True,
+            latitud=float(valores["latitud"]),
+            longitud=float(valores["longitud"]),
+            precision_metros=float(precision.replace(",", ".")),
+            fecha_dispositivo=dia,
+            hora_dispositivo=time(*(int(x) for x in hora.split(":"))),
+            intentos=int(intentos),
+        )
+    except ValueError as mal:
+        raise EstructuraInesperada(
+            f"El panel de georreferencia trae un valor que no se pudo leer ({mal}): "
+            f"latitud={valores['latitud']!r}, longitud={valores['longitud']!r}, "
+            f"precisión={precision!r}, hora={hora!r}, intentos={intentos!r}. Se levanta en "
+            "vez de entregar la ubicación a medias, que se leería como medida."
+        ) from mal
 
 
 class Anexo(BaseModel):
@@ -2968,8 +3011,17 @@ def leer_aviso(html_respuesta: str) -> str | None:
     m = _AVISO.search(html_respuesta)
     if not m:
         return None
-    # El aviso viene con las tildes escapadas al estilo de JavaScript.
-    return m.group(1).encode("utf-8").decode("unicode_escape")
+    # El aviso viene con las tildes escapadas al estilo de JavaScript. Se traducen SÓLO las
+    # secuencias bien formadas, en vez de pasar la cadena entera por `unicode_escape`, que
+    # tiene dos modos de falla medidos: con una tilde literal devuelve mojibake
+    # ('bÃºsqueda'), y con una secuencia truncada levanta `UnicodeDecodeError` crudo. Ese
+    # error saldría desde `_bloqueo_encubierto`, que mira TODAS las respuestas, así que un
+    # aviso mal formado tumbaría la petición sin clasificarse como nada.
+    return _ESCAPE_JS.sub(lambda e: chr(int(e.group(1), 16)), m.group(1))
+
+
+#: Una secuencia `\uXXXX` bien formada, que es como el sitio escapa las tildes de sus avisos.
+_ESCAPE_JS = re.compile(r"\\u([0-9a-fA-F]{4})")
 
 
 def es_aviso_de_captcha(mensaje: str) -> bool:

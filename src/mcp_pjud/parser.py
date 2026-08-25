@@ -1197,7 +1197,7 @@ class Liquidacion(BaseModel):
 
 
 def parse_liquidaciones(html_detalle: str, competencia: str = "cobranza") -> list[Liquidacion]:
-    """Las liquidaciones del crédito. Sólo cobranza las publica.
+    """Las liquidaciones del crédito. Las publican cobranza y laboral.
 
     Una causa puede no tener ninguna liquidada todavía, así que la lista vacía es una respuesta
     legítima y no un fallo.
@@ -1302,7 +1302,7 @@ class Diligencia(BaseModel):
 
 
 def parse_diligencias(html_detalle: str, competencia: str = "cobranza") -> list[Diligencia]:
-    """Las diligencias del ministro de fe. Sólo cobranza las publica en un panel propio.
+    """Las diligencias del ministro de fe. Las publican cobranza y laboral en un panel propio.
 
     Una causa puede no tener ninguna, así que la lista vacía es una respuesta legítima y no un
     fallo: de cinco causas de cobranza medidas, sólo una trae filas acá.
@@ -2418,13 +2418,14 @@ class DetalleCausa(BaseModel):
     )
     liquidaciones: list[Liquidacion] | None = Field(
         default=None,
-        description="Cuánto se debe y a qué fecha. Sólo cobranza liquida el crédito.",
+        description="Cuánto se debe y a qué fecha. Lo publican cobranza y laboral.",
     )
     diligencias: list[Diligencia] | None = Field(
         default=None,
         description="Diligencias del ministro de fe, con su estado y quién figura a cargo. "
-        "Sólo cobranza publica el panel, y su fecha NO es la que corre los plazos: en la fila "
-        "medida el sitio imprime el valor cero, que se entrega en nulo.",
+        "Lo publican cobranza y laboral. En la fila de cobranza medida su fecha NO es la que "
+        "corre los plazos: el sitio imprime el valor cero y se entrega en nulo. En laboral no "
+        "está medida.",
     )
     materias: list[Materia] | None = Field(
         default=None, description="Qué se litiga. Sólo laboral publica el panel."

@@ -4051,6 +4051,67 @@ def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
     )
 
 
+def test_la_descripcion_de_tipo_cubre_todas_las_competencias_aceptadas():
+    """Un parámetro obligatorio cuyo valor válido no se documenta para una competencia que el
+    servidor SÍ acepta.
+
+    La frase nombraba civil, las de libro y suprema, y dejaba fuera a cobranza y laboral. Una
+    sesión de prueba puso 'C' en cobranza adivinando y acertó, que es el peor resultado: se
+    repite hasta que falla.
+    """
+    from mcp_pjud.server import MODULOS, Tipo
+
+    dice = Tipo.__metadata__[0].description
+    for competencia in sorted(MODULOS):
+        assert competencia in dice, (
+            f"`tipo` no dice qué va en {competencia}, y es una competencia aceptada: quien la "
+            f"use tiene que adivinar. Dice: {dice!r}"
+        )
+
+
+def test_ninguna_prosa_dice_solo_una_competencia_donde_hay_dos():
+    """Cuatro frases afirmaban "sólo cobranza" de paneles que laboral también publica.
+
+    Y el código se contradecía a sí mismo cien líneas más abajo: mientras `parse_liquidaciones`
+    decía "sólo cobranza", el campo `rut_beneficiario` describía "las liquidaciones de laboral".
+    Las cuatro llegaban publicadas a la referencia y al esquema de salida que el modelo lee.
+
+    Daño: quien litiga en laboral lee "sólo cobranza liquida el crédito" y concluye que en su
+    causa ese panel no existe. Existe, y es cuánto se debe.
+
+    Se compara la PROSA contra `COMPETENCIAS`, que es su fuente única. Vale para cualquier
+    panel: si mañana una competencia gana o pierde uno, la frase que lo declara exclusivo se
+    cae sola.
+    """
+    import re
+
+    from mcp_pjud.parser import COMPETENCIAS, DetalleCausa
+
+    paneles = [
+        c
+        for c in DetalleCausa.model_fields
+        if any(getattr(COMPETENCIAS[n], c, None) is not None for n in COMPETENCIAS)
+    ]
+    assert paneles, "no se encontró ningún panel, así que este guardia no está mirando nada"
+
+    for panel in paneles:
+        publican = sorted(n for n in COMPETENCIAS if getattr(COMPETENCIAS[n], panel) is not None)
+        prosa = [DetalleCausa.model_fields[panel].description or ""]
+        lector = getattr(__import__("mcp_pjud.parser", fromlist=["x"]), f"parse_{panel}", None)
+        if lector is not None and lector.__doc__:
+            prosa.append(lector.__doc__)
+
+        for texto in prosa:
+            for exclusiva in re.findall(
+                rf"[Ss][óo]lo\s+({'|'.join(COMPETENCIAS)})\b", " ".join(texto.split())
+            ):
+                assert publican == [exclusiva], (
+                    f"la prosa de `{panel}` dice que sólo {exclusiva} lo publica, y "
+                    f"`COMPETENCIAS` dice {publican}. Quien litigue en las otras va a concluir "
+                    f"que en su causa ese panel no existe"
+                )
+
+
 def test_el_codigo_no_importa_nada_que_no_este_declarado():
     """Una dependencia transitiva es una decisión ajena, y cuando cambia el servidor muere al
     importar, antes de la primera línea de trabajo.

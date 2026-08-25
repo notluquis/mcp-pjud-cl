@@ -16,6 +16,18 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Cuatro frases afirmaban que sólo cobranza publica las liquidaciones y las diligencias del
+  ministro de fe, y laboral también las publica. Quien litigara en laboral concluía que en su
+  causa esos paneles no existen.
+- El detalle prometía `fecha_diligencia` en cobranza y ahí la plataforma no la publica: la
+  frase mandaba a computar un plazo con un dato que nunca está.
+- `tipo` no decía qué va en cobranza ni en laboral, que son competencias aceptadas, y su
+  enumeración de las de libro se podía leer como una sola competencia.
+- Cuando `piezas_exhorto` y `causa_es_exhorto` vienen los dos en nulo, la descripción ahora
+  dice qué significa en vez de mandar a mirar un campo igual de nulo.
+
 ## [0.16.0] - 2026-08-24
 
 ### Agregado

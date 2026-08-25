@@ -1673,7 +1673,9 @@ def test_si_el_paginado_muere_a_mitad_no_devuelve_la_lista_parcial(monkeypatch):
 
     def transporte(peticion: httpx.Request) -> httpx.Response:
         servidas.append(str(peticion.url))
-        return httpx.Response(200, text=paginas[min(len(servidas), len(paginas)) - 1])
+        # Índice directo y no acotado con `min`: si el recorrido pidiera una página de más,
+        # el doble tiene que reventar en vez de servirle otra vez la última.
+        return httpx.Response(200, text=paginas[len(servidas) - 1])
 
     c = PjudClient("test@example.cl")
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))

@@ -331,8 +331,8 @@ class Sentencia(BaseModel):
     )
     corte_origen: str = Field(description="Corte de Apelaciones de origen.")
     rol_corte_apelaciones: str | None = Field(
-        description="Rol ante la corte de origen. NULO: este buscador no publica el campo; "
-        "vacío: lo publica y esta sentencia no lo trae."
+        description="Rol ante la corte de origen. NULO: no consta acá, sea porque este "
+        "buscador no publica el campo o porque la sentencia no lo trae."
     )
     redactor: str | None = Field(
         description="Quien redactó. NULO: este buscador no publica el campo."
@@ -529,29 +529,36 @@ def parse_sentencias(
     def leer(d: dict, nombre: str) -> str:
         return str(d.get(campos.get(nombre, ""), "") or "")
 
-    def leer_si_lo_declara(d: dict, nombre: str) -> str | None:
-        """Nulo cuando ESTE buscador no publica el campo, cadena cuando lo publica.
+    def leer_opcional(d: dict, nombre: str) -> str | None:
+        """Nulo cuando no hay dato, por la razón que sea. La cadena vacía nunca es respuesta.
 
-        `leer` colapsaba las dos cosas: sin entrada en `campos` hacía `d.get("", "")` y
-        devolvía la cadena vacía, que se lee como "consta que está vacío". Medido: seis de los
-        siete buscadores no declaran `ministros` y llegaba como lista vacía mientras el texto
-        del fallo nombraba a los cinco de la sala. El mapa del buscador es la única fuente de
-        qué publica cada uno, y es la que decide.
+        `leer` devolvía "" en dos situaciones distintas y las dos se leen igual de mal: cuando
+        ESTE buscador no declara el campo (`campos.get(nombre, "")` consultaba la clave vacía)
+        y cuando lo declara y el documento no lo trae. Ninguna de las dos significa que la
+        sentencia no tenga sala, ni redactor, ni rol de origen: significan que acá no se sabe.
+
+        Se colapsan a nulo a propósito, en vez de distinguirlas: la diferencia que sí le sirve
+        a quien lee es cuál buscador publica qué, y eso lo dice el contrato de la herramienta,
+        derivado del mapa. Un "" en el campo sólo invita a informar una ausencia que no consta.
         """
-        return leer(d, nombre) if nombre in campos else None
+        return leer(d, nombre) or None
 
     sentencias = [
         Sentencia(
             rol=leer(d, "rol"),
             caratulado=leer(d, "caratulado"),
             fecha_sentencia=_fecha(leer(d, "fecha_sentencia")),
-            sala=leer_si_lo_declara(d, "sala"),
-            tipo_recurso=leer_si_lo_declara(d, "tipo_recurso"),
-            resultado_recurso=leer_si_lo_declara(d, "resultado_recurso"),
+            sala=leer_opcional(d, "sala"),
+            tipo_recurso=leer_opcional(d, "tipo_recurso"),
+            resultado_recurso=leer_opcional(d, "resultado_recurso"),
             corte_origen=leer(d, "corte_origen"),
-            rol_corte_apelaciones=leer_si_lo_declara(d, "rol_corte_apelaciones"),
-            redactor=leer_si_lo_declara(d, "redactor"),
-            ministros=_lista(leer(d, "ministros")) if "ministros" in campos else None,
+            rol_corte_apelaciones=leer_opcional(d, "rol_corte_apelaciones"),
+            redactor=leer_opcional(d, "redactor"),
+            # Medido contra la plataforma: en suprema, que SÍ declara el campo, las dos
+            # sentencias del rol 1933-2025 lo traen vacío mientras el texto nombra a la sala.
+            # O sea la lista vacía no era cosa de los buscadores que no lo declaran, y "no
+            # firmó nadie" no es algo que diga ninguna sentencia.
+            ministros=_lista(leer(d, "ministros")) or None,
             condicion_publicacion=leer(d, "condicion_publicacion"),
             anonimizada=bool(d.get(campos.get("anonimizada", ""), 0)),
             url=leer(d, "url"),

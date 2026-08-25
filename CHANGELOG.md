@@ -18,8 +18,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ### Corregido
 
-- Seis campos de una sentencia venían en cadena vacía, y `ministros` en lista vacía, donde el
-  buscador consultado no publica ese campo. La lista vacía decía que no firmó nadie.
+- Cinco campos de una sentencia venían en cadena vacía donde no hay dato, y `ministros` en
+  lista vacía, que decía que no firmó nadie. Ahora en nulo: la cadena vacía no es una respuesta.
+- El detalle no avisaba que el panel de notificaciones llega vacío en causas cuya demanda sí se
+  notificó, y una lista vacía se lee como que no se notificó a nadie.
+- `obtener_texto_sentencia` prometía la extensión en palabras y páginas para decidir si vale
+  pedir el texto, y hay buscadores que no la publican.
 - El mensaje que pide elegir entre varias sentencias de un rol ofrecía "None palabras" donde el
   buscador no publica la extensión, que es justo el que más roles repetidos tiene.
 - `cual` no decía de dónde sale su número. El buscador no las devuelve en el orden en que la

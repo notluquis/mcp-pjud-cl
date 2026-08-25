@@ -858,11 +858,10 @@ def obtener_detalle_causa(
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
     Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y en una
-    sola cadena. Preferirla antes que pedir paneles por separado: vienen juntos y separarlos
-    multiplica las consultas sin traer nada nuevo.
+    sola cadena. Preferirla antes que pedir paneles por separado: separarlos multiplica las
+    consultas sin traer nada nuevo.
 
-    NO es el expediente completo: la plataforma publica más paneles de los que este servidor
-    sabe leer.
+    NO es el expediente completo: publica más paneles de los que este servidor sabe leer.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -877,8 +876,9 @@ def obtener_detalle_causa(
     pasa fuera de civil, la pregunta no está medida ahí.
 
     Al computar plazos: `fecha_diligencia` trae dato SÓLO en civil; en cobranza el sitio no
-    publica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su
-    `estado` distingue.
+    publica cuándo se practicó. `notificaciones` incluye las NO practicadas, que su `estado`
+    distingue, y llega VACÍO en causas cuya demanda sí se notificó: eso se responde con las
+    actuaciones del ministro de fe.
 
     Las liquidaciones NO se suman: en cobranza la más reciente es la vigente y las anteriores
     el historial. En laboral no traen fecha: ahí cuál es la vigente no se sabe.
@@ -1480,8 +1480,9 @@ def obtener_texto_sentencia(
     buscar.
 
     Se pide aparte de la búsqueda y de a una a propósito: una sentencia de trece páginas son
-    unos veinticinco mil caracteres. La búsqueda entrega `texto_preview` y la extensión en
-    palabras y páginas, que suele bastar para decidir si vale pedir el resto.
+    unos veinticinco mil caracteres. La búsqueda entrega `texto_preview`, y donde el buscador
+    publica la extensión también `palabras` y `paginas`, que suelen bastar para decidir si vale
+    pedir el resto. En NULO hay que decidir sin ese dato, no suponer que el fallo es breve.
 
     El texto trae los nombres de quienes fueron parte, y cuando el fallo no está anonimizado
     también sus cédulas. `anonimizada` y `fuente` dicen qué versión se entregó. No reproducir

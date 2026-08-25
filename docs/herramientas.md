@@ -457,9 +457,12 @@ graph TD
 :::{warning} Al computar plazos
 `fecha_diligencia` de la historia trae dato **sólo en civil**. En cobranza la plataforma no
 publica cuándo se practicó la diligencia, así que ahí no hay de dónde leerla: computar desde
-`fecha_registro` sería computar desde cuándo el tribunal la asentó, que es otra fecha. Y las
-notificaciones incluyen las **no practicadas**, que se distinguen por su `estado`: una fila
-pendiente no hizo correr ningún plazo.
+`fecha_registro` sería computar desde cuándo el tribunal la asentó, que es otra fecha.
+
+El panel `notificaciones` incluye las **no practicadas**, que se distinguen por su `estado`:
+una fila pendiente no hizo correr ningún plazo. Y llega **vacío** en causas cuya demanda sí se
+notificó, medido en `C-1156-2026`: la pregunta de si se notificó se responde con las
+actuaciones del ministro de fe, no con este panel.
 
 Los litigantes traen **RUT de personas naturales**: son datos personales de terceros.
 

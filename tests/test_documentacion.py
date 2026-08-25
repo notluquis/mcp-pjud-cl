@@ -4327,7 +4327,10 @@ def test_la_referencia_no_promete_la_fecha_de_diligencia_en_cobranza():
             f"publica cuándo se practicó la diligencia: {texto[:200]!r}"
         )
         aviso = texto[texto.index("Al computar plazos") :]
-        aviso = aviso[: aviso.index("Y las notificaciones")]
+        # Se corta en el nombre del campo y no en una redacción: cortar en "Y las
+        # notificaciones" ataba el guardia a cómo empieza la frase siguiente, y reescribirla
+        # lo tumbaba con `substring not found` en vez de decir qué pasó.
+        aviso = aviso[: aviso.index("`notificaciones`")]
         nombradas = sorted({c for c in COMPETENCIAS if c in aviso})
 
         assert nombradas == sorted(con_fecha + sin_la_fecha), (
@@ -5863,3 +5866,32 @@ def test_la_referencia_cita_las_cifras_del_acento_que_estan_medidas():
         assert f"| {cifra} |" in tramo, (
             f"la referencia no cita {cifra}, que es lo que `client.py` midió"
         )
+
+
+def test_el_contrato_avisa_que_el_panel_de_notificaciones_llega_vacio(expuestas):
+    """Una lista vacía es "una respuesta" según el propio contrato, y acá no responde nada.
+
+    Medido sobre la fixture de `C-1156-2026`, que es la causa que una sesión reportó: los dos
+    cuadernos traen el panel con sus encabezados y el `tbody` sin filas, mientras la historia
+    del mismo documento registra la notificación de la demanda practicada por receptor. O sea
+    no es que el parser se la pierda: la plataforma publica ese panel vacío.
+
+    Sin el aviso, quien pregunta "¿se notificó?" lee la lista vacía como un no.
+    """
+    from mcp_pjud.parser import parse_historia, parse_notificaciones
+
+    con_receptor = 0
+    for nombre in ("c1156_principal.html", "c1156_apremio.html"):
+        html = (RAIZ / "tests" / "fixtures" / nombre).read_text(encoding="utf-8", errors="replace")
+        assert not parse_notificaciones(html, "civil"), (
+            f"{nombre} ya trae filas en el panel: si la plataforma cambió, hay que volver a "
+            "medir antes de mantener el aviso"
+        )
+        con_receptor += sum(1 for a in parse_historia(html, "civil") if a.fecha_diligencia)
+    assert con_receptor, "la fixture perdió las actuaciones de receptor y el contraste se cae"
+
+    contrato = (expuestas["obtener_detalle_causa"].description or "").lower()
+    tramo = contrato[contrato.index("`notificaciones`") :]
+    assert "vacío" in tramo, (
+        "el contrato no avisa que `notificaciones` llega vacío en una causa que sí se notificó"
+    )

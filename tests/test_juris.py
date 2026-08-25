@@ -14,6 +14,7 @@ from mcp_pjud.juris import (
     PALABRAS_DE_LA_CASACION,
     JurisClient,
     Sentencia,
+    _lista,
     buscadores_que_publican,
     parse_sentencias,
 )
@@ -1167,27 +1168,38 @@ def test_un_campo_que_el_buscador_no_declara_viene_en_nulo_y_no_vacio():
     ninguno". Una sesión lo leyó así con el texto del fallo nombrando a los cinco de la sala.
     """
     cuerpo = json.dumps(json.loads(CITA))
+    opcionales = ("sala", "tipo_recurso", "resultado_recurso", "rol_corte_apelaciones", "redactor")
 
-    for campo in ("sala", "tipo_recurso", "resultado_recurso", "rol_corte_apelaciones", "redactor"):
+    for campo in opcionales:
         publican = set(buscadores_que_publican(campo))
         assert publican, f"si nadie declarara {campo}, el campo sobraría en el modelo"
         assert publican != set(BUSCADORES), f"{campo} ya no distingue nada: lo declaran todos"
-        for nombre in BUSCADORES:
+        for nombre in set(BUSCADORES) - publican:
             valor = getattr(parse_sentencias(cuerpo, nombre).sentencias[0], campo)
-            if nombre in publican:
-                assert valor is not None, f"{nombre} declara {campo} y llegó en nulo"
-            else:
-                assert valor is None, (
-                    f"{nombre} no declara {campo} y llegó {valor!r}: la cadena vacía se lee "
-                    "como que consta que está vacío"
-                )
+            assert valor is None, (
+                f"{nombre} no declara {campo} y llegó {valor!r}: la cadena vacía se lee como "
+                "que consta que está vacío"
+            )
 
-    for nombre in BUSCADORES:
-        ministros = parse_sentencias(cuerpo, nombre).sentencias[0].ministros
-        if nombre in buscadores_que_publican("ministros"):
-            assert ministros is not None
-        else:
-            assert ministros is None, "una lista vacía diría que no firmó nadie"
+    # Y el dato sí llega donde lo hay: si el fixture no lo trajera, el bloque de arriba estaría
+    # comprobando que un parser roto devuelve nulo en todas partes.
+    en_suprema = parse_sentencias(cuerpo, "suprema").sentencias[0]
+    con_dato = [c for c in opcionales if getattr(en_suprema, c)]
+    assert con_dato, "el fixture no trae ninguno de estos campos y el guardia no prueba nada"
+
+    # `ministros` va aparte: el vacío tampoco es respuesta donde el buscador SÍ declara el
+    # campo. Medido contra la plataforma, el rol 1933-2025 en suprema lo trae vacío.
+    d = json.loads(CITA)
+    docs = d["response"]["docs"]
+    assert _lista(docs[0]["sent__gls_int_firma_sup_s"]), "el fixture perdió los firmantes"
+    assert parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros
+
+    docs[0]["sent__gls_int_firma_sup_s"] = ""
+    assert parse_sentencias(json.dumps(d), "suprema").sentencias[0].ministros is None, (
+        "una lista vacía diría que no firmó nadie, y eso no lo dice ninguna sentencia"
+    )
+    for nombre in set(BUSCADORES) - set(buscadores_que_publican("ministros")):
+        assert parse_sentencias(cuerpo, nombre).sentencias[0].ministros is None
 
 
 def test_la_enumeracion_no_ofrece_una_extension_que_no_tiene():

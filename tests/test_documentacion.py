@@ -4285,6 +4285,46 @@ def _mensaje_al_leer(lector, competencia: str) -> str:
     return ""
 
 
+def test_donde_falta_la_fecha_no_se_manda_a_elegir_la_mas_reciente():
+    """La regla "la más reciente es la vigente" necesita una fecha con qué ordenarlas.
+
+    En laboral el panel no la publica, así que ahí esa instrucción manda a señalar una
+    liquidación como vigente sin nada que lo sostenga. Se comprueba en los TRES lugares donde
+    la instrucción viaja: la descripción del campo, el docstring de la herramienta (que va en
+    el contrato) y la plantilla que la persona invoca.
+    """
+    from mcp_pjud.parser import COMPETENCIAS
+    from mcp_pjud.server import obtener_detalle_causa
+
+    con_panel = {n: COMPETENCIAS[n].liquidaciones for n in COMPETENCIAS}
+    sin_fecha = sorted(
+        n for n, panel in con_panel.items() if panel is not None and "fecha" not in panel.columnas
+    )
+    assert sin_fecha, "todas las competencias con liquidaciones publican la fecha"
+
+    # El TEXTO que la plantilla devuelve, no su descripción: la instrucción numerada vive en
+    # lo que entra a la conversación, y mirando la descripción el guardia pasaba en vacío.
+    from mcp_pjud.server import revisar_causa
+
+    textos = {
+        "el docstring de la herramienta": obtener_detalle_causa.__doc__ or "",
+        "la plantilla `revisar-causa`": revisar_causa(tipo="C", rol=1, anio=2026),
+    }
+    # Dentro del PÁRRAFO que hace la afirmación, no del texto entero: los dos nombran laboral
+    # en otra parte (los datos personales de una liquidación laboral), así que buscar la
+    # palabra suelta pasaba con la salvedad borrada. Ese guardia no podía fallar.
+    for donde, texto in textos.items():
+        parrafos = [" ".join(b.split()) for b in re.split(r"\n\s*\n", texto)]
+        for parrafo in parrafos:
+            if "más reciente" not in parrafo:
+                continue
+            for competencia in sin_fecha:
+                assert competencia in parrafo, (
+                    f"{donde} manda a tomar la más reciente como vigente y no dice que en "
+                    f"{competencia} no hay fecha con qué ordenarlas: {parrafo!r}"
+                )
+
+
 def test_ningun_campo_se_promete_donde_su_mapa_no_lo_declara():
     """Compartir el panel no es publicar las mismas columnas.
 

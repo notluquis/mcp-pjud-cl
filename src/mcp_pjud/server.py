@@ -842,12 +842,12 @@ def obtener_detalle_causa(
 ) -> DetalleCausa:
     """Historia, litigantes, notificaciones, liquidaciones, diligencias, materias y exhortos.
 
-    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y con una
-    sola cadena de peticiones. Preferirla antes que pedir paneles por separado: vienen todos
-    juntos y separarlos multiplica las consultas sin traer nada nuevo.
+    Recorre TODOS los cuadernos, no sólo el que la plataforma muestra por defecto, y en una
+    sola cadena. Preferirla antes que pedir paneles por separado: vienen juntos y separarlos
+    multiplica las consultas sin traer nada nuevo.
 
-    NO es el expediente completo: publica más paneles de los que este servidor sabe leer. Los
-    escritos no están medidos, así que su ausencia acá NO significa que la causa no los tenga.
+    NO es el expediente completo: publica más paneles de los que este servidor sabe leer, y los
+    escritos no están medidos: su ausencia acá NO significa que la causa no los tenga.
 
     Cada campo distingue tres estados y hay que respetarlos al informar:
 
@@ -865,8 +865,8 @@ def obtener_detalle_causa(
     publica cuándo se practicó. Y las notificaciones incluyen las NO practicadas, que su
     `estado` distingue.
 
-    Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores el
-    historial. Sumarlas informa una deuda inflada.
+    Las liquidaciones NO se suman: en cobranza la más reciente es la vigente y las anteriores
+    el historial. En laboral no traen fecha: ahí cuál es la vigente no se sabe.
 
     Trae datos personales de terceros: el RUT y el nombre de los litigantes y de a quién se le
     paga una liquidación laboral, y SÓLO el nombre de quien figura a cargo de una diligencia.
@@ -1651,8 +1651,10 @@ En qué estado está esta causa.
    `fecha_registro`, que no. Cuando la de diligencia viene en nulo, esa fila no publica la
    segunda fecha: no es que la diligencia no se haya practicado.
 
-6. Las liquidaciones NO se suman: la más reciente es la deuda vigente y las anteriores son el
-   historial. Sumarlas informa una deuda inflada varias veces.
+6. Las liquidaciones NO se suman. En cobranza la más reciente es la deuda vigente y las
+   anteriores son el historial; sumarlas informa una deuda inflada varias veces. En laboral
+   ese panel no trae fecha, así que no hay con qué ordenarlas: ahí no se puede señalar una
+   como vigente.
 
 El detalle publica más paneles de los que este servidor sabe leer, y los escritos no están
 medidos: su ausencia acá NO significa que no existan. Trae datos personales de terceros, como

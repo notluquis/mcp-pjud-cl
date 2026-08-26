@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.19.3] - 2026-08-26
+
 ### Corregido
 
 - Una consulta lenta dejaba al servidor entero sin responder por minutos. Esperaba a la
@@ -732,7 +734,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.2...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.3...HEAD
+[0.19.3]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.3
 [0.19.2]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.2
 [0.19.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.1
 [0.19.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.0

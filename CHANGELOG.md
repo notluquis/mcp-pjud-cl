@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.19.2] - 2026-08-26
+
 ### Corregido
 
 - `obtener_georreferencia` decía traer la hora en exclusiva, y las actuaciones también la traen.
@@ -724,7 +726,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.2...HEAD
+[0.19.2]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.2
 [0.19.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.1
 [0.19.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.0
 [0.18.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.18.0

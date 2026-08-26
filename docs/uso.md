@@ -182,20 +182,36 @@ Qué esperar de eso:
   clientes distintos no recibieron ninguno, porque ninguno pide el testigo de progreso que el
   protocolo define. Ahí el silencio de minutos sigue siendo el que era.
 
-### El techo de espera es más alto que el del cliente
+### El techo de espera va por debajo del que usa el cliente
 
-Este servidor espera hasta **360** segundos por una respuesta del Poder Judicial. Claude
+Este servidor espera hasta **225** segundos por una respuesta del Poder Judicial. Claude
 Desktop corta a los **240** con "no result received", y ahí muestra tres hipótesis sin
 distinguirlas: que el servidor no responda, que se haya caído, o que no esté corriendo.
 
-O sea entre 240 y 360 segundos la paciencia de este servidor **no la escucha nadie**: la
-consulta muere por el reloj del cliente mientras acá se sigue esperando.
+El orden importa y hasta el 26 de agosto de 2026 estaba al revés: el techo eran 360 segundos,
+o sea entre 240 y 360 se seguía esperando una respuesta que **ya no tenía destinatario**.
 
-Se deja así a propósito, y la razón es de qué se mide: el peor caso medido son 177 segundos
-(el buscador de Cortes de Apelaciones), y en ese tramo de 240 a 360 no se ha observado
-ninguna consulta. Bajar el techo a 240 mataría antes consultas legítimamente lentas que
-nadie ha visto, cambiando un error del cliente por uno nuestro; y en este proyecto un falso
-"no se encontró" cuesta más que una espera larga.
+Eso no era sólo inútil. Una petición sostiene el turno de consulta durante toda su duración,
+y el turno es único para el proceso: mientras una espera, el resto de las llamadas se encola.
+Con el techo por encima del corte del cliente eso se volvía una cascada:
+
+1. La plataforma se pone lenta y una consulta pasa de los 240 segundos.
+2. El cliente la abandona; acá se sigue esperando hasta dos minutos más, con el turno tomado.
+3. Cada llamada que entra se encola detrás y agota **su propio** corte de 240.
+
+Desde afuera el proceso "responde bien un rato y después deja de responder". Dos sesiones de
+prueba lo reportaron así, con herramientas distintas contra hosts distintos, y las dos
+concluyeron que el servidor se había caído. No se había caído: estaba esperando.
+
+Con el techo por debajo del corte, el servidor siempre alcanza a contestar antes de que lo
+abandonen, así que nunca queda un turno tomado por una respuesta que nadie va a recibir y la
+cascada no puede empezar.
+
+Lo que se resigna es el tramo de 225 a 240 segundos, y ahí no se ha observado ninguna
+consulta: el peor caso medido son 177 segundos, en el buscador de Cortes de Apelaciones.
+Quedan 48 segundos de holgura sobre esa medición. Si algún día se mide una consulta legítima
+más lenta que eso, el conflicto es real y hay que decidirlo, no apretar el número: un test lo
+pone en rojo antes.
 
 Lo que sí conviene saber: si tu cliente corta antes, subir el techo de acá no te compra nada.
 

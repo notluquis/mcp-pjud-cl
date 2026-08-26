@@ -4,10 +4,13 @@ import contextlib
 import io
 import logging
 import re
+import threading
+import time
 import urllib.parse
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
+from unittest import mock
 
 import httpx
 import pytest
@@ -15,17 +18,20 @@ from pypdf import PageObject, PdfWriter
 from pypdf.generic import IndirectObject
 
 from mcp_pjud import client
+from mcp_pjud import client as cliente
 from mcp_pjud.client import (
     ANEXOS,
     ANEXOS_MEDIDOS_SIN_EXPONER,
     AUDIO_CAMPO,
     AUDIO_RUTA,
     BASE,
+    CORTE_DEL_CLIENTE_MEDIDO,
     DOCUMENTOS,
     EL_ROL_NO_BASTA,
     ESPERA_MAXIMA,
     INTERVALO_MINIMO,
     LARGO_MAXIMO_MARCADOR,
+    MARGEN_PARA_CONTESTAR,
     MAXIMO_MARCADORES,
     MAXIMO_RANGOS,
     MODULOS,
@@ -277,11 +283,27 @@ def test_el_techo_de_espera_cumple_la_regla_que_su_propio_comentario_declara():
     ya se midió que tardan muere por timeout, y eso se lee como que no hay resultados: es el
     error que costó tres citas de Corte Suprema cuando el techo eran 90 segundos.
     """
-    assert ESPERA_MAXIMA >= 2 * SEGUNDOS_BUSQUEDA_PEOR_MEDIDO, (
-        f"el techo son {ESPERA_MAXIMA:.0f} s y el peor caso medido "
-        f"{SEGUNDOS_BUSQUEDA_PEOR_MEDIDO:.0f} s. "
-        "El comentario de la constante dice que el techo es el doble del peor medido: o se "
-        "cumple, o se cambia la regla a una que sí se cumpla"
+    # La regla cambió, y el docstring de arriba decía cómo hacerlo: "o se cumple, o se cambia
+    # la regla a una que sí se cumpla". El doble del peor medido son 354 y choca con un techo
+    # que no es nuestro. Ahora son dos lados.
+    assert ESPERA_MAXIMA < CORTE_DEL_CLIENTE_MEDIDO, (
+        f"el techo son {ESPERA_MAXIMA:.0f} s y el cliente abandona a los "
+        f"{CORTE_DEL_CLIENTE_MEDIDO:.0f} s. Por encima de ese corte la respuesta no llega a "
+        "nadie y el turno global queda tomado, así que cada llamada siguiente se encola y "
+        "agota su propio corte: el proceso parece muerto sin estarlo"
+    )
+    assert ESPERA_MAXIMA > SEGUNDOS_BUSQUEDA_PEOR_MEDIDO, (
+        f"el techo son {ESPERA_MAXIMA:.0f} s y ya se midió una consulta de "
+        f"{SEGUNDOS_BUSQUEDA_PEOR_MEDIDO:.0f} s. Matarla se lee como que no hay resultados, "
+        "que es el error que costó tres citas de Corte Suprema"
+    )
+    # Y si los dos lados se juntan, eso NO se resuelve apretando el techo en silencio: la
+    # consulta legítima más lenta estaría rozando el corte del cliente, y ahí hay que decidir.
+    holgura = ESPERA_MAXIMA - SEGUNDOS_BUSQUEDA_PEOR_MEDIDO
+    assert holgura >= MARGEN_PARA_CONTESTAR, (
+        f"entre el peor medido y el techo quedan {holgura:.0f} s. Una consulta apenas más lenta "
+        "que la peor medida ya no cabe bajo el corte del cliente, y eso es una decisión que "
+        "hay que tomar, no un número que se ajusta"
     )
 
 
@@ -4436,4 +4458,105 @@ def test_la_referencia_de_georreferencia_llega_desde_la_actuacion():
     referencias = [a.georreferencia_referencia for a in con_geo]
     assert len(set(referencias)) == len(referencias), (
         f"dos actuaciones comparten referencia de georreferencia: {referencias}"
+    )
+
+
+def test_una_peticion_lenta_retiene_a_todas_las_siguientes():
+    """El turno es único para el proceso, y eso es lo que vuelve caro pasarse del corte.
+
+    No es un defecto: soltar el turno antes de clasificar la respuesta es lo que permitía a una
+    segunda llamada consultar después de que la primera ya recibió un bloqueo. Lo que este
+    guardia fija es que la propiedad EXISTE, porque de ella depende que `ESPERA_MAXIMA` tenga
+    que ir por debajo de `CORTE_DEL_CLIENTE_MEDIDO`. Si alguien alguna vez hace el turno por
+    host o por cliente, este test se cae y el techo se puede volver a discutir.
+    """
+    lenta = 1.5
+    espera_de_la_segunda = []
+
+    tomado = threading.Event()
+
+    def transporte_lento(_: httpx.Request) -> httpx.Response:
+        # Acá el turno YA está tomado: es el único punto donde eso se sabe con certeza.
+        tomado.set()
+        time.sleep(lenta)
+        return httpx.Response(200, text="<html></html>")
+
+    primero = PjudClient(contacto="x@y.cl")
+    primero._http = httpx.Client(transport=httpx.MockTransport(transporte_lento))
+    segundo = PjudClient(contacto="x@y.cl")
+    segundo._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text="<html></html>"))
+    )
+
+    def ocupar_el_turno() -> None:
+        with contextlib.suppress(Exception):
+            primero._req("GET", "https://oficinajudicialvirtual.pjud.cl/lenta", paso="lenta")
+
+    hilo = threading.Thread(target=ocupar_el_turno)
+    hilo.start()
+    # Se espera la señal que el propio transporte lento levanta, no un `sleep`: en un CI
+    # cargado el hilo puede no haber tomado el turno todavía, y ahí la rápida entra primero y
+    # el test se cae por la máquina y no por el código.
+    assert tomado.wait(timeout=10), "el hilo lento nunca alcanzó a tomar el turno"
+    partio = time.monotonic()
+    with contextlib.suppress(Exception):
+        segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/rapida", paso="rápida")
+    espera_de_la_segunda.append(time.monotonic() - partio)
+    hilo.join()
+
+    assert espera_de_la_segunda[0] > lenta / 2, (
+        f"la segunda petición, contra un transporte instantáneo, volvió en "
+        f"{espera_de_la_segunda[0]:.2f} s mientras la primera duraba {lenta} s: el turno dejó "
+        "de ser único, así que la razón por la que el techo va bajo el corte del cliente ya no "
+        "aplica y hay que volver a decidirla"
+    )
+
+
+def test_el_presupuesto_de_una_llamada_incluye_lo_que_espera_el_turno():
+    """Bajar el techo de la petición no bastaba, y por el otro lado.
+
+    `ESPERA_MAXIMA` empieza a contar en `request()`, después de tomar el turno. Con eso sola,
+    una segunda llamada podía pasar 220 segundos encolada y recién ahí gastar sus 225: 445
+    contra un corte de 240, o sea la misma cascada entrando por la cola. El presupuesto es de
+    la LLAMADA y arranca antes del turno, así que nadie puede pasarse del corte.
+
+    Acá se comprueba con un presupuesto chico: mientras una petición lenta ocupa el turno, la
+    segunda NO espera indefinidamente, se rinde dentro del presupuesto y dice que la petición
+    no se hizo.
+    """
+    lenta = 4.0
+    tomado = threading.Event()
+
+    def transporte_lento(_: httpx.Request) -> httpx.Response:
+        tomado.set()
+        time.sleep(lenta)
+        return httpx.Response(200, text="<html></html>")
+
+    primero = PjudClient(contacto="x@y.cl")
+    primero._http = httpx.Client(transport=httpx.MockTransport(transporte_lento))
+    segundo = PjudClient(contacto="x@y.cl")
+    segundo._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: pytest.fail("no debía salir a la red"))
+    )
+
+    def ocupar_el_turno() -> None:
+        with contextlib.suppress(Exception):
+            primero._req("GET", "https://oficinajudicialvirtual.pjud.cl/lenta", paso="lenta")
+
+    hilo = threading.Thread(target=ocupar_el_turno)
+    hilo.start()
+    assert tomado.wait(timeout=10), "el hilo lento nunca alcanzó a tomar el turno"
+    try:
+        with mock.patch.object(cliente, "PRESUPUESTO_DE_LA_LLAMADA", 1.0):
+            partio = time.monotonic()
+            with pytest.raises(PjudNoRespondio, match="La petición NO se hizo"):
+                segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/otra", paso="otra")
+            tardo = time.monotonic() - partio
+    finally:
+        hilo.join()
+
+    assert tardo < lenta, (
+        f"la segunda llamada esperó {tardo:.1f} s con un presupuesto de 1 s: la cola del turno "
+        "no está entrando en el presupuesto, así que una llamada puede pasarse del corte del "
+        "cliente esperando su turno"
     )

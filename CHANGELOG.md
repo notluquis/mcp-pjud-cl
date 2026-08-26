@@ -16,6 +16,16 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- `obtener_georreferencia` decía traer la hora en exclusiva, y las actuaciones también la traen.
+  Lo distinto es de dónde sale: una la escribió el tribunal, la otra la marcó el aparato.
+- El aviso de la tilde decía que falta "la mitad" y sus propias cifras son 5 contra 25.
+- `facetas` no decía que el valor hay que copiarlo de ESA misma búsqueda. El mismo campo publica
+  valores que conviven, y uno traído de otra consulta puede no existir entre las coincidencias.
+- El listado no avisaba de `estado`, que civil no publica: la lista salía de buscar una frase en
+  la prosa de cada campo y ahora sale de las columnas que cada competencia declara leer.
+
 ## [0.19.1] - 2026-08-25
 
 ### Corregido

@@ -6019,3 +6019,71 @@ def test_la_referencia_pide_la_fecha_en_el_formato_que_el_buscador_acepta():
         "la referencia pide el rango en DD/MM/AAAA, que es el formato con que el buscador "
         "responde un error"
     )
+
+
+def test_ninguna_herramienta_se_atribuye_un_dato_que_otra_ya_entrega():
+    """`obtener_georreferencia` decía traer "algo que no hay en ninguna otra parte": la HORA.
+
+    `Actuacion.hora_diligencia` la trae, y llega con valor: dos sesiones lo notaron. La frase no
+    hacía llamar mal, pero gastaba una petición para obtener algo que ya estaba en la respuesta
+    anterior. Lo que sí es exclusivo es de dónde sale, y eso es lo que ahora dice.
+    """
+    from mcp_pjud.parser import Actuacion
+    from mcp_pjud.server import obtener_georreferencia
+
+    contrato = " ".join((obtener_georreferencia.__doc__ or "").split())
+    assert "hora_diligencia" in Actuacion.model_fields, (
+        "si las actuaciones dejaran de traer la hora, la exclusividad volvería a ser cierta"
+    )
+    assert "no hay en ninguna otra parte" not in contrato, (
+        "vuelve a atribuirse la hora en exclusiva, y `hora_diligencia` también la trae"
+    )
+    assert "hora_diligencia" in contrato, (
+        "el contrato no dice cuál es la otra fuente de la hora, que es lo que evita pedirla dos "
+        "veces"
+    )
+
+
+def test_la_advertencia_de_la_tilde_no_contradice_su_propia_medicion():
+    """Decía "falta la mitad escrita de la otra forma" y su propio ejemplo daba uno a cinco.
+
+    Una sesión midió otro apellido y le dio uno a dos. La proporción no es fija, y decir "la
+    mitad" invita a creer que consultar dos veces reparte por igual.
+    """
+    import asyncio
+
+    from mcp_pjud.client import CAUSAS_DEL_APELLIDO_CON_TILDE, CAUSAS_DEL_APELLIDO_SIN_TILDE
+    from mcp_pjud.server import mcp
+
+    expuestas = {h.name: h for h in asyncio.run(mcp.list_tools())}
+    contrato = expuestas["buscar_causa_por_nombre"].description or ""
+    assert CAUSAS_DEL_APELLIDO_SIN_TILDE * 2 != CAUSAS_DEL_APELLIDO_CON_TILDE, (
+        "si las cifras medidas fueran justo el doble, 'la mitad' no sería contradictorio"
+    )
+    assert "la mitad" not in contrato, (
+        f"el contrato dice 'la mitad' y lo medido es {CAUSAS_DEL_APELLIDO_SIN_TILDE} contra "
+        f"{CAUSAS_DEL_APELLIDO_CON_TILDE}"
+    )
+
+
+def test_el_listado_nombra_todo_campo_que_alguna_competencia_no_publica():
+    """`estado` venía en nulo en civil y el aviso no lo nombraba.
+
+    La lista salía de buscar la frase "Sólo en" en la prosa de cada campo, y `estado` declara a
+    quiénes les FALTA en vez de a quiénes les sobra, así que quedaba fuera. Ahora sale de
+    `columnas`, que es lo que cada competencia declara leer.
+    """
+    from mcp_pjud.client import MODULOS
+    from mcp_pjud.parser import COMPETENCIAS, CausaEncontrada
+    from mcp_pjud.server import _SOLO_DE_UNA_COMPETENCIA
+
+    desiguales = {
+        c
+        for c in CausaEncontrada.model_fields
+        if 0 < len({n for n in MODULOS if c in COMPETENCIAS[n].columnas}) < len(MODULOS)
+    }
+    assert desiguales, "si todas publicaran lo mismo, el aviso entero sobraría"
+    for campo in desiguales:
+        assert f"`{campo}`" in _SOLO_DE_UNA_COMPETENCIA, (
+            f"{campo!r} falta en unas competencias y el aviso del listado no lo nombra"
+        )

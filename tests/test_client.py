@@ -10,6 +10,7 @@ import urllib.parse
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
+from unittest import mock
 
 import httpx
 import pytest
@@ -17,6 +18,7 @@ from pypdf import PageObject, PdfWriter
 from pypdf.generic import IndirectObject
 
 from mcp_pjud import client
+from mcp_pjud import client as cliente
 from mcp_pjud.client import (
     ANEXOS,
     ANEXOS_MEDIDOS_SIN_EXPONER,
@@ -4471,7 +4473,11 @@ def test_una_peticion_lenta_retiene_a_todas_las_siguientes():
     lenta = 1.5
     espera_de_la_segunda = []
 
+    tomado = threading.Event()
+
     def transporte_lento(_: httpx.Request) -> httpx.Response:
+        # Acá el turno YA está tomado: es el único punto donde eso se sabe con certeza.
+        tomado.set()
         time.sleep(lenta)
         return httpx.Response(200, text="<html></html>")
 
@@ -4488,7 +4494,10 @@ def test_una_peticion_lenta_retiene_a_todas_las_siguientes():
 
     hilo = threading.Thread(target=ocupar_el_turno)
     hilo.start()
-    time.sleep(0.2)
+    # Se espera la señal que el propio transporte lento levanta, no un `sleep`: en un CI
+    # cargado el hilo puede no haber tomado el turno todavía, y ahí la rápida entra primero y
+    # el test se cae por la máquina y no por el código.
+    assert tomado.wait(timeout=10), "el hilo lento nunca alcanzó a tomar el turno"
     partio = time.monotonic()
     with contextlib.suppress(Exception):
         segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/rapida", paso="rápida")
@@ -4500,4 +4509,54 @@ def test_una_peticion_lenta_retiene_a_todas_las_siguientes():
         f"{espera_de_la_segunda[0]:.2f} s mientras la primera duraba {lenta} s: el turno dejó "
         "de ser único, así que la razón por la que el techo va bajo el corte del cliente ya no "
         "aplica y hay que volver a decidirla"
+    )
+
+
+def test_el_presupuesto_de_una_llamada_incluye_lo_que_espera_el_turno():
+    """Bajar el techo de la petición no bastaba, y por el otro lado.
+
+    `ESPERA_MAXIMA` empieza a contar en `request()`, después de tomar el turno. Con eso sola,
+    una segunda llamada podía pasar 220 segundos encolada y recién ahí gastar sus 225: 445
+    contra un corte de 240, o sea la misma cascada entrando por la cola. El presupuesto es de
+    la LLAMADA y arranca antes del turno, así que nadie puede pasarse del corte.
+
+    Acá se comprueba con un presupuesto chico: mientras una petición lenta ocupa el turno, la
+    segunda NO espera indefinidamente, se rinde dentro del presupuesto y dice que la petición
+    no se hizo.
+    """
+    lenta = 4.0
+    tomado = threading.Event()
+
+    def transporte_lento(_: httpx.Request) -> httpx.Response:
+        tomado.set()
+        time.sleep(lenta)
+        return httpx.Response(200, text="<html></html>")
+
+    primero = PjudClient(contacto="x@y.cl")
+    primero._http = httpx.Client(transport=httpx.MockTransport(transporte_lento))
+    segundo = PjudClient(contacto="x@y.cl")
+    segundo._http = httpx.Client(
+        transport=httpx.MockTransport(lambda _: pytest.fail("no debía salir a la red"))
+    )
+
+    def ocupar_el_turno() -> None:
+        with contextlib.suppress(Exception):
+            primero._req("GET", "https://oficinajudicialvirtual.pjud.cl/lenta", paso="lenta")
+
+    hilo = threading.Thread(target=ocupar_el_turno)
+    hilo.start()
+    assert tomado.wait(timeout=10), "el hilo lento nunca alcanzó a tomar el turno"
+    try:
+        with mock.patch.object(cliente, "PRESUPUESTO_DE_LA_LLAMADA", 1.0):
+            partio = time.monotonic()
+            with pytest.raises(PjudNoRespondio, match="La petición NO se hizo"):
+                segundo._req("GET", "https://oficinajudicialvirtual.pjud.cl/otra", paso="otra")
+            tardo = time.monotonic() - partio
+    finally:
+        hilo.join()
+
+    assert tardo < lenta, (
+        f"la segunda llamada esperó {tardo:.1f} s con un presupuesto de 1 s: la cola del turno "
+        "no está entrando en el presupuesto, así que una llamada puede pasarse del corte del "
+        "cliente esperando su turno"
     )

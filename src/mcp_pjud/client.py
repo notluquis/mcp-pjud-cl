@@ -189,12 +189,12 @@ MARGEN_PARA_CONTESTAR = 15.0
 #: era más creíble: tres citas de Corte Suprema fallaban SIEMPRE, en todas las corridas, y esa
 #: consistencia se leyó como "esas consultas no terminan". Terminaban en 81, 102 y 39
 #: segundos. La de 102 era la única que el tope mataba, y con ella se dieron por perdidas las
-#: tres. El valor de ahora es el doble del peor medido, `SEGUNDOS_BUSQUEDA_PEOR_MEDIDO`.
+#: tres.
 #:
-#: El valor es la regla escrita, y hasta el 24 de agosto de 2026 no lo era: se puso en 240
-#: cuando el peor medido eran 115,6 s, después se midió uno de 177,0 y nadie volvió a mirar el
-#: techo. El doble de 177 son 354, o sea la regla y el número llevaban versiones separados, y
-#: ningún test la codificaba. Ahora sí, y por eso el número subió.
+#: La regla fue "el doble del peor medido" hasta el 26 de agosto de 2026, y ya NO lo es: el
+#: doble de `SEGUNDOS_BUSQUEDA_PEOR_MEDIDO` son 354 y no cabe bajo un techo que no es nuestro.
+#: Se deja escrito para que nadie la reponga leyendo los párrafos de arriba, que cuentan de
+#: dónde venía.
 #:
 #: Lo que cuesta: `_req` sostiene el turno durante toda la petición, y el turno es global. El
 #: comentario de antes lo daba por aceptable con que "esperar de más es barato". Medido el 26
@@ -218,6 +218,13 @@ MARGEN_PARA_CONTESTAR = 15.0
 #: nuestro. Cuando chocan gana el externo, porque más allá no se entrega nada. Lo que queda
 #: sigue cubriendo el peor caso medido con holgura.
 ESPERA_MAXIMA = CORTE_DEL_CLIENTE_MEDIDO - MARGEN_PARA_CONTESTAR
+
+#: Lo que puede durar una LLAMADA entera, cola del turno incluida. `ESPERA_MAXIMA` acota la
+#: petición y sola no alcanza: el turno es único, así que una segunda llamada podía estar 220
+#: segundos encolada y recién ahí empezar a contar sus 225, o sea 445 contra un corte de 240.
+#: La cascada por el otro lado. Con esto nadie puede pasarse del corte, esté esperando el turno
+#: o la respuesta.
+PRESUPUESTO_DE_LA_LLAMADA = ESPERA_MAXIMA
 
 #: Cuánto se espera a que el destino ABRA la conexión, que es otra cosa que esperar la
 #: respuesta. Lo que justifica el techo de arriba es una consulta Solr con facetas sobre más de
@@ -1165,15 +1172,40 @@ class Transporte:
         # de colgada, que es lo contrario de lo que esto sirve.
         if self.aviso is not None:
             self.aviso(len(self.bitacora) + 1, self.pasos_previstos, paso or PASO_GENERICO)
+        # El presupuesto es de la LLAMADA, no de la petición, y por eso arranca acá: lo que se
+        # pasa en la cola del turno también lo gasta.
+        #
+        # Bajar `ESPERA_MAXIMA` no bastaba. Con el techo contando sólo desde `request()`, una
+        # segunda llamada podía estar 220 segundos encolada y sostener el turno otros 225,
+        # o sea 445 en total contra un corte de 240: la cascada que esto viene a cerrar,
+        # reproducida por el otro lado. El presupuesto la cierra porque nadie puede pasarse.
+        nacio = time.monotonic()
+
+        def restante() -> float:
+            return PRESUPUESTO_DE_LA_LLAMADA - (time.monotonic() - nacio)
+
         # El turno cubre la petición Y su clasificación, no sólo la espera. Dos llamadas
         # concurrentes leerían la misma marca y saldrían juntas; y si el turno se soltara
         # antes de clasificar, la segunda esperaría sus cinco segundos y consultaría igual
         # cuando la primera ya recibió el bloqueo. Eso es reintentar por el lado.
-        with _TURNO:
+        if not _TURNO.acquire(timeout=max(0.0, restante())):
+            # Esperar el turno hasta agotar el presupuesto y consultar igual sería salir a la
+            # red por una respuesta que ya nadie puede recibir, gastando una petición contra la
+            # institución. Se corta acá, y el mensaje dice que NO es una ausencia.
+            raise PjudNoRespondio(
+                f"Otra consulta ocupó el turno durante {PRESUPUESTO_DE_LA_LLAMADA:.0f} "
+                f"segundos y ésta no alcanzó a salir. La petición NO se hizo. El turno es uno "
+                f"solo para todo el proceso, así que esto significa que la plataforma va lenta, "
+                f"no que este servidor esté caído. {NO_ES_UNA_AUSENCIA}"
+            )
+        try:
             if _BLOQUEADO:
                 raise PjudBloqueado(_BLOQUEADO)
 
             dormido = self._esperar()
+            # Lo que quede después de la cola y del intervalo. Sin esto la petición volvería a
+            # contar desde cero y el presupuesto no acotaría nada.
+            kw.setdefault("timeout", httpx.Timeout(max(1.0, restante()), connect=SEGUNDOS_CONECTAR))
             partio = time.monotonic()
             try:
                 r = self._http.request(metodo, url, **kw)
@@ -1258,8 +1290,10 @@ class Transporte:
                     "acceso quedó restringido."
                 )
                 raise PjudBloqueado(_BLOQUEADO)
+        finally:
+            _TURNO.release()
 
-        # Fuera del candado a propósito, igual que antes: el `with` cubre la clasificación
+        # Fuera del candado a propósito, igual que antes: el turno cubre la clasificación
         # porque una segunda llamada no puede consultar después de que la primera recibió un
         # bloqueo, y un 5xx no es un bloqueo. Armar el mensaje adentro sólo frena al que sigue.
         # Los 403 y 429 nunca llegan acá: se atienden arriba.

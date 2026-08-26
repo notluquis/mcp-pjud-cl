@@ -913,12 +913,22 @@ def test_la_guia_cita_el_techo_de_espera_que_el_codigo_fija():
     Es la clase de dato que envejece en silencio: si `ESPERA_MAXIMA` se mueve y la explicación
     no, la página estaría razonando sobre un tramo que ya no existe.
     """
-    from mcp_pjud.client import ESPERA_MAXIMA, SEGUNDOS_BUSQUEDA_PEOR_MEDIDO
+    from mcp_pjud.client import (
+        CORTE_DEL_CLIENTE_MEDIDO,
+        ESPERA_MAXIMA,
+        SEGUNDOS_BUSQUEDA_PEOR_MEDIDO,
+    )
 
     uso = " ".join(_texto(RAIZ / "docs" / "uso.md").split())
+    # Las CUATRO cifras sobre las que la página razona, no sólo el techo: antes se comparaban
+    # dos, así que mover el corte del cliente o el margen dejaba a las otras dos afirmando algo
+    # falso con la suite verde. La holgura va aparte porque es una resta, no una constante.
+    holgura = int(ESPERA_MAXIMA - SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)
     for dicho in (
         f"**{int(ESPERA_MAXIMA)}** segundos",
+        f"**{int(CORTE_DEL_CLIENTE_MEDIDO)}**",
         f"{int(SEGUNDOS_BUSQUEDA_PEOR_MEDIDO)} segundos",
+        f"{holgura} segundos de holgura",
     ):
         assert dicho in uso, (
             f"la guía no cita {dicho!r}, que es lo que el código fija y sobre lo que esa "

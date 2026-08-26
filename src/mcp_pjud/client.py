@@ -134,6 +134,14 @@ RAFAGA_MAXIMA = 4
 CAUSAS_DEL_APELLIDO_SIN_TILDE = 5
 CAUSAS_DEL_APELLIDO_CON_TILDE = 25
 
+#: Y un SEGUNDO apellido, porque con uno solo no se puede afirmar que la proporción varíe.
+#: Medido el 25 de agosto de 2026 en otro tribunal: dos causas sin tilde y cuatro con tilde,
+#: sin una sola repetida entre las dos listas. Contra 5 y 25 del primero, o sea uno a dos
+#: contra uno a cinco: cuánto falta no guarda proporción con lo que salió, y por eso la
+#: advertencia no puede prometer que consultar dos veces reparta por igual.
+OTRO_APELLIDO_SIN_TILDE = 2
+OTRO_APELLIDO_CON_TILDE = 4
+
 #: Cuánto tarda de verdad el buscador de fallos, medido, y cuánto la página del mismo host.
 #: Son las cifras que justifican `ESPERA_MAXIMA`, y viven acá porque se citan en tres archivos:
 #: `tests/test_documentacion.py` verifica que ninguno quede con la vieja.

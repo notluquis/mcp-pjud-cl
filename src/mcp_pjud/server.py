@@ -80,6 +80,7 @@ from .juris import (
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
     ROTULO_DE_LA_DE_REEMPLAZO,
+    VALOR_LITERAL_SIN_DATO,
     VISIBLES_MEDIDAS,
     JurisClient,
     ResultadoJurisprudencia,
@@ -688,12 +689,27 @@ def listar_tribunales(
         return c.listar_tribunales(competencia, corte)
 
 
-#: Los campos del listado que sólo publica una competencia, sacados del modelo para que no
-#: puedan divergir de él. Se buscan por su propia prosa: cada uno la declara con "Sólo en".
+#: Los campos del listado que NO publica toda competencia, agrupados por quiénes los traen.
+#:
+#: Sale de `columnas`, que es lo que cada competencia declara leer, y no de la prosa de cada
+#: campo. Antes se buscaba la frase "Sólo en" en la descripción del modelo, y eso dejaba fuera
+#: a `estado`, cuya prosa dice a quiénes les falta en vez de a quiénes les sobra: una sesión lo
+#: recibió en nulo en las seis filas de una causa civil y tuvo que suponer por qué.
+def _competencias_que_publican(campo: str) -> list[str]:
+    return sorted(n for n in MODULOS if campo in COMPETENCIAS[n].columnas)
+
+
 _SOLO_DE_UNA_COMPETENCIA = "; ".join(
-    f"`{nombre}` {(campo.description or '').replace('Sólo', 'sólo', 1).rstrip('.')}"
-    for nombre, campo in CausaEncontrada.model_fields.items()
-    if (campo.description or "").startswith("Sólo en")
+    f"{_y([f'`{c}`' for c in campos])} en {_y(list(quien))}"
+    for quien, campos in {
+        tuple(_competencias_que_publican(c)): [
+            n
+            for n in CausaEncontrada.model_fields
+            if tuple(_competencias_que_publican(n)) == tuple(_competencias_que_publican(c))
+        ]
+        for c in CausaEncontrada.model_fields
+        if 0 < len(_competencias_que_publican(c)) < len(MODULOS)
+    }.items()
 )
 
 #: Las competencias que la búsqueda acepta y el detalle no. Derivado: nombrarlas a mano las
@@ -762,7 +778,8 @@ def buscar_causa_por_rit(
     f"un apellido en un solo tribunal: sin tilde salen {CAUSAS_DEL_APELLIDO_SIN_TILDE} causas, "
     f"con tilde salen {CAUSAS_DEL_APELLIDO_CON_TILDE}, y escribir un campo con tilde y el otro "
     "sin ella da CERO. Por eso una lista vacía acá NO significa que la persona no tenga causas, "
-    "y una lista con resultados TAMPOCO está completa: falta la mitad escrita de la otra forma. "
+    "y una lista con resultados TAMPOCO está completa: falta lo escrito de la otra forma, y "
+    "cuánto falta no guarda proporción fija con lo que sí salió. "
     "Repetir con la otra grafía SÓLO antes de informar un total: para abrir una causa que "
     "ya apareció no hace falta."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
@@ -1283,9 +1300,10 @@ def obtener_georreferencia(
 ) -> Georreferencia:
     """Dónde y cuándo el ministro de fe registró que practicó una diligencia.
 
-    Es el registro del art. 9 inc. 3 de la Ley 20.886, y trae algo que no hay en ninguna otra
-    parte de la respuesta: la HORA. Las dos fechas de la Historia son del día; ésta viene del
-    aparato con que se tomó la coordenada.
+    Es el registro del art. 9 inc. 3 de la Ley 20.886. Su hora NO es la única de la respuesta:
+    `hora_diligencia` de las actuaciones también la trae. Lo distinto es de dónde sale: aquélla
+    es la que el tribunal escribió en el texto del trámite, y ésta la marcó el aparato con que
+    se tomó la coordenada.
 
     Eso la vuelve una TERCERA fuente sobre cuándo ocurrió la diligencia, independiente de las
     dos que el sitio publica. NO reemplaza a `fecha_diligencia`, que es la que corre los
@@ -1463,11 +1481,16 @@ def buscar_jurisprudencia(
         dict[str, list[str]] | None,
         Field(
             description="Con qué acotar, de nombre de faceta a los valores que se aceptan. "
-            "Los valores hay que COPIARLOS de `facetas` de una búsqueda sin filtrar: la "
-            "plataforma los publica con su propia ortografía ('C.A. de Valparaiso' sin tilde, "
-            "un libro como 'PROTECCIN'), y uno que no calce exactamente devuelve cero "
-            "resultados en vez de un error. Cada buscador declara las suyas y pedir una que no "
-            "declara falla en vez de buscar."
+            "Los valores hay que COPIARLOS de `facetas` de ESTA MISMA búsqueda sin filtrar, no "
+            "de otra: el mismo campo publica valores que conviven y sólo aparecen si algo los "
+            "trae ('ACOGE,UNIFICACIÓN DE JURISPRUDENCIA' y el mismo con '(M)' son dos valores "
+            "distintos). Y con su ortografía: 'C.A. de Valparaiso' sin tilde, un libro como "
+            "'PROTECCIN'.\n\nUn valor que no calza no da error EN LA PLATAFORMA, devuelve cero: "
+            "por eso esta herramienta se detiene en vez de entregar la lista vacía, que se "
+            "leería como que la sentencia no existe. "
+            f"{VALOR_LITERAL_SIN_DATO!r} es un valor más y filtra igual. Cada buscador "
+            "declara sus facetas y pedir una que no "
+            "declara falla antes de buscar."
         ),
     ] = None,
     buscador: Annotated[

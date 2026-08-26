@@ -1570,3 +1570,46 @@ def test_un_rechazo_se_clasifica_antes_de_exigir_el_desglose(monkeypatch):
             buscador="apelaciones",
             facetas={"corte_origen": ["C.A. de Santiago"]},
         )
+
+
+def test_un_valor_de_faceta_sin_dato_se_trata_como_cualquier_otro():
+    """`SIN INFORMACION` es un valor literal que la plataforma publica cuando no tiene el dato.
+
+    Medido el 25 de agosto de 2026 en apelaciones: la faceta de materia lo declaró con
+    `COINCIDENCIAS_DEL_VALOR_SIN_DATO` y filtrar por él devolvió exactamente esas. La
+    descripción lo dice porque leerlo como "acá no se puede filtrar" descarta un subconjunto
+    real, y acá se comprueba que este cliente no lo trata distinto: ni lo esconde al leer la
+    respuesta ni lo altera al mandarlo.
+    """
+    from mcp_pjud.juris import COINCIDENCIAS_DEL_VALOR_SIN_DATO, VALOR_LITERAL_SIN_DATO
+
+    assert COINCIDENCIAS_DEL_VALOR_SIN_DATO > 0, "una cifra en cero no sostendría la frase"
+
+    d = json.loads(_con_facetas())
+    d["facet_counts"]["facet_fields"]["gls_corte_s"] = [
+        VALOR_LITERAL_SIN_DATO,
+        COINCIDENCIAS_DEL_VALOR_SIN_DATO,
+    ]
+    leidas = parse_sentencias(json.dumps(d), "apelaciones").facetas or {}
+    assert leidas.get("corte_origen") == {
+        VALOR_LITERAL_SIN_DATO: COINCIDENCIAS_DEL_VALOR_SIN_DATO
+    }, leidas
+
+    # Y viaja tal cual: si se filtrara o se normalizara, la instrucción de copiarlo mentiría.
+    enviados = []
+
+    def espiar(peticion: httpx.Request) -> httpx.Response:
+        enviados.append(peticion.content)
+        return httpx.Response(200, text=json.dumps(d))
+
+    c = JurisClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(espiar))
+    c._token, c._id_buscador = "tok", "168"
+    c._buscador_de_la_sesion = "apelaciones"
+    c.buscar(
+        rol=1, anio=2023, buscador="apelaciones", facetas={"corte_origen": [VALOR_LITERAL_SIN_DATO]}
+    )
+    filtros = _filtros_enviados(enviados[0])
+    assert filtros["facetas_seleccionadas"] == [
+        {"nombre": "gls_corte_s", "valores": [VALOR_LITERAL_SIN_DATO]}
+    ], filtros

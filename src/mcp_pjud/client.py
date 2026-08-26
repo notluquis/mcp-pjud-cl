@@ -162,6 +162,17 @@ SEGUNDOS_PAGINA_MEDIDOS = 4.3
 #: lenta, sube esta constante en vez de concluir que la consulta no funciona.
 SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 177.0
 
+#: Cuánto espera el CLIENTE a este servidor antes de darlo por muerto. No es nuestro y por eso
+#: se mide en vez de elegirse: cuatro minutos, del mensaje literal que dos sesiones pegaron,
+#: "No result received from the Claude Desktop app after waiting 4 minutes".
+#:
+#: Manda sobre el techo de abajo porque una respuesta que llega después no llega a nadie.
+CORTE_DEL_CLIENTE_MEDIDO = 240.0
+
+#: Lo que se le deja al servidor para clasificar el fallo y contestarlo dentro de ese corte.
+#: Sin este margen el techo quedaría pegado al corte y la respuesta saldría justo tarde.
+MARGEN_PARA_CONTESTAR = 15.0
+
 #: Cuánto se espera una respuesta antes de darla por perdida.
 #:
 #: Medido, y por eso es tan alto: una búsqueda del buscador de fallos por rol y año tardó
@@ -185,14 +196,28 @@ SEGUNDOS_BUSQUEDA_PEOR_MEDIDO = 177.0
 #: techo. El doble de 177 son 354, o sea la regla y el número llevaban versiones separados, y
 #: ningún test la codificaba. Ahora sí, y por eso el número subió.
 #:
-#: Lo que cuesta: `_req` sostiene el turno durante toda la petición, así que una colgada frena
-#: al resto del proceso hasta seis minutos, y por eso `SEGUNDOS_CONECTAR` va aparte. Se
-#: acepta por dos razones. La primera es no
-#: soltar el turno antes de clasificar la respuesta, que es lo que permitía a una segunda
-#: llamada consultar después de que la primera ya recibió un bloqueo. La segunda es que en
-#: este proyecto esperar de más es barato y cortar de menos es caro: una espera larga molesta,
-#: y un falso "no se encontró" se lee como que la causa no existe.
-ESPERA_MAXIMA = 360.0
+#: Lo que cuesta: `_req` sostiene el turno durante toda la petición, y el turno es global. El
+#: comentario de antes lo daba por aceptable con que "esperar de más es barato". Medido el 26
+#: de agosto de 2026, no lo es, y por una razón que aquel razonamiento no tenía: pasado el
+#: corte del cliente NADIE puede recibir la respuesta, así que lo que se espera de más es costo
+#: sin beneficio posible, y encima retiene a todas las llamadas siguientes.
+#:
+#: Con 360 contra un corte de 240 el efecto era una cascada: la plataforma se pone lenta, la
+#: primera llamada pasa de 240 y el cliente la abandona; el servidor sigue esperando hasta dos
+#: minutos más con el turno tomado; cada llamada que entra se encola y agota SUS 240 segundos.
+#: Desde afuera el proceso "responde bien un rato y después deja de responder", que es
+#: literalmente lo que dos sesiones de prueba reportaron, con dos herramientas contra dos hosts
+#: distintos. Comprobado en el banco: con una petición lenta en curso, una segunda contra un
+#: transporte instantáneo espera lo que dure la primera.
+#:
+#: Por eso el techo va DEBAJO del corte del cliente. Así el servidor siempre alcanza a
+#: contestar antes de que lo abandonen, y no queda nunca un turno tomado por una respuesta que
+#: ya no tiene destinatario: con eso la cascada no puede empezar.
+#:
+#: La regla anterior era "el doble del peor medido", que da 354 y choca con un techo que no es
+#: nuestro. Cuando chocan gana el externo, porque más allá no se entrega nada. Lo que queda
+#: sigue cubriendo el peor caso medido con holgura.
+ESPERA_MAXIMA = CORTE_DEL_CLIENTE_MEDIDO - MARGEN_PARA_CONTESTAR
 
 #: Cuánto se espera a que el destino ABRA la conexión, que es otra cosa que esperar la
 #: respuesta. Lo que justifica el techo de arriba es una consulta Solr con facetas sobre más de

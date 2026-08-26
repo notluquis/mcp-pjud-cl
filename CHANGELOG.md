@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Una consulta lenta dejaba al servidor entero sin responder por minutos. Esperaba a la
+  plataforma más de lo que el cliente lo espera a él, y como el turno de consulta es único, cada
+  llamada siguiente se encolaba detrás de una respuesta que ya no tenía destinatario.
+
 ## [0.19.2] - 2026-08-26
 
 ### Corregido

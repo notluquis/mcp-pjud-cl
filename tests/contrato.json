@@ -1704,7 +1704,7 @@
               }
             ],
             "default": null,
-            "description": "Con qué acotar, de nombre de faceta a los valores que se aceptan. Los valores hay que COPIARLOS de `facetas` de ESTA MISMA búsqueda sin filtrar, no de otra: el mismo campo publica valores que conviven y sólo aparecen si algo los trae ('ACOGE,UNIFICACIÓN DE JURISPRUDENCIA' y el mismo con '(M)' son dos valores distintos). Y con su ortografía: 'C.A. de Valparaiso' sin tilde, un libro como 'PROTECCIN'.\n\nUn valor que no calza no da error EN LA PLATAFORMA, devuelve cero: por eso esta herramienta se detiene en vez de entregar la lista vacía, que se leería como que la sentencia no existe. Un valor literal como 'SIN INFORMACION' es un valor más y filtra igual. Cada buscador declara sus facetas y pedir una que no declara falla antes de buscar.",
+            "description": "Con qué acotar, de nombre de faceta a los valores que se aceptan. Los valores hay que COPIARLOS de `facetas` de ESTA MISMA búsqueda sin filtrar, no de otra: el mismo campo publica valores que conviven y sólo aparecen si algo los trae ('ACOGE,UNIFICACIÓN DE JURISPRUDENCIA' y el mismo con '(M)' son dos valores distintos). Y con su ortografía: 'C.A. de Valparaiso' sin tilde, un libro como 'PROTECCIN'.\n\nUn valor que no calza no da error EN LA PLATAFORMA, devuelve cero: por eso esta herramienta se detiene en vez de entregar la lista vacía, que se leería como que la sentencia no existe. 'SIN INFORMACION' es un valor más y filtra igual. Cada buscador declara sus facetas y pedir una que no declara falla antes de buscar.",
             "title": "Facetas"
           },
           "filas": {

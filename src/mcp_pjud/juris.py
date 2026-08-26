@@ -469,6 +469,14 @@ class TextoSentencia(BaseModel):
 #: cae en más de un valor. Sumarlas daría dos veces y media el total.
 #:
 #: Viven acá porque la referencia las repite y `tests/test_documentacion.py` compara las dos.
+#: `SIN INFORMACION` es un valor literal que la plataforma publica cuando no tiene el dato, y
+#: filtra como cualquier otro: medido el 25 de agosto de 2026 en apelaciones, la faceta declaró
+#: esta cifra en `materia` y filtrar por ese valor devolvió exactamente esas coincidencias. Se
+#: dice en la descripción porque leerlo como "acá no se puede filtrar" descarta un subconjunto
+#: real; vive acá para que la afirmación tenga con qué compararse.
+VALOR_LITERAL_SIN_DATO = "SIN INFORMACION"
+COINCIDENCIAS_DEL_VALOR_SIN_DATO = 417
+
 SENTENCIAS_DE_LA_MEDICION_DE_FACETAS = 88
 APARICIONES_EN_LA_FACETA_DE_MATERIA = 228
 

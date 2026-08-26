@@ -6052,13 +6052,30 @@ def test_la_advertencia_de_la_tilde_no_contradice_su_propia_medicion():
     """
     import asyncio
 
-    from mcp_pjud.client import CAUSAS_DEL_APELLIDO_CON_TILDE, CAUSAS_DEL_APELLIDO_SIN_TILDE
+    from mcp_pjud.client import (
+        CAUSAS_DEL_APELLIDO_CON_TILDE,
+        CAUSAS_DEL_APELLIDO_SIN_TILDE,
+        OTRO_APELLIDO_CON_TILDE,
+        OTRO_APELLIDO_SIN_TILDE,
+    )
     from mcp_pjud.server import mcp
 
     expuestas = {h.name: h for h in asyncio.run(mcp.list_tools())}
     contrato = expuestas["buscar_causa_por_nombre"].description or ""
+    # Con UN apellido sólo se refuta "la mitad". Que la proporción VARÍE necesita el segundo,
+    # y por eso vive en el código y no en el docstring de este test.
+    primero = CAUSAS_DEL_APELLIDO_CON_TILDE / CAUSAS_DEL_APELLIDO_SIN_TILDE
+    segundo = OTRO_APELLIDO_CON_TILDE / OTRO_APELLIDO_SIN_TILDE
+    assert primero != segundo, (
+        f"las dos mediciones dan la misma proporción ({primero}), así que la advertencia no "
+        "puede decir que no la haya"
+    )
     assert CAUSAS_DEL_APELLIDO_SIN_TILDE * 2 != CAUSAS_DEL_APELLIDO_CON_TILDE, (
         "si las cifras medidas fueran justo el doble, 'la mitad' no sería contradictorio"
+    )
+    assert "proporción" in contrato, (
+        "el contrato dejó de decir que cuánto falta no guarda proporción, que es lo que estas "
+        "dos mediciones sostienen"
     )
     assert "la mitad" not in contrato, (
         f"el contrato dice 'la mitad' y lo medido es {CAUSAS_DEL_APELLIDO_SIN_TILDE} contra "

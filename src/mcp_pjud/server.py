@@ -80,6 +80,7 @@ from .juris import (
     FILAS_MAXIMAS,
     INDEXADAS_MEDIDAS,
     ROTULO_DE_LA_DE_REEMPLAZO,
+    VALOR_LITERAL_SIN_DATO,
     VISIBLES_MEDIDAS,
     JurisClient,
     ResultadoJurisprudencia,
@@ -1486,8 +1487,9 @@ def buscar_jurisprudencia(
             "distintos). Y con su ortografía: 'C.A. de Valparaiso' sin tilde, un libro como "
             "'PROTECCIN'.\n\nUn valor que no calza no da error EN LA PLATAFORMA, devuelve cero: "
             "por eso esta herramienta se detiene en vez de entregar la lista vacía, que se "
-            "leería como que la sentencia no existe. Un valor literal como 'SIN INFORMACION' es "
-            "un valor más y filtra igual. Cada buscador declara sus facetas y pedir una que no "
+            "leería como que la sentencia no existe. "
+            f"{VALOR_LITERAL_SIN_DATO!r} es un valor más y filtra igual. Cada buscador "
+            "declara sus facetas y pedir una que no "
             "declara falla antes de buscar."
         ),
     ] = None,

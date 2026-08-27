@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-08-26. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-08-27. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 425 | 31 | 5855 | 1240 |
-| Todo lo registrado, desde el 2026-08-17 | 425 | 31 | 5855 | 1240 |
+| Últimos 14 días | 433 | 34 | 6006 | 1296 |
+| Todo lo registrado, desde el 2026-08-17 | 433 | 34 | 6006 | 1296 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-08-27 | 1 | 0 | 0 | 0 |
 | 2026-08-26 | 1 | 0 | 0 | 0 |
 | 2026-08-25 | 1 | 0 | 0 | 6 |
 | 2026-08-24 | 1 | 0 | 0 | 0 |
@@ -74,6 +75,9 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 | v0.2.0 | `sbom.spdx.json` | 0 |
 | v0.2.0 | `mcp_pjud-0.2.0.tar.gz` | 0 |
 | v0.2.0 | `mcp_pjud-0.2.0-py3-none-any.whl` | 0 |
+| v0.19.3 | `sbom.spdx.json` | 0 |
+| v0.19.3 | `mcp_pjud-0.19.3.tar.gz` | 0 |
+| v0.19.3 | `mcp_pjud-0.19.3-py3-none-any.whl` | 0 |
 | v0.19.2 | `sbom.spdx.json` | 0 |
 | v0.19.2 | `mcp_pjud-0.19.2.tar.gz` | 0 |
 | v0.19.2 | `mcp_pjud-0.19.2-py3-none-any.whl` | 0 |
@@ -119,24 +123,24 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-08-26. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-08-27. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
 | `github.com` | 144 | 9 |
 | `mcp-pjud-cl.readthedocs.io` | 29 | 3 |
-| `Google` | 22 | 7 |
+| `Google` | 25 | 7 |
 | `app.readthedocs.org` | 8 | 1 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-08-26. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-08-27. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 126 | 14 |
+| `/notluquis/mcp-pjud-cl` | 132 | 17 |
 | `/notluquis/mcp-pjud-cl/pulls` | 48 | 1 |
 | `/notluquis/mcp-pjud-cl/security` | 15 | 1 |
 | `/notluquis/mcp-pjud-cl/issues` | 14 | 2 |
@@ -151,6 +155,7 @@ que restar dos fotos para inferirlo daría un número inventado.
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-08-26 | 8 | 3 | 151 | 56 |
 | 2026-08-25 | 8 | 5 | 613 | 140 |
 | 2026-08-24 | 97 | 5 | 911 | 212 |
 | 2026-08-23 | 17 | 3 | 731 | 141 |

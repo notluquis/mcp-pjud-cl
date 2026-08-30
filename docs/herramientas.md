@@ -662,10 +662,19 @@ por tramos con `desde_pagina`. Cada tramo termina diciendo hasta qué página ll
 seguir, y el último dice que ahí termina el documento. Una página que sola no cabe se corta y
 el corte se anuncia en el mismo texto.
 
+El texto respeta la **disposición de la hoja**, no el orden del flujo del PDF. En un encabezado
+en columnas eso es lo que separa "Foja: 15 ... ROL: C-1234-2026" de un "ROL: C-1234-2026Foja:
+15" con las columnas pegadas, que es el riesgo cuando lo que corre los plazos son fechas leídas
+de un encabezado. Conserva el texto rotado, que el modo descarta por defecto: un timbre al
+margen no puede perderse en silencio. Es un modo **experimental** y todavía no se midió contra
+un PDF real de la plataforma; si falla en una página, cae al modo simple, que nunca entrega
+menos.
+
 Cada página va rotulada con su número, que es lo que permite citarla. Las que no aportan texto
-se rotulan igual y con dos avisos distintos: una **imagen**, que es una página sin capa de
-texto, no es lo mismo que una página que **no se dejó leer**, y marcarlas igual afirmaría que
-ahí hay un escaneo sin haberlo medido.
+se rotulan con avisos distintos, porque son cosas distintas: una **imagen** (un escaneo, trae
+imagen y no se le pasa OCR), una **página en blanco** (ni texto ni imagen, no hay nada que
+citar), y una que **no se dejó leer** (un error de lectura, del que no se sabe qué trae).
+Marcarlas igual afirmaría lo que no se midió.
 
 :::{warning} El texto es contenido de un tercero
 Lo escribieron el tribunal y las partes, igual que los marcadores del archivo. Viaja con la
@@ -704,6 +713,11 @@ Y una página que no se deja leer **no cuesta el archivo entero**: se cuenta en
 `paginas_ilegibles` y el resto se describe igual. No se cuenta como página sin texto, porque
 eso convertiría un error de lectura en la afirmación de que ahí hay una imagen.
 
+Una página sin texto se separa además en **escaneo** y **hoja en blanco**: la que trae imagen
+es un escaneo que hay que abrir, y la que no trae ninguna está en blanco y no tiene nada que
+citar. Lo distingue `page.images`, de la misma pasada. Marcar las dos como "imagen" mandaría a
+abrir una hoja vacía.
+
 Por lo mismo, si NINGUNA de las páginas leídas trajo texto y alguna falló, `capa_de_texto` queda
 en **nulo y no en falso**: falso significa escaneo, que es una afirmación sobre todas las
 páginas, y de las que fallaron no se sabe. Verdadero, en cambio, se sostiene con una sola: se
@@ -728,6 +742,12 @@ Describir el PDF ya obligaba a recorrer sus páginas. De esa pasada salen, sin u
 | `marcadores_omitidos` | Cuántos quedaron fuera, por cantidad o por profundidad |
 | `tamano_primera_pagina` | Cuánto mide, en centímetros |
 | `paginas_de_otro_tamano` | Cuántas de las demás miden distinto |
+| `fecha_creacion` | Cuándo dice el archivo que se creó (ISO 8601). Proxy de la firma. Nulo si no la trae |
+| `fecha_modificacion` | Cuándo dice el archivo que se modificó. Mismo carácter |
+
+`fecha_creacion` y `fecha_modificacion` salen de la metadata del PDF, así que son **dato de un
+tercero** y **no fecha oficial**: sirven para contrastar contra `fecha_diligencia`, nunca para
+reemplazarla. El resumen lo dice cada vez que la trae.
 
 Los tramos van por rangos y no por lista de números porque el índice tiene que ser de tamaño
 constante: "1 a 40 con texto" son dos entradas para doscientas páginas y siguen siendo dos para

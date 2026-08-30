@@ -21,6 +21,13 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 - `obtener_documento` entrega el TEXTO del documento, página por página, cuando el PDF trae
   capa de texto. Si no cabe en una respuesta se pide por tramos con el nuevo `desde_pagina`,
   que dice hasta dónde llegó y con cuál seguir.
+- El texto respeta la disposición de la hoja y no el orden del flujo, así un encabezado en
+  columnas deja de leerse con el rol pegado a la foja. El modo es experimental y todavía no se
+  midió contra un PDF real de la plataforma.
+- El documento informa la fecha que declara en su metadata, como proxy de la firma y dicha como
+  dato del archivo, no como fecha oficial.
+- Una página sin texto se separa en escaneo (trae imagen) y hoja en blanco (no trae ninguna),
+  que antes se marcaban igual.
 
 ### Corregido
 

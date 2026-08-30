@@ -5762,9 +5762,10 @@ AVISOS_QUE_NO_SE_PUEDEN_PERDER = {
         "subconjunto",
         "condiciones_de_publicacion",
     ),
-    # La tilde es literal y las dos grafías conviven, así que una lista con resultados tampoco
-    # está completa. Sin esto, quien acierta la grafía informa un total que le falta la mitad.
-    "buscar_causa_por_nombre": ("tilde", "cero", "repetir"),
+    # La plataforma distingue tildes y las dos grafías conviven. La herramienta las FUSIONA, así
+    # que el aviso ya no manda repetir a mano; lo que no puede es adivinar la tilde, así que sin
+    # acentos la lista queda INCOMPLETA y eso hay que decirlo.
+    "buscar_causa_por_nombre": ("tilde", "fusiona", "incompleta"),
     "obtener_documento": ("escaneo", "OCR", "no es un PDF"),
     # `fecha_diligencia` es el aviso que más importa de los cuatro: sin él, un modelo puede
     # tomar la hora del aparato como la fecha que corre el plazo, y ésta es una TERCERA
@@ -6054,11 +6055,14 @@ def test_ninguna_herramienta_se_atribuye_un_dato_que_otra_ya_entrega():
     )
 
 
-def test_la_advertencia_de_la_tilde_no_contradice_su_propia_medicion():
-    """Decía "falta la mitad escrita de la otra forma" y su propio ejemplo daba uno a cinco.
+def test_la_advertencia_de_la_tilde_dice_que_fusiona_pero_pide_acentos():
+    """La herramienta busca las dos grafías y las fusiona, así que el aviso NO manda repetir a
+    mano. Pero no puede reconstruir la tilde: sin acentos la lista sigue incompleta, y eso hay
+    que decirlo o vuelve el falso negativo que se le escapó a un modelo real esta sesión.
 
-    Una sesión midió otro apellido y le dio uno a dos. La proporción no es fija, y decir "la
-    mitad" invita a creer que consultar dos veces reparte por igual.
+    Las dos mediciones (5 contra 25 en un tribunal, 2 contra 4 en otro, sin una sola repetida)
+    siguen en el código: son la evidencia de que las dos formas son disjuntas en más de un
+    lugar, o sea de que fusionarlas no es por un caso aislado.
     """
     import asyncio
 
@@ -6071,25 +6075,19 @@ def test_la_advertencia_de_la_tilde_no_contradice_su_propia_medicion():
     from mcp_pjud.server import mcp
 
     expuestas = {h.name: h for h in asyncio.run(mcp.list_tools())}
-    contrato = expuestas["buscar_causa_por_nombre"].description or ""
-    # Con UN apellido sólo se refuta "la mitad". Que la proporción VARÍE necesita el segundo,
-    # y por eso vive en el código y no en el docstring de este test.
-    primero = CAUSAS_DEL_APELLIDO_CON_TILDE / CAUSAS_DEL_APELLIDO_SIN_TILDE
-    segundo = OTRO_APELLIDO_CON_TILDE / OTRO_APELLIDO_SIN_TILDE
-    assert primero != segundo, (
-        f"las dos mediciones dan la misma proporción ({primero}), así que la advertencia no "
-        "puede decir que no la haya"
-    )
-    assert CAUSAS_DEL_APELLIDO_SIN_TILDE * 2 != CAUSAS_DEL_APELLIDO_CON_TILDE, (
-        "si las cifras medidas fueran justo el doble, 'la mitad' no sería contradictorio"
-    )
-    assert "proporción" in contrato, (
-        "el contrato dejó de decir que cuánto falta no guarda proporción, que es lo que estas "
-        "dos mediciones sostienen"
-    )
-    assert "la mitad" not in contrato, (
-        f"el contrato dice 'la mitad' y lo medido es {CAUSAS_DEL_APELLIDO_SIN_TILDE} contra "
-        f"{CAUSAS_DEL_APELLIDO_CON_TILDE}"
+    contrato = (expuestas["buscar_causa_por_nombre"].description or "").lower()
+
+    # Dos tribunales distintos, las dos veces disjuntas: no es un caso aislado.
+    assert (CAUSAS_DEL_APELLIDO_SIN_TILDE, CAUSAS_DEL_APELLIDO_CON_TILDE) != (
+        OTRO_APELLIDO_SIN_TILDE,
+        OTRO_APELLIDO_CON_TILDE,
+    ), "las dos mediciones son iguales, así que una no agrega nada sobre la otra"
+
+    assert str(CAUSAS_DEL_APELLIDO_SIN_TILDE) in contrato, "el aviso dejó de citar la medición"
+    assert "fusiona" in contrato, "el aviso no dice que la herramienta busca las dos grafías"
+    assert "incompleta" in contrato, (
+        "el aviso no dice que sin acentos la lista queda incompleta, que es lo único que la "
+        "fusión no puede resolver sola"
     )
 
 

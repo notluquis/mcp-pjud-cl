@@ -862,15 +862,14 @@ def buscar_causa_por_rit(
     title="Buscar causa por nombre",
     annotations=SOLO_LECTURA,
     description="Busca causas por nombre de litigante.\n\nExige al menos DOS de los tres "
-    "campos de nombre. El año no cuenta para ese mínimo.\n\nLA TILDE IMPORTA, y es literal "
-    "campo por campo: la plataforma guarda el mismo apellido de las dos formas. Medido sobre "
-    f"un apellido en un solo tribunal: sin tilde salen {CAUSAS_DEL_APELLIDO_SIN_TILDE} causas, "
-    f"con tilde salen {CAUSAS_DEL_APELLIDO_CON_TILDE}, y escribir un campo con tilde y el otro "
-    "sin ella da CERO. Por eso una lista vacía acá NO significa que la persona no tenga causas, "
-    "y una lista con resultados TAMPOCO está completa: falta lo escrito de la otra forma, y "
-    "cuánto falta no guarda proporción fija con lo que sí salió. "
-    "Repetir con la otra grafía SÓLO antes de informar un total: para abrir una causa que "
-    "ya apareció no hace falta."
+    "campos de nombre. El año no cuenta para ese mínimo.\n\nLA TILDE IMPORTA: la plataforma "
+    "distingue tildes y guarda el mismo apellido de las dos formas. Medido en un tribunal: "
+    f"sin tilde salen {CAUSAS_DEL_APELLIDO_SIN_TILDE} causas, con tilde "
+    f"{CAUSAS_DEL_APELLIDO_CON_TILDE}, "
+    "casi sin repetirse. Esta herramienta busca las DOS grafías y las fusiona, así que no hay "
+    "que repetir la búsqueda. Pero no puede adivinar dónde va la tilde: si el nombre se pasa "
+    "SIN acentos, sólo trae la forma sin acentos. Pásalo con sus tildes correctas, o la lista "
+    "seguirá incompleta sin que se note."
     f"{LO_QUE_EL_LISTADO_NO_TRAE}"
     f"\n\n{ACOTACION}",
 )
@@ -1282,9 +1281,7 @@ def _texto_del_documento(doc: Documento, desde_pagina: int | None) -> str | None
             # Sin `paginas_imagen` (dato viejo o ausente) se asume imagen, que es lo que se
             # decía antes: no regresar a una hoja en blanco algo que sí puede ser un escaneo.
             hay_imagen = (
-                doc.paginas_imagen[numero - 1]
-                if numero - 1 < len(doc.paginas_imagen)
-                else True
+                doc.paginas_imagen[numero - 1] if numero - 1 < len(doc.paginas_imagen) else True
             )
             cuerpo = _PAGINA_IMAGEN if hay_imagen else _PAGINA_EN_BLANCO
         else:

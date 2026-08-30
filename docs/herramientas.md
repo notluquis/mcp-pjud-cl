@@ -186,8 +186,8 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
   tribunal es obligatorio eso limita la utilidad de la herramienta: hay que saber dónde está
   la causa antes de poder buscarla.
 - **La tilde calza literal, campo por campo.** El mismo apellido está guardado de las dos
-  formas en la misma base, así que ninguna de las dos grafías devuelve todo. Medido el 25 de
-  agosto de 2026 sobre un apellido en un solo tribunal:
+  formas en la misma base, así que ninguna grafía sola devuelve todo. Medido el 25 de agosto
+  de 2026 sobre un apellido en un solo tribunal:
 
   | paterno | materno | causas |
   |---|---|---|
@@ -195,8 +195,13 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
   | con tilde | con tilde | 25 |
   | una con y otra sin | | 0 |
 
-  `MUÑOZ` contra `MUNOZ` da lo mismo. Un total sale de consultar las dos grafías; una sola
-  entrega la mitad y no lo dice.
+  **La herramienta consulta las DOS grafías y las fusiona**, así que no hay que repetir la
+  búsqueda. Lo que no puede es adivinar la tilde: si el nombre se pasa sin acentos, sólo trae la
+  forma sin acentos. **Pásalo con sus tildes correctas** o la lista sigue incompleta sin decirlo.
+
+  La **ñ** no cambia el resultado (`MUÑOZ` y `MUNOZ` dan lo mismo), así que el fold la conserva
+  y no gasta una búsqueda de más; la **tilde** sí, y por eso se buscan la forma acentuada y la
+  sin acentuar. Un nombre sin ninguna letra acentuable es una sola búsqueda.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|

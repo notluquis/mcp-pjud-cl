@@ -28,6 +28,9 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
   dato del archivo, no como fecha oficial.
 - Una página sin texto se separa en escaneo (trae imagen) y hoja en blanco (no trae ninguna),
   que antes se marcaban igual.
+- La búsqueda por nombre consulta las dos grafías, con tildes y sin ellas, y las fusiona. El
+  buscador de la plataforma distingue tildes y guarda el mismo apellido de las dos formas, así
+  que antes buscar "Perez" perdía en silencio las causas de "Pérez".
 
 ### Corregido
 

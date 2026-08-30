@@ -15,6 +15,7 @@ import logging
 import re
 import threading
 import time
+import unicodedata
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError
@@ -126,19 +127,26 @@ RAFAGA_MAXIMA = 4
 #: mitad que falta llega como lista vacía, que es el falso negativo que la regla 4 existe para
 #: no producir.
 #:
-#: No se corrige acá consultando las dos grafías, y la razón no es la carga: la segunda
-#: petición pesa lo mismo la haga el cliente o la pida quien consulta. Es CUÁNDO hace falta.
-#: Hacerlo acá la gasta siempre, incluso en un apellido sin una sola letra acentuable y en las
-#: búsquedas donde no se va a informar un total. La descripción la pide donde sí cambia la
-#: respuesta: antes de decir cuántas causas tiene alguien.
+#: Se corrige acá, en `buscar_por_nombre`, consultando las dos grafías y fusionando. Antes se
+#: dejaba al modelo, que la descripción le pedía repetir "antes de informar un total": este
+#: proyecto midió en vivo el 30-08-2026 que ESO FALLA. Buscando `PEREZ GUZMAN` sin tilde no
+#: apareció la causa de Alexis Pérez Guzmán, que está guardada con tilde, y sólo se encontró
+#: cuando el usuario pegó el resultado. El falso negativo de la regla 4 le ocurrió al modelo
+#: que la advertencia debía proteger.
+#:
+#: La objeción vieja era el gasto: la segunda petición se paga siempre. Se acota, no se ignora.
+#: Sólo se dobla cuando el nombre TRAE una letra acentuable (si no, las dos grafías coinciden y
+#: es una sola búsqueda), y `buscar_por_nombre` es una ENUMERACIÓN: no se abre una causa por
+#: nombre sino por rol, así que la completitud importa en todas sus llamadas, no sólo antes de
+#: un total. La otra mitad de la objeción, "antes de informar un total", no distingue nada acá.
 CAUSAS_DEL_APELLIDO_SIN_TILDE = 5
 CAUSAS_DEL_APELLIDO_CON_TILDE = 25
 
-#: Y un SEGUNDO apellido, porque con uno solo no se puede afirmar que la proporción varíe.
-#: Medido el 25 de agosto de 2026 en otro tribunal: dos causas sin tilde y cuatro con tilde,
-#: sin una sola repetida entre las dos listas. Contra 5 y 25 del primero, o sea uno a dos
-#: contra uno a cinco: cuánto falta no guarda proporción con lo que salió, y por eso la
-#: advertencia no puede prometer que consultar dos veces reparta por igual.
+#: Y un SEGUNDO apellido, en otro tribunal: la disjunción no es un caso aislado. Medido el 25
+#: de agosto de 2026: dos causas sin tilde y cuatro con tilde, sin una sola repetida entre las
+#: dos listas. Contra 5 y 25 del primero, o sea dos tribunales donde buscar una sola grafía
+#: pierde la otra entera. Es la evidencia de que la fusión de las dos formas hace falta siempre,
+#: no en un tribunal suertudo.
 OTRO_APELLIDO_SIN_TILDE = 2
 OTRO_APELLIDO_CON_TILDE = 4
 
@@ -1527,6 +1535,26 @@ def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) 
     )
 
 
+def _sin_tildes(texto: str) -> str:
+    """El texto sin las tildes de las vocales, CONSERVANDO la ñ y la ü.
+
+    El buscador de nombres de la plataforma distingue tildes, y guarda los registros de forma
+    inconsistente (los viejos sin tilde, los nuevos con), así que buscar "PEREZ GUZMAN" y
+    "PÉREZ GUZMÁN" devuelve conjuntos DISJUNTOS. Medido el 30-08-2026: `MARTINEZ MARTINEZ` da
+    71 y `MARTÍNEZ MARTÍNEZ` da 88, con una sola en común. Quien teclea sin tilde, que es lo
+    normal, pierde casi todo sin que nada lo delate. Ésta produce la segunda forma para
+    buscarla también.
+
+    Quita SÓLO la tilde aguda (U+0301), no toda marca combinante: la ñ es n + U+0303 y la ü es
+    u + U+0308, y son letras del español, no vocales acentuadas. El `asciifolding` de siempre,
+    `unidecode` y el `unaccent` de Postgres por defecto las rompen (`MUÑOZ` -> `MUNOZ`), que
+    acá haría match con OTRO apellido: el falso positivo en vez del negativo, pero falso igual.
+    """
+    descompuesto = unicodedata.normalize("NFD", texto)
+    sin_agudas = descompuesto.replace("\u0301", "")  # U+0301: la tilde aguda combinante
+    return unicodedata.normalize("NFC", sin_agudas)
+
+
 class PjudClient(Transporte):
     """Consulta pública de causas de la Oficina Judicial Virtual."""
 
@@ -2108,6 +2136,12 @@ class PjudClient(Transporte):
         Además hay que acotar la búsqueda, y con qué depende de la competencia: tribunal en
         las cuatro de primera instancia, corte en apelaciones, nada en suprema. Lo resuelve
         `_acotacion` con la tabla de `parser.COMPETENCIAS`.
+
+        La plataforma distingue tildes, así que se busca la forma tal cual Y la forma sin
+        tildes, y se fusiona: sin esto, "Perez" pierde en silencio todas las causas de "Pérez".
+        Ver `_sin_tildes` para la medición. Si el nombre no trae tildes las dos formas
+        coinciden y es una sola búsqueda; si las trae, son dos, y la de más se paga para no
+        devolver una lista que se ve completa y omite la mitad.
         """
         modulo = self._modulo(competencia)
         if sum(1 for x in (nombre, apellido_paterno, apellido_materno) if x.strip()) < 2:
@@ -2116,6 +2150,42 @@ class PjudClient(Transporte):
                 "apellido paterno, apellido materno. El año no cuenta para ese mínimo."
             )
         self._acotacion(modulo, tribunal, corte)
+
+        formas = [(nombre, apellido_paterno, apellido_materno)]
+        sin = (_sin_tildes(nombre), _sin_tildes(apellido_paterno), _sin_tildes(apellido_materno))
+        if sin != formas[0]:
+            formas.append(sin)
+
+        # Se fusiona por `rol`, que es estable e identifica la causa dentro de una misma
+        # competencia y jurisdicción, y no por `referencia`, que la plataforma reemite en cada
+        # dibujado y sería distinta para la misma causa entre las dos búsquedas. `setdefault`
+        # conserva el orden: primero lo que trajo la forma tal cual, después lo nuevo de la
+        # forma sin tildes.
+        fusion: dict[str, CausaEncontrada] = {}
+        for nom, pat, mat in formas:
+            for causa in self._buscar_nombre_una_forma(
+                modulo, nom, pat, mat, anio, competencia, tribunal, corte, paginas
+            ):
+                fusion.setdefault(causa.rol, causa)
+        return list(fusion.values())
+
+    def _buscar_nombre_una_forma(
+        self,
+        modulo: str,
+        nombre: str,
+        apellido_paterno: str,
+        apellido_materno: str,
+        anio: int | None,
+        competencia: str,
+        tribunal: int | None,
+        corte: int | None,
+        paginas: int,
+    ) -> list[CausaEncontrada]:
+        """Una sola pasada del buscador de nombres, con los campos tal como se pasan.
+
+        Separada de `buscar_por_nombre` porque ésta se llama UNA o DOS veces (la forma tal
+        cual y la sin tildes), y la validación y la acotación no se repiten entre las dos.
+        """
         return self._paginado(
             f"{modulo}/consultaNombre{modulo.capitalize()}.php",
             {

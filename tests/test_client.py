@@ -1620,6 +1620,71 @@ def _capturando(respuesta: str = "") -> tuple[PjudClient, list[dict[str, str]]]:
     return c, enviados
 
 
+def test_sin_tildes_quita_la_tilde_y_conserva_la_ene():
+    """El fold quita las tildes de las vocales y NO toca la ñ ni la ü.
+
+    El `asciifolding` de siempre, `unidecode` y el `unaccent` de Postgres rompen la ñ
+    (`MUÑOZ` -> `MUNOZ`), y acá eso haría match con otro apellido. La ñ y la ü son letras del
+    español, no vocales acentuadas.
+    """
+    from mcp_pjud.client import _sin_tildes
+
+    assert _sin_tildes("PÉREZ") == "PEREZ"
+    assert _sin_tildes("MARTÍNEZ") == "MARTINEZ"
+    assert _sin_tildes("GUZMÁN") == "GUZMAN"
+    assert _sin_tildes("MUÑOZ") == "MUÑOZ", "la ñ no se toca"
+    assert _sin_tildes("NÚÑEZ") == "NUÑEZ", "la ú se quita, la ñ queda"
+    assert _sin_tildes("MÜLLER") == "MÜLLER", "la ü no se toca"
+
+
+def test_buscar_por_nombre_fusiona_la_forma_con_tildes_y_la_sin_tildes(monkeypatch):
+    """La plataforma distingue tildes y guarda los registros en formas disjuntas. Buscar una
+    sola pierde en silencio la otra mitad, que es la regla 4 entrando por el buscador.
+
+    Se mide devolviendo listados distintos según qué apellido llegó, con una causa en común:
+    la fusión tiene que dar la unión sin duplicarla.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    formas: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        form = dict(urllib.parse.parse_qsl(peticion.content.decode(), keep_blank_values=True))
+        formas.append(form["nomApePaterno"])
+        # Con tilde: filas 1 y 2. Sin tilde: filas 2 y 3. La fila 2 es la común.
+        rango = range(1, 3) if form["nomApePaterno"] == "PÉREZ" else range(2, 4)
+        return httpx.Response(200, text=_pagina(rango, total=2, ultima=True, celdas=8))
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    r = c.buscar_por_nombre(
+        apellido_paterno="PÉREZ", apellido_materno="GUZMÁN", competencia="civil", tribunal=162
+    )
+    rols = [x.rol for x in r]
+
+    assert set(formas) == {"PÉREZ", "PEREZ"}, f"no buscó las dos formas: {formas}"
+    assert len(rols) == len(set(rols)), f"la fusión duplicó causas: {rols}"
+    assert len(rols) == 3, (
+        f"la fusión no dio la unión de las dos formas (esperaba 3 causas): {rols}"
+    )
+
+
+def test_un_nombre_sin_tildes_no_duplica_la_busqueda(monkeypatch):
+    """Si el nombre no trae tildes, las dos formas coinciden y es una sola búsqueda: no se
+    gasta una petición de más contra la plataforma por un fold que no cambia nada."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+
+    c.buscar_por_nombre(
+        apellido_paterno="PEREZ", apellido_materno="GUZMAN", competencia="civil", tribunal=162
+    )
+
+    assert len(enviados) == 1, (
+        f"un nombre sin tildes no debe buscar dos veces, y buscó {len(enviados)}"
+    )
+
+
 def test_la_busqueda_por_rol_manda_el_radio_rit(monkeypatch):
     """Sin `radio-group`, suprema y apelaciones responden HTTP 200 con el cuerpo VACÍO.
 

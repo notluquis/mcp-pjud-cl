@@ -947,6 +947,39 @@ def _hojas(nodos: list[object], vistos: set[int] | None = None) -> Iterator[obje
             yield nodo
 
 
+def _extraer_texto(pagina: object) -> str:
+    """El texto de una página respetando la disposición de la hoja, con dos resguardos.
+
+    El modo `layout` de pypdf lee por POSICIÓN y no por orden del flujo, que es lo que
+    distingue un encabezado en columnas bien leído de uno donde el rol y la foja salen
+    pegados: "ROL: C-1234-2026Foja: 15". Para una herramienta cuyo punto es no confundir
+    `fecha_registro` con `fecha_diligencia`, leer el encabezado al revés es el riesgo exacto.
+
+    Dos knobs no son opcionales acá:
+
+    - `layout_mode_strip_rotated=False`. Por defecto el modo layout DESCARTA el texto rotado, y
+      una resolución trae timbres y anotaciones al margen girados. Descartarlos en silencio es
+      la regla 4 con otra cara: texto que se pierde sin que nada lo delate, en un documento
+      legal. Se conservan.
+    - `layout_mode_space_vertically=False`. Sin esto el modo mete una línea en blanco por cada
+      salto de `y`, y medido eso infla el texto de un cuerpo corrido. Con el knob, plano y
+      layout pesan casi igual y la fidelidad se paga sólo donde hay columnas.
+
+    El modo layout es EXPERIMENTAL, lo dice la propia doc de pypdf, y este proyecto todavía no
+    lo midió contra un PDF real de la OJV: el caso está montado sobre PDF sintéticos. Por eso
+    el `except` cae al modo plano en vez de dejar la página como ilegible: layout puede fallar
+    donde plano lee, y el resguardo es que layout nunca ENTREGUE MENOS de lo que ya se leía.
+    """
+    try:
+        return pagina.extract_text(  # ty: ignore[unresolved-attribute]
+            extraction_mode="layout",
+            layout_mode_space_vertically=False,
+            layout_mode_strip_rotated=False,
+        )
+    except Exception:
+        return pagina.extract_text()  # ty: ignore[unresolved-attribute]
+
+
 def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
     """Qué trae el archivo, de la única lectura que se le hace. Nunca hace OCR.
 
@@ -995,7 +1028,7 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
                 # extracción, ya pagada, y tirarlo obligaba a quien lo necesitara a abrir el
                 # archivo de nuevo. Es la tercera vez que este recorrido devuelve algo más
                 # que un conteo, y por el mismo motivo.
-                texto = pagina.extract_text()
+                texto = _extraer_texto(pagina)
             except Exception:
                 ilegibles.append(numero)
                 textos.append(None)

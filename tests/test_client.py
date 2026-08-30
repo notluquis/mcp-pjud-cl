@@ -14,7 +14,7 @@ from unittest import mock
 
 import httpx
 import pytest
-from pypdf import PageObject, PdfWriter
+from pypdf import PageObject, PdfReader, PdfWriter
 from pypdf.generic import IndirectObject
 
 from mcp_pjud import client
@@ -45,6 +45,7 @@ from mcp_pjud.client import (
     PjudNoRespondio,
     PlataformaNoDisponible,
     _describir_pdf,
+    _extraer_texto,
     _hay_capa_de_texto,
     _hojas,
     _tamano_en_cm,
@@ -3390,6 +3391,37 @@ def test_el_detalle_de_cobranza_trae_las_diligencias_del_ministro_de_fe(monkeypa
 # -- documentos ------------------------------------------------------------------
 
 
+def _pdf_posicionado(runs: list[tuple[int, int, str, int]]) -> bytes:
+    """Un PDF de una página con cada texto en (x, y) y una rotación en grados.
+
+    Sirve para lo que `_pdf_paginas` no puede: probar el ORDEN de lectura. Cada run se dibuja
+    en su posición, y el orden de la lista es el orden del FLUJO, que el modo plano sigue y el
+    layout no.
+    """
+    import math
+
+    cuerpo = []
+    for x, y, txt, giro in runs:
+        r = math.radians(giro)
+        a, b, c, d = math.cos(r), math.sin(r), -math.sin(r), math.cos(r)
+        cuerpo.append(
+            f"BT /F1 12 Tf {a:.3f} {b:.3f} {c:.3f} {d:.3f} {x} {y} Tm ({txt}) Tj ET".encode()
+        )
+    flujo = b"\n".join(cuerpo) + b"\n"
+    from mcp_pjud import client as _c  # noqa: F401
+
+    return _ensamblar(
+        [
+            b"<</Type/Catalog/Pages 2 0 R>>",
+            b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+            b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R"
+            b"/Resources<</Font<</F1 5 0 R>>>>>>",
+            b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream",
+            b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+        ]
+    )
+
+
 def _ensamblar(objetos: list[bytes]) -> bytes:
     """Los objetos, con la cabecera y la tabla de referencias cruzadas que los hace un PDF.
 
@@ -3718,8 +3750,12 @@ def test_una_pagina_que_no_se_deja_leer_no_cuesta_el_archivo_entero(monkeypatch)
     llamadas = {"n": 0}
 
     def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
         llamadas["n"] += 1
-        if llamadas["n"] == 2:
+        if llamadas["n"] >= 2:
             raise ValueError("fuente corrupta")
         return original(self, *args, **kwargs)
 
@@ -3759,8 +3795,12 @@ def test_una_pagina_con_texto_sostiene_la_capa_aunque_otra_falle(monkeypatch):
     llamadas = {"n": 0}
 
     def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
         llamadas["n"] += 1
-        if llamadas["n"] == 2:
+        if llamadas["n"] >= 2:
             raise ValueError("fuente corrupta")
         return original(self, *args, **kwargs)
 
@@ -3770,6 +3810,66 @@ def test_una_pagina_con_texto_sostiene_la_capa_aunque_otra_falle(monkeypatch):
     assert d.paginas_con_texto == 1
     assert d.paginas_ilegibles == 1
     assert _hay_capa_de_texto(d) is True
+
+
+def test_el_texto_respeta_las_columnas_y_no_el_orden_del_flujo():
+    """El encabezado de una resolución trae columnas, y el generador suele dibujarlas fuera de
+    orden. El modo plano pegaba el rol con la foja; el layout lee por posición.
+
+    Se dibuja la columna DERECHA antes que la IZQUIERDA en el flujo, que es el caso que rompe.
+    """
+    pdf = _pdf_posicionado(
+        [
+            (320, 720, "ROL-C-1234-2026", 0),  # derecha, dibujada primero
+            (70, 720, "Foja-15", 0),  # izquierda, dibujada después
+        ]
+    )
+    pagina = PdfReader(BytesIO(pdf)).pages[0]
+    texto = _extraer_texto(pagina)
+
+    # La izquierda va ANTES que la derecha, sin importar el orden del flujo.
+    assert texto.index("Foja-15") < texto.index("ROL-C-1234-2026"), (
+        f"el texto salió en orden de flujo y no de la hoja: {texto!r}"
+    )
+
+
+def test_el_texto_rotado_no_se_pierde_en_silencio():
+    """El modo layout descarta texto rotado por defecto, y una resolución trae timbres al
+    margen girados. Perderlos sin avisar es la regla 4 con otra cara.
+
+    `_extraer_texto` fija `layout_mode_strip_rotated=False`. Sin eso, este texto desaparece.
+    """
+    pdf = _pdf_posicionado(
+        [
+            (70, 720, "CUERPO DE LA RESOLUCION", 0),
+            (500, 400, "TIMBRE-AL-MARGEN", 90),  # rotado 90 grados
+        ]
+    )
+    pagina = PdfReader(BytesIO(pdf)).pages[0]
+    texto = _extraer_texto(pagina)
+
+    assert "TIMBRE-AL-MARGEN" in texto, f"el texto rotado se perdió en silencio: {texto!r}"
+
+
+def test_si_el_modo_layout_falla_no_se_pierde_la_pagina():
+    """Layout es experimental y puede reventar donde el modo plano lee. El resguardo es que
+    ahí caiga al plano, no que la página quede como ilegible: layout nunca entrega MENOS.
+    """
+    original = PageObject.extract_text
+
+    def falla_solo_en_layout(self, *args, **kwargs):
+        if kwargs.get("extraction_mode") == "layout":
+            raise ValueError("layout reventó en este PDF")
+        return original(self, *args, **kwargs)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(PageObject, "extract_text", falla_solo_en_layout)
+        pagina = PdfReader(BytesIO(_pdf(_CON_TEXTO))).pages[0]
+        texto = _extraer_texto(pagina)
+
+    assert "RESOLUCION" in texto, (
+        f"layout falló y no cayó al modo plano, así que se perdió una página legible: {texto!r}"
+    )
 
 
 def test_una_caja_con_las_coordenadas_invertidas_no_publica_una_hoja_negativa():

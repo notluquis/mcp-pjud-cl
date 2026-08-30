@@ -1177,8 +1177,12 @@ def test_una_pagina_ilegible_no_se_rotula_como_imagen(monkeypatch: pytest.Monkey
     llamadas = {"n": 0}
 
     def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
         llamadas["n"] += 1
-        if llamadas["n"] == 2:
+        if llamadas["n"] >= 2:
             raise ValueError("fuente corrupta")
         return original(self, *args, **kwargs)
 

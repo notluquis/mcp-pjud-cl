@@ -59,6 +59,7 @@ from mcp.types import (
     PromptReference,
     ResourceLink,
     ResourceTemplateReference,
+    TextContent,
     Tool,
 )
 from pypdf import PageObject
@@ -1138,9 +1139,11 @@ def test_una_pagina_que_sola_no_cabe_se_corta_y_se_dice(monkeypatch: pytest.Monk
     # El bloque del texto, no la respuesta entera: el resumen del documento viaja aparte y
     # tiene su propio tamaño. Con el doble del presupuesto, que era la primera versión de
     # esta línea, un recorte que dejara 49.999 caracteres pasaba igual.
-    bloque = next(b for b in resultado.content if "se cortó" in getattr(b, "text", ""))
-    assert len(bloque.text) <= CARACTERES_DE_UNA_RESPUESTA + 500, (
-        f"el recorte no acotó al presupuesto: el bloque mide {len(bloque.text)}"
+    bloque = next(
+        b.text for b in resultado.content if isinstance(b, TextContent) and "se cortó" in b.text
+    )
+    assert len(bloque) <= CARACTERES_DE_UNA_RESPUESTA + 500, (
+        f"el recorte no acotó al presupuesto: el bloque mide {len(bloque)}"
     )
 
 

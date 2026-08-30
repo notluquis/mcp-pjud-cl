@@ -3541,6 +3541,15 @@ def _con_marcadores(base: bytes, marcadores: Sequence[tuple[str, int, int]]) -> 
     return salida.getvalue()
 
 
+def _con_metadata(base: bytes, campos: dict[str, str]) -> bytes:
+    """El mismo PDF con las claves de metadata dadas (p.ej. `/CreationDate`)."""
+    escritor = PdfWriter(clone_from=BytesIO(base))
+    escritor.add_metadata(campos)
+    salida = BytesIO()
+    escritor.write(salida)
+    return salida.getvalue()
+
+
 def _cifrado(base: bytes) -> bytes:
     """El mismo PDF, protegido con una contraseña que este servidor no tiene."""
     escritor = PdfWriter(clone_from=BytesIO(base))
@@ -4062,6 +4071,34 @@ def test_los_marcadores_traen_su_pagina_contando_desde_uno():
         ("Contestación", 2),
     ], f"los marcadores no llegaron con su página desde 1: {d.marcadores}"
     assert d.marcadores_omitidos == 0
+
+
+def test_la_fecha_del_archivo_viaja_como_proxy_de_la_firma():
+    """El PDF declara cuándo se creó, y eso sale de la misma lectura. Es dato de un tercero,
+    no la fecha de la diligencia, pero contrastarlas es una pista sobre cuándo ocurrió."""
+    pdf = _con_metadata(
+        _pdf(_CON_TEXTO),
+        {"/CreationDate": "D:20260827143000-04'00'", "/ModDate": "D:20260828090000-04'00'"},
+    )
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is not None, "la fecha de creación no se leyó"
+    assert d.fecha_creacion.startswith("2026-08-27"), f"fecha de creación: {d.fecha_creacion!r}"
+    assert d.fecha_modificacion is not None, "la fecha de modificación no se leyó"
+    assert d.fecha_modificacion.startswith("2026-08-28"), (
+        f"fecha de modificación: {d.fecha_modificacion!r}"
+    )
+
+
+def test_una_fecha_de_metadata_rota_no_se_lleva_la_descripcion():
+    """`pypdf` LEVANTA al convertir una fecha mal formada. Una fecha rota no puede costar ni la
+    otra fecha ni el resto de la descripción: se calla la que no se pudo leer y sigue."""
+    pdf = _con_metadata(_pdf(_CON_TEXTO), {"/CreationDate": "no-es-una-fecha"})
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is None, f"una fecha basura se leyó como válida: {d.fecha_creacion!r}"
+    assert d.paginas == 1, "la fecha rota se llevó puesta la cuenta de páginas"
+    assert d.paginas_con_texto == 1, "la fecha rota se llevó puesta la descripción del texto"
 
 
 def test_un_archivo_sin_marcadores_no_se_confunde_con_uno_que_no_se_pudo_leer():

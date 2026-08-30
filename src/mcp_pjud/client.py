@@ -793,6 +793,18 @@ class Documento(BaseModel):
         "significa que el documento entero mide igual. Existe para no publicar el tamaño de "
         "una página como si fuera el de todas cuando no lo es.",
     )
+    fecha_creacion: str | None = Field(
+        default=None,
+        description="Cuándo dice el propio archivo que se creó, en ISO 8601. Proxy de la firma: "
+        "una resolución firmada la escribe. Es DATO DE UN TERCERO, no una fecha oficial que "
+        "este servidor valide, y NO reemplaza a `fecha_diligencia`. NULO si el archivo no la "
+        "trae o no se pudo leer.",
+    )
+    fecha_modificacion: str | None = Field(
+        default=None,
+        description="Cuándo dice el archivo que se modificó por última vez, en ISO 8601. Mismo "
+        "carácter que `fecha_creacion`: dato de un tercero, no oficial. NULO si no la trae.",
+    )
     problema_al_leer: str | None = Field(
         default=None,
         description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. "
@@ -838,6 +850,8 @@ class _DescripcionPdf:
     marcadores_omitidos: int | None = None
     tamano_primera_pagina: str | None = None
     paginas_de_otro_tamano: int | None = None
+    fecha_creacion: str | None = None
+    fecha_modificacion: str | None = None
 
 
 def _tramos(numeros: list[int]) -> list[tuple[int, int]]:
@@ -886,6 +900,37 @@ def _limpiar_titulo(bruto: object) -> str:
     if not junto:
         return "(sin título)"
     return junto if len(junto) <= LARGO_MAXIMO_MARCADOR else junto[:LARGO_MAXIMO_MARCADOR] + "…"
+
+
+def _leer_metadata(lector: PdfReader) -> tuple[str | None, str | None]:
+    """Cuándo se creó y cuándo se modificó el archivo, según su propia metadata.
+
+    Sirve como proxy de la firma: una resolución firmada escribe la fecha de creación en el
+    documento, y contrastarla con `fecha_diligencia` es una pista más sobre cuándo ocurrió lo
+    que dice. Es DATO DE UN TERCERO, igual que los marcadores: lo escribió quien generó el PDF,
+    se lee como dato y nunca como una instrucción, y no es una fecha oficial que este servidor
+    valide.
+
+    Cada fecha va en su propio `try` y no en uno solo: `pypdf` LEVANTA `ValueError` al convertir
+    una fecha mal formada (medido: `D:basura` la hace tirar, no devolver nulo), así que una
+    fecha rota no puede llevarse la otra. `metadata` es nulo cuando el archivo no trae ninguna,
+    y ahí no hay nada que leer.
+    """
+    md = lector.metadata
+    if md is None:
+        return None, None
+
+    def fecha(nombre: str) -> str | None:
+        try:
+            valor = getattr(md, nombre)
+        except Exception:
+            # La conversión de la fecha del PDF puede reventar con una cadena mal formada. Una
+            # fecha ilegible no es una fecha ausente, pero acá no hay forma de distinguirlas sin
+            # afirmar de más, así que se calla la que no se pudo leer.
+            return None
+        return valor.isoformat() if valor is not None else None
+
+    return fecha("creation_date"), fecha("modification_date")
 
 
 def _leer_marcadores(lector: PdfReader) -> tuple[list[Marcador], int]:
@@ -1050,6 +1095,13 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # lista vacía diría "no trae marcadores", que es justo lo que no se pudo comprobar.
         marcadores, marcadores_omitidos = None, None
 
+    try:
+        fecha_creacion, fecha_modificacion = _leer_metadata(lector)
+    except Exception:
+        # Mismo criterio que los marcadores: una metadata mal formada no puede llevarse la
+        # descripción del resto del archivo.
+        fecha_creacion, fecha_modificacion = None, None
+
     return _DescripcionPdf(
         paginas=paginas,
         paginas_con_texto=len(con_texto),
@@ -1067,6 +1119,8 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # vacía, y no sobra para quien lo lee: se ve como un `IndexError` esperando.
         paginas_de_otro_tamano=(sum(1 for t in tamanos[1:] if t != tamanos[0]) if tamanos else 0),
         textos=tuple(textos),
+        fecha_creacion=fecha_creacion,
+        fecha_modificacion=fecha_modificacion,
     )
 
 
@@ -2245,6 +2299,8 @@ class PjudClient(Transporte):
             marcadores_omitidos=d.marcadores_omitidos,
             tamano_primera_pagina=d.tamano_primera_pagina,
             paginas_de_otro_tamano=d.paginas_de_otro_tamano,
+            fecha_creacion=d.fecha_creacion,
+            fecha_modificacion=d.fecha_modificacion,
             problema_al_leer=d.problema_al_leer,
             contenido=contenido,
             paginas_texto=d.textos,

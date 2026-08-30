@@ -1206,9 +1206,18 @@ def _resumen(doc: Documento, embebido: bool) -> str:
         "Judicial, así que conviene sólo si hace falta el archivo entero."
     )
     indice = _indice_del_documento(doc)
+    # La fecha que el archivo declara de sí mismo, cuando la trae. Es dato de un tercero y
+    # proxy de la firma, así que se dice de dónde sale y que no es oficial: leerla como la
+    # fecha de la diligencia sería el error que `discrepancia_fechas` existe para no cometer.
+    fechas = ""
+    if doc.fecha_creacion:
+        fechas = f" El archivo declara haberse creado el {doc.fecha_creacion}"
+        if doc.fecha_modificacion and doc.fecha_modificacion != doc.fecha_creacion:
+            fechas += f" y modificado el {doc.fecha_modificacion}"
+        fechas += " (según su metadata, dato del PDF y no fecha oficial)."
     return (
         f"Documento de una causa de {doc.competencia}, entregado por {doc.ruta}. "
-        f"{doc.tamano_bytes} bytes, {doc.tipo_mime}, {paginas}. {veredicto} {entrega}"
+        f"{doc.tamano_bytes} bytes, {doc.tipo_mime}, {paginas}. {veredicto} {entrega}{fechas}"
         + (f"\n\n{indice}" if indice else "")
         + "\n\nEs un documento de la plataforma, no información oficial validada por este "
         "servidor."

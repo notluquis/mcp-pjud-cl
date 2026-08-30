@@ -1050,6 +1050,28 @@ def _pedir_documento_desde(pagina: int | None) -> CallToolResult:
     return asyncio.run(ida_y_vuelta())
 
 
+def test_la_fecha_del_archivo_llega_al_resumen_como_dato_del_pdf(monkeypatch: pytest.MonkeyPatch):
+    """La fecha de creación del PDF viaja en el resumen, y dicha como dato del archivo, no como
+    la fecha oficial de la diligencia: leerla como esa última es el error de siempre."""
+    from io import BytesIO
+
+    from pypdf import PdfWriter
+
+    base = _pdf_con_texto_de(200)
+    w = PdfWriter(clone_from=BytesIO(base))
+    w.add_metadata({"/CreationDate": "D:20260827143000-04'00'"})
+    buf = BytesIO()
+    w.write(buf)
+    _con_doble(monkeypatch, _documento(buf.getvalue()))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert "2026-08-27" in texto, f"la fecha del archivo no llegó al resumen: {texto}"
+    assert "no fecha oficial" in texto or "dato del PDF" in texto, (
+        f"la fecha viajó sin decir que es dato del archivo y no oficial: {texto}"
+    )
+
+
 def test_el_texto_del_documento_llega_y_no_solo_su_descripcion(monkeypatch: pytest.MonkeyPatch):
     """Lo que se pregunta de una resolución es qué DICE, y eso ya estaba en el servidor.
 

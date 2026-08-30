@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- `obtener_documento` entrega el TEXTO del documento, página por página, cuando el PDF trae
+  capa de texto. Si no cabe en una respuesta se pide por tramos con el nuevo `desde_pagina`,
+  que dice hasta dónde llegó y con cuál seguir.
+
 ### Corregido
 
 - Con `mcp` 2.1 el modelo recibía "Error executing tool" sin el motivo: el SDK dejó de

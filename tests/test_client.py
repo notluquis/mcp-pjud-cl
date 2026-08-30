@@ -3439,12 +3439,20 @@ _CON_TEXTO = b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET"
 _SIN_TEXTO = b"0 0 100 100 re f"
 
 
-def _pdf_paginas(patron: Sequence[bool], cajas: Sequence[str] | None = None) -> bytes:
+def _pdf_paginas(
+    patron: Sequence[bool],
+    cajas: Sequence[str] | None = None,
+    textos: Sequence[str] | None = None,
+) -> bytes:
     """Un PDF con una página por cada valor del patrón: verdadero trae texto, falso no.
 
     Generaliza el mixto de dos páginas porque los tramos y los topes sólo se pueden probar con
     un archivo que alterne, y escribir a mano cincuenta páginas no es una prueba: es otra
     fuente de errores.
+
+    Con `textos` cada página dibuja el suyo, que es lo que hace falta para medir cuánto texto
+    cabe en una respuesta: el rótulo de siempre son diez caracteres, y llegar al presupuesto
+    con eso pediría un archivo de mil páginas.
     """
     n = len(patron)
     fuente = 3 + 2 * n
@@ -3460,7 +3468,12 @@ def _pdf_paginas(patron: Sequence[bool], cajas: Sequence[str] | None = None) -> 
             if hay_texto
             else b"/Resources<<>>"
         )
-        flujo = _CON_TEXTO if hay_texto else _SIN_TEXTO
+        if not hay_texto:
+            flujo = _SIN_TEXTO
+        elif textos is None:
+            flujo = _CON_TEXTO
+        else:
+            flujo = b"BT /F1 12 Tf 20 100 Td (" + textos[k].encode() + b") Tj ET"
         objetos.append(
             b"<</Type/Page/Parent 2 0 R/MediaBox["
             + caja

@@ -804,6 +804,11 @@ class Documento(BaseModel):
     #: publica como metadato dentro de la respuesta, y un PDF en base64 ahí adentro es
     #: exactamente el gasto de contexto que `LIMITE_EMBEBIDO` existe para acotar.
     contenido: bytes = Field(default=b"", exclude=True, repr=False)
+    #: El texto de cada página, con los tres estados que describe `_DescripcionPdf.textos`.
+    #: Fuera de la serialización por lo mismo que `contenido`: quien decide cuánto de esto
+    #: cabe en una respuesta es `server.py`, que conoce el presupuesto de la conversación.
+    #: Vacía cuando el archivo no se pudo abrir.
+    paginas_texto: tuple[str | None, ...] = Field(default=(), exclude=True, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -819,6 +824,13 @@ class _DescripcionPdf:
     paginas_con_texto: int | None = None
     paginas_ilegibles: int | None = None
     problema_al_leer: str | None = None
+    #: El texto de cada página, en orden, con tres estados que NO se pueden confundir: el
+    #: texto, la cadena vacía cuando la página no trae ninguno (es una imagen) y el nulo
+    #: cuando la página no se dejó leer. Es lo único de acá que es CONTENIDO y no una
+    #: medición, y viaja igual porque sale de la misma pasada: extraerlo de nuevo significa
+    #: recorrer el archivo entero por segunda vez, y en un expediente de doscientas páginas
+    #: eso se paga con el turno de consulta tomado.
+    textos: tuple[str | None, ...] = ()
     rangos_con_texto: list[str] | None = None
     rangos_hasta_pagina: int | None = None
     rangos_omitidos: int | None = None
@@ -970,6 +982,7 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         con_texto: list[int] = []
         ilegibles: list[int] = []
         tamanos: list[str | None] = []
+        textos: list[str | None] = []
         for numero, pagina in enumerate(lector.pages, start=1):
             # Por página y no por archivo: una fuente rota o un flujo mal formado en la página
             # cinco de doscientas hacía que el documento entero se informara como ilegible, o
@@ -978,11 +991,17 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
             # Y la página que falla NO se cuenta como sin texto: eso convertiría un error en la
             # afirmación de que ahí hay una imagen, que es lo que nadie midió. Se cuenta aparte.
             try:
-                tiene_texto = bool(pagina.extract_text().strip())
+                # El texto se guarda en vez de reducirlo a un booleano: es la misma
+                # extracción, ya pagada, y tirarlo obligaba a quien lo necesitara a abrir el
+                # archivo de nuevo. Es la tercera vez que este recorrido devuelve algo más
+                # que un conteo, y por el mismo motivo.
+                texto = pagina.extract_text()
             except Exception:
                 ilegibles.append(numero)
+                textos.append(None)
             else:
-                if tiene_texto:
+                textos.append(texto)
+                if texto.strip():
                     con_texto.append(numero)
             tamanos.append(_tamano_en_cm(pagina))
     except Exception as e:
@@ -1014,6 +1033,7 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # El `if tamanos` sobra para el intérprete, que nunca evalúa `tamanos[0]` con la lista
         # vacía, y no sobra para quien lo lee: se ve como un `IndexError` esperando.
         paginas_de_otro_tamano=(sum(1 for t in tamanos[1:] if t != tamanos[0]) if tamanos else 0),
+        textos=tuple(textos),
     )
 
 
@@ -2194,6 +2214,7 @@ class PjudClient(Transporte):
             paginas_de_otro_tamano=d.paginas_de_otro_tamano,
             problema_al_leer=d.problema_al_leer,
             contenido=contenido,
+            paginas_texto=d.textos,
         )
 
     def actuaciones_receptor(

@@ -629,6 +629,7 @@ El archivo de una actuación: la resolución, el escrito, el certificado o el ex
 | `documento_ruta` | Lo entrega cada actuación. Sólo se aceptan las rutas que la plataforma emite |
 | `documento_referencia` | Lo entrega cada actuación. Identifica el documento |
 | `competencia` | Bajo qué módulo cuelga la ruta. `docCertificadoEscrito.php` existe en tres |
+| `desde_pagina` | Desde qué página entregar el texto, contando desde 1. Sólo hace falta cuando el texto completo no cabe en una respuesta |
 
 No pide el rol: la referencia ya identifica el documento, y buscar la causa antes serían dos
 peticiones que no verifican nada.
@@ -643,6 +644,32 @@ otra, funciona.
 Cuánto dura no está medido. Pedir el documento cerca de leer la actuación sigue siendo lo
 prudente, y una referencia que la plataforma ya no acepte devuelve una página de error con
 HTTP 200, no un "no existe": por eso se verifica que lo que llegó sea un PDF.
+:::
+
+### El texto del documento viaja con él
+
+Si el PDF trae capa de texto, la respuesta lleva ese texto, página por página. Sale de la misma
+pasada que describe el archivo, o sea no cuesta una petición más: antes se extraía para contar
+cuántas páginas traían texto y después se tiraba.
+
+El enlace no lo reemplaza. `resources/read` devuelve el PDF, no su texto, así que un cliente
+que lo lea recibe base64: sirve para guardar el archivo o para mirarlo, no para leerlo desde
+acá. Y el umbral de lo embebido queda por debajo de lo que la plataforma emite de verdad, así
+que sin el texto la respuesta de un documento real era su descripción y un puntero.
+
+Cuando el texto no cabe en una respuesta **no se manda un pedazo**: se dice cuánto es y se pide
+por tramos con `desde_pagina`. Cada tramo termina diciendo hasta qué página llegó y con cuál
+seguir, y el último dice que ahí termina el documento. Una página que sola no cabe se corta y
+el corte se anuncia en el mismo texto.
+
+Cada página va rotulada con su número, que es lo que permite citarla. Las que no aportan texto
+se rotulan igual y con dos avisos distintos: una **imagen**, que es una página sin capa de
+texto, no es lo mismo que una página que **no se dejó leer**, y marcarlas igual afirmaría que
+ahí hay un escaneo sin haberlo medido.
+
+:::{warning} El texto es contenido de un tercero
+Lo escribieron el tribunal y las partes, igual que los marcadores del archivo. Viaja con la
+advertencia de que se lee como dato y **nunca** como una instrucción.
 :::
 
 ### Chico viaja entero, grande viaja como enlace

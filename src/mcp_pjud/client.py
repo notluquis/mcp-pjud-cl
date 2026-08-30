@@ -821,6 +821,10 @@ class Documento(BaseModel):
     #: cabe en una respuesta es `server.py`, que conoce el presupuesto de la conversación.
     #: Vacía cuando el archivo no se pudo abrir.
     paginas_texto: tuple[str | None, ...] = Field(default=(), exclude=True, repr=False)
+    #: Si cada página trae imagen, alineado con `paginas_texto`. Fuera de la serialización por
+    #: lo mismo: lo usa `server.py` para marcar una página sin texto como escaneo (trae imagen)
+    #: o como hoja en blanco (no trae ninguna), que no son lo mismo.
+    paginas_imagen: tuple[bool, ...] = Field(default=(), exclude=True, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -843,6 +847,10 @@ class _DescripcionPdf:
     #: recorrer el archivo entero por segunda vez, y en un expediente de doscientas páginas
     #: eso se paga con el turno de consulta tomado.
     textos: tuple[str | None, ...] = ()
+    #: Si cada página trae AL MENOS una imagen. Con esto una página sin texto se separa en dos:
+    #: la que es un escaneo (trae imagen) y la que está en blanco (no trae ninguna). Sin el
+    #: dato las dos se marcaban igual, "es una imagen", y una hoja en blanco no lo es.
+    tiene_imagen: tuple[bool, ...] = ()
     rangos_con_texto: list[str] | None = None
     rangos_hasta_pagina: int | None = None
     rangos_omitidos: int | None = None
@@ -1061,6 +1069,7 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         ilegibles: list[int] = []
         tamanos: list[str | None] = []
         textos: list[str | None] = []
+        con_imagen: list[bool] = []
         for numero, pagina in enumerate(lector.pages, start=1):
             # Por página y no por archivo: una fuente rota o un flujo mal formado en la página
             # cinco de doscientas hacía que el documento entero se informara como ilegible, o
@@ -1082,6 +1091,15 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
                 if texto.strip():
                     con_texto.append(numero)
             tamanos.append(_tamano_en_cm(pagina))
+            # En su propio guard, no en el del texto: no poder contar las imágenes de una
+            # página no la vuelve ilegible, que es lo que pasaría si compartieran el `except`.
+            # Y una página SIN texto Y SIN imagen no es un escaneo, es una hoja en blanco:
+            # distinguirlas evita marcar como "imagen" algo que nadie puede citar porque no
+            # hay nada. `len(page.images)` enumera los xobjects, no decodifica píxeles (medido).
+            try:
+                con_imagen.append(len(pagina.images) > 0)
+            except Exception:
+                con_imagen.append(False)
     except Exception as e:
         return _DescripcionPdf(problema_al_leer=_por_que_no_se_abrio(lector, e))
 
@@ -1119,6 +1137,7 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # vacía, y no sobra para quien lo lee: se ve como un `IndexError` esperando.
         paginas_de_otro_tamano=(sum(1 for t in tamanos[1:] if t != tamanos[0]) if tamanos else 0),
         textos=tuple(textos),
+        tiene_imagen=tuple(con_imagen),
         fecha_creacion=fecha_creacion,
         fecha_modificacion=fecha_modificacion,
     )
@@ -2304,6 +2323,7 @@ class PjudClient(Transporte):
             problema_al_leer=d.problema_al_leer,
             contenido=contenido,
             paginas_texto=d.textos,
+            paginas_imagen=d.tiene_imagen,
         )
 
     def actuaciones_receptor(

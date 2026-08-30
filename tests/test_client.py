@@ -3522,6 +3522,50 @@ def _pdf_paginas(
     return _ensamblar(objetos)
 
 
+def _pdf_tipos(tipos: Sequence[str]) -> bytes:
+    """Un PDF con una página por tipo: 'texto', 'imagen' (XObject real) o 'blanco' (vacía).
+
+    Es lo que `_pdf_paginas` no cubre: separar una página que es un escaneo (trae imagen) de
+    una en blanco (no trae nada), que es lo que `page.images` distingue.
+    """
+    objetos = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids["
+        + b" ".join(f"{3 + 2 * k} 0 R".encode() for k in range(len(tipos)))
+        + b"]/Count "
+        + str(len(tipos)).encode()
+        + b">>",
+    ]
+    for k, tipo in enumerate(tipos):
+        if tipo == "texto":
+            flujo = _CON_TEXTO
+            recursos = b"/Resources<</Font<</F1 " + str(3 + 2 * len(tipos)).encode() + b" 0 R>>>>"
+        elif tipo == "imagen":
+            flujo = b"q 100 0 0 100 50 50 cm /Im0 Do Q"
+            recursos = (
+                b"/Resources<</XObject<</Im0 " + str(3 + 2 * len(tipos) + 1).encode() + b" 0 R>>>>"
+            )
+        else:  # blanco
+            flujo = b"0 0 10 10 re f"
+            recursos = b"/Resources<<>>"
+        objetos.append(
+            b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents "
+            + str(4 + 2 * k).encode()
+            + b" 0 R"
+            + recursos
+            + b">>"
+        )
+        objetos.append(
+            b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream"
+        )
+    objetos.append(b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>")
+    objetos.append(
+        b"<</Type/XObject/Subtype/Image/Width 1/Height 1/ColorSpace/DeviceGray"
+        b"/BitsPerComponent 8/Length 1>>stream\n\x00\nendstream"
+    )
+    return _ensamblar(objetos)
+
+
 def _con_marcadores(base: bytes, marcadores: Sequence[tuple[str, int, int]]) -> bytes:
     """El mismo PDF con un árbol de marcadores encima.
 
@@ -4071,6 +4115,17 @@ def test_los_marcadores_traen_su_pagina_contando_desde_uno():
         ("Contestación", 2),
     ], f"los marcadores no llegaron con su página desde 1: {d.marcadores}"
     assert d.marcadores_omitidos == 0
+
+
+def test_una_pagina_sin_texto_se_separa_en_imagen_y_en_blanco():
+    """Una página sin texto no es una sola cosa: con imagen es un escaneo, sin imagen es una
+    hoja en blanco. `page.images` las separa, y marcarlas igual afirma de más."""
+    d = _describir_pdf(_pdf_tipos(["texto", "imagen", "blanco"]))
+
+    assert d.tiene_imagen == (False, True, False), (
+        f"la detección de imagen por página salió mal: {d.tiene_imagen}"
+    )
+    assert d.paginas_con_texto == 1, "sólo la primera trae texto"
 
 
 def test_la_fecha_del_archivo_viaja_como_proxy_de_la_firma():

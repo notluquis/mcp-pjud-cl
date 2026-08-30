@@ -1224,12 +1224,14 @@ def _resumen(doc: Documento, embebido: bool) -> str:
     )
 
 
-#: Con qué se marca una página que no aporta texto, y por qué son dos avisos y no uno.
+#: Con qué se marca una página que no aporta texto, y por qué son varios avisos y no uno.
 #:
-#: `paginas_ilegibles` existe justamente para no confundirlos: una página sin texto es una
-#: imagen, y una que no se dejó leer es un error de lectura. Marcar las dos igual afirmaría
-#: que ahí hay un escaneo, que es lo que nadie midió.
-_PAGINA_SIN_TEXTO = "[sin texto: es una imagen, y este servidor no le pasa OCR]"
+#: Son tres cosas distintas y marcarlas igual afirma de más: una página SIN texto Y CON imagen
+#: es un escaneo; una SIN texto Y SIN imagen es una hoja en blanco (no hay nada que citar, y no
+#: es un escaneo); y una que no se dejó leer es un error de lectura, que `paginas_ilegibles`
+#: cuenta aparte porque de ella no se sabe si trae texto o no.
+_PAGINA_IMAGEN = "[sin texto: es una imagen (escaneo), y este servidor no le pasa OCR]"
+_PAGINA_EN_BLANCO = "[sin texto y sin imagen: la página está en blanco]"
 _PAGINA_ILEGIBLE = "[esta página no se dejó leer, así que no se sabe qué trae]"
 
 
@@ -1277,7 +1279,14 @@ def _texto_del_documento(doc: Documento, desde_pagina: int | None) -> str | None
         if crudo is None:
             cuerpo = _PAGINA_ILEGIBLE
         elif not crudo.strip():
-            cuerpo = _PAGINA_SIN_TEXTO
+            # Sin `paginas_imagen` (dato viejo o ausente) se asume imagen, que es lo que se
+            # decía antes: no regresar a una hoja en blanco algo que sí puede ser un escaneo.
+            hay_imagen = (
+                doc.paginas_imagen[numero - 1]
+                if numero - 1 < len(doc.paginas_imagen)
+                else True
+            )
+            cuerpo = _PAGINA_IMAGEN if hay_imagen else _PAGINA_EN_BLANCO
         else:
             cuerpo = crudo.strip()
         pagina = f"--- página {numero} de {total} ---\n{cuerpo}"

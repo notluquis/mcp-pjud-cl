@@ -85,6 +85,7 @@ from .test_client import (
     _con_marcadores,
     _pdf,
     _pdf_paginas,
+    _pdf_tipos,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -1183,9 +1184,22 @@ def test_una_pagina_sin_texto_se_rotula_y_no_se_salta(monkeypatch: pytest.Monkey
     texto = _texto(_pedir_documento_desde(None))
 
     assert "página 2 de 3" in texto, f"la página sin texto no se rotuló: {texto}"
-    assert servidor._PAGINA_SIN_TEXTO in texto, (
-        f"la página sin texto viajó vacía, o sea se lee como que ahí no dice nada: {texto}"
+    assert servidor._PAGINA_EN_BLANCO in texto, (
+        f"la página sin texto ni imagen viajó sin marcar, o sea se lee como que ahí no dice "
+        f"nada sin decir que está en blanco: {texto}"
     )
+
+
+def test_una_pagina_escaneada_no_se_confunde_con_una_en_blanco(monkeypatch: pytest.MonkeyPatch):
+    """Sin texto y con imagen es un escaneo que hay que abrir; sin texto y sin imagen es una
+    hoja en blanco. El modelo tiene que poder distinguirlas para no mandar a abrir una página
+    vacía ni dar por vacía una escaneada."""
+    _con_doble(monkeypatch, _documento(_pdf_tipos(["texto", "imagen", "blanco"])))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert servidor._PAGINA_IMAGEN in texto, f"la página escaneada no se marcó como imagen: {texto}"
+    assert servidor._PAGINA_EN_BLANCO in texto, f"la página en blanco no se marcó como tal: {texto}"
 
 
 def test_una_pagina_ilegible_no_se_rotula_como_imagen(monkeypatch: pytest.MonkeyPatch):
@@ -1216,7 +1230,7 @@ def test_una_pagina_ilegible_no_se_rotula_como_imagen(monkeypatch: pytest.Monkey
     assert servidor._PAGINA_ILEGIBLE in texto, (
         f"la página que no se dejó leer viajó sin decirlo: {texto}"
     )
-    assert servidor._PAGINA_SIN_TEXTO not in texto, (
+    assert servidor._PAGINA_IMAGEN not in texto, (
         f"una página que falló al leerse se rotuló como si fuera una imagen: {texto}"
     )
 

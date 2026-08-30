@@ -61,6 +61,7 @@ from mcp.types import (
     ResourceTemplateReference,
     Tool,
 )
+from pypdf import PageObject
 
 from mcp_pjud import server as servidor
 from mcp_pjud.client import (
@@ -1130,11 +1131,64 @@ def test_una_pagina_que_sola_no_cabe_se_corta_y_se_dice(monkeypatch: pytest.Monk
     """
     _con_doble(monkeypatch, _documento(_pdf_con_texto_de(CARACTERES_DE_UNA_RESPUESTA + 5_000)))
 
-    texto = _texto(_pedir_documento_desde(1))
+    resultado = _pedir_documento_desde(1)
+    texto = _texto(resultado)
 
     assert "se cortó" in texto, f"la página vino recortada sin decirlo: {texto[-400:]}"
-    assert len(texto) < CARACTERES_DE_UNA_RESPUESTA * 2, (
-        f"el recorte no acotó nada: la respuesta mide {len(texto)}"
+    # El bloque del texto, no la respuesta entera: el resumen del documento viaja aparte y
+    # tiene su propio tamaño. Con el doble del presupuesto, que era la primera versión de
+    # esta línea, un recorte que dejara 49.999 caracteres pasaba igual.
+    bloque = next(b for b in resultado.content if "se cortó" in getattr(b, "text", ""))
+    assert len(bloque.text) <= CARACTERES_DE_UNA_RESPUESTA + 500, (
+        f"el recorte no acotó al presupuesto: el bloque mide {len(bloque.text)}"
+    )
+
+
+def test_una_pagina_sin_texto_se_rotula_y_no_se_salta(monkeypatch: pytest.MonkeyPatch):
+    """Un expediente que mezcla resoluciones digitales con anexos escaneados es lo normal.
+
+    Saltarse las páginas que son imagen dejaría un texto que se lee corrido, de la 1 a la 3,
+    sin que nada diga que la 2 existe y no se puede citar.
+    """
+    _con_doble(
+        monkeypatch,
+        _documento(_pdf_paginas([True, False, True], textos=["UNO", "", "TRES"])),
+    )
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert "página 2 de 3" in texto, f"la página sin texto no se rotuló: {texto}"
+    assert servidor._PAGINA_SIN_TEXTO in texto, (
+        f"la página sin texto viajó vacía, o sea se lee como que ahí no dice nada: {texto}"
+    )
+
+
+def test_una_pagina_ilegible_no_se_rotula_como_imagen(monkeypatch: pytest.MonkeyPatch):
+    """Los dos avisos son distintos porque las dos cosas lo son.
+
+    Decir "es una imagen" de una página que falló al leerse es afirmar algo que nadie midió,
+    que es exactamente lo que `paginas_ilegibles` existe para separar. El error se inyecta
+    igual que en `test_client.py`: `pypdf` no tiene otra forma de producirlo por página.
+    """
+    original = PageObject.extract_text
+    llamadas = {"n": 0}
+
+    def falla_en_la_segunda(self, *args, **kwargs):
+        llamadas["n"] += 1
+        if llamadas["n"] == 2:
+            raise ValueError("fuente corrupta")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(PageObject, "extract_text", falla_en_la_segunda)
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(300, 300, 300)))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert servidor._PAGINA_ILEGIBLE in texto, (
+        f"la página que no se dejó leer viajó sin decirlo: {texto}"
+    )
+    assert servidor._PAGINA_SIN_TEXTO not in texto, (
+        f"una página que falló al leerse se rotuló como si fuera una imagen: {texto}"
     )
 
 

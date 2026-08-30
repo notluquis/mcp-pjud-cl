@@ -6,12 +6,13 @@ verificar justo en el punto donde se consume. El parser levanta `EstructuraInesp
 quien lee la respuesta es un modelo al otro lado de una sesión MCP, y entre los dos hay una
 capa del SDK que decide qué le llega.
 
-Hoy esa capa propaga el mensaje: `mcp/server/mcpserver/tools/base.py` envuelve la excepción
-en `ToolError` con el texto original, y `server.py` lo devuelve como `CallToolResult` con
-`is_error`. Eso es un detalle interno del SDK, y `pyproject.toml` pide `mcp` sin techo de
-versión. Si una versión futura enmascarara el mensaje, el modelo vería "error al ejecutar la
-herramienta" sin explicación y se lo resumiría al abogado como "no encontré actuaciones": el
-falso negativo que el parser evita, reaparecido una capa más arriba.
+Esa capa cambió de opinión, y esto lo midió. Hasta `mcp` 2.0 el SDK envolvía cualquier
+excepción en `ToolError` con el texto original; 2.1.0 decide por el TIPO: sólo `ToolError`
+desde una herramienta y `ResourceError` desde un recurso llegan con su mensaje, y todo lo
+demás llega como "Error executing tool <nombre>", sin una palabra de qué pasó. Con esa versión
+puesta, seis de los tests de este archivo se cayeron de una vez, que es exactamente lo que la
+versión anterior de este párrafo anunciaba como hipótesis. `server.py` envuelve hoy cada
+manejador para que el motivo viaje igual.
 
 Sin red. El cliente HTTP va doblado con `httpx.MockTransport`, igual que en `test_client.py`,
 y la sesión MCP corre en memoria dentro del mismo proceso.
@@ -33,6 +34,7 @@ cubren:
 import asyncio
 import base64
 import re
+import traceback
 from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import unquote
@@ -43,6 +45,7 @@ import pytest
 from mcp.client import Client
 from mcp.server import MCPServer
 from mcp.shared.dispatcher import ProgressFnT
+from mcp.shared.exceptions import MCPError
 from mcp.types import (
     LATEST_PROTOCOL_VERSION,
     SERVER_INFO_META_KEY,
@@ -1006,6 +1009,86 @@ def test_lo_que_no_es_un_pdf_llega_como_error_y_no_como_documento(
     )
     assert "La sesion ha expirado" in texto, (
         f"el modelo tiene que ver el aviso para saber que hay que repetir el detalle: {texto}"
+    )
+
+
+def _mensajes_de_protocolo(e: BaseException) -> list[str]:
+    """Los mensajes de los `MCPError` que hay dentro, sin bajar por `__cause__`.
+
+    Lo que viaja por el cable es el mensaje del `MCPError` y nada más: la excepción que lo
+    causó se queda en el servidor. Recorrer `__cause__` acá haría que el guardia lea justo lo
+    que no llega.
+    """
+    if isinstance(e, MCPError):
+        return [str(e)]
+    if isinstance(e, BaseExceptionGroup):
+        return [m for sub in e.exceptions for m in _mensajes_de_protocolo(sub)]
+    return []
+
+
+def test_el_recurso_tambien_dice_por_que_no_pudo_entregar(monkeypatch: pytest.MonkeyPatch):
+    """El otro camino al mismo documento, donde el SDK anticipa otra clase de excepción.
+
+    La herramienta devuelve el enlace y quien lo lee entra por `resources/read`, que no pasa
+    por `ToolError` sino por `ResourceError`: una lectura que falle ahí y llegue con el
+    mensaje genérico deja a quien la pidió sin saber que lo que caducó es la referencia, o
+    sea repitiendo la misma lectura en vez de volver a pedir el detalle.
+    """
+    aviso = '<html><script>swal("Aviso", "La sesion ha expirado");</script></html>'
+    _con_doble(monkeypatch, _documento(texto=aviso, tipo="text/html"))
+    uri = servidor._uri_del_documento("civil", "docuN.php", REFERENCIA)
+
+    async def leer() -> None:
+        async with Client(servidor.mcp) as cliente:
+            await cliente.read_resource(uri)
+
+    # La sesión en memoria envuelve el error en dos `ExceptionGroup` anidados, así que hay
+    # que ir a buscar el `MCPError`. Y se mira SU mensaje y no el informe de la excepción:
+    # el informe trae encadenada la excepción original, o sea la frase aparece ahí aunque por
+    # el cable haya viajado el mensaje genérico. Medido: con el envoltorio del recurso
+    # sacado, la versión que miraba el informe seguía verde.
+    # El par y no `BaseException`: la sesión en memoria levanta el grupo, y un SDK que
+    # algún día entregue el `MCPError` pelado también tiene que pasar por acá.
+    with pytest.raises((MCPError, BaseExceptionGroup)) as levantada:
+        asyncio.run(leer())
+    en_el_cable = _mensajes_de_protocolo(levantada.value)
+
+    assert en_el_cable, (
+        "la lectura no falló con un error del protocolo, así que no hay mensaje que mirar: "
+        f"{traceback.format_exception(levantada.value)}"
+    )
+    assert not any("petición no prevista" in m for m in en_el_cable), (
+        f"el error salió del doble y no del cliente: {en_el_cable}"
+    )
+    assert any("La sesion ha expirado" in m for m in en_el_cable), (
+        "la lectura del recurso falló sin decir por qué, y quien la pidió no tiene cómo "
+        f"distinguir una referencia vencida de un documento que no existe: {en_el_cable}"
+    )
+
+
+def test_una_herramienta_asincrona_tambien_conserva_el_motivo():
+    """El envoltorio tiene dos ramas y hoy las catorce herramientas son síncronas.
+
+    O sea la rama asíncrona no la ejercita ninguna, y una rama que ningún test toca es una que
+    puede estar rota desde el día uno: sin `await`, el `try` devuelve la corrutina intacta y
+    no atrapa nada, así que la primera herramienta asíncrona que alguien agregue perdería su
+    mensaje sin que nada se ponga en rojo.
+    """
+    servidor_mcp = servidor._ServidorQueCabe("prueba", version="0")
+
+    @servidor_mcp.tool()
+    async def falla_asincrona() -> str:
+        raise EstructuraInesperada("la plataforma cambió y no se puede leer")
+
+    async def ida_y_vuelta() -> CallToolResult:
+        async with Client(servidor_mcp) as cliente:
+            return await cliente.call_tool("falla_asincrona", {})
+
+    resultado = asyncio.run(ida_y_vuelta())
+
+    assert resultado.is_error, "una herramienta asíncrona que levanta llegó como éxito"
+    assert "la plataforma cambió y no se puede leer" in _texto(resultado), (
+        f"el motivo se quedó en el servidor: {_texto(resultado)}"
     )
 
 

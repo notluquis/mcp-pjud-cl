@@ -1016,9 +1016,11 @@ sentencia no exista.
 | `PjudNoRespondio` | La petición salió y no volvió en el tiempo de espera | La plataforma puede estar lenta. Se puede reintentar más tarde, respetando el intervalo. **No** es que la causa no exista |
 | `PlataformaNoDisponible` | La plataforma respondió 5xx | Error suyo, no de la consulta. Se reintenta más tarde, respetando el intervalo |
 
-El SDK de MCP convierte una excepción en un resultado con `is_error: true` y el mensaje como
-contenido, así que el cliente ve el error en vez de recibir una lista vacía que parecería
-decir "no hubo actuaciones".
+Todas llegan con su mensaje. El servidor envuelve cada herramienta y cada recurso para que
+así sea: desde `mcp` 2.1 el SDK sólo propaga el texto de las excepciones que él anticipa y
+reemplaza el del resto por `Error executing tool <nombre>`, que le diría al cliente que algo
+falló y no qué. El resultado sigue viajando con `is_error: true`, o sea el cliente ve el error
+en vez de una lista vacía que parecería decir "no hubo actuaciones".
 
 Las tres que describen un fallo de la consulta y no un rechazo (`PjudNoRespondio`,
 `PlataformaNoDisponible` y el `EstructuraInesperada` de un código HTTP inesperado) dicen

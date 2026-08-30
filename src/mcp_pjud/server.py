@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import base64
 import concurrent.futures as _futuros
+import functools
+import inspect
 import logging
 import os
 import sys
 from collections.abc import Callable
-from typing import Annotated, get_args
+from typing import Annotated, Any, get_args
 from urllib.parse import quote, urlencode
 
 from anyio.from_thread import run as _de_vuelta_al_bucle
@@ -31,6 +33,12 @@ from mcp.server.caching import CacheableMethod, CacheHint
 # registrar la primera herramienta con `InvalidSignature: Unable to evaluate type annotations`.
 # Ruidoso y no silencioso, o sea el error se ve, pero se lleva las catorce de una.
 from mcp.server.mcpserver import Context
+
+# Los dos tipos con que el SDK distingue un fallo anticipado de una caída del servidor. Viven
+# en el módulo de excepciones y no en el `__all__` de `mcp.server.mcpserver`, así que se
+# importan de donde están.
+from mcp.server.mcpserver.exceptions import MCPServerError, ResourceError, ToolError
+from mcp.shared.exceptions import MCPError
 from mcp.types import (
     BlobResourceContents,
     Completion,
@@ -270,6 +278,63 @@ def _sin_prosa(nodo: object, dentro_de_un_mapa: bool = False) -> object:
     return nodo
 
 
+class ConsultaFallida(ToolError, ResourceError):
+    """Un fallo cuyo motivo tiene que llegar a quien preguntó.
+
+    El SDK decide POR EL TIPO de la excepción si su mensaje viaja o se reemplaza por uno
+    genérico. Desde `mcp` 2.1.0 sólo viaja lo anticipado: `ToolError` desde una herramienta y
+    `ResourceError` desde un recurso. Cualquier otra excepción le llega al modelo como "Error
+    executing tool <nombre>", sin una palabra de qué pasó, y ahí "la plataforma cambió y no
+    puedo leerla" se lee igual que "no hay actuaciones": el falso negativo que la regla 4
+    existe para evitar, reaparecido una capa más arriba. `tests/test_protocolo.py` lo había
+    escrito como hipótesis antes de que ocurriera.
+
+    Hereda de las dos porque las mismas excepciones suben por los dos caminos: la herramienta
+    `obtener_documento` y el recurso `documento-de-causa` llaman al mismo cliente, y el SDK
+    anticipa una clase distinta en cada uno.
+    """
+
+
+def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Envuelve un manejador para que el motivo del fallo no se quede en el servidor.
+
+    Se atrapa `Exception` entera y no una lista de tipos a propósito. Los mensajes de este
+    servidor están escritos para que los lea un modelo, y están repartidos entre siete clases
+    propias y unas cuarenta llamadas a `ValueError`: una lista sería un dato repetido que se
+    queda viejo el día que alguien agregue la octava, y quedarse viejo acá significa que ese
+    fallo se calla justo donde importa.
+
+    Lo que NO se toca son las excepciones del propio SDK: `MCPError` es un error del protocolo
+    y `MCPServerError` ya viene anticipado, así que envolverlas cambiaría cómo viajan.
+    """
+
+    if inspect.iscoroutinefunction(fn):
+
+        @functools.wraps(fn)
+        async def envuelta_async(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return await fn(*args, **kwargs)
+            except (MCPError, MCPServerError):
+                raise
+            except Exception as e:
+                raise ConsultaFallida(str(e) or repr(e)) from e
+
+        return envuelta_async
+
+    @functools.wraps(fn)
+    def envuelta(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except (MCPError, MCPServerError):
+            raise
+        except Exception as e:
+            # Un `str` vacío (`KeyError()`, por ejemplo) llegaría idéntico al mensaje genérico
+            # que esto existe para evitar, así que ahí se manda la representación.
+            raise ConsultaFallida(str(e) or repr(e)) from e
+
+    return envuelta
+
+
 class _ServidorQueCabe(MCPServer):
     """El catálogo que viaja anuncia la FORMA de la salida, no su prosa.
 
@@ -290,6 +355,23 @@ class _ServidorQueCabe(MCPServer):
             else h
             for h in await super().list_tools()
         ]
+
+    def tool(self, *args: Any, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Registra la herramienta con su manejador envuelto, sin que cada sitio lo repita.
+
+        Va acá y no como un decorador más en las catorce: un decorador que hay que acordarse
+        de poner es un decorador que algún día falta, y lo que se pierde cuando falta no se ve
+        en ningún test que no mire ESA herramienta.
+        """
+        registrar = super().tool(*args, **kwargs)
+        return lambda fn: registrar(_que_el_motivo_viaje(fn))
+
+    def resource(
+        self, *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Lo mismo para los recursos, donde el SDK anticipa `ResourceError` y no `ToolError`."""
+        registrar = super().resource(*args, **kwargs)
+        return lambda fn: registrar(_que_el_motivo_viaje(fn))
 
 
 #: Cuánto tiempo puede el cliente dar por fresco el catálogo, y con quién compartirlo.

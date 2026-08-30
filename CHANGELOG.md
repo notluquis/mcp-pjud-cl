@@ -16,6 +16,12 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Corregido
+
+- Con `mcp` 2.1 el modelo recibía "Error executing tool" sin el motivo: el SDK dejó de
+  propagar el texto de cualquier excepción y ahora sólo viaja el de las que anticipa. Todo
+  fallo de este servidor vuelve a llegar diciendo qué pasó, por herramienta y por recurso.
+
 ## [0.19.3] - 2026-08-26
 
 ### Corregido

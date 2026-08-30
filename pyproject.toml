@@ -18,6 +18,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    # Sin techo y con el piso en 2.0, que es lo medido: `mcp` 2.1.0 cambió cómo viaja el
+    # motivo de un fallo (sólo `ToolError` y `ResourceError` llegan con su mensaje, el resto
+    # como "Error executing tool"), y `server.py` envuelve cada manejador para que viaje
+    # igual. Ese envoltorio funciona en las dos: las dos clases existen desde 2.0 y heredar de
+    # ambas se probó ahí. O sea el piso no sube porque no hace falta, y el techo no baja
+    # porque la garantía la sostiene un test y no una versión congelada.
     "mcp>=2.0",
     # El SDK corre las herramientas síncronas en un hilo, y el aviso de progreso hay que
     # devolverlo al bucle de eventos con `anyio.from_thread.run`. Hoy entra de prestado por

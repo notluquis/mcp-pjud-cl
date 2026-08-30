@@ -307,6 +307,10 @@ def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
 
     Lo que NO se toca son las excepciones del propio SDK: `MCPError` es un error del protocolo
     y `MCPServerError` ya viene anticipado, así que envolverlas cambiaría cómo viajan.
+
+    Cada manejador queda marcado con `_motivo_viaja`, para que un test pueda recorrer los que
+    el servidor registró de verdad y comprobar que NINGUNO se saltó el envoltorio. La marca es
+    lo que distingue "envuelto por esto" de "envuelto por cualquier otro `functools.wraps`".
     """
 
     if inspect.iscoroutinefunction(fn):
@@ -320,6 +324,7 @@ def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
             except Exception as e:
                 raise ConsultaFallida(str(e) or repr(e)) from e
 
+        envuelta_async._motivo_viaja = True  # ty: ignore[unresolved-attribute]
         return envuelta_async
 
     @functools.wraps(fn)
@@ -333,6 +338,7 @@ def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
             # que esto existe para evitar, así que ahí se manda la representación.
             raise ConsultaFallida(str(e) or repr(e)) from e
 
+    envuelta._motivo_viaja = True  # ty: ignore[unresolved-attribute]
     return envuelta
 
 

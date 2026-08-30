@@ -1270,6 +1270,45 @@ def test_el_recurso_tambien_dice_por_que_no_pudo_entregar(monkeypatch: pytest.Mo
     )
 
 
+def test_ninguna_herramienta_ni_recurso_se_salta_el_envoltorio():
+    """El envoltorio va en `.tool` y `.resource`, no en cada sitio, y esto lo comprueba.
+
+    La razón de ponerlo en el registro y no como un decorador por herramienta es que un
+    decorador que hay que acordarse de poner algún día falta. Este test cierra el otro lado:
+    recorre lo que el servidor registró DE VERDAD (las catorce herramientas y el recurso del
+    documento) y verifica que cada manejador lleva la marca del envoltorio. Sin él, una
+    herramienta futura registrada por fuera perdería su mensaje y ningún test que no la mire a
+    ELLA lo notaría, que es exactamente el modo de falla que el envoltorio existe para cerrar.
+
+    Toca `_tool_manager` y `_resource_manager`, que son internos del SDK: si un día cambian de
+    nombre, este test se cae en vez de pasar en falso, y eso es lo que se quiere.
+    """
+    mcp = servidor.mcp
+
+    herramientas = mcp._tool_manager._tools
+    assert len(herramientas) >= 14, f"el SDK cambió dónde guarda las herramientas: {herramientas!r}"
+    sin_marca = [
+        nombre
+        for nombre, t in herramientas.items()
+        if not getattr(getattr(t, "fn", None), "_motivo_viaja", False)
+    ]
+    assert not sin_marca, (
+        f"estas herramientas se registraron sin el envoltorio, así que su error llegaría "
+        f'como "Error executing tool" sin el motivo: {sin_marca}'
+    )
+
+    plantillas = mcp._resource_manager._templates
+    assert plantillas, f"el SDK cambió dónde guarda las plantillas de recurso: {plantillas!r}"
+    sin_marca_recurso = [
+        uri
+        for uri, tpl in plantillas.items()
+        if not getattr(getattr(tpl, "fn", None), "_motivo_viaja", False)
+    ]
+    assert not sin_marca_recurso, (
+        f"estos recursos se registraron sin el envoltorio: {sin_marca_recurso}"
+    )
+
+
 def test_una_herramienta_asincrona_tambien_conserva_el_motivo():
     """El envoltorio tiene dos ramas y hoy las catorce herramientas son síncronas.
 

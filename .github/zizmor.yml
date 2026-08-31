@@ -1,0 +1,8 @@
+# El audit `dependabot-cooldown` pide un período de enfriamiento en dependabot.yml. Se quitó a
+# propósito (ver el comentario ahí): se prioriza enterarse el mismo día que sale una versión,
+# sobre todo del SDK de MCP, cuya última ruptura pasó siete días sin aviso. Se acepta la ventana
+# de cadena de suministro porque el PR de Dependabot no se auto-mergea: pasa por CI y revisión.
+rules:
+  dependabot-cooldown:
+    ignore:
+      - dependabot.yml

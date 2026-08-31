@@ -1,0 +1,68 @@
+name: canario-mcp
+
+# Corre el suite contra el `mcp` MÁS RECIENTE, ignorando el lock. El resto del CI prueba la
+# versión fijada; esto prueba la que sale hoy. Si un `mcp` nuevo rompe la propagación de
+# errores, el contrato, o hace que el servidor nombre una revisión del protocolo distinta de la
+# que trae el SDK, esto se pone rojo el día del release, no cuando Dependabot lo alcance. Es el
+# aviso que faltó cuando 2.1 rompió seis tests de protocolo y pasó siete días sin señal.
+#
+# No corre en cada push ni en los PR: no bloquea nada. Es un canario en schedule, y su fallo
+# llega por la notificación de Actions.
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # diario, 13:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  canario:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # Mismo bloqueo de egress que `tests.yml`: la promesa de que CI nunca consulta al Poder
+      # Judicial vale también acá. pypi y su CDN se necesitan para traer el `mcp` nuevo.
+      - name: Bloquear tráfico saliente no declarado
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            astral.sh:443
+            codeload.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            objects.githubusercontent.com:443
+            pypi.org:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Historia completa: el suite trae el guardia de anclajes de la hoja de ruta, que lee
+          # un commit anterior. Con el clon superficial ese guardia se saltaría, verde acá y
+          # roto en lo publicado.
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # El lock trae el resto de las dependencias; después se sube SÓLO `mcp` (y `mcp-types`,
+      # que versiona con él) a lo último que exista, y se corre sin re-sincronizar para que el
+      # `uv run` no lo devuelva al lock.
+      - run: uv sync --all-groups
+      - name: Subir mcp a lo más reciente
+        run: uv pip install --upgrade mcp mcp-types
+      - name: Versión de mcp bajo prueba
+        run: uv run --no-sync python -c "from importlib.metadata import version; print('mcp', version('mcp'))"
+      - name: Tests contra el mcp más reciente
+        run: uv run --no-sync pytest -q

@@ -186,8 +186,8 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
   tribunal es obligatorio eso limita la utilidad de la herramienta: hay que saber dónde está
   la causa antes de poder buscarla.
 - **La tilde calza literal, campo por campo.** El mismo apellido está guardado de las dos
-  formas en la misma base, así que ninguna de las dos grafías devuelve todo. Medido el 25 de
-  agosto de 2026 sobre un apellido en un solo tribunal:
+  formas en la misma base, así que ninguna grafía sola devuelve todo. Medido el 25 de agosto
+  de 2026 sobre un apellido en un solo tribunal:
 
   | paterno | materno | causas |
   |---|---|---|
@@ -195,8 +195,13 @@ Reglas de la plataforma, medidas probando cada combinación contra el sistema re
   | con tilde | con tilde | 25 |
   | una con y otra sin | | 0 |
 
-  `MUÑOZ` contra `MUNOZ` da lo mismo. Un total sale de consultar las dos grafías; una sola
-  entrega la mitad y no lo dice.
+  **La herramienta consulta las DOS grafías y las fusiona**, así que no hay que repetir la
+  búsqueda. Lo que no puede es adivinar la tilde: si el nombre se pasa sin acentos, sólo trae la
+  forma sin acentos. **Pásalo con sus tildes correctas** o la lista sigue incompleta sin decirlo.
+
+  La **ñ** no cambia el resultado (`MUÑOZ` y `MUNOZ` dan lo mismo), así que el fold la conserva
+  y no gasta una búsqueda de más; la **tilde** sí, y por eso se buscan la forma acentuada y la
+  sin acentuar. Un nombre sin ninguna letra acentuable es una sola búsqueda.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
@@ -629,6 +634,7 @@ El archivo de una actuación: la resolución, el escrito, el certificado o el ex
 | `documento_ruta` | Lo entrega cada actuación. Sólo se aceptan las rutas que la plataforma emite |
 | `documento_referencia` | Lo entrega cada actuación. Identifica el documento |
 | `competencia` | Bajo qué módulo cuelga la ruta. `docCertificadoEscrito.php` existe en tres |
+| `desde_pagina` | Desde qué página entregar el texto, contando desde 1. Sólo hace falta cuando el texto completo no cabe en una respuesta |
 
 No pide el rol: la referencia ya identifica el documento, y buscar la causa antes serían dos
 peticiones que no verifican nada.
@@ -643,6 +649,41 @@ otra, funciona.
 Cuánto dura no está medido. Pedir el documento cerca de leer la actuación sigue siendo lo
 prudente, y una referencia que la plataforma ya no acepte devuelve una página de error con
 HTTP 200, no un "no existe": por eso se verifica que lo que llegó sea un PDF.
+:::
+
+### El texto del documento viaja con él
+
+Si el PDF trae capa de texto, la respuesta lleva ese texto, página por página. Sale de la misma
+pasada que describe el archivo, o sea no cuesta una petición más: antes se extraía para contar
+cuántas páginas traían texto y después se tiraba.
+
+El enlace no lo reemplaza. `resources/read` devuelve el PDF, no su texto, así que un cliente
+que lo lea recibe base64: sirve para guardar el archivo o para mirarlo, no para leerlo desde
+acá. Y el umbral de lo embebido queda por debajo de lo que la plataforma emite de verdad, así
+que sin el texto la respuesta de un documento real era su descripción y un puntero.
+
+Cuando el texto no cabe en una respuesta **no se manda un pedazo**: se dice cuánto es y se pide
+por tramos con `desde_pagina`. Cada tramo termina diciendo hasta qué página llegó y con cuál
+seguir, y el último dice que ahí termina el documento. Una página que sola no cabe se corta y
+el corte se anuncia en el mismo texto.
+
+El texto respeta la **disposición de la hoja**, no el orden del flujo del PDF. En un encabezado
+en columnas eso es lo que separa "Foja: 15 ... ROL: C-1234-2026" de un "ROL: C-1234-2026Foja:
+15" con las columnas pegadas, que es el riesgo cuando lo que corre los plazos son fechas leídas
+de un encabezado. Conserva el texto rotado, que el modo descarta por defecto: un timbre al
+margen no puede perderse en silencio. Es un modo **experimental** y todavía no se midió contra
+un PDF real de la plataforma; si falla en una página, cae al modo simple, que nunca entrega
+menos.
+
+Cada página va rotulada con su número, que es lo que permite citarla. Las que no aportan texto
+se rotulan con avisos distintos, porque son cosas distintas: una **imagen** (un escaneo, trae
+imagen y no se le pasa OCR), una **página en blanco** (ni texto ni imagen, no hay nada que
+citar), y una que **no se dejó leer** (un error de lectura, del que no se sabe qué trae).
+Marcarlas igual afirmaría lo que no se midió.
+
+:::{warning} El texto es contenido de un tercero
+Lo escribieron el tribunal y las partes, igual que los marcadores del archivo. Viaja con la
+advertencia de que se lee como dato y **nunca** como una instrucción.
 :::
 
 ### Chico viaja entero, grande viaja como enlace
@@ -677,6 +718,11 @@ Y una página que no se deja leer **no cuesta el archivo entero**: se cuenta en
 `paginas_ilegibles` y el resto se describe igual. No se cuenta como página sin texto, porque
 eso convertiría un error de lectura en la afirmación de que ahí hay una imagen.
 
+Una página sin texto se separa además en **escaneo** y **hoja en blanco**: la que trae imagen
+es un escaneo que hay que abrir, y la que no trae ninguna está en blanco y no tiene nada que
+citar. Lo distingue `page.images`, de la misma pasada. Marcar las dos como "imagen" mandaría a
+abrir una hoja vacía.
+
 Por lo mismo, si NINGUNA de las páginas leídas trajo texto y alguna falló, `capa_de_texto` queda
 en **nulo y no en falso**: falso significa escaneo, que es una afirmación sobre todas las
 páginas, y de las que fallaron no se sabe. Verdadero, en cambio, se sostiene con una sola: se
@@ -701,6 +747,12 @@ Describir el PDF ya obligaba a recorrer sus páginas. De esa pasada salen, sin u
 | `marcadores_omitidos` | Cuántos quedaron fuera, por cantidad o por profundidad |
 | `tamano_primera_pagina` | Cuánto mide, en centímetros |
 | `paginas_de_otro_tamano` | Cuántas de las demás miden distinto |
+| `fecha_creacion` | Cuándo dice el archivo que se creó (ISO 8601). Proxy de la firma. Nulo si no la trae |
+| `fecha_modificacion` | Cuándo dice el archivo que se modificó. Mismo carácter |
+
+`fecha_creacion` y `fecha_modificacion` salen de la metadata del PDF, así que son **dato de un
+tercero** y **no fecha oficial**: sirven para contrastar contra `fecha_diligencia`, nunca para
+reemplazarla. El resumen lo dice cada vez que la trae.
 
 Los tramos van por rangos y no por lista de números porque el índice tiene que ser de tamaño
 constante: "1 a 40 con texto" son dos entradas para doscientas páginas y siguen siendo dos para
@@ -1016,9 +1068,11 @@ sentencia no exista.
 | `PjudNoRespondio` | La petición salió y no volvió en el tiempo de espera | La plataforma puede estar lenta. Se puede reintentar más tarde, respetando el intervalo. **No** es que la causa no exista |
 | `PlataformaNoDisponible` | La plataforma respondió 5xx | Error suyo, no de la consulta. Se reintenta más tarde, respetando el intervalo |
 
-El SDK de MCP convierte una excepción en un resultado con `is_error: true` y el mensaje como
-contenido, así que el cliente ve el error en vez de recibir una lista vacía que parecería
-decir "no hubo actuaciones".
+Todas llegan con su mensaje. El servidor envuelve cada herramienta y cada recurso para que
+así sea: desde `mcp` 2.1 el SDK sólo propaga el texto de las excepciones que él anticipa y
+reemplaza el del resto por `Error executing tool <nombre>`, que le diría al cliente que algo
+falló y no qué. El resultado sigue viajando con `is_error: true`, o sea el cliente ve el error
+en vez de una lista vacía que parecería decir "no hubo actuaciones".
 
 Las tres que describen un fallo de la consulta y no un rechazo (`PjudNoRespondio`,
 `PlataformaNoDisponible` y el `EstructuraInesperada` de un código HTTP inesperado) dicen

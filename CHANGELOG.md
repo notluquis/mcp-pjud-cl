@@ -16,6 +16,28 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- `obtener_documento` entrega el TEXTO del documento, página por página, cuando el PDF trae
+  capa de texto. Si no cabe en una respuesta se pide por tramos con el nuevo `desde_pagina`,
+  que dice hasta dónde llegó y con cuál seguir.
+- El texto respeta la disposición de la hoja y no el orden del flujo, así un encabezado en
+  columnas deja de leerse con el rol pegado a la foja. El modo es experimental y todavía no se
+  midió contra un PDF real de la plataforma.
+- El documento informa la fecha que declara en su metadata, como proxy de la firma y dicha como
+  dato del archivo, no como fecha oficial.
+- Una página sin texto se separa en escaneo (trae imagen) y hoja en blanco (no trae ninguna),
+  que antes se marcaban igual.
+- La búsqueda por nombre consulta las dos grafías, con tildes y sin ellas, y las fusiona. El
+  buscador de la plataforma distingue tildes y guarda el mismo apellido de las dos formas, así
+  que antes buscar "Perez" perdía en silencio las causas de "Pérez".
+
+### Corregido
+
+- Con `mcp` 2.1 el modelo recibía "Error executing tool" sin el motivo: el SDK dejó de
+  propagar el texto de cualquier excepción y ahora sólo viaja el de las que anticipa. Todo
+  fallo de este servidor vuelve a llegar diciendo qué pasó, por herramienta y por recurso.
+
 ## [0.19.3] - 2026-08-26
 
 ### Corregido

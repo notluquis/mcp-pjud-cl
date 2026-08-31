@@ -6,12 +6,13 @@ verificar justo en el punto donde se consume. El parser levanta `EstructuraInesp
 quien lee la respuesta es un modelo al otro lado de una sesión MCP, y entre los dos hay una
 capa del SDK que decide qué le llega.
 
-Hoy esa capa propaga el mensaje: `mcp/server/mcpserver/tools/base.py` envuelve la excepción
-en `ToolError` con el texto original, y `server.py` lo devuelve como `CallToolResult` con
-`is_error`. Eso es un detalle interno del SDK, y `pyproject.toml` pide `mcp` sin techo de
-versión. Si una versión futura enmascarara el mensaje, el modelo vería "error al ejecutar la
-herramienta" sin explicación y se lo resumiría al abogado como "no encontré actuaciones": el
-falso negativo que el parser evita, reaparecido una capa más arriba.
+Esa capa cambió de opinión, y esto lo midió. Hasta `mcp` 2.0 el SDK envolvía cualquier
+excepción en `ToolError` con el texto original; 2.1.0 decide por el TIPO: sólo `ToolError`
+desde una herramienta y `ResourceError` desde un recurso llegan con su mensaje, y todo lo
+demás llega como "Error executing tool <nombre>", sin una palabra de qué pasó. Con esa versión
+puesta, seis de los tests de este archivo se cayeron de una vez, que es exactamente lo que la
+versión anterior de este párrafo anunciaba como hipótesis. `server.py` envuelve hoy cada
+manejador para que el motivo viaje igual.
 
 Sin red. El cliente HTTP va doblado con `httpx.MockTransport`, igual que en `test_client.py`,
 y la sesión MCP corre en memoria dentro del mismo proceso.
@@ -33,6 +34,7 @@ cubren:
 import asyncio
 import base64
 import re
+import traceback
 from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import unquote
@@ -43,6 +45,7 @@ import pytest
 from mcp.client import Client
 from mcp.server import MCPServer
 from mcp.shared.dispatcher import ProgressFnT
+from mcp.shared.exceptions import MCPError
 from mcp.types import (
     LATEST_PROTOCOL_VERSION,
     SERVER_INFO_META_KEY,
@@ -56,8 +59,10 @@ from mcp.types import (
     PromptReference,
     ResourceLink,
     ResourceTemplateReference,
+    TextContent,
     Tool,
 )
+from pypdf import PageObject
 
 from mcp_pjud import server as servidor
 from mcp_pjud.client import (
@@ -80,6 +85,7 @@ from .test_client import (
     _con_marcadores,
     _pdf,
     _pdf_paginas,
+    _pdf_tipos,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -1006,6 +1012,366 @@ def test_lo_que_no_es_un_pdf_llega_como_error_y_no_como_documento(
     )
     assert "La sesion ha expirado" in texto, (
         f"el modelo tiene que ver el aviso para saber que hay que repetir el detalle: {texto}"
+    )
+
+
+def _mensajes_de_protocolo(e: BaseException) -> list[str]:
+    """Los mensajes de los `MCPError` que hay dentro, sin bajar por `__cause__`.
+
+    Lo que viaja por el cable es el mensaje del `MCPError` y nada más: la excepción que lo
+    causó se queda en el servidor. Recorrer `__cause__` acá haría que el guardia lea justo lo
+    que no llega.
+    """
+    if isinstance(e, MCPError):
+        return [str(e)]
+    if isinstance(e, BaseExceptionGroup):
+        return [m for sub in e.exceptions for m in _mensajes_de_protocolo(sub)]
+    return []
+
+
+def _pdf_con_texto_de(*largos: int) -> bytes:
+    """Un PDF de tantas páginas como largos, cada una con esa cantidad de caracteres."""
+    return _pdf_paginas(
+        [True] * len(largos), textos=[f"P{i}" + "A" * (n - 2) for i, n in enumerate(largos, 1)]
+    )
+
+
+def _pedir_documento_desde(pagina: int | None) -> CallToolResult:
+    async def ida_y_vuelta() -> CallToolResult:
+        argumentos = {
+            "documento_ruta": "docuN.php",
+            "documento_referencia": REFERENCIA,
+            "competencia": "civil",
+        }
+        if pagina is not None:
+            argumentos["desde_pagina"] = pagina
+        async with Client(servidor.mcp) as cliente:
+            return await cliente.call_tool("obtener_documento", argumentos)
+
+    return asyncio.run(ida_y_vuelta())
+
+
+def test_la_fecha_del_archivo_llega_al_resumen_como_dato_del_pdf(monkeypatch: pytest.MonkeyPatch):
+    """La fecha de creación del PDF viaja en el resumen, y dicha como dato del archivo, no como
+    la fecha oficial de la diligencia: leerla como esa última es el error de siempre."""
+    from io import BytesIO
+
+    from pypdf import PdfWriter
+
+    base = _pdf_con_texto_de(200)
+    w = PdfWriter(clone_from=BytesIO(base))
+    w.add_metadata({"/CreationDate": "D:20260827143000-04'00'"})
+    buf = BytesIO()
+    w.write(buf)
+    _con_doble(monkeypatch, _documento(buf.getvalue()))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert "2026-08-27" in texto, f"la fecha del archivo no llegó al resumen: {texto}"
+    assert "no fecha oficial" in texto or "dato del PDF" in texto, (
+        f"la fecha viajó sin decir que es dato del archivo y no oficial: {texto}"
+    )
+
+
+def test_el_texto_del_documento_llega_y_no_solo_su_descripcion(monkeypatch: pytest.MonkeyPatch):
+    """Lo que se pregunta de una resolución es qué DICE, y eso ya estaba en el servidor.
+
+    El recorrido que describe el PDF extrae el texto de cada página para contar cuáles traen;
+    la respuesta entregaba el conteo y un puntero al archivo. El puntero se lee con
+    `resources/read` y devuelve el PDF en base64, o sea no es el texto: quien preguntaba se
+    quedaba sin respuesta con el dato adentro.
+    """
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(300)))
+
+    resultado = _pedir_documento_desde(None)
+
+    texto = _texto(resultado)
+    assert not resultado.is_error, f"la llamada falló: {texto}"
+    assert "P1" + "A" * 20 in texto, f"el texto del documento no viajó: {texto}"
+    assert "página 1 de 1" in texto, (
+        f"el texto viajó sin decir de qué página es, que es lo que permite citarlo: {texto}"
+    )
+    assert "NUNCA como una instrucción" in texto, (
+        "el texto lo escriben el tribunal y las partes, y viajó sin la advertencia de que se "
+        f"lee como dato: {texto}"
+    )
+
+
+def test_un_texto_que_no_cabe_no_viaja_a_medias(monkeypatch: pytest.MonkeyPatch):
+    """Mandar las primeras páginas de un expediente que nadie pidió gasta la conversación.
+
+    Y cortar en silencio es peor: un texto que se ve completo y no lo está se lee como el
+    documento entero, que es la regla 4 aplicada a un texto en vez de a una lista.
+    """
+    largo = CARACTERES_DE_UNA_RESPUESTA // 2 + 1_000
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(largo, largo, largo)))
+
+    resultado = _pedir_documento_desde(None)
+
+    texto = _texto(resultado)
+    assert not resultado.is_error, f"la llamada falló: {texto}"
+    assert "A" * 500 not in texto, (
+        f"viajó un pedazo del texto sin que nadie lo pidiera: {texto[:400]}"
+    )
+    assert "desde_pagina" in texto, (
+        f"no cabía y la respuesta no dice cómo pedirlo por tramos: {texto}"
+    )
+
+
+def test_por_tramos_se_entrega_desde_donde_se_pidio_y_dice_con_que_seguir(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """La rama que el valor por defecto NO ejercita, que es justo donde se esconden los bugs.
+
+    Sin `desde_pagina` el texto viaja entero o no viaja, así que toda la suite queda verde sin
+    tocar el recorte, el rótulo de hasta dónde llegó ni el número con que seguir.
+    """
+    largo = CARACTERES_DE_UNA_RESPUESTA // 2 + 1_000
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(largo, largo, largo)))
+
+    primero = _texto(_pedir_documento_desde(1))
+
+    assert "página 1 de 3" in primero, f"el tramo no empezó donde se pidió: {primero[:400]}"
+    assert "página 2 de 3" not in primero, (
+        "cupo una segunda página que sumada pasa el presupuesto de una respuesta"
+    )
+    assert "`desde_pagina=2`" in primero, (
+        f"el tramo no dice con qué página seguir, así que no se puede seguir: {primero[-400:]}"
+    )
+
+    ultimo = _texto(_pedir_documento_desde(3))
+
+    assert "página 3 de 3" in ultimo, f"el último tramo no llegó: {ultimo[:400]}"
+    assert "termina el documento" in ultimo, (
+        f"el último tramo no dice que es el último, y ahí se sigue pidiendo: {ultimo[-400:]}"
+    )
+
+
+def test_una_pagina_que_sola_no_cabe_se_corta_y_se_dice(monkeypatch: pytest.MonkeyPatch):
+    """El tramo más chico que se puede pedir es una página, y aun así puede no caber.
+
+    Devolver nada dejaría un documento imposible de leer por esta vía, y devolverla recortada
+    sin decirlo la haría pasar por entera.
+    """
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(CARACTERES_DE_UNA_RESPUESTA + 5_000)))
+
+    resultado = _pedir_documento_desde(1)
+    texto = _texto(resultado)
+
+    assert "se cortó" in texto, f"la página vino recortada sin decirlo: {texto[-400:]}"
+    # El bloque del texto, no la respuesta entera: el resumen del documento viaja aparte y
+    # tiene su propio tamaño. Con el doble del presupuesto, que era la primera versión de
+    # esta línea, un recorte que dejara 49.999 caracteres pasaba igual.
+    bloque = next(
+        b.text for b in resultado.content if isinstance(b, TextContent) and "se cortó" in b.text
+    )
+    assert len(bloque) <= CARACTERES_DE_UNA_RESPUESTA + 500, (
+        f"el recorte no acotó al presupuesto: el bloque mide {len(bloque)}"
+    )
+
+
+def test_una_pagina_sin_texto_se_rotula_y_no_se_salta(monkeypatch: pytest.MonkeyPatch):
+    """Un expediente que mezcla resoluciones digitales con anexos escaneados es lo normal.
+
+    Saltarse las páginas que son imagen dejaría un texto que se lee corrido, de la 1 a la 3,
+    sin que nada diga que la 2 existe y no se puede citar.
+    """
+    _con_doble(
+        monkeypatch,
+        _documento(_pdf_paginas([True, False, True], textos=["UNO", "", "TRES"])),
+    )
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert "página 2 de 3" in texto, f"la página sin texto no se rotuló: {texto}"
+    assert servidor._PAGINA_EN_BLANCO in texto, (
+        f"la página sin texto ni imagen viajó sin marcar, o sea se lee como que ahí no dice "
+        f"nada sin decir que está en blanco: {texto}"
+    )
+
+
+def test_una_pagina_escaneada_no_se_confunde_con_una_en_blanco(monkeypatch: pytest.MonkeyPatch):
+    """Sin texto y con imagen es un escaneo que hay que abrir; sin texto y sin imagen es una
+    hoja en blanco. El modelo tiene que poder distinguirlas para no mandar a abrir una página
+    vacía ni dar por vacía una escaneada."""
+    _con_doble(monkeypatch, _documento(_pdf_tipos(["texto", "imagen", "blanco"])))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert servidor._PAGINA_IMAGEN in texto, f"la página escaneada no se marcó como imagen: {texto}"
+    assert servidor._PAGINA_EN_BLANCO in texto, f"la página en blanco no se marcó como tal: {texto}"
+
+
+def test_una_pagina_ilegible_no_se_rotula_como_imagen(monkeypatch: pytest.MonkeyPatch):
+    """Los dos avisos son distintos porque las dos cosas lo son.
+
+    Decir "es una imagen" de una página que falló al leerse es afirmar algo que nadie midió,
+    que es exactamente lo que `paginas_ilegibles` existe para separar. El error se inyecta
+    igual que en `test_client.py`: `pypdf` no tiene otra forma de producirlo por página.
+    """
+    original = PageObject.extract_text
+    llamadas = {"n": 0}
+
+    def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
+        llamadas["n"] += 1
+        if llamadas["n"] >= 2:
+            raise ValueError("fuente corrupta")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(PageObject, "extract_text", falla_en_la_segunda)
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(300, 300, 300)))
+
+    texto = _texto(_pedir_documento_desde(None))
+
+    assert servidor._PAGINA_ILEGIBLE in texto, (
+        f"la página que no se dejó leer viajó sin decirlo: {texto}"
+    )
+    assert servidor._PAGINA_IMAGEN not in texto, (
+        f"una página que falló al leerse se rotuló como si fuera una imagen: {texto}"
+    )
+
+
+def test_pedir_una_pagina_que_no_existe_falla_en_vez_de_devolver_vacio(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Pasarse del final no es "el documento no dice nada" a partir de ahí.
+
+    Es la misma forma que `obtener_texto_sentencia` ya cuida con `cual`: un índice fuera de
+    rango se responde con cuál es el rango, no con una respuesta vacía que se lee como que el
+    documento se acabó antes.
+    """
+    _con_doble(monkeypatch, _documento(_pdf_con_texto_de(300, 300)))
+
+    resultado = _pedir_documento_desde(9)
+
+    texto = _texto(resultado)
+    assert resultado.is_error, f"una página inexistente llegó como respuesta buena: {texto}"
+    assert "tiene 2" in texto, f"el error no dice cuántas páginas hay: {texto}"
+
+
+def test_un_escaneo_no_agrega_un_bloque_de_texto_vacio(monkeypatch: pytest.MonkeyPatch):
+    """El resumen ya dice que es una imagen y que no se le pasa OCR.
+
+    Repetirlo página por página en un bloque de texto no agrega nada y se parece demasiado a
+    un documento que sí trae texto y vino vacío.
+    """
+    _con_doble(monkeypatch, _documento(PDF_ESCANEADO))
+
+    resultado = _pedir_documento_desde(None)
+
+    texto = _texto(resultado)
+    assert "ESCANEO" in texto, f"el resumen dejó de decir que es un escaneo: {texto}"
+    assert "contenido de un TERCERO" not in texto, (
+        f"viajó un bloque de texto de un documento que no tiene texto: {texto}"
+    )
+
+
+def test_el_recurso_tambien_dice_por_que_no_pudo_entregar(monkeypatch: pytest.MonkeyPatch):
+    """El otro camino al mismo documento, donde el SDK anticipa otra clase de excepción.
+
+    La herramienta devuelve el enlace y quien lo lee entra por `resources/read`, que no pasa
+    por `ToolError` sino por `ResourceError`: una lectura que falle ahí y llegue con el
+    mensaje genérico deja a quien la pidió sin saber que lo que caducó es la referencia, o
+    sea repitiendo la misma lectura en vez de volver a pedir el detalle.
+    """
+    aviso = '<html><script>swal("Aviso", "La sesion ha expirado");</script></html>'
+    _con_doble(monkeypatch, _documento(texto=aviso, tipo="text/html"))
+    uri = servidor._uri_del_documento("civil", "docuN.php", REFERENCIA)
+
+    async def leer() -> None:
+        async with Client(servidor.mcp) as cliente:
+            await cliente.read_resource(uri)
+
+    # La sesión en memoria envuelve el error en dos `ExceptionGroup` anidados, así que hay
+    # que ir a buscar el `MCPError`. Y se mira SU mensaje y no el informe de la excepción:
+    # el informe trae encadenada la excepción original, o sea la frase aparece ahí aunque por
+    # el cable haya viajado el mensaje genérico. Medido: con el envoltorio del recurso
+    # sacado, la versión que miraba el informe seguía verde.
+    # El par y no `BaseException`: la sesión en memoria levanta el grupo, y un SDK que
+    # algún día entregue el `MCPError` pelado también tiene que pasar por acá.
+    with pytest.raises((MCPError, BaseExceptionGroup)) as levantada:
+        asyncio.run(leer())
+    en_el_cable = _mensajes_de_protocolo(levantada.value)
+
+    assert en_el_cable, (
+        "la lectura no falló con un error del protocolo, así que no hay mensaje que mirar: "
+        f"{traceback.format_exception(levantada.value)}"
+    )
+    assert not any("petición no prevista" in m for m in en_el_cable), (
+        f"el error salió del doble y no del cliente: {en_el_cable}"
+    )
+    assert any("La sesion ha expirado" in m for m in en_el_cable), (
+        "la lectura del recurso falló sin decir por qué, y quien la pidió no tiene cómo "
+        f"distinguir una referencia vencida de un documento que no existe: {en_el_cable}"
+    )
+
+
+def test_ninguna_herramienta_ni_recurso_se_salta_el_envoltorio():
+    """El envoltorio va en `.tool` y `.resource`, no en cada sitio, y esto lo comprueba.
+
+    La razón de ponerlo en el registro y no como un decorador por herramienta es que un
+    decorador que hay que acordarse de poner algún día falta. Este test cierra el otro lado:
+    recorre lo que el servidor registró DE VERDAD (las catorce herramientas y el recurso del
+    documento) y verifica que cada manejador lleva la marca del envoltorio. Sin él, una
+    herramienta futura registrada por fuera perdería su mensaje y ningún test que no la mire a
+    ELLA lo notaría, que es exactamente el modo de falla que el envoltorio existe para cerrar.
+
+    Toca `_tool_manager` y `_resource_manager`, que son internos del SDK: si un día cambian de
+    nombre, este test se cae en vez de pasar en falso, y eso es lo que se quiere.
+    """
+    mcp = servidor.mcp
+
+    herramientas = mcp._tool_manager._tools
+    assert len(herramientas) >= 14, f"el SDK cambió dónde guarda las herramientas: {herramientas!r}"
+    sin_marca = [
+        nombre
+        for nombre, t in herramientas.items()
+        if not getattr(getattr(t, "fn", None), "_motivo_viaja", False)
+    ]
+    assert not sin_marca, (
+        f"estas herramientas se registraron sin el envoltorio, así que su error llegaría "
+        f'como "Error executing tool" sin el motivo: {sin_marca}'
+    )
+
+    plantillas = mcp._resource_manager._templates
+    assert plantillas, f"el SDK cambió dónde guarda las plantillas de recurso: {plantillas!r}"
+    sin_marca_recurso = [
+        uri
+        for uri, tpl in plantillas.items()
+        if not getattr(getattr(tpl, "fn", None), "_motivo_viaja", False)
+    ]
+    assert not sin_marca_recurso, (
+        f"estos recursos se registraron sin el envoltorio: {sin_marca_recurso}"
+    )
+
+
+def test_una_herramienta_asincrona_tambien_conserva_el_motivo():
+    """El envoltorio tiene dos ramas y hoy las catorce herramientas son síncronas.
+
+    O sea la rama asíncrona no la ejercita ninguna, y una rama que ningún test toca es una que
+    puede estar rota desde el día uno: sin `await`, el `try` devuelve la corrutina intacta y
+    no atrapa nada, así que la primera herramienta asíncrona que alguien agregue perdería su
+    mensaje sin que nada se ponga en rojo.
+    """
+    servidor_mcp = servidor._ServidorQueCabe("prueba", version="0")
+
+    @servidor_mcp.tool()
+    async def falla_asincrona() -> str:
+        raise EstructuraInesperada("la plataforma cambió y no se puede leer")
+
+    async def ida_y_vuelta() -> CallToolResult:
+        async with Client(servidor_mcp) as cliente:
+            return await cliente.call_tool("falla_asincrona", {})
+
+    resultado = asyncio.run(ida_y_vuelta())
+
+    assert resultado.is_error, "una herramienta asíncrona que levanta llegó como éxito"
+    assert "la plataforma cambió y no se puede leer" in _texto(resultado), (
+        f"el motivo se quedó en el servidor: {_texto(resultado)}"
     )
 
 

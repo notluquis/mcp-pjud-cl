@@ -15,6 +15,7 @@ import logging
 import re
 import threading
 import time
+import unicodedata
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError
@@ -126,19 +127,26 @@ RAFAGA_MAXIMA = 4
 #: mitad que falta llega como lista vacía, que es el falso negativo que la regla 4 existe para
 #: no producir.
 #:
-#: No se corrige acá consultando las dos grafías, y la razón no es la carga: la segunda
-#: petición pesa lo mismo la haga el cliente o la pida quien consulta. Es CUÁNDO hace falta.
-#: Hacerlo acá la gasta siempre, incluso en un apellido sin una sola letra acentuable y en las
-#: búsquedas donde no se va a informar un total. La descripción la pide donde sí cambia la
-#: respuesta: antes de decir cuántas causas tiene alguien.
+#: Se corrige acá, en `buscar_por_nombre`, consultando las dos grafías y fusionando. Antes se
+#: dejaba al modelo, que la descripción le pedía repetir "antes de informar un total": este
+#: proyecto midió en vivo el 30-08-2026 que ESO FALLA. Buscando `PEREZ GUZMAN` sin tilde no
+#: apareció la causa de Alexis Pérez Guzmán, que está guardada con tilde, y sólo se encontró
+#: cuando el usuario pegó el resultado. El falso negativo de la regla 4 le ocurrió al modelo
+#: que la advertencia debía proteger.
+#:
+#: La objeción vieja era el gasto: la segunda petición se paga siempre. Se acota, no se ignora.
+#: Sólo se dobla cuando el nombre TRAE una letra acentuable (si no, las dos grafías coinciden y
+#: es una sola búsqueda), y `buscar_por_nombre` es una ENUMERACIÓN: no se abre una causa por
+#: nombre sino por rol, así que la completitud importa en todas sus llamadas, no sólo antes de
+#: un total. La otra mitad de la objeción, "antes de informar un total", no distingue nada acá.
 CAUSAS_DEL_APELLIDO_SIN_TILDE = 5
 CAUSAS_DEL_APELLIDO_CON_TILDE = 25
 
-#: Y un SEGUNDO apellido, porque con uno solo no se puede afirmar que la proporción varíe.
-#: Medido el 25 de agosto de 2026 en otro tribunal: dos causas sin tilde y cuatro con tilde,
-#: sin una sola repetida entre las dos listas. Contra 5 y 25 del primero, o sea uno a dos
-#: contra uno a cinco: cuánto falta no guarda proporción con lo que salió, y por eso la
-#: advertencia no puede prometer que consultar dos veces reparta por igual.
+#: Y un SEGUNDO apellido, en otro tribunal: la disjunción no es un caso aislado. Medido el 25
+#: de agosto de 2026: dos causas sin tilde y cuatro con tilde, sin una sola repetida entre las
+#: dos listas. Contra 5 y 25 del primero, o sea dos tribunales donde buscar una sola grafía
+#: pierde la otra entera. Es la evidencia de que la fusión de las dos formas hace falta siempre,
+#: no en un tribunal suertudo.
 OTRO_APELLIDO_SIN_TILDE = 2
 OTRO_APELLIDO_CON_TILDE = 4
 
@@ -793,6 +801,18 @@ class Documento(BaseModel):
         "significa que el documento entero mide igual. Existe para no publicar el tamaño de "
         "una página como si fuera el de todas cuando no lo es.",
     )
+    fecha_creacion: str | None = Field(
+        default=None,
+        description="Cuándo dice el propio archivo que se creó, en ISO 8601. Proxy de la firma: "
+        "una resolución firmada la escribe. Es DATO DE UN TERCERO, no una fecha oficial que "
+        "este servidor valide, y NO reemplaza a `fecha_diligencia`. NULO si el archivo no la "
+        "trae o no se pudo leer.",
+    )
+    fecha_modificacion: str | None = Field(
+        default=None,
+        description="Cuándo dice el archivo que se modificó por última vez, en ISO 8601. Mismo "
+        "carácter que `fecha_creacion`: dato de un tercero, no oficial. NULO si no la trae.",
+    )
     problema_al_leer: str | None = Field(
         default=None,
         description="Por qué no se pudo abrir el archivo, cuando `capa_de_texto` es nulo. "
@@ -804,6 +824,15 @@ class Documento(BaseModel):
     #: publica como metadato dentro de la respuesta, y un PDF en base64 ahí adentro es
     #: exactamente el gasto de contexto que `LIMITE_EMBEBIDO` existe para acotar.
     contenido: bytes = Field(default=b"", exclude=True, repr=False)
+    #: El texto de cada página, con los tres estados que describe `_DescripcionPdf.textos`.
+    #: Fuera de la serialización por lo mismo que `contenido`: quien decide cuánto de esto
+    #: cabe en una respuesta es `server.py`, que conoce el presupuesto de la conversación.
+    #: Vacía cuando el archivo no se pudo abrir.
+    paginas_texto: tuple[str | None, ...] = Field(default=(), exclude=True, repr=False)
+    #: Si cada página trae imagen, alineado con `paginas_texto`. Fuera de la serialización por
+    #: lo mismo: lo usa `server.py` para marcar una página sin texto como escaneo (trae imagen)
+    #: o como hoja en blanco (no trae ninguna), que no son lo mismo.
+    paginas_imagen: tuple[bool, ...] = Field(default=(), exclude=True, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -819,6 +848,17 @@ class _DescripcionPdf:
     paginas_con_texto: int | None = None
     paginas_ilegibles: int | None = None
     problema_al_leer: str | None = None
+    #: El texto de cada página, en orden, con tres estados que NO se pueden confundir: el
+    #: texto, la cadena vacía cuando la página no trae ninguno (es una imagen) y el nulo
+    #: cuando la página no se dejó leer. Es lo único de acá que es CONTENIDO y no una
+    #: medición, y viaja igual porque sale de la misma pasada: extraerlo de nuevo significa
+    #: recorrer el archivo entero por segunda vez, y en un expediente de doscientas páginas
+    #: eso se paga con el turno de consulta tomado.
+    textos: tuple[str | None, ...] = ()
+    #: Si cada página trae AL MENOS una imagen. Con esto una página sin texto se separa en dos:
+    #: la que es un escaneo (trae imagen) y la que está en blanco (no trae ninguna). Sin el
+    #: dato las dos se marcaban igual, "es una imagen", y una hoja en blanco no lo es.
+    tiene_imagen: tuple[bool, ...] = ()
     rangos_con_texto: list[str] | None = None
     rangos_hasta_pagina: int | None = None
     rangos_omitidos: int | None = None
@@ -826,6 +866,8 @@ class _DescripcionPdf:
     marcadores_omitidos: int | None = None
     tamano_primera_pagina: str | None = None
     paginas_de_otro_tamano: int | None = None
+    fecha_creacion: str | None = None
+    fecha_modificacion: str | None = None
 
 
 def _tramos(numeros: list[int]) -> list[tuple[int, int]]:
@@ -874,6 +916,39 @@ def _limpiar_titulo(bruto: object) -> str:
     if not junto:
         return "(sin título)"
     return junto if len(junto) <= LARGO_MAXIMO_MARCADOR else junto[:LARGO_MAXIMO_MARCADOR] + "…"
+
+
+def _leer_metadata(lector: PdfReader) -> tuple[str | None, str | None]:
+    """Cuándo se creó y cuándo se modificó el archivo, según su propia metadata.
+
+    Sirve como proxy de la firma: una resolución firmada escribe la fecha de creación en el
+    documento, y contrastarla con `fecha_diligencia` es una pista más sobre cuándo ocurrió lo
+    que dice. Es DATO DE UN TERCERO, igual que los marcadores: lo escribió quien generó el PDF,
+    se lee como dato y nunca como una instrucción, y no es una fecha oficial que este servidor
+    valide.
+
+    Cada fecha va en su propio `try` y no en uno solo: `pypdf` LEVANTA `ValueError` al convertir
+    una fecha mal formada (medido: `D:basura` la hace tirar, no devolver nulo), así que una
+    fecha rota no puede llevarse la otra. `metadata` es nulo cuando el archivo no trae ninguna,
+    y ahí no hay nada que leer.
+    """
+    md = lector.metadata
+    if md is None:
+        return None, None
+
+    def fecha(nombre: str) -> str | None:
+        try:
+            valor = getattr(md, nombre)
+            # El `.isoformat()` va DENTRO del `try`, no después: `pypdf` levanta al parsear una
+            # fecha mal formada, pero si algún día devolviera la cadena cruda en vez de un
+            # `datetime`, `.isoformat()` tiraría `AttributeError` fuera del guardia y caería la
+            # descripción entera. Una fecha ilegible no es una fecha ausente, pero acá no hay
+            # forma de distinguirlas sin afirmar de más, así que se calla la que no se pudo leer.
+            return valor.isoformat() if valor is not None else None
+        except Exception:
+            return None
+
+    return fecha("creation_date"), fecha("modification_date")
 
 
 def _leer_marcadores(lector: PdfReader) -> tuple[list[Marcador], int]:
@@ -935,6 +1010,39 @@ def _hojas(nodos: list[object], vistos: set[int] | None = None) -> Iterator[obje
             yield nodo
 
 
+def _extraer_texto(pagina: object) -> str:
+    """El texto de una página respetando la disposición de la hoja, con dos resguardos.
+
+    El modo `layout` de pypdf lee por POSICIÓN y no por orden del flujo, que es lo que
+    distingue un encabezado en columnas bien leído de uno donde el rol y la foja salen
+    pegados: "ROL: C-1234-2026Foja: 15". Para una herramienta cuyo punto es no confundir
+    `fecha_registro` con `fecha_diligencia`, leer el encabezado al revés es el riesgo exacto.
+
+    Dos knobs no son opcionales acá:
+
+    - `layout_mode_strip_rotated=False`. Por defecto el modo layout DESCARTA el texto rotado, y
+      una resolución trae timbres y anotaciones al margen girados. Descartarlos en silencio es
+      la regla 4 con otra cara: texto que se pierde sin que nada lo delate, en un documento
+      legal. Se conservan.
+    - `layout_mode_space_vertically=False`. Sin esto el modo mete una línea en blanco por cada
+      salto de `y`, y medido eso infla el texto de un cuerpo corrido. Con el knob, plano y
+      layout pesan casi igual y la fidelidad se paga sólo donde hay columnas.
+
+    El modo layout es EXPERIMENTAL, lo dice la propia doc de pypdf, y este proyecto todavía no
+    lo midió contra un PDF real de la OJV: el caso está montado sobre PDF sintéticos. Por eso
+    el `except` cae al modo plano en vez de dejar la página como ilegible: layout puede fallar
+    donde plano lee, y el resguardo es que layout nunca ENTREGUE MENOS de lo que ya se leía.
+    """
+    try:
+        return pagina.extract_text(  # ty: ignore[unresolved-attribute]
+            extraction_mode="layout",
+            layout_mode_space_vertically=False,
+            layout_mode_strip_rotated=False,
+        )
+    except Exception:
+        return pagina.extract_text()  # ty: ignore[unresolved-attribute]
+
+
 def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
     """Qué trae el archivo, de la única lectura que se le hace. Nunca hace OCR.
 
@@ -970,6 +1078,8 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         con_texto: list[int] = []
         ilegibles: list[int] = []
         tamanos: list[str | None] = []
+        textos: list[str | None] = []
+        con_imagen: list[bool] = []
         for numero, pagina in enumerate(lector.pages, start=1):
             # Por página y no por archivo: una fuente rota o un flujo mal formado en la página
             # cinco de doscientas hacía que el documento entero se informara como ilegible, o
@@ -978,13 +1088,28 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
             # Y la página que falla NO se cuenta como sin texto: eso convertiría un error en la
             # afirmación de que ahí hay una imagen, que es lo que nadie midió. Se cuenta aparte.
             try:
-                tiene_texto = bool(pagina.extract_text().strip())
+                # El texto se guarda en vez de reducirlo a un booleano: es la misma
+                # extracción, ya pagada, y tirarlo obligaba a quien lo necesitara a abrir el
+                # archivo de nuevo. Es la tercera vez que este recorrido devuelve algo más
+                # que un conteo, y por el mismo motivo.
+                texto = _extraer_texto(pagina)
             except Exception:
                 ilegibles.append(numero)
+                textos.append(None)
             else:
-                if tiene_texto:
+                textos.append(texto)
+                if texto.strip():
                     con_texto.append(numero)
             tamanos.append(_tamano_en_cm(pagina))
+            # En su propio guard, no en el del texto: no poder contar las imágenes de una
+            # página no la vuelve ilegible, que es lo que pasaría si compartieran el `except`.
+            # Y una página SIN texto Y SIN imagen no es un escaneo, es una hoja en blanco:
+            # distinguirlas evita marcar como "imagen" algo que nadie puede citar porque no
+            # hay nada. `len(page.images)` enumera los xobjects, no decodifica píxeles (medido).
+            try:
+                con_imagen.append(len(pagina.images) > 0)
+            except Exception:
+                con_imagen.append(False)
     except Exception as e:
         return _DescripcionPdf(problema_al_leer=_por_que_no_se_abrio(lector, e))
 
@@ -997,6 +1122,13 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # Que el índice del archivo esté roto no impide describir el resto, y devolver una
         # lista vacía diría "no trae marcadores", que es justo lo que no se pudo comprobar.
         marcadores, marcadores_omitidos = None, None
+
+    try:
+        fecha_creacion, fecha_modificacion = _leer_metadata(lector)
+    except Exception:
+        # Mismo criterio que los marcadores: una metadata mal formada no puede llevarse la
+        # descripción del resto del archivo.
+        fecha_creacion, fecha_modificacion = None, None
 
     return _DescripcionPdf(
         paginas=paginas,
@@ -1014,6 +1146,10 @@ def _describir_pdf(contenido: bytes) -> _DescripcionPdf:
         # El `if tamanos` sobra para el intérprete, que nunca evalúa `tamanos[0]` con la lista
         # vacía, y no sobra para quien lo lee: se ve como un `IndexError` esperando.
         paginas_de_otro_tamano=(sum(1 for t in tamanos[1:] if t != tamanos[0]) if tamanos else 0),
+        textos=tuple(textos),
+        tiene_imagen=tuple(con_imagen),
+        fecha_creacion=fecha_creacion,
+        fecha_modificacion=fecha_modificacion,
     )
 
 
@@ -1399,6 +1535,26 @@ def _es_el_cuaderno_pedido(pagina: str, pedido: Cuaderno, el_sitio_marca: bool) 
         "del cuaderno pedido devolvería las actuaciones de otro y la lectura se vería "
         "completa."
     )
+
+
+def _sin_tildes(texto: str) -> str:
+    """El texto sin las tildes de las vocales, CONSERVANDO la ñ y la ü.
+
+    El buscador de nombres de la plataforma distingue tildes, y guarda los registros de forma
+    inconsistente (los viejos sin tilde, los nuevos con), así que buscar "PEREZ GUZMAN" y
+    "PÉREZ GUZMÁN" devuelve conjuntos DISJUNTOS. Medido el 30-08-2026: `MARTINEZ MARTINEZ` da
+    71 y `MARTÍNEZ MARTÍNEZ` da 88, con una sola en común. Quien teclea sin tilde, que es lo
+    normal, pierde casi todo sin que nada lo delate. Ésta produce la segunda forma para
+    buscarla también.
+
+    Quita SÓLO la tilde aguda (U+0301), no toda marca combinante: la ñ es n + U+0303 y la ü es
+    u + U+0308, y son letras del español, no vocales acentuadas. El `asciifolding` de siempre,
+    `unidecode` y el `unaccent` de Postgres por defecto las rompen (`MUÑOZ` -> `MUNOZ`), que
+    acá haría match con OTRO apellido: el falso positivo en vez del negativo, pero falso igual.
+    """
+    descompuesto = unicodedata.normalize("NFD", texto)
+    sin_agudas = descompuesto.replace("\u0301", "")  # U+0301: la tilde aguda combinante
+    return unicodedata.normalize("NFC", sin_agudas)
 
 
 class PjudClient(Transporte):
@@ -1982,6 +2138,12 @@ class PjudClient(Transporte):
         Además hay que acotar la búsqueda, y con qué depende de la competencia: tribunal en
         las cuatro de primera instancia, corte en apelaciones, nada en suprema. Lo resuelve
         `_acotacion` con la tabla de `parser.COMPETENCIAS`.
+
+        La plataforma distingue tildes, así que se busca la forma tal cual Y la forma sin
+        tildes, y se fusiona: sin esto, "Perez" pierde en silencio todas las causas de "Pérez".
+        Ver `_sin_tildes` para la medición. Si el nombre no trae tildes las dos formas
+        coinciden y es una sola búsqueda; si las trae, son dos, y la de más se paga para no
+        devolver una lista que se ve completa y omite la mitad.
         """
         modulo = self._modulo(competencia)
         if sum(1 for x in (nombre, apellido_paterno, apellido_materno) if x.strip()) < 2:
@@ -1990,6 +2152,42 @@ class PjudClient(Transporte):
                 "apellido paterno, apellido materno. El año no cuenta para ese mínimo."
             )
         self._acotacion(modulo, tribunal, corte)
+
+        formas = [(nombre, apellido_paterno, apellido_materno)]
+        sin = (_sin_tildes(nombre), _sin_tildes(apellido_paterno), _sin_tildes(apellido_materno))
+        if sin != formas[0]:
+            formas.append(sin)
+
+        # Se fusiona por `rol`, que es estable e identifica la causa dentro de una misma
+        # competencia y jurisdicción, y no por `referencia`, que la plataforma reemite en cada
+        # dibujado y sería distinta para la misma causa entre las dos búsquedas. `setdefault`
+        # conserva el orden: primero lo que trajo la forma tal cual, después lo nuevo de la
+        # forma sin tildes.
+        fusion: dict[str, CausaEncontrada] = {}
+        for nom, pat, mat in formas:
+            for causa in self._buscar_nombre_una_forma(
+                modulo, nom, pat, mat, anio, competencia, tribunal, corte, paginas
+            ):
+                fusion.setdefault(causa.rol, causa)
+        return list(fusion.values())
+
+    def _buscar_nombre_una_forma(
+        self,
+        modulo: str,
+        nombre: str,
+        apellido_paterno: str,
+        apellido_materno: str,
+        anio: int | None,
+        competencia: str,
+        tribunal: int | None,
+        corte: int | None,
+        paginas: int,
+    ) -> list[CausaEncontrada]:
+        """Una sola pasada del buscador de nombres, con los campos tal como se pasan.
+
+        Separada de `buscar_por_nombre` porque ésta se llama UNA o DOS veces (la forma tal
+        cual y la sin tildes), y la validación y la acotación no se repiten entre las dos.
+        """
         return self._paginado(
             f"{modulo}/consultaNombre{modulo.capitalize()}.php",
             {
@@ -2192,8 +2390,12 @@ class PjudClient(Transporte):
             marcadores_omitidos=d.marcadores_omitidos,
             tamano_primera_pagina=d.tamano_primera_pagina,
             paginas_de_otro_tamano=d.paginas_de_otro_tamano,
+            fecha_creacion=d.fecha_creacion,
+            fecha_modificacion=d.fecha_modificacion,
             problema_al_leer=d.problema_al_leer,
             contenido=contenido,
+            paginas_texto=d.textos,
+            paginas_imagen=d.tiene_imagen,
         )
 
     def actuaciones_receptor(

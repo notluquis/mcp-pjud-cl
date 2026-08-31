@@ -14,7 +14,7 @@ from unittest import mock
 
 import httpx
 import pytest
-from pypdf import PageObject, PdfWriter
+from pypdf import PageObject, PdfReader, PdfWriter
 from pypdf.generic import IndirectObject
 
 from mcp_pjud import client
@@ -45,6 +45,7 @@ from mcp_pjud.client import (
     PjudNoRespondio,
     PlataformaNoDisponible,
     _describir_pdf,
+    _extraer_texto,
     _hay_capa_de_texto,
     _hojas,
     _tamano_en_cm,
@@ -1617,6 +1618,71 @@ def _capturando(respuesta: str = "") -> tuple[PjudClient, list[dict[str, str]]]:
     c._http = httpx.Client(transport=httpx.MockTransport(transporte))
     c._adir, c._token = "ADIR_1", "0" * 32
     return c, enviados
+
+
+def test_sin_tildes_quita_la_tilde_y_conserva_la_ene():
+    """El fold quita las tildes de las vocales y NO toca la ñ ni la ü.
+
+    El `asciifolding` de siempre, `unidecode` y el `unaccent` de Postgres rompen la ñ
+    (`MUÑOZ` -> `MUNOZ`), y acá eso haría match con otro apellido. La ñ y la ü son letras del
+    español, no vocales acentuadas.
+    """
+    from mcp_pjud.client import _sin_tildes
+
+    assert _sin_tildes("PÉREZ") == "PEREZ"
+    assert _sin_tildes("MARTÍNEZ") == "MARTINEZ"
+    assert _sin_tildes("GUZMÁN") == "GUZMAN"
+    assert _sin_tildes("MUÑOZ") == "MUÑOZ", "la ñ no se toca"
+    assert _sin_tildes("NÚÑEZ") == "NUÑEZ", "la ú se quita, la ñ queda"
+    assert _sin_tildes("MÜLLER") == "MÜLLER", "la ü no se toca"
+
+
+def test_buscar_por_nombre_fusiona_la_forma_con_tildes_y_la_sin_tildes(monkeypatch):
+    """La plataforma distingue tildes y guarda los registros en formas disjuntas. Buscar una
+    sola pierde en silencio la otra mitad, que es la regla 4 entrando por el buscador.
+
+    Se mide devolviendo listados distintos según qué apellido llegó, con una causa en común:
+    la fusión tiene que dar la unión sin duplicarla.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    formas: list[str] = []
+
+    def transporte(peticion: httpx.Request) -> httpx.Response:
+        form = dict(urllib.parse.parse_qsl(peticion.content.decode(), keep_blank_values=True))
+        formas.append(form["nomApePaterno"])
+        # Con tilde: filas 1 y 2. Sin tilde: filas 2 y 3. La fila 2 es la común.
+        rango = range(1, 3) if form["nomApePaterno"] == "PÉREZ" else range(2, 4)
+        return httpx.Response(200, text=_pagina(rango, total=2, ultima=True, celdas=8))
+
+    c = PjudClient("test@example.cl")
+    c._http = httpx.Client(transport=httpx.MockTransport(transporte))
+    c._adir, c._token = "ADIR_1", "0" * 32
+
+    r = c.buscar_por_nombre(
+        apellido_paterno="PÉREZ", apellido_materno="GUZMÁN", competencia="civil", tribunal=162
+    )
+    rols = [x.rol for x in r]
+
+    assert set(formas) == {"PÉREZ", "PEREZ"}, f"no buscó las dos formas: {formas}"
+    assert len(rols) == len(set(rols)), f"la fusión duplicó causas: {rols}"
+    assert len(rols) == 3, (
+        f"la fusión no dio la unión de las dos formas (esperaba 3 causas): {rols}"
+    )
+
+
+def test_un_nombre_sin_tildes_no_duplica_la_busqueda(monkeypatch):
+    """Si el nombre no trae tildes, las dos formas coinciden y es una sola búsqueda: no se
+    gasta una petición de más contra la plataforma por un fold que no cambia nada."""
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    c, enviados = _capturando(_pagina(range(1, 2), total=1, ultima=True, celdas=8))
+
+    c.buscar_por_nombre(
+        apellido_paterno="PEREZ", apellido_materno="GUZMAN", competencia="civil", tribunal=162
+    )
+
+    assert len(enviados) == 1, (
+        f"un nombre sin tildes no debe buscar dos veces, y buscó {len(enviados)}"
+    )
 
 
 def test_la_busqueda_por_rol_manda_el_radio_rit(monkeypatch):
@@ -3390,6 +3456,37 @@ def test_el_detalle_de_cobranza_trae_las_diligencias_del_ministro_de_fe(monkeypa
 # -- documentos ------------------------------------------------------------------
 
 
+def _pdf_posicionado(runs: list[tuple[int, int, str, int]]) -> bytes:
+    """Un PDF de una página con cada texto en (x, y) y una rotación en grados.
+
+    Sirve para lo que `_pdf_paginas` no puede: probar el ORDEN de lectura. Cada run se dibuja
+    en su posición, y el orden de la lista es el orden del FLUJO, que el modo plano sigue y el
+    layout no.
+    """
+    import math
+
+    cuerpo = []
+    for x, y, txt, giro in runs:
+        r = math.radians(giro)
+        a, b, c, d = math.cos(r), math.sin(r), -math.sin(r), math.cos(r)
+        cuerpo.append(
+            f"BT /F1 12 Tf {a:.3f} {b:.3f} {c:.3f} {d:.3f} {x} {y} Tm ({txt}) Tj ET".encode()
+        )
+    flujo = b"\n".join(cuerpo) + b"\n"
+    from mcp_pjud import client as _c  # noqa: F401
+
+    return _ensamblar(
+        [
+            b"<</Type/Catalog/Pages 2 0 R>>",
+            b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+            b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R"
+            b"/Resources<</Font<</F1 5 0 R>>>>>>",
+            b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream",
+            b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+        ]
+    )
+
+
 def _ensamblar(objetos: list[bytes]) -> bytes:
     """Los objetos, con la cabecera y la tabla de referencias cruzadas que los hace un PDF.
 
@@ -3439,12 +3536,20 @@ _CON_TEXTO = b"BT /F1 12 Tf 20 100 Td (RESOLUCION) Tj ET"
 _SIN_TEXTO = b"0 0 100 100 re f"
 
 
-def _pdf_paginas(patron: Sequence[bool], cajas: Sequence[str] | None = None) -> bytes:
+def _pdf_paginas(
+    patron: Sequence[bool],
+    cajas: Sequence[str] | None = None,
+    textos: Sequence[str] | None = None,
+) -> bytes:
     """Un PDF con una página por cada valor del patrón: verdadero trae texto, falso no.
 
     Generaliza el mixto de dos páginas porque los tramos y los topes sólo se pueden probar con
     un archivo que alterne, y escribir a mano cincuenta páginas no es una prueba: es otra
     fuente de errores.
+
+    Con `textos` cada página dibuja el suyo, que es lo que hace falta para medir cuánto texto
+    cabe en una respuesta: el rótulo de siempre son diez caracteres, y llegar al presupuesto
+    con eso pediría un archivo de mil páginas.
     """
     n = len(patron)
     fuente = 3 + 2 * n
@@ -3460,7 +3565,12 @@ def _pdf_paginas(patron: Sequence[bool], cajas: Sequence[str] | None = None) -> 
             if hay_texto
             else b"/Resources<<>>"
         )
-        flujo = _CON_TEXTO if hay_texto else _SIN_TEXTO
+        if not hay_texto:
+            flujo = _SIN_TEXTO
+        elif textos is None:
+            flujo = _CON_TEXTO
+        else:
+            flujo = b"BT /F1 12 Tf 20 100 Td (" + textos[k].encode() + b") Tj ET"
         objetos.append(
             b"<</Type/Page/Parent 2 0 R/MediaBox["
             + caja
@@ -3474,6 +3584,50 @@ def _pdf_paginas(patron: Sequence[bool], cajas: Sequence[str] | None = None) -> 
             b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream"
         )
     objetos.append(b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>")
+    return _ensamblar(objetos)
+
+
+def _pdf_tipos(tipos: Sequence[str]) -> bytes:
+    """Un PDF con una página por tipo: 'texto', 'imagen' (XObject real) o 'blanco' (vacía).
+
+    Es lo que `_pdf_paginas` no cubre: separar una página que es un escaneo (trae imagen) de
+    una en blanco (no trae nada), que es lo que `page.images` distingue.
+    """
+    objetos = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids["
+        + b" ".join(f"{3 + 2 * k} 0 R".encode() for k in range(len(tipos)))
+        + b"]/Count "
+        + str(len(tipos)).encode()
+        + b">>",
+    ]
+    for k, tipo in enumerate(tipos):
+        if tipo == "texto":
+            flujo = _CON_TEXTO
+            recursos = b"/Resources<</Font<</F1 " + str(3 + 2 * len(tipos)).encode() + b" 0 R>>>>"
+        elif tipo == "imagen":
+            flujo = b"q 100 0 0 100 50 50 cm /Im0 Do Q"
+            recursos = (
+                b"/Resources<</XObject<</Im0 " + str(3 + 2 * len(tipos) + 1).encode() + b" 0 R>>>>"
+            )
+        else:  # blanco
+            flujo = b"0 0 10 10 re f"
+            recursos = b"/Resources<<>>"
+        objetos.append(
+            b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents "
+            + str(4 + 2 * k).encode()
+            + b" 0 R"
+            + recursos
+            + b">>"
+        )
+        objetos.append(
+            b"<</Length " + str(len(flujo)).encode() + b">>stream\n" + flujo + b"\nendstream"
+        )
+    objetos.append(b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>")
+    objetos.append(
+        b"<</Type/XObject/Subtype/Image/Width 1/Height 1/ColorSpace/DeviceGray"
+        b"/BitsPerComponent 8/Length 1>>stream\n\x00\nendstream"
+    )
     return _ensamblar(objetos)
 
 
@@ -3491,6 +3645,15 @@ def _con_marcadores(base: bytes, marcadores: Sequence[tuple[str, int, int]]) -> 
         padres[nivel] = escritor.add_outline_item(
             titulo, pagina, parent=padres.get(nivel - 1) if nivel else None
         )
+    salida = BytesIO()
+    escritor.write(salida)
+    return salida.getvalue()
+
+
+def _con_metadata(base: bytes, campos: dict[str, str]) -> bytes:
+    """El mismo PDF con las claves de metadata dadas (p.ej. `/CreationDate`)."""
+    escritor = PdfWriter(clone_from=BytesIO(base))
+    escritor.add_metadata(campos)
     salida = BytesIO()
     escritor.write(salida)
     return salida.getvalue()
@@ -3705,8 +3868,12 @@ def test_una_pagina_que_no_se_deja_leer_no_cuesta_el_archivo_entero(monkeypatch)
     llamadas = {"n": 0}
 
     def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
         llamadas["n"] += 1
-        if llamadas["n"] == 2:
+        if llamadas["n"] >= 2:
             raise ValueError("fuente corrupta")
         return original(self, *args, **kwargs)
 
@@ -3746,8 +3913,12 @@ def test_una_pagina_con_texto_sostiene_la_capa_aunque_otra_falle(monkeypatch):
     llamadas = {"n": 0}
 
     def falla_en_la_segunda(self, *args, **kwargs):
+        # De la segunda llamada en adelante, no sólo en la segunda: una página ilegible de
+        # verdad falla en AMBOS modos, y `_extraer_texto` intenta layout y después cae al
+        # plano. Con `== 2` la página se recuperaba por el fallback y dejaba de ser ilegible,
+        # que es justo lo que este test necesita simular.
         llamadas["n"] += 1
-        if llamadas["n"] == 2:
+        if llamadas["n"] >= 2:
             raise ValueError("fuente corrupta")
         return original(self, *args, **kwargs)
 
@@ -3757,6 +3928,66 @@ def test_una_pagina_con_texto_sostiene_la_capa_aunque_otra_falle(monkeypatch):
     assert d.paginas_con_texto == 1
     assert d.paginas_ilegibles == 1
     assert _hay_capa_de_texto(d) is True
+
+
+def test_el_texto_respeta_las_columnas_y_no_el_orden_del_flujo():
+    """El encabezado de una resolución trae columnas, y el generador suele dibujarlas fuera de
+    orden. El modo plano pegaba el rol con la foja; el layout lee por posición.
+
+    Se dibuja la columna DERECHA antes que la IZQUIERDA en el flujo, que es el caso que rompe.
+    """
+    pdf = _pdf_posicionado(
+        [
+            (320, 720, "ROL-C-1234-2026", 0),  # derecha, dibujada primero
+            (70, 720, "Foja-15", 0),  # izquierda, dibujada después
+        ]
+    )
+    pagina = PdfReader(BytesIO(pdf)).pages[0]
+    texto = _extraer_texto(pagina)
+
+    # La izquierda va ANTES que la derecha, sin importar el orden del flujo.
+    assert texto.index("Foja-15") < texto.index("ROL-C-1234-2026"), (
+        f"el texto salió en orden de flujo y no de la hoja: {texto!r}"
+    )
+
+
+def test_el_texto_rotado_no_se_pierde_en_silencio():
+    """El modo layout descarta texto rotado por defecto, y una resolución trae timbres al
+    margen girados. Perderlos sin avisar es la regla 4 con otra cara.
+
+    `_extraer_texto` fija `layout_mode_strip_rotated=False`. Sin eso, este texto desaparece.
+    """
+    pdf = _pdf_posicionado(
+        [
+            (70, 720, "CUERPO DE LA RESOLUCION", 0),
+            (500, 400, "TIMBRE-AL-MARGEN", 90),  # rotado 90 grados
+        ]
+    )
+    pagina = PdfReader(BytesIO(pdf)).pages[0]
+    texto = _extraer_texto(pagina)
+
+    assert "TIMBRE-AL-MARGEN" in texto, f"el texto rotado se perdió en silencio: {texto!r}"
+
+
+def test_si_el_modo_layout_falla_no_se_pierde_la_pagina():
+    """Layout es experimental y puede reventar donde el modo plano lee. El resguardo es que
+    ahí caiga al plano, no que la página quede como ilegible: layout nunca entrega MENOS.
+    """
+    original = PageObject.extract_text
+
+    def falla_solo_en_layout(self, *args, **kwargs):
+        if kwargs.get("extraction_mode") == "layout":
+            raise ValueError("layout reventó en este PDF")
+        return original(self, *args, **kwargs)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(PageObject, "extract_text", falla_solo_en_layout)
+        pagina = PdfReader(BytesIO(_pdf(_CON_TEXTO))).pages[0]
+        texto = _extraer_texto(pagina)
+
+    assert "RESOLUCION" in texto, (
+        f"layout falló y no cayó al modo plano, así que se perdió una página legible: {texto!r}"
+    )
 
 
 def test_una_caja_con_las_coordenadas_invertidas_no_publica_una_hoja_negativa():
@@ -3949,6 +4180,69 @@ def test_los_marcadores_traen_su_pagina_contando_desde_uno():
         ("Contestación", 2),
     ], f"los marcadores no llegaron con su página desde 1: {d.marcadores}"
     assert d.marcadores_omitidos == 0
+
+
+def test_una_pagina_sin_texto_se_separa_en_imagen_y_en_blanco():
+    """Una página sin texto no es una sola cosa: con imagen es un escaneo, sin imagen es una
+    hoja en blanco. `page.images` las separa, y marcarlas igual afirma de más."""
+    d = _describir_pdf(_pdf_tipos(["texto", "imagen", "blanco"]))
+
+    assert d.tiene_imagen == (False, True, False), (
+        f"la detección de imagen por página salió mal: {d.tiene_imagen}"
+    )
+    assert d.paginas_con_texto == 1, "sólo la primera trae texto"
+
+
+def test_la_fecha_del_archivo_viaja_como_proxy_de_la_firma():
+    """El PDF declara cuándo se creó, y eso sale de la misma lectura. Es dato de un tercero,
+    no la fecha de la diligencia, pero contrastarlas es una pista sobre cuándo ocurrió."""
+    pdf = _con_metadata(
+        _pdf(_CON_TEXTO),
+        {"/CreationDate": "D:20260827143000-04'00'", "/ModDate": "D:20260828090000-04'00'"},
+    )
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is not None, "la fecha de creación no se leyó"
+    assert d.fecha_creacion.startswith("2026-08-27"), f"fecha de creación: {d.fecha_creacion!r}"
+    assert d.fecha_modificacion is not None, "la fecha de modificación no se leyó"
+    assert d.fecha_modificacion.startswith("2026-08-28"), (
+        f"fecha de modificación: {d.fecha_modificacion!r}"
+    )
+
+
+def test_una_metadata_que_devuelve_algo_que_no_es_fecha_no_revienta(monkeypatch):
+    """`pypdf` hoy levanta al parsear una fecha mala, pero si devolviera la cadena cruda en vez
+    de un `datetime`, `.isoformat()` tiraría `AttributeError`. El guardia lo tiene que abarcar:
+    una metadata rara no puede caerse la descripción entera."""
+    from pypdf import DocumentInformation
+
+    # `creation_date` devuelve una cadena, no un datetime: `.isoformat()` no existe ahí. Con
+    # el `.isoformat()` fuera del `try`, el `AttributeError` sube y el `try` de `_describir_pdf`
+    # que envuelve la metadata anula LAS DOS fechas, no sólo la mala. Este test lo mide por la
+    # buena: la de modificación, que es válida, tiene que sobrevivir.
+    monkeypatch.setattr(DocumentInformation, "creation_date", property(lambda self: "2026-08-27"))
+    pdf = _con_metadata(_pdf(_CON_TEXTO), {"/ModDate": "D:20260828090000-04'00'"})
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is None, "una metadata que no es fecha se leyó como válida"
+    assert d.fecha_modificacion is not None, (
+        "una fecha que no es datetime se llevó puesta la OTRA fecha, que sí era válida"
+    )
+    assert d.fecha_modificacion.startswith("2026-08-28"), (
+        f"fecha de modificación: {d.fecha_modificacion!r}"
+    )
+    assert d.paginas == 1, "la metadata rara se llevó puesta la descripción del resto"
+
+
+def test_una_fecha_de_metadata_rota_no_se_lleva_la_descripcion():
+    """`pypdf` LEVANTA al convertir una fecha mal formada. Una fecha rota no puede costar ni la
+    otra fecha ni el resto de la descripción: se calla la que no se pudo leer y sigue."""
+    pdf = _con_metadata(_pdf(_CON_TEXTO), {"/CreationDate": "no-es-una-fecha"})
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is None, f"una fecha basura se leyó como válida: {d.fecha_creacion!r}"
+    assert d.paginas == 1, "la fecha rota se llevó puesta la cuenta de páginas"
+    assert d.paginas_con_texto == 1, "la fecha rota se llevó puesta la descripción del texto"
 
 
 def test_un_archivo_sin_marcadores_no_se_confunde_con_uno_que_no_se_pudo_leer():

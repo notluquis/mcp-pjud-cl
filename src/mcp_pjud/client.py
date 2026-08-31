@@ -1448,9 +1448,12 @@ class Transporte:
             )
         if not r.is_success:
             raise EstructuraInesperada(
-                f"El Poder Judicial respondió {r.status_code} a {url}, que es una ruta que este "
-                f"cliente construye. Lo más probable es que el sitio cambió y la ruta ya no "
-                f"existe; conviene reportarlo. {NO_ES_UNA_AUSENCIA}"
+                f"El Poder Judicial respondió {r.status_code} a {url}, una ruta que este cliente "
+                "construye. El código es el hecho; la causa NO. Puede ser que el sitio cambiara "
+                "la ruta, o una caída transitoria del host: si otras consultas al MISMO host "
+                "también están fallando ahora, es más probable la caída y conviene reintentar "
+                "más tarde; si sólo falla ésta, es más probable un cambio de sitio que conviene "
+                f"reportar. {NO_ES_UNA_AUSENCIA}"
             )
         return r
 
@@ -2020,9 +2023,11 @@ class PjudClient(Transporte):
         token = re.search(r"token\s*:\s*'([0-9a-f]{32})'", pagina)
         if not adir or not token:
             raise PjudBloqueado(
-                "No se pudo derivar el prefijo de rutas o el token desde "
-                "consultaUnificada.php. La estructura del sitio cambió; el cliente se "
-                "detiene en vez de consultar rutas que ya no existen."
+                "consultaUnificada.php respondió, pero sin el prefijo de rutas ni el token que "
+                "trae cuando la sesión está bien abierta. Puede ser que el sitio cambiara su "
+                "estructura, o que la sesión no se estableció: una caída transitoria sirve una "
+                "página de error, a veces con HTTP 200. El cliente se detiene en vez de "
+                "consultar rutas que quizá ya no existen; si es transitorio, reintentar más tarde."
             )
         self._adir, self._token = adir.group(0), token.group(1)
 

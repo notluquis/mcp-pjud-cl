@@ -10,9 +10,11 @@ version: 2
 updates:
   - package-ecosystem: "uv"
     directory: "/"
+    # `daily`, no `weekly`: sin cooldown el objetivo es enterarse el mismo día que sale una
+    # versión, y un chequeo semanal (sólo lunes) la retrasaría hasta seis días, que es
+    # justo lo que se quitó el cooldown para no hacer.
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"

@@ -16,6 +16,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.20.1] - 2026-08-30
+
+### Corregido
+
+- El mensaje del 404 en una ruta construida afirmaba que el sitio había cambiado, cuando puede
+  ser una caída transitoria del host. Ahora separa el hecho (el código) de la hipótesis, acota
+  la sospecha de caída al 404, nombra qué componente de la sesión falta, y alinea los docs.
+
+
 ## [0.20.0] - 2026-08-30
 
 ### Agregado
@@ -759,7 +768,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.20.0...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.20.1...HEAD
+[0.20.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.20.1
 [0.20.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.20.0
 [0.19.3]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.3
 [0.19.2]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.2

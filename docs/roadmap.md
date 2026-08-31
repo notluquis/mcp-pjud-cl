@@ -726,6 +726,39 @@ Y una deuda anotada con su motivo: exigir el desglose también cuando NO se filt
 en rojo, porque las fixtures guardadas son copias podadas sin ese bloque y recapturarlas pide el
 mapeo de anonimización, que no se versiona a propósito.
 
+### 0.20: lo que el documento decía por dentro y no salía, y un buscador que perdía la mitad — hecho
+
+**El SDK dejó de propagar el motivo de un fallo, y la garantía central se vació una capa más
+arriba del parser.** `mcp` 2.1 decide por el TIPO de la excepción si su mensaje viaja: sólo
+`ToolError` y `ResourceError` llegan con su texto, el resto como "Error executing tool". Este
+servidor levanta siete clases propias y unas cuarenta veces `ValueError`, ninguna de esas dos,
+así que con el SDK nuevo el modelo dejaba de distinguir "la plataforma cambió" de "no hay
+actuaciones": la regla 4, reaparecida donde el parser no llega. Se envuelve cada herramienta y
+cada recurso en el registro, no sitio por sitio, porque un decorador que hay que acordarse de
+poner algún día falta. Seis tests de protocolo lo anticipaban en su propio docstring.
+
+**El texto del documento se leía entero y se tiraba.** El recorrido que describe el PDF extrae
+el texto de cada página para contar cuáles traen capa, y devolvía el conteo y un puntero al
+archivo, que se lee en base64 y no es texto. Ahora el texto viaja, por página y por tramos con
+`desde_pagina`, respetando la disposición de la hoja: medido contra documentos reales, eso hace
+que el encabezado tabular de un acta de audiencia (quién es denunciante, quién denunciado) se
+lea correcto en vez de con las columnas mezcladas. De la misma lectura salen la fecha de la
+metadata, como proxy de la firma y no como fecha oficial, y la separación entre una página
+escaneada y una en blanco, que antes se marcaban igual.
+
+**El buscador por nombre distingue tildes, y buscar una grafía perdía la otra en silencio.**
+Medido en vivo: `MARTINEZ MARTINEZ` da 71 causas y `MARTÍNEZ MARTÍNEZ` da 88, con una sola en
+común. Un abogado que teclea sin tilde recibía una lista que se ve completa y omite casi todo,
+que es el falso negativo de la regla 4 en el corazón del buscador. Ahora consulta las dos
+grafías y fusiona, con un fold que conserva la ñ, porque la plataforma es insensible a ella
+(`MUÑOZ` y `MUNOZ` dan lo mismo) pero no a la tilde. Reversa una decisión deliberada del
+proyecto, a conciencia: la vieja dejaba la corrección al modelo, y esta misma sesión midió que
+eso falla, porque el modelo buscó sin tilde y no encontró la causa que estaba con tilde.
+
+Y el aviso que faltó: un job canario corre el suite contra el `mcp` más reciente a diario, así
+un release que rompa algo se pone rojo el día que sale y no siete días después, como pasó con
+2.1.
+
 (sin-version-asignada)=
 ## Lo que queda de este servidor
 

@@ -16,14 +16,17 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.20.0] - 2026-08-30
+
 ### Agregado
 
 - `obtener_documento` entrega el TEXTO del documento, página por página, cuando el PDF trae
   capa de texto. Si no cabe en una respuesta se pide por tramos con el nuevo `desde_pagina`,
   que dice hasta dónde llegó y con cuál seguir.
-- El texto respeta la disposición de la hoja y no el orden del flujo, así un encabezado en
-  columnas deja de leerse con el rol pegado a la foja. El modo es experimental y todavía no se
-  midió contra un PDF real de la plataforma.
+- El texto respeta la disposición de la hoja y no el orden del flujo, así los encabezados
+  tabulares de las actas de audiencia (quién es denunciante, quién denunciado) dejan de leerse
+  desordenados. Medido contra documentos reales: lo paga con algo de inflación en los más
+  chicos, donde no muerde el presupuesto.
 - El documento informa la fecha que declara en su metadata, como proxy de la firma y dicha como
   dato del archivo, no como fecha oficial.
 - Una página sin texto se separa en escaneo (trae imagen) y hoja en blanco (no trae ninguna),
@@ -756,7 +759,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.19.3...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.20.0
 [0.19.3]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.3
 [0.19.2]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.2
 [0.19.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.1

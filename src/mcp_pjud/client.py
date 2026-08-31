@@ -1028,10 +1028,17 @@ def _extraer_texto(pagina: object) -> str:
       salto de `y`, y medido eso infla el texto de un cuerpo corrido. Con el knob, plano y
       layout pesan casi igual y la fidelidad se paga sólo donde hay columnas.
 
-    El modo layout es EXPERIMENTAL, lo dice la propia doc de pypdf, y este proyecto todavía no
-    lo midió contra un PDF real de la OJV: el caso está montado sobre PDF sintéticos. Por eso
-    el `except` cae al modo plano en vez de dejar la página como ilegible: layout puede fallar
-    donde plano lee, y el resguardo es que layout nunca ENTREGUE MENOS de lo que ya se leía.
+    El modo layout lo llama EXPERIMENTAL la propia doc de pypdf. Medido el 30-08-2026 contra
+    seis documentos reales de la OJV: lee bien los encabezados tabulares (etiqueta a la
+    izquierda, valor a la derecha) de las actas de audiencia, donde importa saber quién es el
+    denunciante y quién el denunciado, y que el modo plano desordena al leer por flujo. Lo paga
+    inflando el texto entre un 23% y un 120%, pero la inflación más alta pega en los documentos
+    más chicos (una resolución de una columna), donde no muerde el presupuesto de la respuesta;
+    las audiencias grandes, donde el orden sí importa, inflan menos.
+
+    Por eso el `except` cae al modo plano en vez de dejar la página como ilegible: layout puede
+    fallar donde plano lee, y el resguardo es que layout nunca ENTREGUE MENOS de lo que ya se
+    leía.
     """
     try:
         return pagina.extract_text(  # ty: ignore[unresolved-attribute]

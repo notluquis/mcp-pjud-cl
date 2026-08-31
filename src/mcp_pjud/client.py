@@ -1446,11 +1446,25 @@ class Transporte:
                 f"la consulta: se puede volver a intentar más tarde respetando el intervalo. "
                 f"{NO_ES_UNA_AUSENCIA}"
             )
+        if r.status_code == 404:
+            # El 404 y sólo el 404 admite la hipótesis "caída transitoria": una ruta que este
+            # cliente construye y que el host no encuentra puede ser un cambio de sitio o un
+            # backend caído. Los otros 4xx (400, 401, 405) NO: apuntan a la petición, la sesión
+            # o el método, y ahí reintentar repite una consulta inválida y esconde el arreglo.
+            raise EstructuraInesperada(
+                f"El Poder Judicial respondió 404 a {url}, una ruta que este cliente construye. "
+                "El código es el hecho; la causa NO. Puede ser que el sitio cambiara la ruta, o "
+                "una caída transitoria del host: si otras consultas al MISMO host también están "
+                "fallando ahora, es más probable la caída y conviene reintentar más tarde; si "
+                "sólo falla ésta, es más probable un cambio de sitio que conviene reportar. "
+                f"{NO_ES_UNA_AUSENCIA}"
+            )
         if not r.is_success:
             raise EstructuraInesperada(
-                f"El Poder Judicial respondió {r.status_code} a {url}, que es una ruta que este "
-                f"cliente construye. Lo más probable es que el sitio cambió y la ruta ya no "
-                f"existe; conviene reportarlo. {NO_ES_UNA_AUSENCIA}"
+                f"El Poder Judicial respondió {r.status_code} a {url}, una ruta que este cliente "
+                "construye. No es un 404 (ruta ausente) ni un 5xx (error del servidor): un 4xx "
+                "como éste apunta a la petición, la sesión o el método, no a una caída, así que "
+                f"reintentar igual no ayuda. Conviene reportarlo. {NO_ES_UNA_AUSENCIA}"
             )
         return r
 
@@ -2019,10 +2033,22 @@ class PjudClient(Transporte):
         adir = re.search(r"ADIR_\d+", pagina)
         token = re.search(r"token\s*:\s*'([0-9a-f]{32})'", pagina)
         if not adir or not token:
+            # Se nombra el que realmente falta, no los dos: la condición entra con que falte
+            # UNO (media sesión), y afirmar que faltan ambos diagnostica en falso una página
+            # que todavía trae uno. Los tres casos nombran "el prefijo de rutas" para que el
+            # texto lo diga siempre, que es lo que el test de media sesión verifica.
+            if not adir and not token:
+                falta = "sin el prefijo de rutas ni el token"
+            elif not adir:
+                falta = "sin el prefijo de rutas (el token sí vino)"
+            else:
+                falta = "sin el token, aunque el prefijo de rutas sí vino"
             raise PjudBloqueado(
-                "No se pudo derivar el prefijo de rutas o el token desde "
-                "consultaUnificada.php. La estructura del sitio cambió; el cliente se "
-                "detiene en vez de consultar rutas que ya no existen."
+                f"consultaUnificada.php respondió, pero {falta} que trae cuando la sesión está "
+                "bien abierta. Puede ser que el sitio cambiara su estructura, o que la sesión no "
+                "se estableció: una caída transitoria sirve una página de error, a veces con "
+                "HTTP 200. El cliente se detiene en vez de consultar rutas que quizá ya no "
+                "existen; si es transitorio, reintentar más tarde."
             )
         self._adir, self._token = adir.group(0), token.group(1)
 

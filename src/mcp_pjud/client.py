@@ -939,12 +939,14 @@ def _leer_metadata(lector: PdfReader) -> tuple[str | None, str | None]:
     def fecha(nombre: str) -> str | None:
         try:
             valor = getattr(md, nombre)
+            # El `.isoformat()` va DENTRO del `try`, no después: `pypdf` levanta al parsear una
+            # fecha mal formada, pero si algún día devolviera la cadena cruda en vez de un
+            # `datetime`, `.isoformat()` tiraría `AttributeError` fuera del guardia y caería la
+            # descripción entera. Una fecha ilegible no es una fecha ausente, pero acá no hay
+            # forma de distinguirlas sin afirmar de más, así que se calla la que no se pudo leer.
+            return valor.isoformat() if valor is not None else None
         except Exception:
-            # La conversión de la fecha del PDF puede reventar con una cadena mal formada. Una
-            # fecha ilegible no es una fecha ausente, pero acá no hay forma de distinguirlas sin
-            # afirmar de más, así que se calla la que no se pudo leer.
             return None
-        return valor.isoformat() if valor is not None else None
 
     return fecha("creation_date"), fecha("modification_date")
 

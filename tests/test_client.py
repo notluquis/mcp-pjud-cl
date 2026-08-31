@@ -4210,6 +4210,30 @@ def test_la_fecha_del_archivo_viaja_como_proxy_de_la_firma():
     )
 
 
+def test_una_metadata_que_devuelve_algo_que_no_es_fecha_no_revienta(monkeypatch):
+    """`pypdf` hoy levanta al parsear una fecha mala, pero si devolviera la cadena cruda en vez
+    de un `datetime`, `.isoformat()` tiraría `AttributeError`. El guardia lo tiene que abarcar:
+    una metadata rara no puede caerse la descripción entera."""
+    from pypdf import DocumentInformation
+
+    # `creation_date` devuelve una cadena, no un datetime: `.isoformat()` no existe ahí. Con
+    # el `.isoformat()` fuera del `try`, el `AttributeError` sube y el `try` de `_describir_pdf`
+    # que envuelve la metadata anula LAS DOS fechas, no sólo la mala. Este test lo mide por la
+    # buena: la de modificación, que es válida, tiene que sobrevivir.
+    monkeypatch.setattr(DocumentInformation, "creation_date", property(lambda self: "2026-08-27"))
+    pdf = _con_metadata(_pdf(_CON_TEXTO), {"/ModDate": "D:20260828090000-04'00'"})
+    d = _describir_pdf(pdf)
+
+    assert d.fecha_creacion is None, "una metadata que no es fecha se leyó como válida"
+    assert d.fecha_modificacion is not None, (
+        "una fecha que no es datetime se llevó puesta la OTRA fecha, que sí era válida"
+    )
+    assert d.fecha_modificacion.startswith("2026-08-28"), (
+        f"fecha de modificación: {d.fecha_modificacion!r}"
+    )
+    assert d.paginas == 1, "la metadata rara se llevó puesta la descripción del resto"
+
+
 def test_una_fecha_de_metadata_rota_no_se_lleva_la_descripcion():
     """`pypdf` LEVANTA al convertir una fecha mal formada. Una fecha rota no puede costar ni la
     otra fecha ni el resto de la descripción: se calla la que no se pudo leer y sigue."""

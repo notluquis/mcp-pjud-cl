@@ -1,13 +1,11 @@
 version: 2
 
-# El bloque `cooldown` va repetido en cada entrada a propósito: Dependabot no admite
-# anclas YAML, así que compartir la configuración con `&`/`*` no funciona acá.
-#
-# Para qué sirve: sin período de enfriamiento, una versión recién publicada llega como
-# pull request el mismo día, que es justo la ventana que aprovechan los ataques de
-# cadena de suministro. Esperar unos días deja que la comunidad detecte el problema
-# antes de que entre a este repositorio. Los mayores esperan más, porque además traen
-# cambios incompatibles que conviene ver reportados por otros primero.
+# Sin `cooldown`, a propósito. El enfriamiento retrasaba cada actualización unos días para que
+# la comunidad alcanzara a detectar una versión comprometida antes de que entrara acá, que es la
+# ventana de los ataques de cadena de suministro. Se quitó para enterarse el mismo día que sale
+# una versión, sobre todo del SDK de MCP, cuya última ruptura pasó siete días sin que nada
+# avisara. Se acepta esa ventana a cambio de la alerta inmediata: el PR de Dependabot no se
+# auto-mergea, pasa por CI y por revisión, así que una versión mala no entra sola.
 
 updates:
   - package-ecosystem: "uv"
@@ -15,11 +13,6 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    cooldown:
-      default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 3
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
@@ -29,10 +22,6 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    # Acá sólo `default-days`: las variantes por semver no se admiten en este
-    # ecosistema, porque las acciones no versionan con semver estricto.
-    cooldown:
-      default-days: 7
     commit-message:
       prefix: "chore"
     labels: ["dependencias"]

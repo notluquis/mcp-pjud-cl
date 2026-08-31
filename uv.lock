@@ -927,7 +927,7 @@ wheels = [
 
 [[package]]
 name = "mcp-pjud"
-version = "0.19.3"
+version = "0.20.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },

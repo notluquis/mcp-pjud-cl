@@ -667,13 +667,14 @@ por tramos con `desde_pagina`. Cada tramo termina diciendo hasta qué página ll
 seguir, y el último dice que ahí termina el documento. Una página que sola no cabe se corta y
 el corte se anuncia en el mismo texto.
 
-El texto respeta la **disposición de la hoja**, no el orden del flujo del PDF. En un encabezado
-en columnas eso es lo que separa "Foja: 15 ... ROL: C-1234-2026" de un "ROL: C-1234-2026Foja:
-15" con las columnas pegadas, que es el riesgo cuando lo que corre los plazos son fechas leídas
-de un encabezado. Conserva el texto rotado, que el modo descarta por defecto: un timbre al
-margen no puede perderse en silencio. Es un modo **experimental** y todavía no se midió contra
-un PDF real de la plataforma; si falla en una página, cae al modo simple, que nunca entrega
-menos.
+El texto respeta la **disposición de la hoja**, no el orden del flujo del PDF. Medido contra
+documentos reales de la OJV, eso es lo que hace que el encabezado tabular de un acta de
+audiencia (etiqueta a la izquierda, valor a la derecha: quién es el denunciante, quién el
+denunciado, las horas) se lea correcto en vez de con las dos columnas mezcladas, que es como lo
+lee el modo por flujo. Conserva el texto rotado, que el modo descarta por defecto: un timbre al
+margen no puede perderse en silencio. El modo lo llama **experimental** la doc de pypdf; acá se
+midió, y lo paga con algo de inflación (más alta en los documentos más chicos, donde no muerde
+el presupuesto). Si falla en una página, cae al modo simple, que nunca entrega menos.
 
 Cada página va rotulada con su número, que es lo que permite citarla. Las que no aportan texto
 se rotulan con avisos distintos, porque son cosas distintas: una **imagen** (un escaneo, trae

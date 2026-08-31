@@ -395,13 +395,32 @@ def test_un_404_en_una_ruta_construida_no_se_afirma_como_cambio_del_sitio(monkey
 
     with pytest.raises(EstructuraInesperada, match="significa que la causa no exista") as e:
         c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
-    mensaje = str(e.value)
+    mensaje = str(e.value).lower()
     assert "el hecho" in mensaje, "el mensaje del 404 no separa el hecho de la hipótesis"
     assert "caída transitoria" in mensaje, "el mensaje del 404 no nombra la caída como hipótesis"
-    assert "Lo más probable es que el sitio cambió" not in mensaje, (
+    assert "lo más probable es que el sitio cambió" not in mensaje, (
         "el mensaje volvió a afirmar el cambio del sitio como lo más probable"
     )
     assert client._BLOQUEADO is None
+
+
+def test_un_4xx_que_no_es_404_no_sugiere_caida_ni_reintento(monkeypatch):
+    """La rama de no-éxito toma TODO 4xx salvo 403/429, no sólo el 404. Un 400, 401 o 405
+    apunta a la petición, la sesión o el método, no a una caída: sugerir "reintentar" ahí
+    repite una consulta inválida y esconde el arreglo. Sólo el 404 admite la hipótesis de
+    caída transitoria.
+    """
+    monkeypatch.setattr("mcp_pjud.client.time.sleep", lambda _: None)
+    for codigo in (400, 401, 405):
+        c = PjudClient("test@example.cl")
+        c._http = httpx.Client(transport=httpx.MockTransport(lambda _, k=codigo: httpx.Response(k)))
+        with pytest.raises(EstructuraInesperada, match="significa que la causa no exista") as e:
+            c._req("GET", "https://oficinajudicialvirtual.pjud.cl/x")
+        mensaje = str(e.value).lower()
+        assert "caída transitoria" not in mensaje, (
+            f"un {codigo} sugirió una caída transitoria, y eso es sólo para el 404: {mensaje}"
+        )
+        assert str(codigo) in mensaje, f"el mensaje no dice qué código llegó: {mensaje}"
 
 
 def test_un_combo_que_no_trae_json_lo_dice_sin_volcar_el_cuerpo(monkeypatch):

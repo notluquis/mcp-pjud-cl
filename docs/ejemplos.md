@@ -212,8 +212,8 @@ dado por "sin respuesta".
 | Qué ves | Qué significa | Qué hacer |
 |---|---|---|
 | `PjudBloqueado` con 403 o 429 | La plataforma rechazó la consulta | **Detente.** Revisa si la IP quedó bloqueada antes de reintentar |
-| `PjudBloqueado` mencionando el prefijo | No se pudo derivar la ruta desde el HTML | La plataforma cambió su estructura. Reporta con la plantilla correspondiente |
-| `EstructuraInesperada` | El HTML no tiene la forma esperada | Lo mismo. Es a propósito: preferimos un error visible a una lista vacía |
+| `PjudBloqueado` mencionando el prefijo | `consultaUnificada.php` respondió sin el prefijo de rutas o el token | Puede ser un cambio de estructura o una caída transitoria (la sesión no se estableció). Reintenta más tarde; si persiste, reporta el cambio |
+| `EstructuraInesperada`, o un 404 en una ruta construida | El HTML no tiene la forma esperada, o el host no encuentra la ruta | Si otras consultas al mismo host también fallan ahora, es más probable una caída: reintenta. Si sólo falla ésta, reporta el cambio. Un error visible antes que una lista vacía |
 | Lista vacía sin error | No hay actuaciones de receptor en esa causa | Puede ser correcto, o la causa puede estar en una competencia sin cubrir |
 | `ValueError` sobre competencia | Pediste una competencia que no está verificada | El propio error lista las verificadas. Familia no está: la plataforma la reserva a Clave Única |
 

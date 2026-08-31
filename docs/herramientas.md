@@ -1059,10 +1059,10 @@ sentencia no exista.
 
 | Excepción | Qué significa | Qué hacer |
 |---|---|---|
-| `PjudBloqueado` | 403 o 429, o no se pudo derivar el prefijo de rutas | **Detenerse.** Revisar si la IP quedó bloqueada antes de reintentar nada |
+| `PjudBloqueado` | 403 o 429 (rechazo), o `consultaUnificada.php` sin el prefijo de rutas o el token | Si es 403 o 429: **detenerse**, revisar si la IP quedó bloqueada. Si es por el prefijo o el token: puede ser un cambio de estructura o una caída transitoria, reintentar más tarde y si persiste, reportar |
 | `PlataformaRechaza` | La plataforma rechazó la consulta por sus propias reglas | El mensaje es el suyo, textual. Corregir los parámetros |
 | `ValueError` sobre campos | Faltan campos que la plataforma exige | Se detecta antes de consultar, sin gastar una petición |
-| `EstructuraInesperada` | El HTML no tiene la forma esperada | La plataforma cambió. Reportar con la plantilla correspondiente |
+| `EstructuraInesperada` | El HTML no tiene la forma esperada, o un 404 en una ruta construida | La plataforma cambió, o una caída transitoria del host: si otras consultas al mismo host fallan, reintentar; si sólo ésta, reportar |
 | `ValueError` | Competencia o buscador no verificado, o falta `MCP_PJUD_CONTACTO` | Corregir la llamada o la configuración |
 | `CausaNoEncontrada` | La búsqueda no dio con la causa que se pidió | Revisar rol, año, competencia y el código del tribunal o la corte. **No** es que la causa no tenga actuaciones: para eso la lista vacía |
 | `ResultadosTruncados` | La búsqueda excedió el tope de páginas | Hay más resultados de los que caben. Acotar la búsqueda o subir `paginas`, nunca informar que no se encontró nada |

@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-09-08. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-09-09. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-09-09 | 1 | 0 | 0 | 2 |
 | 2026-09-08 | 1 | 0 | 0 | 0 |
 | 2026-09-07 | 1 | 0 | 0 | 0 |
 | 2026-09-06 | 1 | 0 | 0 | 0 |
@@ -141,7 +142,7 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-09-08. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-09-09. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
@@ -152,7 +153,7 @@ que restar dos fotos para inferirlo daría un número inventado.
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-09-08. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-09-09. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |

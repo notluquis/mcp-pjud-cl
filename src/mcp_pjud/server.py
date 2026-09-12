@@ -466,7 +466,7 @@ def _contacto() -> str:
 
 
 #: Por dónde sale el fallo de un aviso de progreso. Cuelga del logger de ESTE paquete, nunca
-#: de la raíz, por lo mismo que `_BITACORA` en `client.py`: encender la raíz enciende `httpx`,
+#: de la raíz, por lo mismo que `_BITACORA` en `client.py`: encender la raíz enciende `httpx2`,
 #: que registra la URL completa y ahí viaja `documento_referencia`.
 _PROGRESO = logging.getLogger("mcp_pjud.progreso")
 
@@ -2075,7 +2075,7 @@ def main() -> None:
     """Levanta el servidor por stdio, con la bitácora saliendo por el error estándar.
 
     Se cuelga del logger de ESTE paquete y con `propagate` apagado, nunca de la raíz. El atajo
-    sería `logging.basicConfig`, y está medido lo que cuesta: `httpx` registra la URL completa
+    sería `logging.basicConfig`, y está medido lo que cuesta: `httpx2` registra la URL completa
     en INFO, y `documento()` manda `documento_referencia` como parámetro, así que encender la
     raíz escribiría el token de un documento de un tercero en el log del operador.
 

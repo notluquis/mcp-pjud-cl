@@ -30,7 +30,7 @@ dependencies = [
     # `mcp` y por eso se declara: apoyarse en una dependencia transitiva es depender de una
     # decisión ajena, y si esa cadena cambia el servidor muere al importar.
     "anyio>=4.0",
-    "httpx>=0.28",
+    "httpx2>=2.0",
     "lxml>=5.3",
     "pydantic>=2.10",
     # Sólo para saber si un PDF trae capa de texto y cuántas páginas tiene. La licencia

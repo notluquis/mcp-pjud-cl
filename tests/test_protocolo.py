@@ -39,7 +39,7 @@ from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import unquote
 
-import httpx
+import httpx2 as httpx
 import jsonschema
 import pytest
 from mcp.client import Client

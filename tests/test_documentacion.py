@@ -3530,7 +3530,7 @@ def test_el_diagrama_de_la_detencion_nombra_todo_lo_que_la_detiene():
             f"{clase.__name__} activa la detención total y el diagrama no lo nombra"
         )
 
-    import httpx
+    import httpx2 as httpx
 
     assert httpx.TimeoutException not in _RECHAZO_DE_CONEXION, (
         "si los timeouts pasaran a detener, el diagrama diría lo contrario de lo que hace el "

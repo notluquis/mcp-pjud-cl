@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 from pypdf import PageObject, PdfReader, PdfWriter
 from pypdf.generic import IndirectObject

@@ -36,7 +36,7 @@ from datetime import date
 from types import MappingProxyType
 from typing import NamedTuple
 
-import httpx
+import httpx2 as httpx
 from pydantic import BaseModel, Field
 
 from .client import INTERVALO_MINIMO, PASO_SESION, Transporte

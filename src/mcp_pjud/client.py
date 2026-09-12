@@ -24,7 +24,7 @@ from importlib.metadata import version as _version_instalada
 from io import BytesIO
 from typing import TypeVar
 
-import httpx
+import httpx2 as httpx
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
@@ -276,7 +276,7 @@ _TURNO = threading.Lock()
 #: evitar. Ante la duda, la respuesta correcta es parar y avisar.
 _BLOQUEADO: str | None = None
 
-#: Errores de httpx que se leen como rechazo y no como plataforma lenta. Un cortafuegos que
+#: Errores de HTTPX2 que se leen como rechazo y no como plataforma lenta. Un cortafuegos que
 #: rechaza a nivel de red no manda un 403: corta la conexión, y eso llega como `ReadError` o
 #: `ConnectError`. Sin esto, ese rechazo se propagaba como error de red y la detención total
 #: no se activaba, así que quien envolviera las llamadas en un reintento seguía golpeando un
@@ -611,7 +611,7 @@ _Fila = TypeVar("_Fila", Actuacion, Notificacion, Liquidacion)
 
 #: El registro de tráfico. La librería NO lo configura: quien decide dónde sale es `main()`, y
 #: sólo cuando este paquete es el servidor. Un `logging.basicConfig` en la raíz sería el atajo
-#: y está medido lo que cuesta: `httpx` registra la URL completa en INFO, y `documento()` manda
+#: y está medido lo que cuesta: `httpx2` registra la URL completa en INFO, y `documento()` manda
 #: `documento_referencia` como parámetro, así que encender la raíz escribe el token de un
 #: documento de un tercero en el log del operador.
 _BITACORA = logging.getLogger("mcp_pjud.bitacora")
@@ -668,7 +668,7 @@ class PjudNoRespondio(Exception):
     sea para cuando la plataforma nos rechaza a propósito. Un portal lento no rechaza a nadie,
     y detenerse por lentitud sería negarse el servicio a uno mismo.
 
-    Salía cruda como `httpx.ReadTimeout`, que el SDK convierte en "Error executing tool
+    Salía cruda como `httpx2.ReadTimeout`, que el SDK convierte en "Error executing tool
     listar_cortes: timed out": ni cuánto se esperó, ni qué hacer, ni que esperar no prueba una
     ausencia.
     """
@@ -1787,7 +1787,7 @@ class PjudClient(Transporte):
             },
         )
         # `ValueError` y no `json.JSONDecodeError`: la segunda es subclase de la primera, y así
-        # no depende de qué backend de JSON traiga httpx. Se cita el tipo y el largo, nunca el
+        # no depende de qué backend de JSON traiga HTTPX2. Se cita el tipo y el largo, nunca el
         # cuerpo, igual que en `documento()`: acá llega una página de error o una sesión
         # vencida, y volcarla al modelo no ayuda y sí puede traer datos de terceros.
         try:

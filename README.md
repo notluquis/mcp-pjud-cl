@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-09-29. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-09-30. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 102 | 40 | 744 | 278 |
-| Todo lo registrado, desde el 2026-08-17 | 646 | 98 | 7388 | 1752 |
+| Últimos 14 días | 88 | 39 | 458 | 206 |
+| Todo lo registrado, desde el 2026-08-17 | 681 | 109 | 7599 | 1853 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-09-30 | 1 | 0 | 0 | 5 |
 | 2026-09-29 | 1 | 0 | 0 | 5 |
 | 2026-09-28 | 1 | 0 | 0 | 2 |
 | 2026-09-27 | 1 | 0 | 0 | 2 |
@@ -162,37 +163,43 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-09-29. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-09-30. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
-| `github.com` | 25 | 8 |
-| `Google` | 4 | 3 |
+| `github.com` | 13 | 7 |
+| `Google` | 7 | 4 |
 | `chatgpt.com` | 1 | 1 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-09-29. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-09-30. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 37 | 14 |
-| `/notluquis/mcp-pjud-cl/commits/main` | 3 | 2 |
+| `/notluquis/mcp-pjud-cl` | 35 | 17 |
 | `/notluquis/mcp-pjud-cl/issues` | 3 | 3 |
-| `/notluquis/mcp-pjud-cl/pull/204` | 3 | 2 |
-| `/notluquis/mcp-pjud-cl/pulls` | 3 | 1 |
-| `/notluquis/mcp-pjud-cl/actions/workflows/tests.yml` | 2 | 1 |
+| `/notluquis/mcp-pjud-cl/pulls` | 3 | 2 |
 | `/notluquis/mcp-pjud-cl/blob/HEAD/docs/cumplimiento.md` | 2 | 1 |
-| `/notluquis/mcp-pjud-cl/blob/main/LICENSE.md` | 2 | 1 |
-| `/notluquis/mcp-pjud-cl/security` | 2 | 1 |
-| `/notluquis/mcp-pjud-cl/actions` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/LICENSE.md` | 2 | 2 |
+| `/notluquis/mcp-pjud-cl/blob/main/docs/index.md` | 2 | 2 |
+| `/notluquis/mcp-pjud-cl/blob/7549d7251612fefb3e55ac56b79e61df570029a7/docs/roadmap.md` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/7549d7251612fefb3e55ac56b79e61df570029a7/src/mcp_pjud/juris.py` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/.github/CODEOWNERS` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/.github/SECURITY.md` | 1 | 1 |
 
 ## La serie completa
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-09-29 | 1 | 1 | 22 | 14 |
+| 2026-09-28 | 9 | 1 | 59 | 24 |
+| 2026-09-27 | 3 | 1 | 19 | 13 |
+| 2026-09-26 | 3 | 1 | 27 | 16 |
+| 2026-09-25 | 13 | 4 | 59 | 20 |
+| 2026-09-24 | 6 | 3 | 25 | 14 |
 | 2026-09-23 | 6 | 3 | 23 | 16 |
 | 2026-09-22 | 6 | 3 | 28 | 17 |
 | 2026-09-21 | 9 | 7 | 94 | 16 |

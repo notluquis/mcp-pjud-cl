@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-10-13. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-10-14. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 115 | 36 | 540 | 216 |
-| Todo lo registrado, desde el 2026-08-17 | 795 | 144 | 8117 | 2055 |
+| Últimos 14 días | 118 | 38 | 548 | 213 |
+| Todo lo registrado, desde el 2026-08-17 | 799 | 147 | 8147 | 2066 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-10-14 | 1 | 0 | 0 | 6 |
 | 2026-10-13 | 1 | 0 | 0 | 4 |
 | 2026-10-12 | 1 | 0 | 0 | 4 |
 | 2026-10-11 | 1 | 0 | 0 | 4 |
@@ -176,23 +177,23 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-10-13. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-10-14. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
-| `Google` | 12 | 9 |
+| `Google` | 15 | 12 |
 | `github.com` | 12 | 9 |
-| `mcp-pjud-cl.readthedocs.io` | 2 | 2 |
+| `mcp-pjud-cl.readthedocs.io` | 3 | 3 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-10-13. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-10-14. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 29 | 20 |
+| `/notluquis/mcp-pjud-cl` | 32 | 23 |
 | `/notluquis/mcp-pjud-cl/pulls` | 16 | 3 |
 | `/notluquis/mcp-pjud-cl/issues` | 12 | 4 |
 | `/notluquis/mcp-pjud-cl/blob/main/LICENSE.md` | 3 | 2 |
@@ -207,6 +208,7 @@ que restar dos fotos para inferirlo daría un número inventado.
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-10-13 | 4 | 3 | 30 | 11 |
 | 2026-10-12 | 3 | 2 | 10 | 5 |
 | 2026-10-11 | 10 | 1 | 10 | 6 |
 | 2026-10-10 | 19 | 2 | 9 | 5 |

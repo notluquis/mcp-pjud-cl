@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-10-28. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-10-29. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 46 | 15 | 158 | 86 |
-| Todo lo registrado, desde el 2026-08-17 | 845 | 162 | 8305 | 2152 |
+| Últimos 14 días | 45 | 15 | 161 | 87 |
+| Todo lo registrado, desde el 2026-08-17 | 854 | 165 | 8316 | 2159 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-10-29 | 1 | 0 | 0 | 9 |
 | 2026-10-28 | 1 | 0 | 0 | 9 |
 | 2026-10-27 | 1 | 0 | 0 | 9 |
 | 2026-10-26 | 1 | 0 | 0 | 9 |
@@ -191,37 +192,39 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-10-28. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-10-29. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
+| `mcp-pjud-cl.readthedocs.io` | 6 | 2 |
 | `Google` | 5 | 2 |
-| `mcp-pjud-cl.readthedocs.io` | 4 | 1 |
-| `github.com` | 2 | 2 |
+| `aocr.org` | 1 | 1 |
+| `github.com` | 1 | 1 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-10-28. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-10-29. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 23 | 12 |
+| `/notluquis/mcp-pjud-cl` | 22 | 11 |
 | `/notluquis/mcp-pjud-cl/issues` | 3 | 1 |
-| `/notluquis/mcp-pjud-cl/pull/154` | 2 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/docs/instalacion.md` | 2 | 2 |
 | `/notluquis/mcp-pjud-cl/actions` | 1 | 1 |
 | `/notluquis/mcp-pjud-cl/actions/runs/40489664349` | 1 | 1 |
 | `/notluquis/mcp-pjud-cl/agents` | 1 | 1 |
-| `/notluquis/mcp-pjud-cl/blob/cfc498c4dd0cf14e066bd22a7cc6447494f5a82b/src/mcp_pjud/server.py` | 1 | 1 |
 | `/notluquis/mcp-pjud-cl/blob/main/.github/CONTRIBUTING.md` | 1 | 1 |
-| `/notluquis/mcp-pjud-cl/blob/main/ACCEPTABLE_USE.md` | 1 | 1 |
 | `/notluquis/mcp-pjud-cl/blob/main/AGENTS.md` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/README.md` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/commit/999f217659377a52fff1d96be4279fa50d12fff9` | 1 | 1 |
 
 ## La serie completa
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-10-28 | 9 | 3 | 11 | 7 |
 | 2026-10-27 | 14 | 2 | 9 | 6 |
 | 2026-10-26 | 2 | 2 | 15 | 8 |
 | 2026-10-25 | 1 | 1 | 14 | 3 |

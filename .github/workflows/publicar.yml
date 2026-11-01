@@ -19,7 +19,7 @@ jobs:
       # `block` y no `audit`: este job corre la suite, así que le vale la misma garantía que
       # a `tests.yml`. Sin esto, una prueba que abriera un cliente real quedaría detenida en
       # aquel workflow y saldría por éste. Ningún dominio de `pjud.cl` está en la lista.
-      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >

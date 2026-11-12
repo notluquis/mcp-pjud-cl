@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-11-11. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-11-12. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 80 | 26 | 200 | 104 |
-| Todo lo registrado, desde el 2026-08-17 | 925 | 188 | 8505 | 2256 |
+| Últimos 14 días | 72 | 24 | 212 | 110 |
+| Todo lo registrado, desde el 2026-08-17 | 926 | 189 | 8528 | 2269 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-11-12 | 2 | 1 | 0 | 15 |
 | 2026-11-11 | 2 | 1 | 0 | 15 |
 | 2026-11-10 | 2 | 1 | 0 | 15 |
 | 2026-11-09 | 2 | 1 | 0 | 15 |
@@ -205,38 +206,39 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-11-11. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-12. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
 | `Google` | 12 | 5 |
-| `aocr.org` | 6 | 6 |
-| `mcp-pjud-cl.readthedocs.io` | 5 | 3 |
-| `github.com` | 4 | 3 |
+| `aocr.org` | 5 | 5 |
+| `github.com` | 3 | 2 |
+| `mcp-pjud-cl.readthedocs.io` | 3 | 1 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-11-11. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-12. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl` | 26 | 17 |
-| `/notluquis/mcp-pjud-cl/tree/main` | 7 | 2 |
+| `/notluquis/mcp-pjud-cl` | 25 | 17 |
 | `/notluquis/mcp-pjud-cl/tree/main/scripts` | 7 | 3 |
+| `/notluquis/mcp-pjud-cl/tree/main` | 6 | 1 |
 | `/notluquis/mcp-pjud-cl/tree/main/src/mcp_pjud` | 6 | 4 |
 | `/notluquis/mcp-pjud-cl/blob/main/src/mcp_pjud/client.py` | 5 | 3 |
 | `/notluquis/mcp-pjud-cl/blob/main/AGENTS.md` | 2 | 1 |
-| `/notluquis/mcp-pjud-cl/blob/main/docs/instalacion.md` | 2 | 2 |
 | `/notluquis/mcp-pjud-cl/tree/main/docs` | 2 | 2 |
 | `/notluquis/mcp-pjud-cl/blob/main/ACCEPTABLE_USE.md` | 1 | 1 |
 | `/notluquis/mcp-pjud-cl/blob/main/CLAUDE.md` | 1 | 1 |
+| `/notluquis/mcp-pjud-cl/blob/main/docs/index.md` | 1 | 1 |
 
 ## La serie completa
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-11-11 | 1 | 1 | 23 | 13 |
 | 2026-11-10 | 0 | 0 | 19 | 12 |
 | 2026-11-09 | 0 | 0 | 11 | 7 |
 | 2026-11-08 | 0 | 0 | 3 | 2 |

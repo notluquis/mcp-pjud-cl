@@ -3671,7 +3671,7 @@ def _con_marcadores(base: bytes, marcadores: Sequence[tuple[str, int, int]]) -> 
     padres: dict[int, IndirectObject] = {}
     for titulo, pagina, nivel in marcadores:
         padres[nivel] = escritor.add_outline_item(
-            titulo, pagina, parent=padres.get(nivel - 1) if nivel else None
+            title=titulo, page_number=pagina, parent=padres.get(nivel - 1) if nivel else None
         )
     salida = BytesIO()
     escritor.write(salida)

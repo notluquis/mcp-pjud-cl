@@ -24,6 +24,11 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 - `pydantic` sube a 2.14.3, la primera con wheel de `pydantic-core` para Python 3.15.
 
+### Seguridad
+
+- `pypdf` exige 6.21.4 o superior, la primera sin las vulnerabilidades conocidas al leer PDF.
+  El lock fija 7.1.0, junto con `urllib3`, `certifi`, `soupsieve` y `opentelemetry-api` parchados.
+
 ## [0.20.1] - 2026-08-30
 
 ### Corregido

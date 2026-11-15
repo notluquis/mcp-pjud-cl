@@ -42,7 +42,7 @@ dependencies = [
     #
     # No se usa para OCR, y no porque falte: una transcripción automática de una resolución
     # se ve idéntica a la resolución y no lo es.
-    "pypdf>=6.0",
+    "pypdf>=6.21.4",
 ]
 
 [project.urls]

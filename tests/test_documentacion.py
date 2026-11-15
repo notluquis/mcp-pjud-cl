@@ -3853,9 +3853,9 @@ def test_ninguna_etiqueta_le_cambia_el_ancla_a_un_encabezado():
             j = i + 1
             while j < len(lineas) and (not lineas[j] or etiqueta.match(lineas[j])):
                 j += 1
-            if j < len(lineas) and (t := re.match(r"^#+ (.+)$", lineas[j])):
-                if m.group(1) != make_id(t.group(1)):
-                    cambiadas.append(f"{pagina.name}:{i + 1} ({m.group(1)}) -> {t.group(1)}")
+            titulo = re.match(r"^#+ (.+)$", lineas[j]) if j < len(lineas) else None
+            if titulo and m.group(1) != make_id(titulo.group(1)):
+                cambiadas.append(f"{pagina.name}:{i + 1} ({m.group(1)}) -> {titulo.group(1)}")
     assert not cambiadas, (
         "estas etiquetas quedan justo antes de un encabezado y le reemplazan el ancla. "
         f"Muévelas después del encabezado: {cambiadas}"

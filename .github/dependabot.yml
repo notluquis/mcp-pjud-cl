@@ -24,6 +24,11 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # init, analyze y upload-sarif tienen que ir en la misma versión: si Dependabot sube uno
+    # solo, CodeQL falla con "Loaded a configuration file for version X, but running version Y".
+    groups:
+      codeql-action:
+        patterns: ["github/codeql-action*"]
     commit-message:
       prefix: "chore"
     labels: ["dependencias"]

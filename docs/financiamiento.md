@@ -6,8 +6,14 @@ myst:
 
 # Financiamiento
 
-Este proyecto lo mantiene una persona en su tiempo libre. Si te sirve y quieres apoyarlo, hay
-un botón de patrocinio en la página del repositorio.
+Este proyecto lo mantiene una persona en su tiempo libre. Si te sirve y quieres apoyarlo,
+puedes hacerlo a través de [GitHub Sponsors](https://github.com/sponsors/notluquis), con un
+aporte único o mensual. Es el botón **Sponsor** de la página del repositorio.
+
+Se eligió esa vía y no otra porque llega entera. [Según
+GitHub](https://docs.github.com/es/sponsors/receiving-sponsorships-through-github-sponsors/about-github-sponsors-for-open-source-contributors),
+no cobra comisión cuando dona una persona, y hasta un 6 % cuando dona una organización. Basta
+una cuenta de GitHub y una tarjeta.
 
 ## Lo primero, porque es lo que más se malentiende
 

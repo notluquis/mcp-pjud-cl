@@ -1,13 +1,8 @@
 # Donar NO otorga licencia comercial.
 # https://mcp-pjud-cl.readthedocs.io/es/latest/financiamiento.html
 # El permiso de uso profesional se pide gratis por issue y no cuesta dinero.
+#
+# Sólo GitHub Sponsors: por qué, y lo que cobra, en docs/financiamiento.md. Ko-fi, Buy Me a
+# Coffee y Liberapay cobran por PayPal o Stripe, el mismo camino con más pasos.
 
 github: [notluquis]
-
-# Descomenta las que actives. Una sola cuenta por plataforma.
-# buy_me_a_coffee: notluquis
-# ko_fi: notluquis
-# polar: notluquis
-# open_collective: mcp-pjud-cl
-# liberapay: notluquis
-# custom: ["https://ejemplo.cl/donar"]

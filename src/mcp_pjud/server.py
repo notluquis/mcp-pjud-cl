@@ -451,6 +451,11 @@ mcp = _ServidorQueCabe(
     instructions=DIRECTIVA,
     icons=[Icon(src=ICONO, mime_type="image/svg+xml", sizes=["any"])],
     cache_hints=dict.fromkeys(CATALOGOS_CON_PISTA, CACHE_DEL_CATALOGO),
+    # El catálogo y los recursos son fijos mientras el proceso vive: no hay cambios que
+    # avisar. Sin esto el SDK anunciaba `subscribe` y `listChanged` en el carril moderno, o
+    # sea prometía avisos que este servidor nunca emite. Existe desde `mcp` 2.3; en 2.2 se
+    # aceptaba y no tenía efecto, por eso el piso de la dependencia.
+    subscriptions=False,
 )
 
 _CONTACTO = os.environ.get("MCP_PJUD_CONTACTO", "")

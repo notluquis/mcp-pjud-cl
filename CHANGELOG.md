@@ -23,11 +23,15 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 ### Cambiado
 
 - `pydantic` sube a 2.14.3, la primera con wheel de `pydantic-core` para Python 3.15.
+- El servidor ya no anuncia `subscribe` ni `listChanged` en el carril moderno: no emite esos
+  avisos. Exige `mcp` 2.3 o superior.
 
 ### Seguridad
 
 - `pypdf` exige 6.21.4 o superior, la primera sin las vulnerabilidades conocidas al leer PDF.
   El lock fija 7.1.0, junto con `urllib3`, `certifi`, `soupsieve` y `opentelemetry-api` parchados.
+- `httpx2` exige 2.12 o superior, la primera sin avisos publicados. El lock sube `truststore`
+  a 0.10.5, que corrige una verificación de certificado que podía saltarse en macOS y Windows.
 
 ## [0.20.1] - 2026-08-30
 

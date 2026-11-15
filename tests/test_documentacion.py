@@ -3831,6 +3831,37 @@ def test_los_enlaces_publicados_a_la_hoja_de_ruta_siguen_llegando_a_alguna_parte
     )
 
 
+def test_ninguna_etiqueta_le_cambia_el_ancla_a_un_encabezado():
+    """Desde myst-parser 5.2, una `(etiqueta)=` justo antes de un encabezado pasa a ser el `id`
+    principal de esa sección: el permalink, el índice lateral y el buscador muestran la
+    etiqueta y no el título.
+
+    Pasó con siete secciones de la hoja de ruta, que llevaban arriba los anclajes heredados
+    del corte. Los enlaces viejos seguían llegando, así que ningún otro guardia lo veía: lo que
+    cambiaba era el ancla que se copia desde la página. Las etiquetas heredadas van DESPUÉS
+    del encabezado. Una antes sólo se acepta si coincide con el `id` que el título ya tenía.
+    """
+    from docutils.nodes import make_id
+
+    etiqueta = re.compile(r"^\(([\w-]+)\)=$")
+    cambiadas = []
+    for pagina in sorted((RAIZ / "docs").glob("*.md")):
+        lineas = _texto(pagina).split("\n")
+        for i, linea in enumerate(lineas):
+            if not (m := etiqueta.match(linea)):
+                continue
+            j = i + 1
+            while j < len(lineas) and (not lineas[j] or etiqueta.match(lineas[j])):
+                j += 1
+            if j < len(lineas) and (t := re.match(r"^#+ (.+)$", lineas[j])):
+                if m.group(1) != make_id(t.group(1)):
+                    cambiadas.append(f"{pagina.name}:{i + 1} ({m.group(1)}) -> {t.group(1)}")
+    assert not cambiadas, (
+        "estas etiquetas quedan justo antes de un encabezado y le reemplazan el ancla. "
+        f"Muévelas después del encabezado: {cambiadas}"
+    )
+
+
 #: El estudio que se cita para no justificar decisiones con `llms.txt`. Vive acá porque la
 #: cifra está escrita a mano en tres lugares y no sale de ningún código: es una fuente externa.
 #: Lo que el guardia puede hacer no es verificarla, es impedir que las tres copias se

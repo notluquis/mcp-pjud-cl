@@ -44,7 +44,11 @@ jobs:
       #   objects.githubusercontent.com, release-assets.githubusercontent.com
       #                                                    -> binarios de las acciones
       #   raw.githubusercontent.com                        -> manifiesto de versiones de uv
-      #   astral.sh                                        -> binario de uv
+      #   astral.sh, releases.astral.sh                    -> binario de uv. setup-uv lo baja
+      #                                                       primero del espejo `releases`; sin
+      #                                                       él cada intento expira y el job
+      #                                                       pierde ~5 minutos antes de caer
+      #                                                       a GitHub Releases
       #   pypi.org, files.pythonhosted.org                 -> uv sync
       #
       # Si esto pone CI en rojo con un destino no declarado, la respuesta correcta es
@@ -64,6 +68,7 @@ jobs:
             pypi.org:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
+            releases.astral.sh:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

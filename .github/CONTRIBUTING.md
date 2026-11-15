@@ -90,6 +90,25 @@ Las fixtures traen nombres y roles de causas **públicas**. Antes de agregar una
 
 Ver [ACCEPTABLE_USE.md](../ACCEPTABLE_USE.md).
 
+### Versiones de Python
+
+CI prueba cada versión que el proyecto declara compatible, y sólo ésas. Están en cuatro
+lugares que un test mantiene alineados: la matriz de `.github/workflows/tests.yml`, los
+clasificadores de `pyproject.toml`, el piso de `requires-python` (la más antigua) y
+`.python-version` (la más nueva, la que usan el desarrollo local y los demás workflows).
+
+Para sumar una versión nueva de Python:
+
+1. Revisa que las dependencias con extensiones compiladas (`pydantic-core`, `lxml`) ya
+   publiquen wheel para ella. CI bloquea el tráfico saliente y no puede compilarlas: cargo
+   necesita `index.crates.io`, que no está permitido.
+2. Agrégala a la matriz y a los clasificadores, y actualiza `.python-version`.
+3. Si alguna dependencia no tiene wheel, súbela con `uv lock --upgrade-package <nombre>`
+   en el mismo PR.
+
+Para dejar de soportar una, sácala de la matriz y de los clasificadores y sube el piso de
+`requires-python`.
+
 ### Idioma
 
 Código, comentarios, commits, issues y documentación en **español de Chile**. Los nombres de

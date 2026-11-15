@@ -2950,6 +2950,40 @@ def test_ningun_workflow_permite_salir_al_poder_judicial():
     )
 
 
+def test_las_versiones_de_python_probadas_son_las_declaradas():
+    """La lista de versiones vive en cuatro lugares: la matriz de `tests.yml`, los
+    clasificadores, el piso de `requires-python` y `.python-version`, que fija la que usan los
+    demás workflows y el desarrollo local.
+
+    Sin fijar, uv toma la más nueva que exista, y así entró 3.15 sin que nadie la agregara: la
+    suite quedó en rojo cinco semanas porque `pydantic-core` no tenía wheel. Si se suma una
+    versión en un lugar y no en los otros, se declara compatible algo que CI no prueba, o se
+    prueba una que nadie usa.
+    """
+    flujo = yaml.safe_load(_texto(RAIZ / ".github" / "workflows" / "tests.yml"))
+    matriz = flujo["jobs"]["test"]["strategy"]["matrix"]["python"]
+    proyecto = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]
+    prefijo = "Programming Language :: Python :: "
+    clasificadas = [
+        c.removeprefix(prefijo)
+        for c in proyecto["classifiers"]
+        if c.startswith(prefijo) and c.removeprefix(prefijo).count(".") == 1
+    ]
+
+    def clave(v: str) -> tuple[int, ...]:
+        return tuple(int(x) for x in v.split("."))
+
+    assert sorted(matriz, key=clave) == sorted(clasificadas, key=clave), (
+        f"La matriz de CI prueba {matriz} y los clasificadores declaran {clasificadas}"
+    )
+    assert proyecto["requires-python"] == f">={min(matriz, key=clave)}", (
+        "El piso de `requires-python` tiene que ser la versión más antigua de la matriz"
+    )
+    assert _texto(RAIZ / ".python-version").strip() == max(matriz, key=clave), (
+        "`.python-version` tiene que ser la versión más nueva de la matriz"
+    )
+
+
 def test_las_cifras_de_latencia_medidas_son_las_mismas_en_todas_partes():
     """Justifican `ESPERA_MAXIMA` y se citan en tres archivos.
 

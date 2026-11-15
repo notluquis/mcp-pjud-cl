@@ -2962,6 +2962,10 @@ def test_las_versiones_de_python_probadas_son_las_declaradas():
     """
     flujo = yaml.safe_load(_texto(RAIZ / ".github" / "workflows" / "tests.yml"))
     matriz = flujo["jobs"]["suite"]["strategy"]["matrix"]["python"]
+    # Sin comillas, YAML lee `3.10` como el número 3.1, y convertirlo a texto no lo recupera.
+    assert all(isinstance(v, str) for v in matriz), (
+        f"Las versiones de la matriz van entre comillas: {matriz}"
+    )
     proyecto = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]
     prefijo = "Programming Language :: Python :: "
     clasificadas = [

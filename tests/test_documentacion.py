@@ -4075,7 +4075,7 @@ def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto
     esperadas = {
         "`tasks/*`": "ausente",
         "Sampling, roots, elicitación": "no define peticiones del servidor al cliente",
-        "`subscribe` y `listChanged`": "los deriva el SDK de servir `subscriptions/listen`",
+        "`subscribe` y `listChanged`": "salen en falso en los dos carriles",
         "`InputRequiredResult`": "sólo existe en el carril moderno",
         "`extensions` (SEP-2133)": "no define ninguna",
     }
@@ -4105,10 +4105,6 @@ def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto
         f"({', '.join(del_servidor)}), y la tabla dice que no hay ninguna que adoptar "
         "(sampling, roots, elicitación)"
     )
-    assert ("subscriptions/listen", v) in CLIENT_REQUESTS, (
-        "desapareció `subscriptions/listen`, de la que el SDK deriva `subscribe` y "
-        "`listChanged` en el carril moderno: la explicación de la tabla deja de aplicar"
-    )
     # Por revisión y no por `INPUT_REQUIRED_METHODS`, que sale del mapa monolítico y no lleva
     # versión: pertenecer a ese conjunto sólo prueba que existe en ALGUNA, y la fila afirma que
     # existe en la moderna y no en la que negocian los clientes de hoy.
@@ -4123,12 +4119,12 @@ def test_lo_que_la_hoja_de_ruta_da_por_cerrado_del_protocolo_sigue_siendo_cierto
     )
 
 
-def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
-    """La tabla dice que `subscribe` y `listChanged` los deriva el SDK, no nosotros.
+def test_ningun_carril_anuncia_suscripciones():
+    """La tabla dice que `subscribe` y `listChanged` salen en falso en los dos carriles.
 
-    Se mide por el cable en los dos carriles: en el viejo salen en falso, que es lo que este
-    servidor pide, y en el moderno en verdadero sin que nadie los haya pedido. Si algún día
-    salen iguales en los dos, la fila deja de ser cierta y hay que decidir qué se declara.
+    Se mide por el cable y no leyendo `subscriptions=False` en el código: en `mcp` 2.2 esa
+    opción se aceptaba sin efecto y el carril moderno seguía anunciando avisos que este
+    servidor nunca emite. Leer el argumento habría pasado con el anuncio falso puesto.
     """
     import asyncio
 
@@ -4155,7 +4151,7 @@ def test_las_capacidades_del_carril_moderno_no_las_declara_este_servidor():
     # `listChanged` además de `subscribe`, porque la fila nombra las dos: una actualización que
     # dejara `subscribe` en verdadero y quitara `listChanged` volvía falsa la hoja de ruta con
     # este guardia en verde. Y las tres capacidades que lo llevan, no una.
-    for donde, esperado in (("viejo", False), ("moderno", True)):
+    for donde, esperado in (("viejo", False), ("moderno", False)):
         caps = viejo if donde == "viejo" else moderno
         assert caps["resources"]["subscribe"] is esperado, (
             f"el carril {donde} declara `subscribe` en {caps['resources']['subscribe']} y la "

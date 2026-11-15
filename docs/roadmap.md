@@ -792,7 +792,7 @@ a medir. Lo que sí se usa vive en {doc}`herramientas`.
 | Sampling, roots, elicitación | la revisión no define peticiones del servidor al cliente: no hay nada que adoptar |
 | `tasks/*` | ausente del mapa de métodos del SDK |
 | `extensions` (SEP-2133) | es un registro de extensiones propias, y este servidor no define ninguna |
-| `subscribe` y `listChanged` | en el carril moderno los deriva el SDK de servir `subscriptions/listen`; no son una declaración de este servidor |
+| `subscribe` y `listChanged` | el catálogo y los recursos no cambian mientras el proceso vive, así que no hay avisos que emitir. El SDK los derivaba de servir `subscriptions/listen` y los anunciaba en el carril moderno; desde `mcp` 2.3 se apagan con `subscriptions=False` y salen en falso en los dos carriles |
 | Esquema de salida en `obtener_detalle_causa` y `obtener_documento` | apagado a propósito: uno por presupuesto del catálogo, el otro porque devuelve bloques del protocolo y no un modelo |
 
 ## Otro objetivo: lo que sale de este servidor

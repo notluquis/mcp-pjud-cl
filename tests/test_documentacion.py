@@ -6177,3 +6177,23 @@ def test_el_listado_nombra_todo_campo_que_alguna_competencia_no_publica():
         assert f"`{campo}`" in _SOLO_DE_UNA_COMPETENCIA, (
             f"{campo!r} falta en unas competencias y el aviso del listado no lo nombra"
         )
+
+
+def test_la_pagina_de_financiamiento_enlaza_la_cuenta_que_declara_funding():
+    """El botón Sponsor sale de `FUNDING.yml`; el enlace de la documentación se escribe a mano.
+
+    Si la cuenta cambia en un lado y no en el otro, quien llega por la documentación cae en
+    una página sin perfil, y nada lo avisa: el enlace a otra cuenta de GitHub responde igual.
+    """
+    funding = yaml.safe_load(_texto(RAIZ / ".github" / "FUNDING.yml"))
+    cuentas = funding["github"]
+    assert len(cuentas) == 1, f"FUNDING.yml declara {cuentas}: la página nombra una sola cuenta"
+
+    enlazadas = set(
+        re.findall(
+            r"https://github\.com/sponsors/([\w-]+)", _texto(RAIZ / "docs" / "financiamiento.md")
+        )
+    )
+    assert enlazadas == {cuentas[0]}, (
+        f"financiamiento.md enlaza {sorted(enlazadas)} y FUNDING.yml declara {cuentas[0]}"
+    )

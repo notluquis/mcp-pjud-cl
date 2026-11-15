@@ -761,6 +761,19 @@ Y el aviso que faltó: un job canario corre el suite contra el `mcp` más recien
 un release que rompa algo se pone rojo el día que sale y no siete días después, como pasó con
 2.1.
 
+### 0.21: dependencias al día, con cada cambio leído contra su uso — hecho
+
+**Sin funciones nuevas, y a propósito.** CI estuvo cinco semanas en rojo porque uv eligió
+Python 3.15 por su cuenta y `pydantic-core` no tenía wheel para él. Ahora la matriz prueba 3.13,
+3.14 y 3.15 de forma explícita, y un test mantiene alineadas las versiones declaradas con las
+probadas. Con CI de vuelta, cada actualización pendiente se revisó leyendo su registro de cambios
+contra el código que la usa, no por el número.
+
+**Lo que cambia para quien lo usa.** El servidor deja de anunciar suscripciones que nunca emite
+(`mcp` 2.3), y los pisos de `pypdf` y `httpx2` suben a las primeras versiones sin avisos de
+seguridad publicados. La jerarquía de excepciones de `httpx2` se comparó entre versiones: la
+detención total ante un rechazo se comporta igual.
+
 ## Lo que queda de este servidor
 
 (sin-version-asignada)=

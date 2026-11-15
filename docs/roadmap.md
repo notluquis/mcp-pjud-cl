@@ -43,8 +43,9 @@ un listado**. Doce causas son unas sesenta peticiones, y bajo el régimen sosten
 5 segundos eso son unos cinco minutos: la ráfaga alcanza para la primera causa y no cambia el
 total. La respuesta correcta es devolver el listado para que el usuario elija cuál abrir.
 
-(03-jurisprudencia-hecho-parcialmente)=
 ### 0.3: jurisprudencia — hecho
+
+(03-jurisprudencia-hecho-parcialmente)=
 
 `buscar_jurisprudencia` anda contra siete de los diez buscadores: Corte Suprema, Cortes de
 Apelaciones, Laborales, Civiles, Cobranza, Familia y Salud CS. El de Penales está medido y no se
@@ -209,8 +210,9 @@ usa la Oficina Judicial Virtual**. Son dos sistemas con dos vocabularios.
 Queda como pregunta abierta y no como tarea: si lo que se quería era "¿cuándo me ven?", esto no
 lo responde, y dónde vive esa consulta, o si existe, no está medido.
 
-(07-documentos)=
 ### 0.7: documentos — hecho parcialmente
+
+(07-documentos)=
 
 No es una ruta, son siete en civil y **veintisiete** contando las cinco competencias. Todas son
 `GET` con un solo parámetro oculto que lleva una referencia opaca, igual que el resto del sitio,
@@ -292,9 +294,9 @@ guarda sin usarla: `detalleExhortos.php` sigue mapeado y sin ejecutar, y cuando 
 ya está. **No sirve como identidad**: el mismo exhorto llega con una referencia distinta en
 cada cuaderno, así que la deduplicación las ignora a propósito.
 
-(07b-la-georreferencia-medida-y-trae-una-tercera-fecha)=
-
 ### 0.7b: la georreferencia — hecha
+
+(07b-la-georreferencia-medida-y-trae-una-tercera-fecha)=
 
 Hoy la Historia sólo dice si una actuación tiene georreferencia. Detrás del modal hay más de lo
 que esta página suponía. Lo medido está en {doc}`verificacion`.
@@ -759,8 +761,9 @@ Y el aviso que faltó: un job canario corre el suite contra el `mcp` más recien
 un release que rompa algo se pone rojo el día que sale y no siete días después, como pasó con
 2.1.
 
-(sin-version-asignada)=
 ## Lo que queda de este servidor
+
+(sin-version-asignada)=
 
 La superficie no cambia: leer la Oficina Judicial Virtual y el buscador de fallos. Con eso
 dicho, lo que falta **no espera trabajo, espera datos**.
@@ -930,6 +933,12 @@ Son objetivos explícitos y no encabezados: un encabezado por cada sección movi
 archivo que este corte vino a deshacer, y además `docutils` le pone un `id` a toda sección,
 así que también hacían falta los de nivel 4.
 
+Van **después** de cada encabezado y no antes: desde myst-parser 5.2, una etiqueta justo antes
+de un encabezado se vuelve el ancla principal de esa sección, y el enlace que se copia desde la
+página mostraría el nombre viejo. Un test lo comprueba.
+
+### Se fueron a {doc}`verificacion`
+
 (endpoints-del-buscador-mapeados-y-sin-ejecutar)=
 (los-diez-buscadores)=
 (los-dos-lados-del-exhorto-medidos)=
@@ -941,7 +950,6 @@ así que también hacían falta los de nivel 4.
 (que-esta-verificado-y-que-no)=
 (reglas-de-la-plataforma-ya-mapeadas)=
 (sobre-los-identificadores-de-causa-en-esta-documentacion)=
-### Se fueron a {doc}`verificacion`
 
 - Endpoints del buscador, mapeados y sin ejecutar
 - Los diez buscadores
@@ -950,6 +958,8 @@ así que también hacían falta los de nivel 4.
 - Sin cubrir del todo
 - Verificado contra el sistema real
 - Verificado sólo contra fixtures
+
+### Se fueron a {doc}`ecosistema`
 
 (api-de-boostr)=
 (causalerta)=
@@ -973,7 +983,6 @@ así que también hacían falta los de nivel 4.
 (webscrapthings)=
 
 (que-mas-existe)=
-### Se fueron a {doc}`ecosistema`
 
 - API de Boostr
 - CausAlerta
@@ -996,11 +1005,12 @@ así que también hacían falta los de nivel 4.
 - `automatizador-legal`
 - `webscrapthings`
 
+### Se fueron a {doc}`cumplimiento`
+
 (sobre-cii-best-practices)=
 (sobre-fuzzing)=
 
 (hallazgos-de-openssf-scorecard-que-siguen-abiertos)=
-### Se fueron a {doc}`cumplimiento`
 
 - Sobre `CII-Best-Practices`
 - Sobre `Fuzzing`

@@ -16,6 +16,14 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+### Agregado
+
+- Compatibilidad declarada y probada con Python 3.14 y 3.15, además de 3.13.
+
+### Cambiado
+
+- `pydantic` sube a 2.14.3, la primera con wheel de `pydantic-core` para Python 3.15.
+
 ## [0.20.1] - 2026-08-30
 
 ### Corregido

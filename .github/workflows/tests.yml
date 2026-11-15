@@ -18,9 +18,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  suite:
+    name: suite (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Las versiones van explícitas porque, sin fijarlas, uv toma la más nueva que exista. Así
+    # entró Python 3.15 en octubre de 2026: `pydantic-core` no tenía wheel para 3.15, uv lo
+    # compiló con cargo, harden-runner bloqueó `index.crates.io` y la suite quedó en rojo cinco
+    # semanas, con el mismo error en cada PR de Dependabot. Y el piso de `requires-python`
+    # (3.13) nunca se probaba. El procedimiento para sumar una versión está en CONTRIBUTING.
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.14", "3.15"]
     permissions:
       contents: read
     steps:
@@ -34,7 +44,11 @@ jobs:
       #   objects.githubusercontent.com, release-assets.githubusercontent.com
       #                                                    -> binarios de las acciones
       #   raw.githubusercontent.com                        -> manifiesto de versiones de uv
-      #   astral.sh                                        -> binario de uv
+      #   astral.sh, releases.astral.sh                    -> binario de uv. setup-uv lo baja
+      #                                                       primero del espejo `releases`; sin
+      #                                                       él cada intento expira y el job
+      #                                                       pierde ~5 minutos antes de caer
+      #                                                       a GitHub Releases
       #   pypi.org, files.pythonhosted.org                 -> uv sync
       #
       # Si esto pone CI en rojo con un destino no declarado, la respuesta correcta es
@@ -54,6 +68,7 @@ jobs:
             pypi.org:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
+            releases.astral.sh:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,6 +84,7 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
+          python-version: ${{ matrix.python }}
 
       - run: uv sync --all-groups
 
@@ -106,6 +122,22 @@ jobs:
         # comando salía en 0 con tres avisos que nadie iba a leer en el registro de CI.
         # El árbol actual ya pasa con `-W`, así que se enciende sin deuda previa.
         run: uv run sphinx-build -W -b html docs docs/_build/html
+
+  # La protección de `main` exige un check llamado `test`. Los de la matriz llevan la versión en
+  # el nombre, así que éste los resume en uno: sumar o quitar una versión no obliga a tocar la
+  # configuración del repositorio. `always()` hace que corra aunque alguno falle, y si no
+  # corriera el check exigido quedaría pendiente en vez de rojo.
+  test:
+    needs: suite
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Todas las versiones de la matriz pasaron
+        env:
+          RESULTADO: ${{ needs.suite.result }}
+        run: test "$RESULTADO" = success
 
   workflows:
     name: Analizar los propios workflows

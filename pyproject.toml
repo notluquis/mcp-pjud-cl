@@ -89,6 +89,10 @@ dev = [
     # entera muere al recolectar, y con ella la publicación que ese guardia protege.
     "pyyaml>=6.0",
     "cogapp>=3.6",
+    # `make_id` es la regla con la que docutils arma el `id` de una sección, y el guardia de
+    # anclas de la documentación la usa para no reimplementarla. Va acá y no sólo en `docs`
+    # porque `publicar.yml` y `mutacion.yml` corren la suite con `--group dev`.
+    "docutils>=0.21",
 ]
 
 [build-system]

@@ -961,6 +961,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "cogapp" },
+    { name = "docutils" },
     { name = "hypothesis" },
     { name = "jsonschema" },
     { name = "lxml-stubs" },
@@ -994,6 +995,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "cogapp", specifier = ">=3.6" },
+    { name = "docutils", specifier = ">=0.21" },
     { name = "hypothesis", specifier = ">=6.165.10" },
     { name = "jsonschema", specifier = ">=4.20" },
     { name = "lxml-stubs", specifier = ">=0.5.1" },

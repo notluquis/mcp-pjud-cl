@@ -3851,7 +3851,7 @@ def test_ninguna_etiqueta_le_cambia_el_ancla_a_un_encabezado():
             if not (m := etiqueta.match(linea)):
                 continue
             j = i + 1
-            while j < len(lineas) and (not lineas[j] or etiqueta.match(lineas[j])):
+            while j < len(lineas) and (not lineas[j].strip() or etiqueta.match(lineas[j])):
                 j += 1
             titulo = re.match(r"^#+ (.+)$", lineas[j]) if j < len(lineas) else None
             if titulo and m.group(1) != make_id(titulo.group(1)):

@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: test (Python ${{ matrix.python }})
+  suite:
+    name: suite (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Las versiones van explícitas porque, sin fijarlas, uv toma la más nueva que exista. Así
@@ -117,6 +117,22 @@ jobs:
         # comando salía en 0 con tres avisos que nadie iba a leer en el registro de CI.
         # El árbol actual ya pasa con `-W`, así que se enciende sin deuda previa.
         run: uv run sphinx-build -W -b html docs docs/_build/html
+
+  # La protección de `main` exige un check llamado `test`. Los de la matriz llevan la versión en
+  # el nombre, así que éste los resume en uno: sumar o quitar una versión no obliga a tocar la
+  # configuración del repositorio. `always()` hace que corra aunque alguno falle, y si no
+  # corriera el check exigido quedaría pendiente en vez de rojo.
+  test:
+    needs: suite
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Todas las versiones de la matriz pasaron
+        env:
+          RESULTADO: ${{ needs.suite.result }}
+        run: test "$RESULTADO" = success
 
   workflows:
     name: Analizar los propios workflows

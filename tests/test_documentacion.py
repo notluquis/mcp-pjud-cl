@@ -2961,7 +2961,7 @@ def test_las_versiones_de_python_probadas_son_las_declaradas():
     prueba una que nadie usa.
     """
     flujo = yaml.safe_load(_texto(RAIZ / ".github" / "workflows" / "tests.yml"))
-    matriz = flujo["jobs"]["test"]["strategy"]["matrix"]["python"]
+    matriz = flujo["jobs"]["suite"]["strategy"]["matrix"]["python"]
     proyecto = tomllib.loads(_texto(RAIZ / "pyproject.toml"))["project"]
     prefijo = "Programming Language :: Python :: "
     clasificadas = [

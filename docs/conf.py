@@ -64,6 +64,11 @@ html_static_path = []
 # línea que lee un agente y ahí tiene que estar la distinción entre las dos fechas.
 llms_txt_enabled = True
 llms_txt_full_build = True
+# El Markdown de llms.txt no sabe traducir estos dos nodos y los omite: `meta` son etiquetas
+# del `<head>` HTML, y `mermaid` deja el diagrama sólo en la versión HTML. Desde sphinx-llm 1.1.0
+# cada omisión llega como aviso al build principal y `-W` la vuelve error. Se nombran uno por
+# uno y no con `True` para que un nodo nuevo que se pierda siga rompiendo el build.
+llms_txt_suppress_unknown_node_warnings = ["meta", "mermaid"]
 llms_txt_description = (
     "Servidor MCP de solo lectura para la consulta pública de causas del Poder Judicial "
     "de Chile. fecha_diligencia es la que corre los plazos procesales; fecha_registro no."

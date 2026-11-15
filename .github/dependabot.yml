@@ -16,6 +16,11 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
+    # pytest y mutmut juntos: pytest 9.2 quitó `Node._nodeid` y rompió mutmut 3.8.0. Solo, el
+    # PR de pytest pasaba CI y la mutación se caía después, tapada por el `|| true` del job.
+    groups:
+      pruebas:
+        patterns: ["pytest", "mutmut"]
     commit-message:
       prefix: "chore"
     labels: ["dependencias"]

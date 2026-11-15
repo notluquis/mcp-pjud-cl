@@ -1041,13 +1041,13 @@ def _extraer_texto(pagina: object) -> str:
     leía.
     """
     try:
-        return pagina.extract_text(  # ty: ignore[unresolved-attribute]
+        return pagina.extract_text(  # ty: ignore[missing-attribute]
             extraction_mode="layout",
             layout_mode_space_vertically=False,
             layout_mode_strip_rotated=False,
         )
     except Exception:
-        return pagina.extract_text()  # ty: ignore[unresolved-attribute]
+        return pagina.extract_text()  # ty: ignore[missing-attribute]
 
 
 def _describir_pdf(contenido: bytes) -> _DescripcionPdf:

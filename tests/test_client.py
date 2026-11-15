@@ -1879,10 +1879,13 @@ def test_todas_las_salidas_del_recorrido_pasan_por_la_misma_entrega():
     """
     import ast
     import inspect
+    import textwrap
 
     from mcp_pjud.client import PjudClient
 
-    arbol = ast.parse(inspect.getsource(PjudClient._paginado).lstrip())
+    # `dedent` y no `lstrip`: bajo mutmut el método trae un decorador, y quitar sólo la
+    # sangría de la primera línea deja las demás desalineadas (`IndentationError`).
+    arbol = ast.parse(textwrap.dedent(inspect.getsource(PjudClient._paginado)))
 
     # Los del ayudante no cuentan, y se excluyen por DÓNDE están y no por su forma: excluir
     # los condicionales dejaba sin mirar una salida nueva escrita como expresión condicional,

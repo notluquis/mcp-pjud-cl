@@ -73,10 +73,12 @@ docs = [
 dev = [
     "pytest>=8.3",
     "ruff>=0.9",
-    "mutmut>=3.2",
+    # 3.8.1 porque pytest 9.2 quitó `Node._nodeid` y 3.8.0 revienta al juntar estadísticas.
+    "mutmut>=3.8.1",
     "zizmor>=1.29",
     "hypothesis>=6.165.10",
-    "ty>=0.0.72",
+    # 0.0.100 por los nombres de regla de `[tool.ty.overrides.rules]` y los `ty: ignore`.
+    "ty>=0.0.100",
     "lxml-stubs>=0.5.1",
     # `tests/test_protocolo.py` valida el contenido estructurado contra el esquema que el
     # servidor anuncia. Funciona sin declararlo, porque `mcp` lo arrastra, y por eso mismo se
@@ -121,7 +123,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "S", "DTZ", "RUF", "PT", "C4", "PTH"]
 include = ["src/mcp_pjud/parser.py", "tests/test_parser.py"]
 
 [tool.ty.overrides.rules]
-unresolved-attribute = "ignore"
+# ty 0.0.100 partió `unresolved-attribute` en `missing-attribute` y `missing-union-attribute`;
+# son las mismas omisiones de antes, ahora con dos nombres.
+missing-attribute = "ignore"
+missing-union-attribute = "ignore"
 invalid-argument-type = "ignore"
 not-iterable = "ignore"
 not-subscriptable = "ignore"
@@ -139,8 +144,6 @@ source_paths = ["src/mcp_pjud/"]
 pytest_add_cli_args_test_selection = ["tests/"]
 
 [tool.ruff.lint.per-file-ignores]
-# El harness de fuzzing importa atheris, que se instala a demanda y no es dependencia.
-"tests/fuzz_parser.py" = ["E402"]
 # S101 es `assert`, que en pytest es la forma de escribir un test. S106 marca literales que
 # parecen contraseñas: acá son tokens de mentira para los dobles, y las fixtures ya se
 # revisan aparte en `test_fixtures.py`.

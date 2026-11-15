@@ -16,6 +16,8 @@ tercero que puede cambiar cualquier día. Prometer estabilidad sería mentir.
 
 ## [No publicado]
 
+## [0.21.0] - 2026-11-15
+
 ### Agregado
 
 - Compatibilidad declarada y probada con Python 3.14 y 3.15, además de 3.13.
@@ -785,7 +787,8 @@ receptor con la fecha de diligencia correcta.
 - Las causas reservadas no aparecen en la consulta pública.
 - Sin paginación: se procesa el primer resultado de la búsqueda.
 
-[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.20.1...HEAD
+[No publicado]: https://github.com/notluquis/mcp-pjud-cl/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.21.0
 [0.20.1]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.20.1
 [0.20.0]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.20.0
 [0.19.3]: https://github.com/notluquis/mcp-pjud-cl/releases/tag/v0.19.3

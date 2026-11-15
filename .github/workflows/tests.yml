@@ -43,19 +43,20 @@ jobs:
       #   github.com, api.github.com, codeload.github.com  -> checkout y las acciones
       #   objects.githubusercontent.com, release-assets.githubusercontent.com
       #                                                    -> binarios de las acciones
-      #   raw.githubusercontent.com                        -> manifiesto de versiones de uv
-      #   astral.sh, releases.astral.sh                    -> binario de uv. setup-uv lo baja
-      #                                                       primero del espejo `releases`; sin
-      #                                                       él cada intento expira y el job
-      #                                                       pierde ~5 minutos antes de caer
-      #                                                       a GitHub Releases
+      #   astral.sh, releases.astral.sh                    -> uv. Desde setup-uv 10.3.3 el
+      #                                                       manifiesto de versiones y el
+      #                                                       binario salen primero del espejo
+      #                                                       `releases`; sin él cada intento
+      #                                                       expira y el job pierde ~5 minutos
+      #   raw.githubusercontent.com                        -> respaldo del manifiesto de uv si
+      #                                                       el espejo falla
       #   pypi.org, files.pythonhosted.org                 -> uv sync
       #
       # Si esto pone CI en rojo con un destino no declarado, la respuesta correcta es
       # mirar cuál es y decidir si corresponde agregarlo, no volver a `audit`. Un fallo
       # ruidoso acá vale exactamente lo mismo que en el parser.
       - name: Bloquear tráfico saliente no declarado
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -81,7 +82,7 @@ jobs:
           # justo donde importa: verde en CI y roto en lo publicado.
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           python-version: ${{ matrix.python }}
@@ -147,13 +148,29 @@ jobs:
       contents: read
       security-events: write
     steps:
+      # Mismo bloqueo que la suite. Desde zizmor-action 0.7 no hay imagen de Docker: baja el
+      # wheel de zizmor desde PyPI con hashes fijos, consulta la API de GitHub para las
+      # auditorías en línea y sube el SARIF por la misma API.
+      - name: Bloquear tráfico saliente no declarado
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            objects.githubusercontent.com:443
+            pypi.org:443
+            release-assets.githubusercontent.com:443
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       # Busca inyección de plantillas, acciones sin fijar, disparadores peligrosos y
       # permisos excesivos en los workflows de este mismo repositorio.
-      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
 
   sin-escritura:
     name: Verificar que no exista código de escritura

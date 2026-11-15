@@ -324,7 +324,7 @@ def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
             except Exception as e:
                 raise ConsultaFallida(str(e) or repr(e)) from e
 
-        envuelta_async._motivo_viaja = True  # ty: ignore[unresolved-attribute]
+        envuelta_async._motivo_viaja = True  # ty: ignore[missing-attribute]
         return envuelta_async
 
     @functools.wraps(fn)
@@ -338,7 +338,7 @@ def _que_el_motivo_viaje(fn: Callable[..., Any]) -> Callable[..., Any]:
             # que esto existe para evitar, así que ahí se manda la representación.
             raise ConsultaFallida(str(e) or repr(e)) from e
 
-    envuelta._motivo_viaja = True  # ty: ignore[unresolved-attribute]
+    envuelta._motivo_viaja = True  # ty: ignore[missing-attribute]
     return envuelta
 
 

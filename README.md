@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-11-19. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-11-20. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 162 | 18 | 716 | 202 |
-| Todo lo registrado, desde el 2026-08-17 | 1074 | 203 | 9138 | 2405 |
+| Últimos 14 días | 162 | 18 | 725 | 199 |
+| Todo lo registrado, desde el 2026-08-17 | 1075 | 204 | 9162 | 2412 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-11-20 | 2 | 1 | 0 | 2 |
 | 2026-11-19 | 2 | 1 | 0 | 0 |
 | 2026-11-18 | 2 | 1 | 0 | 0 |
 | 2026-11-17 | 2 | 1 | 0 | 0 |
@@ -216,18 +217,18 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-11-19. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-20. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
-| `Google` | 5 | 4 |
+| `Google` | 4 | 3 |
 | `github.com` | 4 | 3 |
 | `mcp-pjud-cl.readthedocs.io` | 3 | 3 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-11-19. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-20. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
@@ -247,6 +248,7 @@ que restar dos fotos para inferirlo daría un número inventado.
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-11-19 | 1 | 1 | 24 | 7 |
 | 2026-11-18 | 0 | 0 | 19 | 12 |
 | 2026-11-17 | 5 | 5 | 35 | 19 |
 | 2026-11-16 | 2 | 2 | 33 | 20 |

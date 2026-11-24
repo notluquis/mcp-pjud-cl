@@ -1,6 +1,6 @@
 # Estadísticas de mcp-pjud-cl
 
-Foto del 2026-11-23. **Generado, no editar a mano**: lo reescribe el flujo
+Foto del 2026-11-24. **Generado, no editar a mano**: lo reescribe el flujo
 `estadisticas` cada día, y cualquier cambio se pierde en la corrida siguiente.
 
 ## Cómo leer esto antes de leerlo
@@ -19,8 +19,8 @@ instalación documentada es `uvx --from git+https://…`, que clona: nunca toca 
 
 | Período | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
-| Últimos 14 días | 151 | 17 | 752 | 215 |
-| Todo lo registrado, desde el 2026-08-17 | 1076 | 205 | 9227 | 2452 |
+| Últimos 14 días | 181 | 20 | 819 | 223 |
+| Todo lo registrado, desde el 2026-08-17 | 1106 | 208 | 9305 | 2467 |
 
 Las columnas de únicos NO se suman entre días: quien vuelve mañana cuenta de nuevo.
 Sirven para comparar un día contra otro, no para saber cuánta gente distinta hubo.
@@ -29,6 +29,7 @@ Sirven para comparar un día contra otro, no para saber cuánta gente distinta h
 
 | Foto | Estrellas | Forks | Suscriptores | Incidencias abiertas |
 |---|---|---|---|---|
+| 2026-11-24 | 2 | 1 | 0 | 4 |
 | 2026-11-23 | 2 | 1 | 0 | 4 |
 | 2026-11-22 | 2 | 1 | 0 | 3 |
 | 2026-11-21 | 2 | 1 | 0 | 3 |
@@ -220,28 +221,28 @@ construirla. Es la única parte de esto que no se puede recuperar mirando despu�
 
 ## De dónde llegan
 
-Acumulado de los catorce días hasta el 2026-11-23. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-24. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Referente | Vistas | Únicas |
 |---|---|---|
-| `Google` | 4 | 3 |
+| `Google` | 8 | 5 |
+| `github.com` | 5 | 4 |
 | `mcp-pjud-cl.readthedocs.io` | 3 | 3 |
-| `github.com` | 2 | 2 |
 
 ## Qué miran
 
-Acumulado de los catorce días hasta el 2026-11-23. GitHub no lo entrega por día, así
+Acumulado de los catorce días hasta el 2026-11-24. GitHub no lo entrega por día, así
 que restar dos fotos para inferirlo daría un número inventado.
 
 | Ruta | Vistas | Únicas |
 |---|---|---|
-| `/notluquis/mcp-pjud-cl/pulls` | 45 | 2 |
-| `/notluquis/mcp-pjud-cl` | 20 | 11 |
-| `/notluquis/mcp-pjud-cl/issues` | 11 | 2 |
+| `/notluquis/mcp-pjud-cl/pulls` | 50 | 2 |
+| `/notluquis/mcp-pjud-cl` | 29 | 13 |
+| `/notluquis/mcp-pjud-cl/issues` | 12 | 2 |
 | `/notluquis/mcp-pjud-cl/pull/269` | 7 | 1 |
+| `/notluquis/mcp-pjud-cl/issues/257` | 6 | 2 |
 | `/notluquis/mcp-pjud-cl/pull/258` | 6 | 1 |
-| `/notluquis/mcp-pjud-cl/issues/257` | 5 | 2 |
 | `/notluquis/mcp-pjud-cl/pull/243` | 5 | 1 |
 | `/notluquis/mcp-pjud-cl/issues/new/choose` | 4 | 2 |
 | `/notluquis/mcp-pjud-cl/pull/259` | 4 | 1 |
@@ -251,6 +252,7 @@ que restar dos fotos para inferirlo daría un número inventado.
 
 | Fecha | Vistas | Únicas | Clones | Únicos |
 |---|---|---|---|---|
+| 2026-11-23 | 30 | 3 | 78 | 15 |
 | 2026-11-22 | 0 | 0 | 4 | 3 |
 | 2026-11-21 | 1 | 1 | 34 | 24 |
 | 2026-11-20 | 0 | 0 | 27 | 13 |
